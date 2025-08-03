@@ -1,54 +1,78 @@
-/* 共通設定 */
-body {
+/* 和モダンオーガニックグリーン 配色テーマ */
+:root {
+    --color-background: #F5F5F0;
+    --color-main: #69A297;
+    --color-accent: #A7D28D;
+    --color-text: #2B2B2B;
+    --color-subtle-bg: #E0F0EA;
+  }
+  
+  body {
     font-family: "Helvetica Neue", sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #f9f9f9;
-    color: #333;
-}
-
-/* ヘッダー */
-header {
-    background-color: #4CAF50;
-    padding: 1.5rem;
-    text-align: center;
+    background-color: var(--color-background);
+    color: var(--color-text);
+  }
+  
+  header {
+    background-color: var(--color-main);
     color: white;
-}
-
-header h1 {
+    text-align: center;
+    padding: 1.5rem;
+  }
+  
+  header h1 {
     margin: 0;
     font-size: 2.2rem;
-}
-
-header p {
+  }
+  
+  header p {
     margin: 0.5rem 0 0;
     font-size: 1.1rem;
-}
-
-/* メインコンテンツ */
-main {
+  }
+  
+  main {
     max-width: 800px;
     margin: 2rem auto;
     padding: 0 1rem;
-}
-
-h2 {
+  }
+  
+  h2 {
+    color: var(--color-main);
     font-size: 1.6rem;
-    color: #4CAF50;
     margin-bottom: 1rem;
-}
-
-p {
+  }
+  
+  p {
     line-height: 1.7;
     margin-bottom: 1.2rem;
-}
-
-/* フッター */
-footer {
+  }
+  
+  footer {
     text-align: center;
     padding: 1rem;
     margin-top: 2rem;
     font-size: 0.9rem;
-    color: #777;
-    border-top: 1px solid #ddd;
-}  
+    color: var(--color-text);
+    background-color: var(--color-subtle-bg);
+    border-top: 1px solid #ccc;
+  }
+  
+  /* ボタン（将来利用用） */
+  button {
+    background-color: var(--color-accent);
+    color: var(--color-text);
+    border: none;
+    padding: 0.6rem 1.2rem;
+    font-size: 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  button:hover {
+    background-color: var(--color-main);
+    color: white;
+  }
+  
