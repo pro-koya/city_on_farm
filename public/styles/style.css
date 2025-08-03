@@ -1,0 +1,54 @@
+/* 共通設定 */
+body {
+    font-family: "Helvetica Neue", sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f9f9f9;
+    color: #333;
+}
+
+/* ヘッダー */
+header {
+    background-color: #4CAF50;
+    padding: 1.5rem;
+    text-align: center;
+    color: white;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 2.2rem;
+}
+
+header p {
+    margin: 0.5rem 0 0;
+    font-size: 1.1rem;
+}
+
+/* メインコンテンツ */
+main {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+h2 {
+    font-size: 1.6rem;
+    color: #4CAF50;
+    margin-bottom: 1rem;
+}
+
+p {
+    line-height: 1.7;
+    margin-bottom: 1.2rem;
+}
+
+/* フッター */
+footer {
+    text-align: center;
+    padding: 1rem;
+    margin-top: 2rem;
+    font-size: 0.9rem;
+    color: #777;
+    border-top: 1px solid #ddd;
+}  
