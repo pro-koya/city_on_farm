@@ -1,26 +1,106 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><%= title %></title>
-    <link rel="stylesheet" href="/styles/style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> | City on Farm</title>
+    <link rel="stylesheet" href="/styles/styles.css">
 </head>
-
 <body>
-    <header>
-        <h1><%= title %></h1>
-        <p>地域の畑から、街の食卓へ。</p>
+    <!-- Hero Section -->
+    <header class="hero">
+        <h1>新・今日の食卓</h1>
+        <p>地域で育む真の地産地消</p>
+        <div class="hero-actions">
+            <a href="/products" class="button">商品を見る</a>
+            <a href="/signup" class="button secondary">生産者になる</a>
+        </div>
     </header>
-    <main>
-        <h2>このシステムについて</h2>
-        <p>City on Farmは、地域の小規模生産者と都市部の飲食店をつなぐ新しい地産地消プラットフォームです。</p>
-        <p>生産者が投稿した出荷情報を私たちが集約し、飲食店などの購入者が一覧から注文できる仕組みです。</p>
-    </main>
+
+    <!-- About Section -->
+    <section class="about">
+        <h2>このサービスについて</h2>
+        <p>
+            City on Farmは、地域の小規模生産者と都市の食卓をつなぐ新しい地産地消プラットフォームです。
+            生産者が出荷情報を登録し、私たちがまとめて飲食店や購入者へ届けます。
+        </p>
+    </section>
+
+    <!-- Thought Sction -->
+    <section class="thought">
+        <h2>思い</h2>
+        <p>
+            このサービスを提供するに至った熱い思いをここに綴ります。
+        </p>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+    <h2>特徴</h2>
+        <div class="feature-list">
+            <div class="feature">
+                <h3>新鮮・安心</h3>
+                <p>地元で育てられた農作物を直接お届けします。</p>
+            </div>
+            <div class="feature">
+                <h3>少量出品OK</h3>
+                <p>家庭菜園や小さな農園でも気軽に出品できます。</p>
+            </div>
+            <div class="feature">
+                <h3>飲食店とのつながり</h3>
+                <p>地域の飲食店と信頼の関係を築けます。</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Products Preview Section -->
+    <section class="products-preview">
+    <h2>おすすめ商品</h2>
+        <div class="product-cards">
+            <% products.forEach(function(product) { %>
+            <div class="product-card">
+                <img src="<%= product.image %>" alt="<%= product.name %>">
+                <h3><%= product.name %></h3>
+                <p><%= product.description %></p>
+            </div>
+            <% }); %>
+        </div>
+        <a href="/products" class="button">もっと見る</a>
+    </section>
+
+    <!-- Blog Section -->
+    <section class="blog">
+    <h2>読みもの</h2>
+        <div class="blog-posts">
+            <% blogPosts.forEach(function(post) { %>
+            <div class="blog-post">
+                <h3><a href="/blog/<%= post.slug %>"><%= post.title %></a></h3>
+                <p><%= post.excerpt %></p>
+            </div>
+            <% }); %>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq">
+        <h2>よくある質問</h2>
+        <dl>
+            <dt>少量でも出品できますか？</dt>
+            <dd>はい。家庭菜園のような小規模な出品も歓迎です。</dd>
+            <dt>飲食店ではない個人も購入できますか？</dt>
+            <dd>もちろん可能です。どなたでもご利用いただけます。</dd>
+        </dl>
+    </section>
+
+    <!-- Footer -->
     <footer>
-        &copy; 2025 City on Farm. All rights reserved.
+        <p>&copy; 2025 City on Farm. All rights reserved.</p>
+        <nav>
+            <a href="/">ホーム</a> |
+            <a href="/products">商品一覧</a> |
+            <a href="/contact">お問い合わせ</a> |
+            <a href="/login">ログイン</a>
+        </nav>
     </footer>
 </body>
-
 </html>
