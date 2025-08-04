@@ -13,7 +13,7 @@ body {
   padding: 0;
   background-color: var(--color-background);
   color: var(--color-text);
-  max-width: 1200px;
+  max-width: 1400px;
   width: 100%;
 }
 
@@ -85,7 +85,7 @@ body {
 
 section {
   padding: 2rem 1rem;
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
