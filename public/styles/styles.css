@@ -166,3 +166,77 @@ footer nav a {
 footer nav a:hover {
   text-decoration: underline;
 }
+
+/* ナビゲーションバー */
+.navbar {
+  background-color: var(--color-main);
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  width: 100%;
+}
+
+.navbar-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1.2rem;
+  max-width: 1000px;
+  margin: auto;
+}
+
+.navbar-logo {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: white;
+  text-decoration: none;
+}
+
+.navbar-toggle {
+  font-size: 1.5rem;
+  background: none;
+  color: white;
+  border: none;
+  display: none;
+  cursor: pointer;
+}
+
+.navbar-menu {
+  list-style: none;
+  display: flex;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+}
+
+.navbar-menu li a {
+  color: white;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.navbar-menu li a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .navbar-toggle {
+    display: block;
+  }
+
+  .navbar-menu {
+    display: none;
+    flex-direction: column;
+    background-color: var(--color-main);
+    position: absolute;
+    top: 60px;
+    left: 0;
+    width: 100%;
+    padding: 1rem;
+  }
+
+  .navbar-menu.active {
+    display: flex;
+  }
+}
