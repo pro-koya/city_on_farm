@@ -223,6 +223,7 @@ footer nav a:hover {
 @media (max-width: 768px) {
   .navbar-toggle {
     display: block;
+    transition: all .3s ease-in-out;
   }
 
   .navbar-menu {
@@ -240,6 +241,13 @@ footer nav a:hover {
 
   .navbar-menu.active {
     display: flex;
+    gap: 10%;
+    padding-top: 12%;
     transition: all .4s ease-in-out;
+  }
+
+  .navbar-menu li{
+    border-bottom: 1px solid var(-color-background);
+    margin-right: 8%;
   }
 }
