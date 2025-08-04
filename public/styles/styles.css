@@ -96,7 +96,7 @@ section {
   background-color: var(--color-subtle-bg);
   border-radius: 8px;
   margin-top: 2rem;
-  padding: .2rem;
+  padding: 2rem;
 }
 
 .feature-list {
@@ -256,7 +256,7 @@ footer nav a:hover {
 .navbar {
   background-color: var(--color-main);
   color: white;
-  position: sticky;
+  position: fixed;
   top: 0;
   z-index: 999;
   width: 100%;
@@ -306,6 +306,12 @@ footer nav a:hover {
 }
 
 @media (max-width: 768px) {
+  .features,
+  .products-preview,
+  .blog,
+  .faq {
+    padding: .2rem;
+  }
   .navbar-toggle {
     display: block;
     transition: all .3s ease-in-out;
