@@ -17,3 +17,12 @@ setInterval(() => {
     index = (index + 1) % slides.length;
     slides[index].classList.add('active');
 }, 8000);
+
+// よくある質問
+document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".faq-item").forEach(item => {
+        item.addEventListener("click", () => {
+            item.classList.toggle("active");
+        });
+    });
+});

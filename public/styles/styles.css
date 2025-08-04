@@ -38,7 +38,6 @@ body {
   justify-content: center;
   color: white;
   text-align: center;
-  padding: 2rem;
 }
 
 .slide.active {
@@ -165,7 +164,7 @@ section {
   border-radius: 8px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
   padding: 1rem;
-  width: 80%;
+  width: 95%;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -203,14 +202,35 @@ section {
   text-decoration: underline;
 }
 
-dl dt {
-  font-weight: bold;
-  margin-top: 1rem;
+.faq-item {
+  border-bottom: 1px solid #ccc;
+  padding: 1rem 0;
+  cursor: pointer;
 }
 
-dl dd {
-  margin-left: 1rem;
-  margin-bottom: 1rem;
+.faq-question {
+  font-weight: bold;
+  font-size: 1.05rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.faq-answer {
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+  color: #444;
+  display: none;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.faq-item.active .faq-answer {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 footer {
