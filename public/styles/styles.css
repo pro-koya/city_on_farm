@@ -7,10 +7,19 @@
   --color-subtle-bg: #e0f0ea;
 }
 
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   font-family: "Helvetica Neue", sans-serif;
   margin: 0 auto;
-  padding: 0;
   background-color: var(--color-background);
   color: var(--color-text);
   max-width: 1400px;
@@ -148,6 +157,13 @@ section {
   font-size: 0.9rem;
   padding: 0 0.5rem 1rem;
   color: #555;
+}
+
+.hero,
+.product-cards,
+.slide {
+  max-width: 100vw;
+  overflow: hidden;
 }
 
 .blog-posts {
