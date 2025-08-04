@@ -240,5 +240,6 @@ footer nav a:hover {
 
   .navbar-menu.active {
     display: flex;
+    transition: all .4s ease-in-out;
   }
 }
