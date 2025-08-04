@@ -65,7 +65,7 @@ body {
 .button {
   display: inline-block;
   background-color: var(--color-accent);
-  color: var(--color-subtle-bg);
+  color: var(--color-background);
   text-decoration: none;
   padding: 0.6rem 1.2rem;
   margin: 0.3rem;
@@ -172,9 +172,13 @@ section {
   box-shadow: 0 4px 12px rgba(0,0,0,0.12);
 }
 
-.blog-post h3 {
+.blog-post h3{
   margin: 0;
   font-size: 1.2rem;
+  color: var(--color-text);
+}
+
+.blog-post h3 a{
   color: var(--color-text);
 }
 
