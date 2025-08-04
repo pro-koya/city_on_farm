@@ -96,7 +96,7 @@ section {
   background-color: var(--color-subtle-bg);
   border-radius: 8px;
   margin-top: 2rem;
-  padding: 2rem;
+  padding: .2rem;
 }
 
 .feature-list {
@@ -175,7 +175,7 @@ section {
 
 .blog-post h3{
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1rem;
   color: var(--color-text);
 }
 
