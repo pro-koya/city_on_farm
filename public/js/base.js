@@ -1,10 +1,18 @@
-// ハンバーガーメニュー動作
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function () {
     const toggle = document.getElementById("navbar-toggle");
     const menu = document.getElementById("navbar-menu");
+    const icon = document.getElementById("toggle-icon");
 
-    toggle.addEventListener("click", function() {
+    toggle.addEventListener("click", function () {
         menu.classList.toggle("active");
+        toggle.classList.toggle("open");
+
+        // アイコン切り替え
+        if (menu.classList.contains("active")) {
+            icon.textContent = "✕";
+        } else {
+            icon.textContent = "☰";
+        }
     });
 });
 
