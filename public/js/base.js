@@ -34,3 +34,15 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 });
+
+// 問い合わせページ
+document.getElementById('contact-form').addEventListener('submit', function(e) {
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const message = document.getElementById('message').value.trim();
+
+    if (!name || !email || !message) {
+        alert('すべての項目を入力してください。');
+        e.preventDefault();
+    }
+});

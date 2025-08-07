@@ -41,27 +41,47 @@ const blogPosts = [
   {
     title: '旬のレタスが採れました！',
     slug: 'lettuce-harvest',
-    excerpt: '今朝収穫したばかりのレタスが出品されています。シャキシャキの食感をぜひ味わってください。'
+    excerpt: '今朝収穫したばかりのレタスが出品されています。シャキシャキの食感をぜひ味わってください。',
+    category: '旬',
+    popularity: 3,
+    publishedAt:'2025-04-22',
+    thumbnail:'/images/test-image.jpeg'
   },
   {
     title: '鳥飼ナスのおすすめレシピ3選',
     slug: 'torikai-eggplant-recipes',
-    excerpt: '摂津の伝統野菜「鳥飼ナス」を使った簡単で美味しいレシピを紹介します。'
+    excerpt: '摂津の伝統野菜「鳥飼ナス」を使った簡単で美味しいレシピを紹介します。',
+    category: '伝統野菜',
+    popularity: 2,
+    publishedAt:'2025-05-21',
+    thumbnail:'/images/test-image.jpeg'
   },
   {
     title: '農家さん紹介：にんじん畑の青木さん',
     slug: 'farmer-aoki-carrots',
-    excerpt: '甘くてやさしい味わいのにんじんを育てる青木さんのこだわりをご紹介。'
+    excerpt: '甘くてやさしい味わいのにんじんを育てる青木さんのこだわりをご紹介。',
+    category: '農家さん',
+    popularity: 1,
+    publishedAt:'2025-06-20',
+    thumbnail:'/images/test-image.jpeg'
   },
   {
     title: 'トマトの糖度は何で決まる？',
     slug: 'tomato-sweetness-factors',
-    excerpt: '完熟トマトが甘くなる理由とは？農家さんの工夫を紹介します。'
+    excerpt: '完熟トマトが甘くなる理由とは？農家さんの工夫を紹介します。',
+    category: '野菜のこと',
+    popularity: 5,
+    publishedAt:'2025-04-22',
+    thumbnail:'/images/test-image.jpeg'
   },
   {
     title: '地元野菜と食の安心',
     slug: 'local-vegetables-safety',
-    excerpt: '地域で育てた野菜がなぜ安心できるのか、その理由と魅力を伝えます。'
+    excerpt: '地域で育てた野菜がなぜ安心できるのか、その理由と魅力を伝えます。',
+    category: '地産地消',
+    popularity: 4,
+    publishedAt:'2025-04-22',
+    thumbnail:'/images/test-image.jpeg'
   }
 ];
 
@@ -75,6 +95,25 @@ app.get('/', (req, res) => {
     , blogPosts
   });
 })
+app.get('/contact', (req, res) => {
+  res.render('contact');
+});
+
+app.post('/contact', (req, res) => {
+  const { name, email, message } = req.body;
+  // バリデーション・保存・メール送信など
+  res.send('お問い合わせありがとうございました。');
+});
+
+const categories = [...new Set(blogPosts.map(p=>p.category))];
+
+app.get('/blog', (req,res)=>{
+  res.render('blog/index', {
+    title: 'ブログ一覧',
+    blogPosts,
+    categories
+  });
+});
 
 // サーバーの起動
 app.listen(PORT, () => {

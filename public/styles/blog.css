@@ -1,0 +1,88 @@
+:root{
+  --bg:#F9F9F6; --main:#4C6B5C; --accent:#A3C9A8; --hi:#D6EADF;
+  --text:#2B2B2B; --muted:#6b7280; --white:#fff;
+  --radius:14px; --shadow:0 8px 24px rgba(0,0,0,.08);
+}
+
+html,body{background:var(--bg);color:var(--text)}
+*{box-sizing:border-box}
+
+.blog-list-head{
+  padding:1rem 1rem 0;
+  max-width:1100px;margin:0 auto;
+}
+.blog-list-head h1{
+  font-size:1.6rem;margin:0 0 .8rem 0;
+}
+.controls{
+  display:flex;gap:.8rem;align-items:center;
+}
+.control{display:flex;flex-direction:column;gap:.35rem}
+.control label{font-size:.85rem;color:var(--muted)}
+.control select{
+  appearance:none;
+  border:1px solid #e5e7eb;border-radius:10px;
+  padding:.6rem .9rem;background:var(--white);
+  min-width:160px;outline:none;
+}
+.control select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(163,201,168,.25)}
+
+.blog-list{display:grid;gap:1rem;padding:1rem;max-width:1100px;margin:1rem auto 2rem}
+
+.post-card{
+  display:grid; gap:.65rem;
+  grid-template-areas:
+    "title"
+    "meta"
+    "thumb"
+    "excerpt"
+    "readmore";
+  background:var(--white); border-radius:var(--radius); box-shadow:var(--shadow);
+  padding:1rem; overflow:hidden; transition:transform .2s, box-shadow .2s;
+}
+.post-card:hover{transform:translateY(-2px); box-shadow:0 12px 32px rgba(0,0,0,.12)}
+
+.post-card .thumb{display:block;overflow:hidden}
+.post-card img{width:110px;height:110px;object-fit:cover;display:block}
+
+.post-card .content{padding:1rem 1rem 1.1rem 0}
+.title{grid-area:title; font-size:1.1rem; margin:0}
+.title a{color:var(--text); text-decoration:none}
+.title a:hover{text-decoration:underline}
+
+.meta{grid-area:meta; display:flex; gap:.6rem; align-items:center; color:var(--muted); font-size:.9rem}
+.badge{background:var(--hi); color:var(--main); padding:.15rem .5rem; border-radius:999px; font-weight:600}
+.pop{color:#f59e0b}
+
+.thumb{grid-area:thumb; display:block; width:100%; border-radius:12px; overflow:hidden}
+.thumb img{width:100%; height:200px; object-fit:cover; display:block}
+
+.excerpt{grid-area:excerpt; margin:.2rem 0 .2rem 0; color:#444; line-height:1.65}
+.readmore{grid-area:readmore; color:var(--main); text-decoration:none; font-weight:600}
+.readmore:hover{text-decoration:underline}
+
+.blog-bottom{max-width:1100px;margin:0 auto 2.5rem;padding:0 1rem}
+.back-home{color:var(--main);text-decoration:none}
+.back-home:hover{text-decoration:underline}
+
+/* タブレット以上でカードを2〜3列に */
+@media(min-width:720px){
+  .post-card{
+    grid-template-columns: 220px 1fr;
+    grid-template-areas:
+      "thumb title"
+      "thumb meta"
+      "thumb excerpt"
+      "thumb readmore";
+    gap:1rem; padding:1rem 1.2rem;
+  }
+  .thumb img{width:220px; height:160px}
+  .title{font-size:1.15rem}
+}
+@media(min-width:1024px){
+  .post-card{grid-template-columns: 260px 1fr}
+  .thumb img{width:260px; height:180px}
+}
+
+/* ナビ（ヘッダー固定対策で余白） */
+main{padding-top:60px}

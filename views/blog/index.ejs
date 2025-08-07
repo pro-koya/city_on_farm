@@ -1,0 +1,65 @@
+<%- include('../partials/header', { title: 'ブログ一覧', extraCSS: '/styles/blog.css' }) %>
+
+<section class="blog-list-head">
+    <h1>ブログ</h1>
+    <div class="controls">
+        <div class="control">
+            <label for="category">カテゴリ</label>
+            <select id="category">
+                <option value="all">すべて</option>
+                <% categories.forEach(function(cat){ %>
+                <option value="<%= cat %>"><%= cat %></option>
+                <% }) %>
+            </select>
+        </div>
+
+        <div class="control">
+            <label for="sort">並び替え</label>
+            <select id="sort">
+                <option value="newest">新着順</option>
+                <option value="oldest">古い順</option>
+                <option value="popular">人気順</option>
+            </select>
+        </div>
+    </div>
+</section>
+
+<section class="blog-list" id="blog-list">
+    <% blogPosts.forEach(function(post){ %>
+        <article class="post-card"
+        data-date="<%= new Date(post.publishedAt).toISOString() %>"
+        data-popularity="<%= post.popularity || 0 %>"
+        data-category="<%= post.category %>">
+
+        <!-- 1) タイトル -->
+            <h2 class="title"><a href="/blog/<%= post.slug %>"><%= post.title %></a></h2>
+
+            <!-- 2) カテゴリ・日付・人気 -->
+            <div class="meta">
+                <span class="badge"><%= post.category %></span>
+                <time datetime="<%= new Date(post.publishedAt).toISOString() %>">
+                    <%= new Date(post.publishedAt).toLocaleDateString('ja-JP') %>
+                </time>
+                <span class="pop">★ <%= post.popularity || 0 %></span>
+            </div>
+
+            <!-- 3) サムネイル（フル幅） -->
+            <a class="thumb" href="/blog/<%= post.slug %>">
+                <img src="<%= post.thumbnail || '/images/placeholder.jpg' %>" alt="<%= post.title %> のサムネイル">
+            </a>
+
+            <!-- 4) 紹介文 -->
+            <p class="excerpt"><%= post.excerpt %></p>
+
+            <!-- 5) 続きを読む -->
+            <a class="readmore" href="/blog/<%= post.slug %>">続きを読む →</a>
+        </article>
+    <% }) %>
+</section>
+
+<nav class="blog-bottom">
+    <a class="back-home" href="/">← ホームへ</a>
+</nav>
+
+<script src="/js/blog.js"></script>
+<%- include('../partials/footer') %>

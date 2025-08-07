@@ -1,13 +1,4 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= title %> | ホーム</title>
-    <link rel="stylesheet" href="/styles/styles.css">
-</head>
-<body>
-    <%- include('partials/navbar') %>
+<%- include('partials/header', {title: 'ホーム', extraCSS: '' }) %>
 
     <main>
         <!-- Hero Section -->
@@ -99,7 +90,7 @@
                 </div>
                 <% }); %>
             </div>
-            <a href="/blogs" class="button">もっと見る</a>
+            <a href="/blog" class="button">もっと見る</a>
             </section>
 
             <!-- FAQ Section -->
@@ -124,18 +115,5 @@
                 </div>
             </div>
         </section>
-    </main>
 
-    <footer>
-        <p>&copy; 2025 City on Farm. All rights reserved.</p>
-        <nav>
-            <a href="#">ホーム</a> |
-            <a href="/products">商品一覧</a> |
-            <a href="/contact">お問い合わせ</a> |
-            <a href="/login">ログイン</a>
-        </nav>
-    </footer>
-
-    <script src="/js/base.js"></script>
-</body>
-</html>
+<%- include('partials/footer') %>

@@ -8,6 +8,7 @@
   --color-text: #2B2B2B;
   --color-link: #355D4A;
   --color-white: #ffffff;
+  --color-error: #D9534F;
   --transition-speed: 0.3s;
 }
 
@@ -139,7 +140,6 @@ section {
 .product-cards {
   display: flex;
   overflow-x: auto;
-  white-space: nowrap;
   gap: 1rem;
   padding-bottom: 1rem;
   scroll-snap-type: x mandatory;
@@ -149,7 +149,8 @@ section {
 .product-card {
   flex: 0 0 auto;
   scroll-snap-align: start;
-  width: 180px;
+  width: 20%;
+  min-width: 220px;
   background: var(--color-white);
   border-radius: 8px;
   overflow: hidden;
@@ -342,6 +343,77 @@ footer nav a:hover {
 .navbar-menu li a:hover {
   text-decoration: underline;
 }
+
+/* 問い合わせページ */
+.contact-container {
+  background: var(--color-white);
+  padding: 2rem;
+  margin: 0 auto;
+  margin-top: 120px;
+  max-width: 600px;
+  width: 100%;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.contact-container h2 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  color: var(--color-main);
+}
+
+.contact-container form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.contact-container label {
+  font-weight: bold;
+}
+
+input,
+textarea {
+  padding: 0.8rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+  transition: border-color var(--transition-speed);
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+form button {
+  background-color: var(--color-main);
+  color: var(--color-white);
+  padding: 0.8rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+}
+
+form button:hover {
+  background-color: var(--color-accent);
+}
+
+.error-message {
+  color: var(--color-error);
+  font-size: 0.9rem;
+  margin-top: -0.5rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 
 @media (max-width: 768px) {
   .navbar-toggle {
