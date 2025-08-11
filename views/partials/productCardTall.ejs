@@ -1,0 +1,15 @@
+<a class="card--tall" href="/products/<%= p.slug || p.id %>" data-product-id="<%= p.id %>" aria-label="<%= p.name %>の詳細">
+  <img src="<%= p.image %>" alt="<%= p.name %>">
+  <div class="body">
+    <h3 class="name"><%= p.name %></h3>
+    <% if (p.producer) { %><p class="producer"><%= p.producer %></p><% } %>
+    <div class="price-row">
+      <span class="price">¥<%= p.price %></span>
+      <span class="unit"><%= p.unit || '' %></span>
+    </div>
+    <div class="foot">
+      <button class="fav" aria-label="お気に入りに追加">♡</button>
+      <button class="add" aria-label="カートに入れる">カートへ</button>
+    </div>
+  </div>
+</a>

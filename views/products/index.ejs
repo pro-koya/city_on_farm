@@ -1,0 +1,148 @@
+<%- include('../partials/header', { title: '商品一覧', extraCSS: '/styles/products.css' }) %>
+
+<!-- ✅ アナウンス（トースト） -->
+<div id="toast" class="toast" role="status" aria-live="polite" hidden>
+  <div class="toast__text">
+    <strong>今週だけ！</strong> 初回購入10%OFFクーポン <span class="badge">NEW</span>
+  </div>
+  <div class="toast__actions">
+    <button id="toast-open" class="btn btn--ghost" type="button">詳しく</button>
+    <button id="toast-close" class="btn btn--ghost" type="button" aria-label="閉じる">✕</button>
+  </div>
+</div>
+
+<!-- ✅ アナウンス（モーダル） -->
+<div id="modal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="modal__backdrop" id="modal-backdrop"></div>
+  <div class="modal__dialog" role="document" aria-labelledby="modal-title">
+    <h2 id="modal-title">今週のイベント情報</h2>
+    <p>初回購入10%OFF（コード：WELCOME10）／ 地元マルシェ出店：土曜9:00〜</p>
+    <div class="modal__actions">
+      <label class="checkbox"><input id="modal-hideToday" type="checkbox"> 今日は表示しない</label>
+      <button id="modal-close" class="btn" type="button">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/productsFilterBar') %>
+
+<main class="page">
+
+  <!-- ✅ 新着（横スクロール） -->
+  <% if (newArrivals && newArrivals.length) { %>
+  <section class="rail">
+    <div class="rail__head">
+      <h2>新着</h2>
+      <a class="link" href="<%= buildQuery({sort:'new', page:1}) %>">すべて見る →</a>
+    </div>
+    <div class="rail__track">
+      <% newArrivals.forEach(function(p){ %>
+        <%- include('../partials/productCard', { p }) %>
+      <% }) %>
+    </div>
+  </section>
+  <% } %>
+
+  <!-- ✅ 閲覧履歴（条件付き） -->
+  <% if (recent && recent.length) { %>
+  <section class="rail">
+    <div class="rail__head"><h2>閲覧履歴</h2></div>
+    <div class="rail__track">
+      <% recent.forEach(function(p){ %>
+        <%- include('../partials/productCard', { p }) %>
+      <% }) %>
+    </div>
+  </section>
+  <% } %>
+
+  <!-- ✅ 人気 -->
+  <% if (popular && popular.length) { %>
+  <section class="rail">
+    <div class="rail__head">
+      <h2>人気</h2>
+      <a class="link" href="<%= buildQuery({sort:'popular', page:1}) %>">ランキング →</a>
+    </div>
+    <div class="rail__track">
+      <% popular.forEach(function(p){ %>
+        <%- include('../partials/productCard', { p }) %>
+      <% }) %>
+    </div>
+  </section>
+  <% } %>
+
+  <!-- ✅ 特集/コレクション -->
+  <% if (collections && collections.length) { %>
+  <section class="rail">
+    <div class="rail__head"><h2>特集</h2></div>
+    <div class="rail__track">
+      <% collections.forEach(function(col){ %>
+        <a class="collection" href="<%= buildQuery({collection:col.slug, page:1}) %>">
+          <img src="<%= col.image %>" alt="<%= col.title %>">
+          <span><%= col.title %></span>
+        </a>
+      <% }) %>
+    </div>
+  </section>
+  <% } %>
+
+  <!-- ✅ おすすめ -->
+  <% if (recommended && recommended.length) { %>
+  <section class="rail">
+    <div class="rail__head"><h2>あなたへのおすすめ</h2></div>
+    <div class="rail__track">
+      <% recommended.forEach(function(p){ %>
+        <%- include('../partials/productCard', { p }) %>
+      <% }) %>
+    </div>
+  </section>
+  <% } %>
+
+  <!-- ✅ 商品一覧（グリッド） -->
+  <section class="grid-wrap">
+    <div class="grid-head">
+      <h2>商品プレビュー</h2>
+      <span class="count">
+        <%= Math.min((previewProducts || []).length, 20) %> / <%= previewTotal || 0 %> 件
+      </span>
+    </div>
+
+    <% if (!previewProducts || !previewProducts.length) { %>
+      <div class="empty">
+        <p>該当する商品がありません。</p>
+        <a class="btn btn--ghost" href="/products">条件を変更する</a>
+      </div>
+    <% } else { %>
+      <div class="grid">
+        <% previewProducts.forEach(function(p){ %>
+          <%- include('../partials/productCardTall', { p }) %>
+        <% }) %>
+      </div>
+
+      <div style="text-align:center; margin-top:1rem;">
+        <a class="btn" href="<%= buildQuery({ page: 1 }) %>">
+          すべての商品（全 <%= previewTotal %> 件）を見る →
+        </a>
+      </div>
+    <% } %>
+  </section>
+
+  <!-- 信頼シグナル -->
+  <section class="trust">
+    <div class="trust__item">🚚 週2回出荷</div>
+    <div class="trust__item">❄️ 冷蔵・常温選択可</div>
+    <div class="trust__item">🔍 トレーサビリティ表示</div>
+    <div class="trust__item">↩︎ 返品ポリシー明確</div>
+  </section>
+</main>
+
+<script>
+  /* クエリ生成をEJSで楽にするユーティリティ */
+  function buildQueryObj(base, patch){
+    const o = Object.assign({}, base, patch);
+    Object.keys(o).forEach(k => (o[k]===undefined || o[k]==='' || o[k]===null) && delete o[k]);
+    return o;
+  }
+</script>
+
+<script src="/js/products.js"></script>
+<%- include('../partials/footer') %>

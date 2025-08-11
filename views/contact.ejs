@@ -1,4 +1,4 @@
-<%- include('partials/header', {title: 'お問い合わせ', extraCSS: '' }) %>
+<%- include('partials/header', {title: 'お問い合わせ', extraCSS: 'styles/contact.css' }) %>
 
     <div class="contact-container">
         <h2>お問い合わせ</h2>
@@ -9,8 +9,21 @@
             <label for="email">メールアドレス</label>
             <input type="email" id="email" name="email" required />
 
+            <label for="type">お問い合わせ種別</label>
+            <div class="select-wrap">
+                <select id="type" name="type" required>
+                    <option value="" disabled <%= !form || !form.type ? 'selected' : '' %>>選択してください</option>
+                    <option value="general"     <%= form && form.type === 'general' ? 'selected' : '' %>>一般のお問合せ</option>
+                    <option value="seller"      <%= form && form.type === 'seller' ? 'selected' : '' %>>出品・登録について</option>
+                    <option value="order"       <%= form && form.type === 'order' ? 'selected' : '' %>>発注・取引について</option>
+                    <option value="technical"   <%= form && form.type === 'technical' ? 'selected' : '' %>>技術的な不具合</option>
+                    <option value="partnership" <%= form && form.type === 'partnership' ? 'selected' : '' %>>取材・パートナーシップ</option>
+                    <option value="other"       <%= form && form.type === 'other' ? 'selected' : '' %>>その他</option>
+                </select>
+            </div>
+
             <label for="message">お問い合わせ内容</label>
-            <textarea id="message" name="message" rows="5" required></textarea>
+            <textarea id="message" name="message" rows="7" required></textarea>
 
             <button type="submit">送信する</button>
         </form>

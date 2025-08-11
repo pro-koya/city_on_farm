@@ -1,0 +1,96 @@
+<%- include('../partials/header', { title: post.title, extraCSS: '/styles/blog-post.css' }) %>
+
+<article class="post">
+  <!-- ヒーロー -->
+  <header class="post-hero">
+    <h1 class="post-title"><%= post.title %></h1>
+    <div class="post-meta">
+      <span class="badge"><%= post.category %></span>
+      <time datetime="<%= new Date(post.publishedAt).toISOString() %>">
+        <%= new Date(post.publishedAt).toLocaleDateString('ja-JP') %>
+      </time>
+      <% if (post.readTime) { %><span class="dot">•</span><span><%= post.readTime %>分で読めます</span><% } %>
+      <% if (post.popularity != null) { %><span class="dot">•</span><span>★ <%= post.popularity %></span><% } %>
+    </div>
+
+    <% if (post.cover) { %>
+      <figure class="cover">
+        <img src="<%= post.cover %>" alt="<%= post.title %> のカバー画像">
+      </figure>
+    <% } %>
+
+    <div class="tool-row">
+      <button class="btn share" id="btn-share" type="button">共有</button>
+      <button class="btn link" id="btn-copy"  type="button">リンクをコピー</button>
+    </div>
+  </header>
+
+  <!-- 目次（任意：サーバ側で post.toc を用意すれば表示） -->
+  <% if (post.toc && post.toc.length) { %>
+    <details class="toc" open>
+      <summary>目次</summary>
+      <ol>
+        <% post.toc.forEach(function(item){ %>
+          <li><a href="#<%= item.id %>"><%= item.text %></a></li>
+        <% }) %>
+      </ol>
+    </details>
+  <% } %>
+
+  <!-- 本文（contentHtml はサニタイズ済み想定） -->
+  <section class="post-body">
+    <%- post.contentHtml %>
+  </section>
+
+  <!-- タグ -->
+  <% if (post.tags && post.tags.length) { %>
+    <section class="tags">
+      <% post.tags.forEach(function(tag){ %>
+        <a class="tag" href="/blog/tag/<%= encodeURIComponent(tag) %>"># <%= tag %></a>
+      <% }) %>
+    </section>
+  <% } %>
+
+  <!-- 著者情報 -->
+  <% if (post.author) { %>
+    <section class="author">
+      <img class="avatar" src="<%= post.author.avatar || '/images/avatar-default.png' %>" alt="<%= post.author.name %> のアイコン">
+      <div>
+        <h3><%= post.author.name %></h3>
+        <p><%= post.author.bio || '' %></p>
+      </div>
+    </section>
+  <% } %>
+
+  <!-- 前後ナビ -->
+  <nav class="post-nav">
+    <% if (prevPost) { %>
+      <a class="prev" href="/blog/<%= prevPost.slug %>">← <%= prevPost.title %></a>
+    <% } else { %><span></span><% } %>
+    <% if (nextPost) { %>
+      <a class="next" href="/blog/<%= nextPost.slug %>"><%= nextPost.title %> →</a>
+    <% } %>
+  </nav>
+
+  <!-- 関連記事 -->
+  <% if (related && related.length) { %>
+    <section class="related">
+      <h2>関連記事</h2>
+      <div class="related-list">
+        <% related.forEach(function(r){ %>
+          <a class="related-card" href="/blog/<%= r.slug %>">
+            <img src="<%= r.thumbnail || '/images/placeholder.jpg' %>" alt="<%= r.title %>">
+            <div class="rc-title"><%= r.title %></div>
+          </a>
+        <% }) %>
+      </div>
+    </section>
+  <% } %>
+
+  <div class="back">
+    <a href="/blog">← 記事一覧へ戻る</a>
+  </div>
+</article>
+
+<script src="/js/blog-post.js"></script>
+<%- include('../partials/footer') %>

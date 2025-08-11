@@ -1,0 +1,37 @@
+<%- include('../partials/header', { title: '商品一覧', extraCSS: '/styles/products.css' }) %>
+
+<main class="page page--list">
+    <%- include('../partials/productsFilterBar') %>
+    <section class="grid-wrap grid-wrap--compact" id="grid">
+
+        <% if (!products || !products.length) { %>
+        <div class="empty">
+            <p>該当する商品が見つかりませんでした。</p>
+            <a class="btn btn--ghost" href="/products">商品ページへ戻る</a>
+        </div>
+        <% } else { %>
+        <div class="grid">
+            <% products.forEach(function(p){ %>
+            <%- include('../partials/productCardTall', { p }) %>
+            <% }) %>
+        </div>
+
+        <nav class="pagination" aria-label="ページネーション">
+            <a class="page <%= pagination.page===1 ? 'is-disabled' : '' %>"
+            href="<%= buildQuery({ page: Math.max(1, pagination.page-1) }) %>#grid"
+            aria-label="前のページ">‹</a>
+
+            <% for (let i = 1; i <= pagination.pageCount; i++) { %>
+            <a class="page <%= i===pagination.page ? 'is-active' : '' %>"
+                href="<%= buildQuery({ page: i }) %>#grid"><%= i %></a>
+            <% } %>
+
+            <a class="page <%= pagination.page===pagination.pageCount ? 'is-disabled' : '' %>"
+            href="<%= buildQuery({ page: Math.min(pagination.pageCount, pagination.page+1) }) %>#grid"
+            aria-label="次のページ">›</a>
+        </nav>
+        <% } %>
+    </section>
+</main>
+
+<%- include('../partials/footer') %>
