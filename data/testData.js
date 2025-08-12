@@ -266,4 +266,73 @@ const blogPosts = [
   }
 ];
 
+// data/testData.js の products に追記（例）
+products.push({
+  id: 'p020',
+  slug: 'tomato-premium',
+  name: '完熟トマト',
+  price: 380,
+  unit: '500g',
+  image: '/images/test-image.jpeg',
+  images: ['/images/test-image.jpeg','/images/test-image.jpeg','/images/test-image.jpeg'],
+  category: '果菜',
+  producer: '陽だまり農園',
+  stock: 22,
+  popularity: 120,
+  createdAt: '2025-06-26',
+  rating: 4.6,
+  reviewCount: 12,
+  shippingNote: 'ご注文から2〜3日で出荷',
+  descriptionHtml: `
+    <h2>甘さと酸味のバランス</h2>
+    <p>樹上完熟にこだわり、朝収穫したものだけを当日出荷しています。</p>
+    <ul>
+      <li>糖度目安：7度以上</li>
+      <li>栽培：減農薬・有機肥料中心</li>
+      <li>用途：サラダ、パスタ、煮込みにも◎</li>
+    </ul>
+  `,
+  seller: {
+    name: '陽だまり農園',
+    avatar: '/images/test-image.jpeg',
+    bio: '大阪・摂津でトマトを専門に栽培。水分管理と温度管理で甘さを引き出します。',
+    location: '大阪府摂津市'
+  },
+  specs: [
+    { label: 'サイズ', value: '中玉（150〜180g）' },
+    { label: '内容量', value: '500g（目安4〜6個）' },
+    { label: '保存',   value: '冷蔵（10℃前後）' },
+    { label: '賞味期限', value: '出荷から5日' }
+  ],
+  criteria: ['朝収穫のみ出荷', '糖度7以上を目安', '見た目より味を重視'],
+  reviews: [
+    { stars: 5, author: 'K.S', date: '2025-06-20', text: '甘くて香りがよい。リピート確定！' },
+    { stars: 4, author: 'M.O', date: '2025-06-18', text: '酸味とのバランスがよかったです。' },
+    { stars: 5, author: 'R.N', date: '2025-06-15', text: 'サラダに最高。鮮度も抜群でした。' }
+  ]
+});
+
+// 関連商品例（同カテゴリ "果菜"）
+products.push({
+  id: 'p021',
+  slug: 'eggplant-torikai',
+  name: '鳥飼ナス',
+  price: 420,
+  unit: '2本',
+  image: '/images/test-image.jpeg',
+  images: ['/images/test-image.jpeg'],
+  category: '果菜',
+  producer: '摂津の畑',
+  stock: 9,
+  popularity: 77,
+  createdAt: '2025-06-19',
+  rating: 4.4,
+  reviewCount: 6,
+  descriptionHtml: '<p>皮が柔らかく、とろける食感。煮浸しや焼き物に。</p>',
+  seller: { name:'摂津の畑', avatar:'/images/test-image.jpeg', bio:'伝統野菜の継承に取り組んでいます。', location:'大阪・摂津' },
+  specs: [{ label:'内容量', value:'2本' }],
+  criteria: ['サイズ規格A','朝採れ優先'],
+  reviews: [{ stars:5, author:'H.K', date:'2025-06-10', text:'焼きナスが絶品！' }]
+});
+
 module.exports = { products, collections, blogPosts };

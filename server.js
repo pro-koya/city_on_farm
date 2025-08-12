@@ -191,6 +191,26 @@ app.get('/products/list', (req, res) => {
   });
 });
 
+app.get('/products/:slug', (req, res, next) => {
+  const key = req.params.slug;
+
+  // slug もしくは id で検索できるように
+  const product = ALL_PRODUCTS.find(p => p.slug === key || String(p.id) === key);
+  if (!product) return next(); // 404
+
+  // 関連商品：同カテゴリから除外して人気順で最大10件
+  const related = sortProducts(
+    ALL_PRODUCTS.filter(p => p.category === product.category && (p.slug !== product.slug && String(p.id) !== String(product.id))),
+    'popular'
+  ).slice(0, 10);
+
+  res.render('products/show', {
+    title: product.name,
+    product,
+    related
+  });
+});
+
 // ===== 404 =====
 app.use((req, res) => {
   res.status(404).render('404', { title: 'ページが見つかりません' });

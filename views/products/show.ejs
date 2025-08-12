@@ -1,0 +1,183 @@
+<%- include('../partials/header', { title: product.name, extraCSS: '/styles/product-show.css' }) %>
+
+<main class="product-page" itemscope itemtype="https://schema.org/Product">
+  <!-- ===== ファーストビュー ===== -->
+  <section class="top">
+    <!-- PC: 左＝ギャラリー / 右＝情報、SP: 1カラム -->
+    <div class="gallery" aria-label="商品画像ギャラリー">
+      <div class="gallery__main">
+        <img id="mainImage"
+             src="<%= (product.images && product.images[0]) || product.image %>"
+             alt="<%= product.name %>"
+             loading="eager"
+             itemprop="image">
+      </div>
+      <% if (product.images && product.images.length > 1) { %>
+      <div class="thumbs" role="listbox" aria-label="サムネイル">
+        <% product.images.forEach(function(src, i){ %>
+          <button class="thumb <%= i===0 ? 'is-active':'' %>" data-src="<%= src %>" aria-label="画像 <%= i+1 %>を表示">
+            <img src="<%= src %>" alt="<%= product.name %>の画像 <%= i+1 %>" loading="lazy">
+          </button>
+        <% }) %>
+      </div>
+      <% } %>
+    </div>
+
+    <div class="info">
+      <h1 class="title" itemprop="name"><%= product.name %></h1>
+
+      <div class="rating">
+        <span class="stars" aria-hidden="true"><%= '★'.repeat(Math.round(product.rating||0)) %><%= '☆'.repeat(5-Math.round(product.rating||0)) %></span>
+        <span class="rating__num"><%= (product.rating||0).toFixed(1) %></span>
+        <a class="rating__count" href="#reviews" id="goto-reviews">（<%= product.reviewCount || 0 %>件のレビュー）</a>
+      </div>
+
+      <div class="price-row" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+        <span class="price">¥<span itemprop="price"><%= product.price %></span></span>
+        <% if (product.unit) { %><span class="unit">/ <%= product.unit %></span><% } %>
+        <link itemprop="priceCurrency" content="JPY">
+        <link itemprop="availability" href="https://schema.org/<%= product.stock>0?'InStock':'OutOfStock' %>">
+      </div>
+
+      <div class="stock">
+        <% if (product.stock > 10) { %>
+          <span class="badge">在庫あり</span>
+        <% } else if (product.stock > 0) { %>
+          <span class="badge badge--low">残り <%= product.stock %> 点</span>
+        <% } else { %>
+          <span class="badge badge--out">在庫切れ</span>
+        <% } %>
+        <span class="ship"><%= product.shippingNote || '2〜3日以内に発送' %></span>
+      </div>
+
+      <form class="buy" id="buyForm" action="/cart" method="POST" novalidate>
+        <input type="hidden" name="productId" value="<%= product.id %>">
+        <label class="qty" for="qty">
+          数量
+          <div class="stepper" role="group" aria-label="数量の増減">
+            <button type="button" class="stepper__btn" data-step="-1" aria-label="数量を減らす">−</button>
+            <input id="qty" name="qty" type="number" min="1" value="1" inputmode="numeric" pattern="[0-9]*">
+            <button type="button" class="stepper__btn" data-step="1" aria-label="数量を増やす">＋</button>
+          </div>
+        </label>
+
+        <div class="cta">
+          <button class="btn btn--buy" type="submit" <%= product.stock>0?'':'disabled' %>>カートに入れる</button>
+          <button class="btn btn--wish" type="button" id="favBtn" aria-pressed="false">♡ お気に入り</button>
+        </div>
+      </form>
+
+      <ul class="assurance">
+        <li>🚚 週2回出荷</li>
+        <li>❄️ 冷蔵・常温選択可</li>
+        <li>🔍 トレーサビリティ</li>
+        <li>↩︎ 返品可（条件あり）</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===== 詳細タブ / SPはアコーディオン風 ===== -->
+  <section class="details">
+    <div class="tabs" role="tablist">
+      <button class="tab is-active" role="tab" data-tab="desc">商品説明</button>
+      <button class="tab" role="tab" data-tab="seller">出品者情報</button>
+      <button class="tab" role="tab" data-tab="specs">サイズ・選定基準</button>
+      <button class="tab" role="tab" data-tab="reviews">レビュー</button>
+    </div>
+
+    <div class="panes">
+      <article id="pane-desc" class="pane is-active" role="tabpanel">
+        <div class="prose" itemprop="description">
+          <% if (product.descriptionHtml) { %>
+            <%- product.descriptionHtml %>
+          <% } else { %>
+            <p><%= product.description || '商品の詳細説明が入ります。' %></p>
+          <% } %>
+        </div>
+      </article>
+
+      <article id="pane-seller" class="pane" role="tabpanel">
+        <div class="seller">
+          <img class="seller__avatar" src="<%= (product.seller && product.seller.avatar) || '/images/test-image.jpeg' %>" alt="<%= product.seller?.name || '生産者' %>">
+          <div class="seller__meta">
+            <h3><%= product.seller?.name || '生産者名' %></h3>
+            <p><%= product.seller?.bio || '生産者紹介文が入ります。' %></p>
+            <% if (product.seller && product.seller.location){ %><p class="muted">所在地：<%= product.seller.location %></p><% } %>
+            <a class="link" href="/products/list?producer=<%= encodeURIComponent(product.seller?.name||'') %>">この出品者の他商品 →</a>
+          </div>
+        </div>
+      </article>
+
+      <article id="pane-specs" class="pane" role="tabpanel">
+        <div class="specs">
+          <% if (product.specs && product.specs.length) { %>
+          <div class="table-wrapper">
+            <table class="spec-table">
+              <tbody>
+                <% product.specs.forEach(function(row){ %>
+                  <tr><th><%= row.label %></th><td><%= row.value %></td></tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% } %>
+          <% if (product.criteria && product.criteria.length) { %>
+          <div class="criteria">
+            <h4>選定基準</h4>
+            <ul>
+              <% product.criteria.forEach(function(c){ %>
+                <li><%= c %></li>
+              <% }) %>
+            </ul>
+          </div>
+          <% } %>
+        </div>
+      </article>
+
+      <article id="pane-reviews" class="pane" role="tabpanel">
+        <div id="reviews">
+          <div class="review-head">
+            <h3>レビュー</h3>
+            <div class="score"><strong><%= (product.rating||0).toFixed(1) %></strong> / 5（<%= product.reviewCount||0 %>件）</div>
+          </div>
+
+          <% if (product.reviews && product.reviews.length) { %>
+            <ul class="review-list">
+              <% product.reviews.slice(0,3).forEach(function(r){ %>
+                <li class="review">
+                  <div class="review__meta">
+                    <span class="review__stars"><%= '★'.repeat(r.stars) %><%= '☆'.repeat(5-r.stars) %></span>
+                    <span class="review__author"><%= r.author %></span>
+                    <span class="review__date"><%= r.date %></span>
+                  </div>
+                  <p><%= r.text %></p>
+                </li>
+              <% }) %>
+            </ul>
+            <a class="link" href="#">すべてのレビューを見る →</a>
+          <% } else { %>
+            <p class="muted">まだレビューはありません。</p>
+          <% } %>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ===== 関連商品 ===== -->
+  <% if (related && related.length) { %>
+  <section class="rail">
+    <div class="rail__head">
+      <h2>関連商品</h2>
+      <a class="link" href="/products/list?category=<%= encodeURIComponent(product.category||'') %>">同カテゴリをもっと見る →</a>
+    </div>
+    <div class="rail__track">
+      <% related.forEach(function(p){ %>
+        <%- include('../partials/productCard', { p }) %>
+      <% }) %>
+    </div>
+  </section>
+  <% } %>
+</main>
+
+<script src="/js/product-show.js"></script>
+<%- include('../partials/footer') %>

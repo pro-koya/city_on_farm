@@ -1,0 +1,226 @@
+:root{
+  --bg:#F9F9F6; --text:#2B2B2B;
+  --main:#4C6B5C; --accent:#A3C9A8; --hi:#D6EADF;
+  --white:#fff; --muted:#6b7280;
+  --radius:14px; --shadow:0 8px 24px rgba(0,0,0,.08);
+}
+
+html,body{background:var(--bg);color:var(--text)}
+*{box-sizing:border-box}
+.product-page{max-width:1100px;margin:0 auto;padding:80px 1rem 2rem}
+
+/* ===== Top ===== */
+.top{display:grid; gap:1.2rem; grid-template-columns:1fr; margin-bottom:1.4rem}
+@media(min-width:960px){ .top{grid-template-columns:1.1fr 1fr} }
+
+.gallery{background:var(--white); border-radius:12px; box-shadow:var(--shadow); padding:.8rem}
+.gallery__main{border-radius:10px; overflow:hidden; aspect-ratio:4/3; background:#f0f3f2}
+.gallery__main img{width:100%; height:100%; object-fit:cover; display:block}
+.thumbs{display:flex; gap:.5rem; overflow-x:auto; padding:.6rem 0 .2rem}
+.thumb{border:none; background:#fff; border-radius:10px; padding:0; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.thumb img{display:block; width:70px; height:70px; object-fit:cover; border-radius:10px}
+.thumb.is-active{outline:2px solid var(--accent)}
+
+.info{background:var(--white); border-radius:12px; box-shadow:var(--shadow); padding:1rem}
+.title{margin:.2rem 0 .6rem; font-size:clamp(1.3rem,4vw,1.8rem); line-height:1.3}
+.rating{display:flex; align-items:center; gap:.5rem; color:#374151; margin:.2rem 0 .6rem}
+.stars{letter-spacing:1px; color:#f59e0b}
+.rating__num{font-weight:800}
+.rating__count{color:var(--main); text-decoration:none}
+.rating__count:hover{text-decoration:underline}
+
+.price-row{display:flex; align-items:baseline; gap:.4rem; margin:.2rem 0 .6rem}
+.price{font-weight:900; font-size:clamp(1.3rem,4.5vw,1.7rem)}
+.unit{color:#374151}
+.stock{display:flex; align-items:center; gap:.6rem; margin:.2rem 0 .8rem}
+.badge{background:var(--hi); color:var(--main); padding:.2rem .6rem; border-radius:999px; font-weight:700}
+.badge--low{background:#fde68a; color:#92400e}
+.badge--out{background:#fecaca; color:#7f1d1d}
+.ship{color:var(--muted); font-size:.95rem}
+
+.buy{margin:.8rem 0 0}
+.qty{display:block; margin:0 0 .6rem}
+.stepper{display:inline-flex; align-items:center; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden}
+.stepper__btn{background:#f3f4f6; border:none; padding:.55rem .7rem; cursor:pointer}
+.stepper input{width:64px; border:none; text-align:center; padding:.55rem 0; outline:none}
+.cta{display:flex; gap:.6rem; align-items:center}
+.btn{border:none; border-radius:10px; padding:.7rem 1rem; cursor:pointer}
+.btn--buy{background:var(--main); color:#fff; font-weight:800}
+.btn--buy:disabled{opacity:.5; cursor:not-allowed}
+.btn--wish{background:#f3f4f6; color:#111827}
+
+/* 安心表記 */
+.assurance{display:flex; flex-wrap:wrap; gap:.6rem; margin:1rem 0 0; padding:0; list-style:none}
+.assurance li{background:var(--hi); color:#224; padding:.4rem .6rem; border-radius:999px; font-weight:700; font-size:.9rem}
+
+/* ===== Tabs / Panes ===== */
+.details{background:var(--white); border-radius:12px; box-shadow:var(--shadow); padding:1rem; margin:1rem 0 1.2rem}
+.tabs{display:flex; gap:.4rem; flex-wrap:wrap}
+.tab{background:#f3f4f6; color:#111827; border:none; border-radius:999px; padding:.45rem .8rem; cursor:pointer; font-weight:700}
+.tab.is-active{background:var(--hi); color:var(--main)}
+.panes{margin-top:.8rem}
+.pane{display:none}
+.pane.is-active{display:block}
+
+/* 本文（読みやすさ強化） */
+.prose{line-height:1.9; font-size:1.02rem}
+.prose h2{font-size:1.2rem; margin:1.2rem 0 .5rem; position:relative; padding-left:.8rem}
+.prose h2::before{content:''; position:absolute; left:0; top:.25rem; width:4px; height:1.1em; background:linear-gradient(180deg,var(--accent),var(--main)); border-radius:4px}
+.prose ul{margin:.4rem 0 .8rem 1.2rem}
+.prose blockquote{border-left:4px solid var(--accent); background:#f3faf5; padding:.6rem .9rem; border-radius:8px; color:#234}
+
+/* 出品者 */
+.seller{display:flex; gap:.9rem; align-items:flex-start}
+.seller__avatar{width:56px; height:56px; border-radius:50%; object-fit:cover}
+.seller__meta h3{margin:.2rem 0}
+.muted{color:var(--muted)}
+.link{color:var(--main); text-decoration:none}
+.link:hover{text-decoration:underline}
+
+/* スペック表 */
+.table-wrapper{overflow-x:auto; -webkit-overflow-scrolling:touch; margin:.6rem 0}
+.spec-table{width:100%; border-collapse:separate; border-spacing:0; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden}
+.spec-table th, .spec-table td{padding:.7rem .9rem; border-bottom:1px solid #e5e7eb}
+.spec-table tr:nth-child(even){background:#fafcfb}
+.criteria h4{margin:1rem 0 .4rem}
+
+/* レビュー */
+.review-head{display:flex; justify-content:space-between; align-items:center}
+.review-list{list-style:none; padding:0; margin:.6rem 0; display:grid; gap:.6rem}
+.review{background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:.7rem .8rem}
+.review__meta{display:flex; gap:.6rem; flex-wrap:wrap; color:#374151}
+.review__stars{color:#f59e0b}
+
+/* 関連商品レール（既存スタイルに寄せる） */
+.rail{
+  margin: 1.6rem 0 0;
+  background: var(--white);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 1rem;
+}
+
+.rail__head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+  margin-bottom: .6rem;
+}
+
+.rail__head h2{
+  margin: 0;
+  font-size: 1.1rem;
+  letter-spacing: .02em;
+}
+
+.rail__head .link{
+  color: var(--main);
+  text-decoration: none;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  opacity: .9;
+  transition: opacity .2s ease, transform .2s ease;
+}
+.rail__head .link::after{
+  content: '→';
+  transform: translateX(0);
+  transition: transform .2s ease;
+}
+.rail__head .link:hover{
+  opacity: 1;
+}
+.rail__head .link:hover::after{
+  transform: translateX(2px);
+}
+
+/* トラック：スナップ＋慣性＋端のグラデーション */
+.rail__track{
+  position: relative;
+  display: flex;
+  gap: .9rem;
+  overflow-x: auto;
+  padding: .4rem 0 .6rem;
+  scroll-snap-type: x mandatory;
+  scroll-padding: .4rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 端グラデーション（続きヒント） */
+.rail__track::before,
+.rail__track::after{
+  content: '';
+  position: sticky;
+  top: 0;
+  width: 36px;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+.rail__track::before{
+  left: 0;
+  background: linear-gradient(to right, var(--white), transparent);
+}
+.rail__track::after{
+  right: 0;
+  background: linear-gradient(to left, var(--white), transparent);
+}
+
+/* スクロールバー（控えめに） */
+.rail__track::-webkit-scrollbar{ height: 8px }
+.rail__track::-webkit-scrollbar-track{ background: transparent }
+.rail__track::-webkit-scrollbar-thumb{
+  background: #d7e4dd;
+  border-radius: 999px;
+}
+.rail__track{ scrollbar-color: #d7e4dd transparent; scrollbar-width: thin }
+
+/* ===== カードの見た目（既存 productCard を上書き強化） ===== */
+.rail .card{
+  flex: 0 0 auto;
+  width: clamp(180px, 32vw, 240px);
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0,0,0,.06);
+  scroll-snap-align: start;
+  text-decoration: none;
+  color: var(--text);
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+  will-change: transform;
+}
+.rail .card:hover{
+  transform: translateY(-4px);
+  box-shadow: 0 14px 34px rgba(0,0,0,.12);
+  filter: saturate(1.02);
+}
+
+/* 画像を美しく：比率固定＋淡い背景 */
+.rail .card img{
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: #f0f3f2;
+}
+
+/* タイトル・説明の余白とバランス */
+.card__body{padding:.6rem .8rem .8rem}
+.card__name{font-weight:700; font-size:.95rem; margin:0 0 .25rem}
+.rail .card h3{
+  font-size: .98rem;
+  line-height: 1.35;
+}
+.rail .card p{
+  font-size: .9rem;
+  color: #555;
+}
+
+/* モバイル最適化：カード幅を少し広めにしてスワイプを心地よく */
+@media (max-width: 768px){
+  .rail{ padding: .8rem .8rem 1rem }
+  .rail__head h2{ font-size: 1rem }
+  .rail .card{ width: clamp(200px, 70vw, 260px) }
+}
