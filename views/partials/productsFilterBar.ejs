@@ -1,32 +1,46 @@
 <!-- ✅ 固定フィルターバー -->
 <section class="toolbar" id="toolbar">
   <form id="filter-form" class="filters" method="GET" action="/products/list">
+    <!-- 現在のカテゴリとページをフォームで保持 -->
+    <input type="hidden" name="category" id="catHidden" value="<%= category || 'all' %>">
+    <input type="hidden" name="page" id="pageHidden" value="<%= page || 1 %>">
+
     <div class="filters__row">
-      <input type="search" name="q" id="q" placeholder="商品・生産者・カテゴリを検索" value="<%= q || '' %>" aria-label="検索">
+      <input type="search" name="q" id="q"
+             placeholder="商品・生産者・カテゴリを検索"
+             value="<%= q || '' %>" aria-label="検索" autocomplete="off">
+
       <select name="sort" id="sort" aria-label="並び替え">
-        <option value="new"     <%= sort === 'new'     ? 'selected' : '' %>>新着順</option>
-        <option value="popular" <%= sort === 'popular' ? 'selected' : '' %>>人気順</option>
+        <option value="new"        <%= sort === 'new'        ? 'selected' : '' %>>新着順</option>
+        <option value="popular"    <%= sort === 'popular'    ? 'selected' : '' %>>人気順</option>
         <option value="price_asc"  <%= sort === 'price_asc'  ? 'selected' : '' %>>価格の安い順</option>
         <option value="price_desc" <%= sort === 'price_desc' ? 'selected' : '' %>>価格の高い順</option>
-        <option value="stock"   <%= sort === 'stock'   ? 'selected' : '' %>>在庫が多い順</option>
+        <option value="stock"      <%= sort === 'stock'      ? 'selected' : '' %>>在庫が多い順</option>
       </select>
-      <button class="btn" type="submit">適用</button>
+      <!-- ※ 適用ボタンは撤廃（自動適用で統一） -->
     </div>
 
-    <!-- カテゴリチップ（横スクロール） -->
+    <!-- カテゴリチップ（ボタン化してフォーム値に反映） -->
     <div class="chips" role="listbox" aria-label="カテゴリで絞り込み">
-      <a class="chip <%= !category || category==='all' ? 'is-active' : '' %>" href="<%= buildQuery({category:'all', page:1}) %>">すべて</a>
+      <button type="button"
+              class="chip <%= !category || category==='all' ? 'is-active' : '' %>"
+              data-cat="all" aria-pressed="<%= !category || category==='all' ? 'true' : 'false' %>">すべて</button>
+
       <% (categories || []).forEach(function(cat){ %>
-        <a class="chip <%= category===cat ? 'is-active' : '' %>" href="<%= buildQuery({category:cat, page:1}) %>"><%= cat %></a>
+        <button type="button"
+                class="chip <%= category===cat ? 'is-active' : '' %>"
+                data-cat="<%= cat %>"
+                aria-pressed="<%= category===cat ? 'true' : 'false' %>"><%= cat %></button>
       <% }) %>
     </div>
 
-    <!-- クイックフィルター -->
+    <!-- クイックフィルター（チェックで即時適用） -->
     <div class="quick">
       <label><input type="checkbox" name="organic" value="1" <%= organic ? 'checked' : '' %>> 有機/JAS</label>
       <label><input type="checkbox" name="seasonal" value="1" <%= seasonal ? 'checked' : '' %>> 旬</label>
       <label><input type="checkbox" name="instock" value="1" <%= instock ? 'checked' : '' %>> 在庫あり</label>
-      <label><input type="checkbox" name="bundle" value="1" <%= bundle ? 'checked' : '' %>> まとめ買い</label>
+      <label><input type="checkbox" name="bundle"  value="1" <%= bundle  ? 'checked' : '' %>> まとめ買い</label>
     </div>
+    <button type="submit" class="sr-only">apply</button>
   </form>
 </section>

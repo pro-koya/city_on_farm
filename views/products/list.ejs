@@ -33,5 +33,13 @@
         <% } %>
     </section>
 </main>
-
+<script>
+  /* クエリ生成をEJSで楽にするユーティリティ */
+  function buildQueryObj(base, patch){
+    const o = Object.assign({}, base, patch);
+    Object.keys(o).forEach(k => (o[k]===undefined || o[k]==='' || o[k]===null) && delete o[k]);
+    return o;
+  }
+</script>
+<script src="/js/products.js"></script>
 <%- include('../partials/footer') %>

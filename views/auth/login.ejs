@@ -1,0 +1,63 @@
+<%- include('../partials/header', { title: 'ログイン', extraCSS: '/styles/auth.css' }) %>
+
+<main class="auth">
+  <section class="auth__card" role="region" aria-labelledby="loginTitle">
+    <h1 id="loginTitle" class="auth__title">ログイン</h1>
+    <p class="auth__lead">ご登録のメールアドレスとパスワードを入力してください。</p>
+
+    <!-- サーバー側のCSRFトークン（導入時に置き換え） -->
+    <% if (typeof csrfToken !== 'undefined') { %>
+      <form id="loginForm" class="auth__form" method="POST" action="/login" novalidate>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% } else { %>
+      <form id="loginForm" class="auth__form" method="POST" action="/login" novalidate>
+    <% } %>
+
+      <!-- Email -->
+      <div class="field">
+        <label class="label" for="email">メールアドレス</label>
+        <input class="input" id="email" name="email" type="email" autocomplete="username" inputmode="email" required>
+        <p class="error" data-error-for="email"></p>
+      </div>
+
+      <!-- Password -->
+      <div class="field">
+        <label class="label" for="password">パスワード</label>
+        <div class="pwd">
+          <input class="input" id="password" name="password" type="password" autocomplete="current-password" required>
+          <button class="toggle" type="button" aria-label="パスワードを表示/非表示">👁</button>
+        </div>
+        <p class="error" data-error-for="password"></p>
+      </div>
+
+      <!-- Options -->
+      <div class="row">
+        <label class="check">
+          <input id="remember" name="remember" type="checkbox" value="1">
+          ログイン状態を保持（端末を共有している場合は非推奨）
+        </label>
+        <a class="link" href="/auth/forgot">パスワードをお忘れですか？</a>
+      </div>
+
+      <!-- Submit -->
+      <button id="loginBtn" class="btn btn--primary btn--block" type="submit" disabled>ログイン</button>
+
+      <!-- Divider -->
+      <div class="divider"><span>または</span></div>
+
+      <!-- Social (後で本実装しやすいようにプレースホルダ) -->
+      <div class="oauth">
+        <a class="btn btn--ghost btn--block oauth__btn" href="/auth/google">Googleで続行</a>
+        <!-- <a class="btn btn--ghost btn--block oauth__btn" href="/auth/line">LINEで続行</a> など -->
+      </div>
+
+      <!-- Small notes -->
+      <p class="muted small">
+        初めての方は <a class="link" href="/signup">新規登録</a> へ。
+      </p>
+    </form>
+  </section>
+</main>
+
+<script src="/js/auth-login.js"></script>
+<%- include('../partials/footer') %>

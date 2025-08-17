@@ -141,7 +141,8 @@ app.get('/products', (req, res) => {
     // 👇 プレビュー表示用
     previewProducts,
     previewTotal,
-    buildQuery
+    buildQuery,
+    page: 1
   });
 });
 
@@ -187,7 +188,8 @@ app.get('/products/list', (req, res) => {
     products: listProducts,
     total,
     pagination,
-    buildQuery
+    buildQuery,
+    page: Number(page) || 1
   });
 });
 
@@ -209,6 +211,39 @@ app.get('/products/:slug', (req, res, next) => {
     product,
     related
   });
+});
+
+// ユーザー認証関連
+app.get('/signup', (req, res) => res.render('auth/signup', { title:'サインアップ' }));
+app.post('/signup', (req, res) => {
+  res.redirect('/login');
+});
+
+// ログインページ表示
+app.get('/login', (req, res) => {
+  res.render('auth/login', { title: 'ログイン', error: null });
+});
+
+// ログイン処理
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  // ユーザー検索（例: DBから）
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.render('auth/login', { title: 'ログイン', error: 'メールアドレスまたはパスワードが違います' });
+  }
+
+  // パスワード比較（bcryptを推奨）
+  const bcrypt = require('bcrypt');
+  const match = await bcrypt.compare(password, user.passwordHash);
+  if (!match) {
+    return res.render('auth/login', { title: 'ログイン', error: 'メールアドレスまたはパスワードが違います' });
+  }
+
+  // ログイン成功 → セッションにユーザー情報を保存
+  req.session.userId = user._id;
+  res.redirect('/dashboard'); // ログイン後のページ
 });
 
 // ===== 404 =====
