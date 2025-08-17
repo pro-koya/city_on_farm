@@ -30,8 +30,8 @@ html,body{background:var(--bg);color:var(--text)}
 .sub-label{font-weight:700; font-size:.85rem; color:#1f2937}
 
 .hint{color:var(--muted); font-size:.8rem}
-.error{color:var(--danger); font-size:.8rem; min-height:1.05em; visibility: hidden; opacity: 0; transition: opacity .15s ease;}
-.error.is-visible {visibility: visible; opacity: 1;}
+.error{color:var(--danger); font-size:.8rem; visibility: hidden; opacity: 0; transition: opacity .15s ease; margin: 0;}
+.error.is-visible {visibility: visible; opacity: 1; min-height:1.05em;}
 
 .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:8px}
 @media(min-width:640px){ .grid-2{gap:10px} }
