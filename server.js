@@ -22,7 +22,7 @@ const { Pool } = require('pg');
 const externalDB = 'postgresql://city_on_firm_user:ruHjBG6tdZIgpWWxDNGmrxNmVkgbfaIP@dpg-d2u1oph5pdvs73a1ick0-a.oregon-postgres.render.com/city_on_firm';
 
 // Renderの接続文字列（環境変数に置くのが推奨）
-const dbUrl = process.env.DATABASE_URL || LOCAL_DB_URL;
+const dbUrl = process.env.DATABASE_URL || externalDB || LOCAL_DB_URL;
 const useSSL =
   isProd || /\brender\.com\b/.test(dbUrl) || process.env.PGSSL === '1';
 const pool = new Pool({
