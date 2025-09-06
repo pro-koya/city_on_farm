@@ -1243,9 +1243,9 @@ app.get('/seller/listings',
       );
 
       const pagination = { page: pageNum, pageCount: Math.max(1, Math.ceil(total / pageSize)) };
-      const buildQuery = buildQueryPath('/seller/listing', { q, status, sort });
+      const buildQuery = buildQueryPath('/seller/listings', { q, status, sort });
 
-      res.render('seller/listing', {
+      res.render('seller/listings', {
         title: '出品管理',
         listings: rows,
         total, q, status, sort,
@@ -1328,7 +1328,7 @@ app.post('/seller/listings/:id/status',
       const id = String(req.params.id || '').trim();
       if (!isUuid(id)) return res.status(400).json({ ok:false, message:'不正なIDです。' });
       const next = String(req.body.status || '');
-      if (!Number.isFinite(id) || !['public','private','draft'].includes(next)) {
+      if (!['public','private','draft'].includes(next)) {
         return res.status(400).json({ ok:false, message:'パラメータが不正です。' });
       }
       const rows = await dbQuery(
@@ -1353,7 +1353,7 @@ app.post('/seller/listings/:id/duplicate',
   async (req, res, next) => {
     const sellerId = req.session.user.id;
     const srcId = String(req.params.id || '').trim();
-    if (!isUuid(id)) return res.status(400).json({ ok:false, message:'不正なIDです。' });
+    if (!isUuid(srcId)) return res.status(400).json({ ok:false, message:'不正なIDです。' });
 
     const client = await pool.connect();
     try {
@@ -1472,12 +1472,12 @@ app.post('/seller/listings/:id/delete',
         await client.query(`DELETE FROM products WHERE id = $1::uuid AND seller_id = $2::uuid`, [id, sellerId]);
 
         await client.query('COMMIT');
-        res.redirect(`/seller/listings`);
       } catch (e) {
         await client.query('ROLLBACK'); throw e;
       } finally { client.release(); }
 
-      return res.json({ ok:true });
+      if (wantsJSON(req)) return res.json({ ok:true });
+      return res.redirect(`/seller/listings`);
     } catch (e) { next(e); }
   }
 );
