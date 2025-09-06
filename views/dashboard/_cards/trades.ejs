@@ -1,0 +1,20 @@
+<section class="card">
+  <div class="card__head">
+    <h2>取引履歴</h2>
+    <a class="link" href="/seller/trades">すべて見る →</a>
+  </div>
+  <ul class="list">
+    <% if (trades && trades.length) { %>
+      <% trades.slice(0,6).forEach(function(t){ %>
+        <li class="row">
+          <span class="mono">#<%= t.id %></span>
+          <span><%= t.date %></span>
+          <span class="<%= t.status==='完了'?'ok': t.status==='キャンセル'?'ng':'pending' %>"><%= t.status %></span>
+          <span>¥<%= t.amount.toLocaleString() %></span>
+        </li>
+      <% }) %>
+    <% } else { %>
+      <li class="empty">まだ取引がありません。</li>
+    <% } %>
+  </ul>
+</section>

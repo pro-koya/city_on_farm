@@ -69,9 +69,9 @@
             <div class="product-cards">
                 <% products.forEach(function(product) { %>
                 <div class="product-card">
-                    <img src="<%= product.image %>" alt="<%= product.name %>">
-                    <h3><%= product.name %></h3>
-                    <p><%= product.description %></p>
+                    <img src="<%= product.image %>" alt="<%= product.title %>">
+                    <h3><%= product.title %></h3>
+                    <p><%= product.description_html %></p>
                 </div>
                 <% }); %>
             </div>

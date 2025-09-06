@@ -1,107 +1,99 @@
-<%- include('../partials/header', { title: 'サインアップ', extraCSS: '/styles/auth.css' }) %>
+<%- include('../partials/header', { title: 'サインアップ', extraCSS: '/styles/signup.css' }) %>
 
 <main class="auth">
-  <section class="auth-card" aria-label="サインアップフォーム">
-    <div class="auth-head">
+  <section class="auth-card">
+    <div class="auth-card__header">
       <h1>アカウント作成</h1>
-      <p class="muted">1分で登録できます。</p>
+      <p class="lead">1分で登録完了。すぐにお買い物を始められます。</p>
     </div>
 
-    <form id="signupForm" class="form form--compact" method="POST" action="/signup" novalidate>
-      <!-- 氏名（漢字） -->
-      <fieldset class="field">
-        <legend class="label">お名前（漢字）</legend>
-        <div class="grid-2">
-          <label class="field sub">
-            <span class="sub-label">姓</span>
-            <input type="text" name="lastName" id="lastName" placeholder="山田" required autocomplete="family-name">
-            <small class="error" data-error-for="lastName"></small>
-          </label>
-          <label class="field sub">
-            <span class="sub-label">名</span>
-            <input type="text" name="firstName" id="firstName" placeholder="太郎" required autocomplete="given-name">
-            <small class="error" data-error-for="firstName"></small>
-          </label>
-        </div>
-      </fieldset>
-
-      <!-- 氏名（カナ） -->
-      <fieldset class="field">
-        <legend class="label label--row">
-          お名前（カナ）
-          <button id="autoKanaBtn" class="btn btn--ghost btn--xs" type="button" title="ひらがな/カタカナ入力時は自動カナ化">カナ自動</button>
-        </legend>
-        <div class="grid-2">
-          <label class="field sub">
-            <span class="sub-label">セイ</span>
-            <input type="text" name="lastNameKana" id="lastNameKana" placeholder="ヤマダ" required inputmode="kana">
-            <small class="error" data-error-for="lastNameKana"></small>
-          </label>
-          <label class="field sub">
-            <span class="sub-label">メイ</span>
-            <input type="text" name="firstNameKana" id="firstNameKana" placeholder="タロウ" required inputmode="kana">
-            <small class="error" data-error-for="firstNameKana"></small>
-          </label>
-        </div>
-        <small class="hint">※ 全角カタカナで入力してください</small>
-      </fieldset>
-
-      <!-- メール -->
-      <label class="field">
-        <span class="label">メールアドレス</span>
-        <input type="email" name="email" id="email" placeholder="taro@example.com" required autocomplete="email" inputmode="email">
-        <small class="error" data-error-for="email"></small>
-      </label>
-
-      <!-- ロール -->
-      <fieldset class="field">
-        <legend class="label">ご利用区分</legend>
-        <div class="seg seg--compact">
-          <input type="radio" name="role" id="role-buyer" value="buyer" checked>
-          <label for="role-buyer">購入者</label>
-          <input type="radio" name="role" id="role-producer" value="producer">
-          <label for="role-producer">生産者</label>
-        </div>
-      </fieldset>
-
-      <!-- パスワード -->
-      <label class="field">
-        <span class="label">パスワード</span>
-        <div class="pwd">
-          <input type="password" name="password" id="password" placeholder="8文字以上" required autocomplete="new-password">
-          <button class="toggle" type="button" aria-label="パスワード表示切替">👁</button>
-        </div>
-        <div class="meter" aria-hidden="true"><div class="bar" id="strengthBar"></div></div>
-        <small class="error" data-error-for="password"></small>
-      </label>
-
-      <!-- 確認 -->
-      <label class="field">
-        <span class="label">パスワード（確認）</span>
-        <div class="pwd">
-          <input type="password" name="passwordConfirm" id="passwordConfirm" placeholder="もう一度入力" required autocomplete="new-password">
-          <button class="toggle" type="button" aria-label="パスワード表示切替">👁</button>
-        </div>
-        <small class="error" data-error-for="passwordConfirm"></small>
-      </label>
-
-      <!-- 規約 -->
-      <label class="terms">
-        <input type="checkbox" name="agree" id="agree" value="1" required>
-        <span>
-          <a href="/terms" class="link" target="_blank" rel="noopener">利用規約</a> と
-          <a href="/privacy" class="link" target="_blank" rel="noopener">プライバシーポリシー</a>に同意します
-        </span>
-      </label>
-
-      <% if (typeof error !== 'undefined' && error) { %>
-        <div class="banner banner--error"><%= error %></div>
+    <form id="signup-form" class="auth-form" method="POST" action="/signup" novalidate>
+      <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <% } %>
 
-      <button id="submitBtn" class="btn btn--primary btn--lg" type="submit" disabled>登録する</button>
+      <!-- 名前 -->
+      <div class="field">
+        <label for="name">お名前 *</label>
+        <input id="name" name="name" type="text" maxlength="60"
+               placeholder="例）山田 太郎" required
+               value="<%= (values && values.name) ? values.name : '' %>">
+        <p class="error" data-for="name"><%= (fieldErrors && fieldErrors.name) ? fieldErrors.name : '' %></p>
+      </div>
 
-      <p class="switch">すでにアカウントをお持ちですか？ <a href="/login" class="link">ログイン</a></p>
+      <!-- メール -->
+      <div class="field">
+        <label for="email">メールアドレス *</label>
+        <input id="email" name="email" type="email"
+               placeholder="you@example.com" autocomplete="email" required
+               value="<%= (values && values.email) ? values.email : '' %>">
+        <p class="error" data-for="email"><%= (fieldErrors && fieldErrors.email) ? fieldErrors.email : '' %></p>
+      </div>
+
+      <!-- パスワード -->
+      <div class="field">
+        <div class="label-row">
+          <label for="password">パスワード *</label>
+          <button type="button" class="link tiny" id="togglePw">表示</button>
+        </div>
+        <input id="password" name="password" type="password"
+               placeholder="8文字以上・英数字混在を推奨" autocomplete="new-password" required>
+        <div class="pw-meter" id="pwMeter" aria-live="polite" aria-hidden="true">
+          <div class="pw-meter__track" role="progressbar"
+              aria-valuemin="0" aria-valuemax="4" aria-valuenow="0" aria-label="パスワード強度">
+            <div class="pw-meter__bar" id="pwBar"></div>
+          </div>
+          <span class="pw-meter__label" id="pwLabel">強度: -</span>
+        </div>
+        <p class="hint">安全のため、8文字以上で推奨は英大文字・小文字・数字・記号の組み合わせです。</p>
+        <p class="error" data-for="password"><%= (fieldErrors && fieldErrors.password) ? fieldErrors.password : '' %></p>
+      </div>
+
+      <!-- 確認 -->
+      <div class="field">
+        <label for="passwordConfirm">パスワード（確認） *</label>
+        <input id="passwordConfirm" name="passwordConfirm" type="password"
+               placeholder="もう一度入力" autocomplete="new-password" required>
+        <p class="error" data-for="passwordConfirm"><%= (fieldErrors && fieldErrors.passwordConfirm) ? fieldErrors.passwordConfirm : '' %></p>
+      </div>
+
+      <!-- ロールの希望 -->
+      <div class="field">
+        <label class="check">
+          <input type="hidden" name="wantSeller" value="0">
+          <input type="checkbox" name="wantSeller" value="1"
+                 <%= (values && values.wantSeller) ? 'checked' : '' %>>
+          出品も行いたい（出品者権限の申請）
+        </label>
+        <p class="hint">申請後、審査・承認により「出品者」の機能が有効になります。</p>
+      </div>
+
+      <!-- 規約 -->
+      <div class="field">
+        <label class="check">
+          <!-- <input type="hidden" name="agree" value="0"> -->
+          <input type="checkbox" id="agree" name="agree" value="1"
+                 <%= (values && values.agree) ? 'checked' : '' %> required>
+          <a href="/terms" target="_blank" class="link" rel="noopener">利用規約</a>・
+          <a href="/privacy" target="_blank" class="link" rel="noopener">プライバシーポリシー</a>に同意します *
+        </label>
+        <p class="error" data-for="agree"><%= (fieldErrors && fieldErrors.agree) ? fieldErrors.agree : '' %></p>
+      </div>
+
+      <!-- 送信 -->
+      <div class="actions">
+        <button class="btn" type="submit" id="signupBtn" disabled>登録</button>
+      </div>
+
+      <!-- 全体エラー -->
+      <% if (globalError) { %>
+        <div class="global-error" role="alert"><%= globalError %></div>
+      <% } %>
     </form>
+
+    <div class="auth-card__footer">
+      <p>すでにアカウントをお持ちですか？ <a href="/login" class="link">ログイン</a></p>
+    </div>
   </section>
 </main>
 

@@ -1,0 +1,145 @@
+<%- include('../partials/header', { title: '最近の注文', extraCSS: '/styles/orders.css' }) %>
+
+<main class="orders">
+  <!-- フィルタ / 検索バー -->
+  <section class="orders__toolbar" id="toolbar">
+    <form id="orders-filter" class="orders__filters" method="GET" action="/orders/recent">
+      <input type="hidden" name="page" id="pageHidden" value="<%= page || 1 %>">
+
+      <div class="filters__row">
+        <input
+          type="search"
+          name="q"
+          id="q"
+          placeholder="注文番号・商品名・生産者で検索"
+          value="<%= q || '' %>"
+          aria-label="検索"
+          autocomplete="off"
+        />
+
+        <select name="status" id="status" aria-label="ステータス">
+          <option value="all"      <%= (status||'all')==='all' ? 'selected':'' %>>すべて</option>
+          <option value="processing" <%= status==='processing' ? 'selected':'' %>>処理中</option>
+          <option value="shipped"    <%= status==='shipped'    ? 'selected':'' %>>出荷済み</option>
+          <option value="delivered"  <%= status==='delivered'  ? 'selected':'' %>>配達完了</option>
+          <option value="canceled"   <%= status==='canceled'   ? 'selected':'' %>>キャンセル</option>
+        </select>
+
+        <select name="range" id="range" aria-label="期間">
+          <option value="30d" <%= (range||'30d')==='30d' ? 'selected':'' %>>過去30日</option>
+          <option value="7d"  <%= range==='7d'  ? 'selected':'' %>>過去7日</option>
+          <option value="90d" <%= range==='90d' ? 'selected':'' %>>過去90日</option>
+          <option value="all" <%= range==='all' ? 'selected':'' %>>すべて</option>
+        </select>
+      </div>
+
+      <div class="chips" role="listbox" aria-label="クイックフィルター">
+        <% const quick = (quickFilters || []); %>
+        <a class="chip <%= quick.includes('hasIssues') ? 'is-active' : '' %>"
+           href="<%= buildQuery({ hasIssues: quick.includes('hasIssues') ? '' : 1, page:1 }) %>">問題あり</a>
+        <a class="chip <%= quick.includes('hasReviewable') ? 'is-active' : '' %>"
+           href="<%= buildQuery({ hasReviewable: quick.includes('hasReviewable') ? '' : 1, page:1 }) %>">レビュー未投稿</a>
+        <a class="chip <%= quick.includes('reorderable') ? 'is-active' : '' %>"
+           href="<%= buildQuery({ reorderable: quick.includes('reorderable') ? '' : 1, page:1 }) %>">再注文可</a>
+      </div>
+    </form>
+  </section>
+
+  <!-- 注文一覧 -->
+  <section class="orders__list" id="list">
+    <% if (!items || !items.length) { %>
+      <div class="orders__empty">
+        <h3>最近の注文はありません</h3>
+        <p>新着・人気の農作物をチェックしてみませんか？</p>
+        <a class="btn" href="/products">商品を見る →</a>
+      </div>
+    <% } else { %>
+      <% items.forEach(function(o){ %>
+        <article class="order">
+          <header class="order__head">
+            <div class="order__meta">
+              <div class="order__id">注文番号：<strong><%= o.orderNo %></strong></div>
+              <div class="order__date"><%= o.orderedAt %></div>
+            </div>
+            <div class="order__status">
+              <span class="status status--<%= o.status %>">
+                <%= ({processing:'処理中', shipped:'出荷済み', delivered:'配達完了', canceled:'キャンセル'})[o.status] || o.status %>
+              </span>
+            </div>
+          </header>
+
+          <div class="order__body">
+            <div class="order__items" role="list">
+              <% (o.items || []).forEach(function(it){ %>
+                <a class="order-item" role="listitem" href="/products/<%= it.slug %>" data-product-id="<%= it.id %>">
+                  <img src="<%= it.image %>" alt="<%= it.name %>" loading="lazy">
+                  <div class="order-item__info">
+                    <div class="order-item__name"><%= it.name %></div>
+                    <div class="order-item__sub"><%= it.producer %>・<%= it.qty %><%= it.unit || '点' %></div>
+                  </div>
+                </a>
+              <% }) %>
+            </div>
+
+            <aside class="order__aside">
+              <div class="order__summary">
+                <div class="row"><span>合計</span><strong>¥<%= o.total %></strong></div>
+                <% if (o.eta){ %><div class="row"><span>お届け予定</span><span><%= o.eta %></span></div><% } %>
+              </div>
+
+              <div class="order__actions">
+                <a class="btn btn--ghost" href="/orders/<%= o.orderNo %>">注文詳細</a>
+
+                <% if (o.status !== 'canceled') { %>
+                  <form method="POST" action="/orders/<%= o.orderNo %>/reorder" class="inline">
+                    <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <% } %>
+                    <button type="submit" class="btn">再注文</button>
+                  </form>
+                <% } %>
+
+                <% if (o.status === 'delivered' && !o.reviewed) { %>
+                  <a class="btn btn--accent" href="/orders/<%= o.orderNo %>/review">レビューを書く</a>
+                <% } %>
+              </div>
+            </aside>
+          </div>
+
+          <% if (o.note) { %>
+            <div class="order__note">
+              <span class="badge">メモ</span> <%= o.note %>
+            </div>
+          <% } %>
+        </article>
+      <% }) %>
+
+      <!-- ページネーション -->
+      <% if (pagination && pagination.pageCount > 1) { %>
+      <nav class="pagination" aria-label="ページネーション">
+        <a class="page <%= pagination.page===1 ? 'is-disabled' : '' %>"
+           href="<%= buildQuery({ page: Math.max(1, pagination.page-1) }) %>#list">‹</a>
+
+        <% for (let i = 1; i <= pagination.pageCount; i++) { %>
+          <a class="page <%= i===pagination.page ? 'is-active' : '' %>"
+             href="<%= buildQuery({ page: i }) %>#list"><%= i %></a>
+        <% } %>
+
+        <a class="page <%= pagination.page===pagination.pageCount ? 'is-disabled' : '' %>"
+           href="<%= buildQuery({ page: Math.min(pagination.pageCount, pagination.page+1) }) %>#list">›</a>
+      </nav>
+      <% } %>
+    <% } %>
+  </section>
+</main>
+
+<script>
+  /* EJS内で使うリンクビルダーが無い場合のフォールバック（任意） */
+  function buildQueryObj(base, patch){
+    const o = Object.assign({}, base, patch);
+    Object.keys(o).forEach(k => (o[k]===undefined || o[k]==='' || o[k]===null) && delete o[k]);
+    return o;
+  }
+</script>
+<script src="/js/orders.js"></script>
+<%- include('../partials/footer') %>

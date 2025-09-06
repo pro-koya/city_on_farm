@@ -81,7 +81,9 @@ html,body{background:var(--bg);color:var(--text)}
 .table-wrapper{overflow-x:auto; -webkit-overflow-scrolling:touch; margin:.6rem 0}
 .spec-table{width:100%; border-collapse:separate; border-spacing:0; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden}
 .spec-table th, .spec-table td{padding:.7rem .9rem; border-bottom:1px solid #e5e7eb}
-.spec-table tr:nth-child(even){background:#fafcfb}
+.spec-table th{width: 35%;}
+.spec-table td{width: 65%;}
+.spec-table tr:nth-child(even){background: var(--hi)}
 .criteria h4{margin:1rem 0 .4rem}
 
 /* レビュー */

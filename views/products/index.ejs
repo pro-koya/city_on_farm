@@ -1,7 +1,7 @@
 <%- include('../partials/header', { title: '商品一覧', extraCSS: '/styles/products.css' }) %>
 
 <!-- ✅ アナウンス（トースト） -->
-<div id="toast" class="toast" role="status" aria-live="polite" hidden>
+<!-- <div id="toast" class="toast" role="status" aria-live="polite" hidden>
   <div class="toast__text">
     <strong>今週だけ！</strong> 初回購入10%OFFクーポン <span class="badge">NEW</span>
   </div>
@@ -9,10 +9,10 @@
     <button id="toast-open" class="btn btn--ghost" type="button">詳しく</button>
     <button id="toast-close" class="btn btn--ghost" type="button" aria-label="閉じる">✕</button>
   </div>
-</div>
+</div> -->
 
 <!-- ✅ アナウンス（モーダル） -->
-<div id="modal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+<!-- <div id="modal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
   <div class="modal__backdrop" id="modal-backdrop"></div>
   <div class="modal__dialog" role="document" aria-labelledby="modal-title">
     <h2 id="modal-title">今週のイベント情報</h2>
@@ -22,9 +22,19 @@
       <button id="modal-close" class="btn" type="button">閉じる</button>
     </div>
   </div>
-</div>
+</div> -->
 
-<%- include('../partials/productsFilterBar') %>
+<%- include('../partials/productsFilterBar', {
+  q,
+  sort,
+  category,
+  categories: categoriesChips,  // ← 文字列配列を渡す
+  organic,
+  seasonal,
+  instock,
+  bundle,
+  page
+}) %>
 
 <main class="page">
 

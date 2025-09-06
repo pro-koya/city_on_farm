@@ -1,4 +1,4 @@
-<%- include('../partials/header', { title: product.name, extraCSS: '/styles/product-show.css' }) %>
+<%- include('../partials/header', { title: product.title, extraCSS: '/styles/product-show.css' }) %>
 
 <main class="product-page" itemscope itemtype="https://schema.org/Product">
   <!-- ===== ファーストビュー ===== -->
@@ -8,7 +8,7 @@
       <div class="gallery__main">
         <img id="mainImage"
              src="<%= (product.images && product.images[0]) || product.image %>"
-             alt="<%= product.name %>"
+             alt="<%= product.title %>"
              loading="eager"
              itemprop="image">
       </div>
@@ -16,7 +16,7 @@
       <div class="thumbs" role="listbox" aria-label="サムネイル">
         <% product.images.forEach(function(src, i){ %>
           <button class="thumb <%= i===0 ? 'is-active':'' %>" data-src="<%= src %>" aria-label="画像 <%= i+1 %>を表示">
-            <img src="<%= src %>" alt="<%= product.name %>の画像 <%= i+1 %>" loading="lazy">
+            <img src="<%= src %>" alt="<%= product.title %>の画像 <%= i+1 %>" loading="lazy">
           </button>
         <% }) %>
       </div>
@@ -24,7 +24,7 @@
     </div>
 
     <div class="info">
-      <h1 class="title" itemprop="name"><%= product.name %></h1>
+      <h1 class="title" itemprop="name"><%= product.title %></h1>
 
       <div class="rating">
         <span class="stars" aria-hidden="true"><%= '★'.repeat(Math.round(product.rating||0)) %><%= '☆'.repeat(5-Math.round(product.rating||0)) %></span>
@@ -51,6 +51,9 @@
       </div>
 
       <form class="buy" id="buyForm" action="/cart" method="POST" novalidate>
+        <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <% } %>
         <input type="hidden" name="productId" value="<%= product.id %>">
         <label class="qty" for="qty">
           数量
@@ -88,19 +91,19 @@
     <div class="panes">
       <article id="pane-desc" class="pane is-active" role="tabpanel">
         <div class="prose" itemprop="description">
-          <% if (product.descriptionHtml) { %>
-            <%- product.descriptionHtml %>
+          <% if (product.description_html) { %>
+            <%- product.description_html %>
           <% } else { %>
-            <p><%= product.description || '商品の詳細説明が入ります。' %></p>
+            <p><%= product.description_html || '商品の詳細説明が入ります。' %></p>
           <% } %>
         </div>
       </article>
 
       <article id="pane-seller" class="pane" role="tabpanel">
         <div class="seller">
-          <img class="seller__avatar" src="<%= (product.seller && product.seller.avatar) || '/images/test-image.jpeg' %>" alt="<%= product.seller?.name || '生産者' %>">
+          <img class="seller__avatar" src="<%= (product.seller && product.seller.avatar) || '/images/test-image.jpeg' %>" alt="<%= product.seller_name || '生産者' %>">
           <div class="seller__meta">
-            <h3><%= product.seller?.name || '生産者名' %></h3>
+            <h3><%= product.seller_name || '生産者名' %></h3>
             <p><%= product.seller?.bio || '生産者紹介文が入ります。' %></p>
             <% if (product.seller && product.seller.location){ %><p class="muted">所在地：<%= product.seller.location %></p><% } %>
             <a class="link" href="/products/list?producer=<%= encodeURIComponent(product.seller?.name||'') %>">この出品者の他商品 →</a>
@@ -110,16 +113,16 @@
 
       <article id="pane-specs" class="pane" role="tabpanel">
         <div class="specs">
-          <% if (product.specs && product.specs.length) { %>
-          <div class="table-wrapper">
-            <table class="spec-table">
-              <tbody>
-                <% product.specs.forEach(function(row){ %>
-                  <tr><th><%= row.label %></th><td><%= row.value %></td></tr>
-                <% }) %>
-              </tbody>
-            </table>
-          </div>
+          <% if (Array.isArray(specs) && specs.length) { %>
+            <div class="table-wrapper">
+              <table class="spec-table">
+                <tbody>
+                  <% specs.forEach(function(row){ %>
+                    <tr><th><%= row.label %></th><td><%= row.value %></td></tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
           <% } %>
           <% if (product.criteria && product.criteria.length) { %>
           <div class="criteria">

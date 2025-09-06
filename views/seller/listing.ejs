@@ -1,0 +1,180 @@
+<%- include('../partials/header', { title: '出品管理', extraCSS: '/styles/seller-listings.css' }) %>
+
+<main class="seller-list">
+  <form id="filters" class="toolbar" method="GET" action="/seller/listings">
+    <div class="toolbar__left">
+      <h1>出品管理</h1>
+      <p class="muted"><%= total || 0 %> 件</p>
+    </div>
+
+    <div class="toolbar__right">
+      <div class="search">
+        <input type="search" name="q" value="<%= q || '' %>" placeholder="商品名・説明で検索" aria-label="検索">
+        <button class="icon-btn" type="submit" aria-label="検索">🔍</button>
+      </div>
+
+      <select name="status" aria-label="公開状態">
+        <option value="all"   <%= (status||'all')==='all'?'selected':'' %>>すべて</option>
+        <option value="public"  <%= status==='public'?'selected':'' %>>公開</option>
+        <option value="private" <%= status==='private'?'selected':'' %>>限定公開</option>
+        <option value="draft"   <%= status==='draft'?'selected':'' %>>下書き</option>
+      </select>
+
+      <select name="sort" aria-label="並び順">
+        <option value="updated" <%= (sort||'updated')==='updated'?'selected':'' %>>更新が新しい</option>
+        <option value="stockAsc"  <%= sort==='stockAsc'?'selected':'' %>>在庫が少ない順</option>
+        <option value="priceAsc"  <%= sort==='priceAsc'?'selected':'' %>>価格の安い順</option>
+        <option value="priceDesc" <%= sort==='priceDesc'?'selected':'' %>>価格の高い順</option>
+      </select>
+
+      <a class="btn btn--ghost" href="/seller/listing-new">＋ 新規出品</a>
+    </div>
+  </form>
+
+  <% if (!listings || !listings.length) { %>
+    <section class="empty">
+      <div class="empty__icon" aria-hidden="true">📦</div>
+      <h2>まだ出品がありません</h2>
+      <p class="muted">まずは最初の出品を作成しましょう。</p>
+      <a class="btn" href="/seller/listing-new">新規出品</a>
+    </section>
+  <% } else { %>
+
+  <!-- バルク操作 -->
+  <form id="bulkForm" class="bulk" method="POST" action="/seller/listings/bulk">
+    <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% } %>
+    <div class="bulk__left">
+        <th class="col-check">
+            <label class="chk">
+                <input type="checkbox" id="selectAll" aria-label="すべて選択">
+            </label>
+        </th>
+
+        <select name="bulkAction" id="bulkAction" aria-label="一括操作">
+            <option value="">一括操作</option>
+            <option value="publish">公開にする</option>
+            <option value="privatize">限定公開にする</option>
+            <option value="draft">下書きにする</option>
+            <option value="delete">削除</option>
+        </select>
+        <button class="btn btn--ghost" type="submit" id="applyBulk" disabled>適用</button>
+
+      <% if (pagination) { %>
+        <nav class="pager" aria-label="ページネーション">
+          <% for (let p=1; p<=pagination.pageCount; p++){ %>
+            <a class="pager__link <%= p===pagination.page?'is-active':'' %>"
+               href="<%= buildQuery ? buildQuery({page:p}) : ('?page='+p) %>"><%= p %></a>
+          <% } %>
+        </nav>
+      <% } %>
+    </div>
+
+
+    <!-- テーブル（PC） -->
+    <div class="table-wrap">
+      <table class="table" aria-describedby="tableCaption">
+        <caption id="tableCaption" class="sr-only">出品リスト</caption>
+        <thead>
+          <tr>
+            <th scope="col" class="col-check"></th>
+            <th scope="col">商品</th>
+            <th scope="col">価格</th>
+            <th scope="col">在庫</th>
+            <th scope="col">状態</th>
+            <th scope="col">更新</th>
+            <th scope="col" class="col-actions">操作</th>
+          </tr>
+        </thead>
+        <tbody id="listingBody">
+          <% listings.forEach(function(it){ %>
+            <tr class="row" data-id="<%= it.id %>">
+                <td class="col-check">
+                    <label class="chk">
+                        <input type="checkbox" class="rowCheck" value="<%= it.id %>" aria-label="行を選択">
+                    </label>
+                </td>
+                <td class="col-main">
+                    <a class="thumb" href="/products/<%= it.slug %>" target="_blank" rel="noopener">
+                    <img src="<%= it.image_url || '/images/placeholder.png' %>" alt="" loading="lazy">
+                    </a>
+                    <div class="meta">
+                    <a class="title" href="/products/<%= it.slug %>" target="_blank" rel="noopener"><%= it.title %></a>
+                    <div class="badges">
+                        <% if (it.is_organic){ %><span class="badge is-green">有機</span><% } %>
+                        <% if (it.is_seasonal){ %><span class="badge">旬</span><% } %>
+                    </div>
+                    </div>
+                </td>
+                <td class="col-price">¥<%= Number(it.price||0).toLocaleString() %></td>
+                <td class="col-stock">
+                    <span class="<%= (it.stock||0)<=0 ? 'danger' : (it.stock<=10 ? 'warn' : '') %>"><%= it.stock %></span>
+                </td>
+                <td class="col-status">
+                    <span class="status status--<%= it.status %>"><%= it.status %></span>
+                </td>
+                <td class="col-updated"><%= (it.updated_at ? new Date(it.updated_at).toLocaleString('ja-JP') : '-') %></td>
+                <td class="col-actions">
+                    <div class="actions">
+                    <a class="icon-btn" href="/seller/listing-edit/<%= it.id %>" title="編集">編集</a>
+                    <button type="button" class="icon-btn js-quick-toggle"
+                            data-id="<%= it.id %>" data-next="<%= it.status==='public'?'private':'public' %>"
+                            title="公開状態を切替"><%= it.status==='public' ? '非公開' : '公開' %></button>
+                    <button type="button" class="icon-btn js-duplicate" data-id="<%= it.id %>" title="複製">複製</button>
+                    <button type="button" class="icon-btn danger js-delete" data-id="<%= it.id %>" title="削除">削除</button>
+                    </div>
+                </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- カード（モバイル） -->
+    <ul class="cards" id="listingCards">
+      <% listings.forEach(function(it){ %>
+        <li class="card" data-id="<%= it.id %>">
+            <div class="card__check">
+                <label class="chk chk--sm">
+                    <input type="checkbox" class="rowCheck" value ="<%= it.id %>" aria-label="カードを選択">
+                </label>
+            </div>
+            <a class="card__thumb" href="/products/<%= it.slug %>" target="_blank" rel="noopener">
+                <img src="<%= it.image_url || '/images/placeholder.png' %>" alt="">
+            </a>
+            <div class="card__main">
+                <a class="card__title" href="/products/<%= it.slug %>" target="_blank" rel="noopener"><%= it.title %></a>
+                <div class="badges">
+                <% if (it.is_organic){ %><span class="badge is-green">有機</span><% } %>
+                <% if (it.is_seasonal){ %><span class="badge">旬</span><% } %>
+                </div>
+                <div class="row">
+                <span>価格</span><strong>¥<%= Number(it.price||0).toLocaleString() %></strong>
+                </div>
+                <div class="row">
+                <span>在庫</span>
+                <strong class="<%= (it.stock||0)<=0 ? 'danger' : (it.stock<=10 ? 'warn' : '') %>"><%= it.stock %></strong>
+                </div>
+                <div class="row">
+                <span>状態</span>
+                <span class="status status--<%= it.status %>"><%= it.status %></span>
+                </div>
+                <div class="actions">
+                <a class="btn btn--ghost" href="/seller/listing-edit/<%= it.id %>">編集</a>
+                <button type="button" class="btn js-quick-toggle" data-id="<%= it.id %>" data-next="<%= it.status==='public'?'private':'public' %>">
+                    <%= it.status==='public' ? '限定公開に' : '公開に' %>
+                </button>
+                <button type="button" class="btn danger js-delete" data-id="<%= it.id %>">削除</button>
+                </div>
+            </div>
+        </li>
+      <% }) %>
+    </ul>
+
+  </form>
+  <% } %>
+</main>
+
+<script src="/js/seller-listings.js"></script>
+<%- include('../partials/footer') %>

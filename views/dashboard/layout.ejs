@@ -1,0 +1,20 @@
+<%- include('../partials/header', { title, extraCSS: '/styles/dashboard.css', extraJS: '/js/dashboard.js' }) %>
+<main class="db">
+  <header class="db__head">
+    <h1><%= (currentUser && currentUser.name) ? (currentUser.name + ' さん') : 'ダッシュボード' %></h1>
+    <nav class="db__tabs" aria-label="ロール切り替え">
+      <% const role = (currentUser && currentUser.role) || []; %>
+      <% if (role === 'buyer') { %>
+        <a href="/dashboard/buyer"  class="tab <%= active==='buyer' ? 'is-active' : '' %>">購入者</a>
+      <% } %>
+      <% if (role === 'seller') { %>
+        <a href="/dashboard/seller" class="tab <%= active==='seller' ? 'is-active' : '' %>">出品者</a>
+      <% } %>
+    </nav>
+  </header>
+
+  <section class="db__grid">
+    <%- body %>
+  </section>
+</main>
+<%- include('../partials/footer') %>

@@ -9,7 +9,7 @@
 html,body{background:var(--bg);color:var(--text)}
 *{box-sizing:border-box}
 
-.auth{min-height:calc(100vh - 120px); display:grid; place-items:center; padding:clamp(12px, 4vw, 32px) 12px; margin-top: 60px;}
+.auth{min-height:calc(100vh - 120px); display:grid; place-items:center; padding:clamp(12px, 4vw, 32px) 12px; margin-top: 1.5rem;}
 .auth-card{width:min(520px, 92vw); max-width:720px; background:var(--white); border-radius:var(--radius); box-shadow:var(--shadow); padding:clamp(1rem, 3vw, 1.6rem);}
 
 .auth-head h1{margin:0 0 .2rem; font-size:clamp(1.35rem, 3.6vw, 1.7rem);}

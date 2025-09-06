@@ -1,9 +1,9 @@
 <a class="card" href="/products/<%= p.slug || p.id %>" data-product-id="<%= p.id %>" aria-label="<%= p.name %>の詳細">
   <% if (p.isNew) { %><span class="badge--new">NEW</span><% } %>
   <% if (p.lowStock) { %><span class="badge--low">残りわずか</span><% } %>
-  <img src="<%= p.image %>" alt="<%= p.name %>">
+  <img src="<%= p.image %>" alt="<%= p.title %>">
   <div class="card__body">
-    <h3 class="card__name"><%= p.name %></h3>
+    <h3 class="card__name"><%= p.title %></h3>
     <div class="card__meta">
       <span>¥<%= p.price %></span>
       <span><%= p.unit || '' %></span>

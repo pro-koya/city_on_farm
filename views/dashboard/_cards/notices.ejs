@@ -1,0 +1,19 @@
+<section class="card">
+  <div class="card__head">
+    <h2>お知らせ</h2>
+    <a class="link" href="/notifications">すべて見る →</a>
+  </div>
+  <ul class="notices">
+    <% if (notices && notices.length) { %>
+      <% notices.slice(0,5).forEach(function(n){ %>
+        <li class="notice <%= n.read ? '' : 'is-unread' %>">
+          <span class="dot"></span>
+          <a href="/notifications/<%= n.id %>"><%= n.title %></a>
+          <time class="muted"><%= n.date %></time>
+        </li>
+      <% }) %>
+    <% } else { %>
+      <li class="empty">新しいお知らせはありません。</li>
+    <% } %>
+  </ul>
+</section>

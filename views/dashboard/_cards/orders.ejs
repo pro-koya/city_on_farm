@@ -1,0 +1,20 @@
+<section class="card">
+  <div class="card__head">
+    <h2>最近の注文</h2>
+    <a class="link" href="/orders/recent">すべて見る →</a>
+  </div>
+  <ul class="list">
+    <% if (orders && orders.length) { %>
+      <% orders.slice(0,5).forEach(function(o){ %>
+        <li class="row">
+          <span class="mono">#<%= o.id %></span>
+          <span><%= o.date %></span>
+          <span>¥<%= o.total.toLocaleString() %></span>
+          <a class="btn btn--sm" href="/orders/<%= o.id %>">詳細</a>
+        </li>
+      <% }) %>
+    <% } else { %>
+      <li class="empty">まだ注文はありません。</li>
+    <% } %>
+  </ul>
+</section>

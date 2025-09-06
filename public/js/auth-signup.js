@@ -1,167 +1,217 @@
-(function(){
-  const form = document.getElementById('signupForm');
+// /public/js/signup.js
+(() => {
+  const form = document.getElementById('signup-form');
+  const btn  = document.getElementById('signupBtn');
+  const requiredIds = ['name','email','password','passwordConfirm','agree'];
+
   if (!form) return;
 
-  // ===== 要素参照 =====
-  const last   = document.getElementById('lastName');
-  const first  = document.getElementById('firstName');
-  const lastK  = document.getElementById('lastNameKana');
-  const firstK = document.getElementById('firstNameKana');
-  const emailEl= document.getElementById('email');
-  const pwdEl  = document.getElementById('password');
-  const pwd2El = document.getElementById('passwordConfirm');
-  const agreeEl= document.getElementById('agree');
-  const submitBtn = document.getElementById('submitBtn');
-  const bar = document.getElementById('strengthBar');
-  const autoBtn = document.getElementById('autoKanaBtn');
+  // エラーメッセージ制御（.error.is-visible で表示）
+  function showError(id, msg) {
+    const p = document.querySelector(`.error[data-for="${id}"]`);
+    if (!p) return;
+    p.textContent = msg || '';
+    if (msg) p.classList.add('is-visible');
+    else p.classList.remove('is-visible');
+  }
+  function clearError(id) { showError(id, ''); }
 
-  // ===== UI: パスワード表示切替 =====
-  document.querySelectorAll('.pwd .toggle').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const input = btn.previousElementSibling;
-      if (!input) return;
-      input.type = input.type === 'password' ? 'text' : 'password';
-    });
+  // 各種バリデーション
+  const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || '').trim());
+  const isStrongPassword = (v) => {
+    const s = String(v || '');
+    const hasLower = /[a-z]/.test(s);
+    const hasUpper = /[A-Z]/.test(s);
+    const hasDigit = /\d/.test(s);
+    const hasSymbol = /[^A-Za-z0-9]/.test(s); // 記号
+    return s.length >= 8 && hasLower && hasUpper && hasDigit && hasSymbol;
+  };
+
+  // 各フィールド参照
+  const nameEl = document.getElementById('name');
+  const emailEl = document.getElementById('email');
+  const pwEl = document.getElementById('password');
+  const pwcEl = document.getElementById('passwordConfirm');
+  const agreeEl = document.getElementById('agree');
+
+  // —— サイレント判定用（メッセージを出さずに真偽だけ返す）——
+  function okNameSilent() {
+    const v = nameEl?.value?.trim() || '';
+    return v && v.length <= 60;
+  }
+  function okEmailSilent() {
+    const v = emailEl?.value || '';
+    return !!v.trim() && isEmail(v);
+  }
+  function okPasswordSilent() {
+    const v = pwEl?.value || '';
+    return isStrongPassword(v);
+  }
+  function okPasswordConfirmSilent() {
+    const v = pwEl?.value || '';
+    const c = pwcEl?.value || '';
+    return c === v && !!c;
+  }
+  function okAgreeSilent() {
+    return !!agreeEl?.checked;
+  }
+  function isAllValidSilent() {
+    return (
+      okNameSilent() &&
+      okEmailSilent() &&
+      okPasswordSilent() &&
+      okPasswordConfirmSilent() &&
+      okAgreeSilent()
+    );
+  }
+
+  // —— 活性/非活性の切替 —— 
+  function updateSubmitState() {
+    // すべての必須条件が満たされているかで切替
+    btn.disabled = !isAllValidSilent();
+  }
+
+  function estimatePasswordLevel(pw) {
+    const s = String(pw || '');
+    if (!s) return { level: 0, percent: 0, label: '未入力' };
+
+    // 基本ポイント：長さ
+    let score = 0;
+    if (s.length >= 8) score += 1;
+    if (s.length >= 12) score += 1;
+    if (s.length >= 16) score += 1;
+
+    // 文字種
+    const hasLower = /[a-z]/.test(s);
+    const hasUpper = /[A-Z]/.test(s);
+    const hasDigit = /\d/.test(s);
+    const hasSymbol = /[^A-Za-z0-9]/.test(s);
+    const varieties = [hasLower, hasUpper, hasDigit, hasSymbol].filter(Boolean).length;
+    score += Math.max(0, varieties - 1); // 0〜3点
+
+    // ペナルティ（単純な繰り返し/連番）
+    if (/(.)\1{2,}/.test(s)) score -= 1;             // 同一文字の連続
+    if (/0123|1234|2345|3456|4567|5678|6789/.test(s)) score -= 1;
+    if (/abcd|bcde|cdef|defg|efgh|fghi|ghij/i.test(s)) score -= 1;
+
+    // 0〜4 に丸め
+    let level = Math.max(0, Math.min(4, score));
+    // ラベル
+    const labels = ['とても弱い', '弱い', 'ふつう', '強い', 'とても強い'];
+    // パーセント（見た目用）
+    const percent = [10, 30, 55, 80, 100][level];
+
+    return { level, percent, label: labels[level] };
+  }
+
+  function updatePwMeter(pw) {
+    const meter = document.getElementById('pwMeter');
+    const bar   = document.getElementById('pwBar');
+    const label = document.getElementById('pwLabel');
+    const track = meter?.querySelector('.pw-meter__track');
+
+    if (!meter || !bar || !label || !track) return;
+
+    if (!pw) {
+      meter.classList.remove('is-visible');
+      meter.setAttribute('aria-hidden', 'true');
+      track.setAttribute('aria-valuenow', '0');
+      bar.style.width = '0%';
+      label.textContent = '強度: -';
+      meter.dataset.level = '0';
+      return;
+    }
+
+    const { level, percent, label: text } = estimatePasswordLevel(pw);
+    meter.classList.add('is-visible');
+    meter.setAttribute('aria-hidden', 'false');
+    meter.dataset.level = String(level);
+    bar.style.width = `${percent}%`;
+    track.setAttribute('aria-valuenow', String(level));
+    label.textContent = `強度: ${text}`;
+  }
+
+  // 既存のイベントを少し拡張
+  pwEl?.addEventListener('input', () => {
+    updatePwMeter(pwEl.value);     // ★ 追記：強度ゲージを更新
+    validatePassword();            // 既存の強度要件（大/小/数/記号）チェック
   });
 
-  // ===== かな補助（ひら→カタ） =====
-  const hiraToKata = (s) => (s||'').replace(/[\u3041-\u3096]/g, ch => String.fromCharCode(ch.charCodeAt(0) + 0x60));
-  const isKanaOnly = (s) => /^[\u3041-\u3096\u30A1-\u30FA\u30FC\u30F4ー－\s]+$/.test(s || '');
+  // 初期化（再表示時など）
+  updatePwMeter(pwEl?.value || '');
 
-  function tryAutofillKana(){
-    const l = (last.value || '').trim();
-    const f = (first.value || '').trim();
-    if (l && isKanaOnly(l)) lastK.value  = hiraToKata(l);
-    if (f && isKanaOnly(f)) firstK.value = hiraToKata(f);
+  // 単項目チェック（メッセージ付き）
+  function validateName() {
+    const v = nameEl?.value || '';
+    if (!v.trim()) { showError('name', 'お名前を入力してください。'); updateSubmitState(); return false; }
+    if (v.trim().length > 60) { showError('name', 'お名前は60文字以内で入力してください。'); updateSubmitState(); return false; }
+    clearError('name'); updateSubmitState(); return true;
   }
 
-  autoBtn && autoBtn.addEventListener('click', () => {
-    tryAutofillKana();
-    validate(); // 反映後だけ内部判定更新（表示は後述ルールに従う）
-    // カナ欄を触った扱いにしてもよければ下記を有効化
-    // touched.add(lastK.id); touched.add(firstK.id); renderErrors();
-  });
-
-  [last, first].forEach(el => {
-    el.addEventListener('input', () => { tryAutofillKana(); validate(); renderErrors(); });
-  });
-  [lastK, firstK].forEach(el => {
-    el.addEventListener('input', () => { el.value = hiraToKata(el.value); validate(); renderErrors(); });
-  });
-
-  // ===== パスワード強度メータ =====
-  function scorePassword(p){
-    let s = 0;
-    if (!p) return 0;
-    if (p.length >= 8) s++;
-    if (/[A-Z]/.test(p)) s++;
-    if (/[a-z]/.test(p)) s++;
-    if (/\d/.test(p)) s++;
-    if (/[^A-Za-z0-9]/.test(p)) s++;
-    return Math.min(s, 5);
-  }
-  function updateMeter(p){
-    const sc = scorePassword(p);
-    const pct = [0,20,40,65,85,100][sc];
-    bar.style.width = pct + '%';
-    bar.classList.remove('is-mid','is-strong');
-    if (sc >= 3 && sc <= 4) bar.classList.add('is-mid');
-    if (sc >= 5) bar.classList.add('is-strong');
+  function validateEmail() {
+    const v = emailEl?.value || '';
+    if (!v.trim()) { showError('email', 'メールアドレスを入力してください。'); updateSubmitState(); return false; }
+    if (!isEmail(v)) { showError('email', '正しいメールアドレスの形式で入力してください。'); updateSubmitState(); return false; }
+    clearError('email'); updateSubmitState(); return true;
   }
 
-  // ===== “最初は非表示”のための仕組み =====
-  // ・フィールドを一度でも触ったら touched に登録
-  // ・submit 後は showAllErrors を立て、全エラーを表示
-  const touched = new Set();
-  let showAllErrors = false;
-
-  // フォーカスが当たったら touched 扱いにする（input/blurどちらでもOK）
-  form.querySelectorAll('input, select').forEach(el => {
-    el.addEventListener('focus', () => { touched.add(el.id); });
-    el.addEventListener('blur',  () => { touched.add(el.id); validate(); renderErrors(); });
-    el.addEventListener('input', () => { validate(); renderErrors(); });
-    el.addEventListener('change',()=> { validate(); renderErrors(); });
-  });
-
-  // ===== バリデーション（状態のみ更新） =====
-  const state = {}; // { fieldId: { error: 'メッセージ' or '' } }
-
-  function setFieldError(id, msg){
-    state[id] = { error: msg || '' };
+  function validatePassword() {
+    const v = pwEl?.value || '';
+    if (!isStrongPassword(v)) {
+      showError('password', '8文字以上で「英小文字・英大文字・数字・記号」をすべて含めてください。');
+      updateSubmitState(); 
+      return false;
+    }
+    clearError('password'); 
+    // 確認用も同時再検証（利便性）
+    if (pwcEl?.value) validatePasswordConfirm();
+    updateSubmitState();
+    return true;
   }
 
-  function validate(){
-    // 初期化
-    ['lastName','firstName','lastNameKana','firstNameKana','email','password','passwordConfirm','agree'].forEach(id=>{
-      if (!state[id]) state[id] = { error: '' };
-      else state[id].error = '';
-    });
-
-    // 姓名（必須）
-    if (!last.value.trim())  setFieldError('lastName', '姓を入力してください');
-    if (!first.value.trim()) setFieldError('firstName','名を入力してください');
-
-    // カナ（全角カタカナ）
-    const kanaRe = /^[\u30A1-\u30FA\u30FC\u30F4ー－]+$/;
-    if (!kanaRe.test((lastK.value || '').trim()))  setFieldError('lastNameKana',  'セイは全角カタカナで入力してください');
-    if (!kanaRe.test((firstK.value || '').trim())) setFieldError('firstNameKana', 'メイは全角カタカナで入力してください');
-
-    // email
-    const em = (emailEl.value || '').trim();
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!re.test(em)) setFieldError('email','正しいメールアドレスを入力してください');
-
-    // password
-    if ((pwdEl.value || '').length < 8) setFieldError('password','8文字以上で入力してください');
-    if ((pwd2El.value || '') !== (pwdEl.value || '')) setFieldError('passwordConfirm','パスワードが一致しません');
-
-    // 規約
-    if (!agreeEl.checked) setFieldError('agree','チェックが必要です');
-
-    // 強度メータ更新
-    updateMeter(pwdEl.value || '');
-
-    // 送信可否
-    const hasError = Object.values(state).some(v => v.error);
-    submitBtn.disabled = hasError;
-    return !hasError;
+  function validatePasswordConfirm() {
+    const v = pwEl?.value || '';
+    const c = pwcEl?.value || '';
+    if (c !== v) { showError('passwordConfirm', '確認用パスワードが一致しません。'); updateSubmitState(); return false; }
+    if (!c) { showError('passwordConfirm', '確認用パスワードを入力してください。'); updateSubmitState(); return false; }
+    clearError('passwordConfirm'); updateSubmitState(); return true;
   }
 
-  // ===== エラー描画（touched または showAllErrors のときだけ表示） =====
-  function renderErrors(){
-    Object.entries(state).forEach(([id, { error }]) => {
-      const holder = form.querySelector(`.error[data-error-for="${id}"]`);
-      const input  = document.getElementById(id);
-      if (!holder || !input) return;
-
-      const shouldShow = showAllErrors || touched.has(id);
-      if (error && shouldShow){
-        holder.textContent = error;
-        holder.classList.add('is-visible');
-        input.setAttribute('aria-invalid','true');
-      }else{
-        holder.textContent = '';
-        holder.classList.remove('is-visible');
-        input.setAttribute('aria-invalid','false');
-      }
-    });
+  function validateAgree() {
+    if (!agreeEl?.checked) { showError('agree', '利用規約・プライバシーポリシーに同意してください。'); updateSubmitState(); return false; }
+    clearError('agree'); updateSubmitState(); return true;
   }
 
-  // 初期表示：エラー非表示
-  updateMeter(pwdEl.value || '');
-  validate();         // 内部状態だけ更新
-  renderErrors();     // 何も表示しない（touched も showAllErrors も無い）
+  // イベント（リアルタイム&フォーカスアウト）
+  nameEl?.addEventListener('input', () => { clearError('name'); updateSubmitState(); });
+  nameEl?.addEventListener('blur', validateName);
 
-  // 送信時：全エラーを表示してブロック
+  emailEl?.addEventListener('input', () => { clearError('email'); updateSubmitState(); });
+  emailEl?.addEventListener('blur', validateEmail);
+
+  pwEl?.addEventListener('input', () => { validatePassword(); });
+  pwEl?.addEventListener('blur', validatePassword);
+
+  pwcEl?.addEventListener('input', () => { validatePasswordConfirm(); });
+  pwcEl?.addEventListener('blur', validatePasswordConfirm);
+
+  agreeEl?.addEventListener('change', validateAgree);
+
+  // 送信時の総合チェック
   form.addEventListener('submit', (e) => {
-    const ok = validate();
-    if (!ok){
+    const ok =
+      validateName() &
+      validateEmail() &
+      validatePassword() &
+      validatePasswordConfirm() &
+      validateAgree();
+    if (!ok) {
       e.preventDefault();
-      showAllErrors = true;
-      renderErrors();
-      // 最初のエラーへフォーカス
-      const firstBad = form.querySelector('[aria-invalid="true"]');
-      firstBad && firstBad.focus();
+      const firstErr = document.querySelector('.error.is-visible');
+      if (firstErr) firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   });
+
+  // 初期状態（非活性を維持）
+  updateSubmitState();
 })();

@@ -282,13 +282,12 @@ footer nav a:hover {
   text-decoration: underline;
 }
 
-/* --- NAVBAR --- */
+/* --- NAVBAR 共通 --- */
 .navbar {
   background-color: var(--color-main);
   color: var(--color-white);
   position: fixed;
-  top: 0;
-  left: 0;
+  top: 0; left: 0;
   z-index: 999;
   width: 100%;
   height: 60px;
@@ -296,12 +295,13 @@ footer nav a:hover {
 }
 
 .navbar-container {
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0.8rem 1.2rem;
-  max-width: 1000px;
-  margin: auto;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .navbar-logo {
@@ -311,69 +311,145 @@ footer nav a:hover {
   text-decoration: none;
 }
 
+/* 右側：トグル＋（PC専用）ログインピル */
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+
+/* トグルは PC/モバイル両方で表示 */
 .navbar-toggle {
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   background: none;
   color: var(--color-white);
   border: none;
-  display: none;
   cursor: pointer;
   transition: transform var(--transition-speed) ease;
 }
+.navbar-toggle.open { transform: rotate(90deg); }
 
-.navbar-toggle.open {
-  transform: rotate(90deg);
-}
-
+/* メニュー：共通（PC/モバイル同じパターン） */
 .navbar-menu {
-  list-style: none;
-  display: flex;
-  gap: 1rem;
+  position: fixed;
+  top: 60px; left: 0;
+  width: 100%;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+  padding: 0 1rem;
   margin: 0;
-  padding: 0;
-  transition: all .4s ease-in-out;
+  list-style: none;
+  background-color: var(--color-main);
+  transition: height .35s ease, opacity .25s ease;
+  display: flex;
+  flex-direction: column;
 }
-
+.navbar-menu.active {
+  height: calc(100vh - 60px);       /* 画面全体のドロワー */
+  opacity: 1;
+  padding: 1rem;
+}
+.navbar-menu li {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--color-highlight);
+}
 .navbar-menu li a {
   color: var(--color-white);
   text-decoration: none;
   font-weight: 500;
-  transition: color var(--transition-speed);
+}
+.navbar-menu li a:hover { text-decoration: underline; }
+
+/* ログアウトボタンの見た目 */
+.nav-logout form { display: inline; }
+.nav-logout .linklike{
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+.nav-logout .linklike:hover{ opacity: .85; }
+
+/* ===== Login Status Pills ===== */
+.nav-loginstatus { list-style: none; }
+.nav-loginstatus__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  background: var(--color-highlight);
+  color: var(--color-text);
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: 999px;
+  padding: .25rem .6rem;
+  font-size: .9rem;
+  white-space: nowrap;
+}
+.nav-loginstatus__pill strong { color: var(--color-main); }
+
+/* ===== Cart Button in Navbar ===== */
+.navbar-cart {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  color: var(--color-white);
+  text-decoration: none;
+  padding: .2rem .4rem;
+  border-radius: 8px;
+  transition: background var(--transition-speed) ease, transform .15s ease;
+}
+.navbar-cart:hover { background: rgba(255,255,255,.12); transform: translateY(-1px); }
+
+.cart-icon { display: block; line-height: 0; }
+
+.cart-badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 .35rem;
+  border-radius: 999px;
+  background: #FF6B6B;
+  color: #fff;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  font-weight: 700;
+  margin-left: .2rem;
 }
 
-.navbar-menu li a:hover {
-  text-decoration: underline;
+/* PCでのログインピル（右上） */
+@media (min-width: 769px) {
+  .nav-loginstatus--desktop {
+    display: inline-flex;
+  }
+  /* メニュー内のピルはPCで非表示（ドロワー内には重複表示不要） */
+  .navbar-menu .nav-loginstatus { display: none; }
 }
 
 @media (max-width: 768px) {
-  .navbar-toggle {
-    display: block;
+  section{
+    padding: 1rem .5rem;
   }
-
-  .navbar-menu {
-    display: flex;
-    flex-direction: column;
-    background-color: var(--color-main);
-    position: absolute;
-    top: 60px;
-    left: 0;
+  .nav-loginstatus {
+    margin-top: 1rem;         /* 最下部へ */
     width: 100%;
-    height: 0;
-    opacity: 0;
-    overflow: hidden;
-    padding: 0 1rem;
+    padding-top: .8rem;
+    padding-bottom: .6rem;
   }
+  .nav-loginstatus__pill {
+    background: rgba(255,255,255,.15);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.25);
+    margin: 0 .25rem;
+  }
+  /* PC専用ピルは隠す */
+  .nav-loginstatus--desktop { display: none; }
+  .nav-loginstatus__pill strong { color: var(--color-white); }
 
-  .navbar-menu.active {
-    height: 100vh;
-    opacity: 1;
-    padding: 1rem;
-  }
-
-  .navbar-menu li {
-    padding: 1rem 0;
-    border-bottom: 1px solid var(--color-highlight);
-  }
+  .cart-badge { min-width: 20px; height: 20px; line-height: 20px; font-size: 12px; }
 
   .feature-list {
     flex-direction: column;

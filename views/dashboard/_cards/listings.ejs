@@ -1,0 +1,22 @@
+<section class="card">
+  <div class="card__head">
+    <h2>最近の出品</h2>
+    <a class="link" href="/seller/listings">出品管理 →</a>
+  </div>
+  <ul class="list media">
+    <% if (listings && listings.length) { %>
+      <% listings.slice(0,6).forEach(function(l){ %>
+        <li class="row media__row">
+          <img class="thumb" src="<%= l.image %>" alt="<%= l.name %>">
+          <div class="media__meta">
+            <strong><a class="link" href="/products/<%= l.slug || l.id %>"><%= l.name %></a></strong>
+            <div class="muted">在庫 <%= l.stock %>・価格 ¥<%= l.price %></div>
+          </div>
+          <a class="btn btn--sm" href="/seller/listings/<%= l.id %>/edit">編集</a>
+        </li>
+      <% }) %>
+    <% } else { %>
+      <li class="empty">まだ出品がありません。</li>
+    <% } %>
+  </ul>
+</section>

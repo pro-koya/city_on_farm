@@ -1,0 +1,158 @@
+<%- include('../partials/header', { title: '新規出品', extraCSS: '/styles/listing-new.css' }) %>
+
+<main class="listing">
+  <form id="listing-form" class="listing__form" method="POST" action="/seller/listing-new" enctype="multipart/form-data" novalidate>
+    <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% } %>
+
+    <!-- ===== ヘッダー（アクションバー） ===== -->
+    <div class="bar">
+      <div class="bar__left">
+        <h1>新規出品</h1>
+        <span class="hint">* は必須</span>
+      </div>
+      <div class="bar__right">
+        <button class="btn btn--ghost" type="button" id="saveDraft">下書き保存</button>
+        <button class="btn" type="submit" id="publishBtn">公開する</button>
+      </div>
+    </div>
+
+    <!-- ===== 2カラム ===== -->
+    <div class="grid">
+      <!-- 左：主要入力 -->
+      <section class="card">
+        <div class="field">
+          <label for="title">商品名 *</label>
+          <input id="title" name="title" type="text" required maxlength="80" placeholder="例）朝採れレタス（無農薬）" value="<%= values?.title || '' %>">
+          <p class="error" data-for="title"></p>
+        </div>
+
+        <div class="field field--row">
+          <div>
+            <label for="categoryId">カテゴリ *</label>
+            <select id="categoryId" name="categoryId" required>
+              <option value="">選択してください</option>
+              <% (categories).forEach(function(cat){ %>
+                <option value="<%= cat.id %>" <%= (values?.categoryId===cat.id)?'selected':'' %>><%= cat.name %></option>
+              <% }) %>
+            </select>
+            <p class="error" data-for="categoryId"></p>
+          </div>
+
+          <div>
+            <label for="tags">タグ（カンマ区切り）</label>
+            <input id="tags" name="tags" type="text" placeholder="例）オーガニック, 旬, 地産地消" value="<%= values?.tags || '' %>">
+            <p class="help">半角カンマで区切ると複数タグになります</p>
+          </div>
+        </div>
+
+        <div class="field field--row">
+          <div>
+            <label for="price">価格（税抜/円） *</label>
+            <input id="price" name="price" type="number" min="1" step="1" required placeholder="例）480" value="<%= values?.price || '' %>">
+            <p class="error" data-for="price"></p>
+          </div>
+          <div>
+            <label for="unit">単位 *</label>
+            <input id="unit" name="unit" type="text" required placeholder="例）1玉 / 500g / 1箱" value="<%= values?.unit || '' %>">
+            <p class="error" data-for="unit"></p>
+          </div>
+          <div>
+            <label for="stock">在庫数 *</label>
+            <input id="stock" name="stock" type="number" min="0" step="1" required placeholder="例）50" value="<%= values?.stock || '' %>">
+            <p class="error" data-for="stock"></p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="description">商品説明 *</label>
+          <textarea id="description" name="description" rows="8" required placeholder="栽培方法、味の特徴、保存方法、おすすめレシピなど"><%= values?.description || '' %></textarea>
+          <p class="error" data-for="description"></p>
+          <p class="help">* 改行はそのまま反映。後でリッチエディタ導入も可能です。</p>
+        </div>
+
+        <!-- 仕様・規格（任意で複数行） -->
+        <div class="field">
+          <label>仕様・規格</label>
+          <div class="kv" id="specs">
+            <% (values?.specs || [{label:'サイズ', value:'M〜L'}, {label:'等級', value:'優'}]).forEach(function(row, i){ %>
+              <div class="kv__row">
+                <input type="text" name="specs[<%= i %>][label]" placeholder="項目名（例：サイズ）" value="<%= row.label %>">
+                <input type="text" name="specs[<%= i %>][value]" placeholder="値（例：M〜L）" value="<%= row.value %>">
+                <button type="button" class="icon-btn kv__del" title="削除">✕</button>
+              </div>
+            <% }) %>
+          </div>
+          <button type="button" class="btn btn--ghost" id="addSpec">行を追加</button>
+        </div>
+      </section>
+
+      <!-- 右：メディア & 出荷情報 & 公開設定 -->
+      <aside class="side">
+
+        <!-- 画像アップロード -->
+        <section class="card">
+          <h2 class="card__title">商品画像 *</h2>
+          <p class="help">1枚以上、最大8枚まで。最初の画像がサムネイルになります。</p>
+          <div class="uploader" id="uploader" data-max="8">
+            <input id="images" name="images" type="file" accept="image/*" multiple hidden>
+            <button type="button" class="uploader__drop" id="openPicker">画像を選択 or ドロップ</button>
+            <ul class="uploader__list" id="previewList" aria-live="polite"></ul>
+          </div>
+          <p class="error" data-for="images"></p>
+        </section>
+
+        <!-- 出荷/配送 -->
+        <section class="card">
+          <h2 class="card__title">出荷・配送</h2>
+          <div class="field">
+            <label for="shipMethod">配送方法 *</label>
+            <select id="shipMethod" name="shipMethod" required>
+              <option value="">選択してください</option>
+              <option value="normal" <%= values?.shipMethod==='normal'?'selected':'' %>>常温便</option>
+              <option value="cool"   <%= values?.shipMethod==='cool'?'selected':'' %>>クール便</option>
+            </select>
+            <p class="error" data-for="shipMethod"></p>
+          </div>
+          <div class="field">
+            <label for="shipDays">発送目安 *</label>
+            <select id="shipDays" name="shipDays" required>
+              <option value="">選択してください</option>
+              <option value="1-2" <%= values?.shipDays==='1-2'?'selected':'' %>>1〜2日</option>
+              <option value="2-3" <%= values?.shipDays==='2-3'?'selected':'' %>>2〜3日</option>
+              <option value="4-7" <%= values?.shipDays==='4-7'?'selected':'' %>>4〜7日</option>
+            </select>
+            <p class="error" data-for="shipDays"></p>
+          </div>
+          <div class="field">
+            <label class="check"><input type="checkbox" name="isOrganic" value="1" <%= values?.isOrganic?'checked':'' %>> 有機/JAS</label>
+            <label class="check"><input type="checkbox" name="isSeasonal" value="1" <%= values?.isSeasonal?'checked':'' %>> 旬</label>
+          </div>
+        </section>
+
+        <!-- 公開設定 -->
+        <section class="card">
+          <h2 class="card__title">公開設定</h2>
+          <div class="field">
+            <label for="status">ステータス *</label>
+            <select id="status" name="status" required>
+              <option value="draft"   <%= values?.status==='draft'?'selected':'' %>>下書き</option>
+              <option value="private" <%= values?.status==='private'?'selected':'' %>>限定公開</option>
+              <option value="public"  <%= (!values || values?.status==='public')?'selected':'' %>>公開</option>
+            </select>
+            <p class="error" data-for="status"></p>
+          </div>
+          <div class="actions">
+            <button class="btn btn--ghost" type="button" id="sideSaveDraft">下書き保存</button>
+            <button class="btn" type="submit">公開する</button>
+          </div>
+        </section>
+
+      </aside>
+    </div>
+  </form>
+</main>
+
+<script src="/js/listing-new.js"></script>
+<%- include('../partials/footer') %>

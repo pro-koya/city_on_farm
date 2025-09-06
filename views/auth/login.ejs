@@ -6,28 +6,28 @@
     <p class="auth__lead">ご登録のメールアドレスとパスワードを入力してください。</p>
 
     <!-- サーバー側のCSRFトークン（導入時に置き換え） -->
-    <% if (typeof csrfToken !== 'undefined') { %>
       <form id="loginForm" class="auth__form" method="POST" action="/login" novalidate>
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <% } else { %>
-      <form id="loginForm" class="auth__form" method="POST" action="/login" novalidate>
-    <% } %>
 
       <!-- Email -->
       <div class="field">
         <label class="label" for="email">メールアドレス</label>
-        <input class="input" id="email" name="email" type="email" autocomplete="username" inputmode="email" required>
-        <p class="error" data-error-for="email"></p>
+        <input class="input" id="email" name="email" type="email" value="<%= (values && values.email) || '' %>" autocomplete="username" inputmode="email" aria-invalid="<%= fieldErrors && fieldErrors.email ? 'true' : 'false' %>" aria-describedby="<%= fieldErrors && fieldErrors.email ? 'error-email' : '' %>" required>
+        <% if (fieldErrors && fieldErrors.email) { %>
+        <p id="error-email" class="error <%= fieldErrors && fieldErrors.email ? 'is-visible' : '' %>" role="alert"><%= fieldErrors.email %></p>
+        <% } %>
       </div>
 
       <!-- Password -->
       <div class="field">
         <label class="label" for="password">パスワード</label>
         <div class="pwd">
-          <input class="input" id="password" name="password" type="password" autocomplete="current-password" required>
+          <input class="input" id="password" name="password" type="password" autocomplete="current-password" aria-invalid="<%= fieldErrors && fieldErrors.password ? 'true' : 'false' %>" aria-describedby="<%= fieldErrors && fieldErrors.password ? 'error-password' : '' %>" required>
           <button class="toggle" type="button" aria-label="パスワードを表示/非表示">👁</button>
         </div>
-        <p class="error" data-error-for="password"></p>
+        <% if (fieldErrors && fieldErrors.password) { %>
+        <p id="error-password" class="error <%= fieldErrors && fieldErrors.email ? 'is-visible' : '' %>" role="alert"><%= fieldErrors.password %></p>
+        <% } %>
       </div>
 
       <!-- Options -->

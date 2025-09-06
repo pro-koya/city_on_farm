@@ -1,0 +1,29 @@
+<%- include('../partials/header', { title: title || 'アクセス拒否', extraCSS: '' }) %>
+
+<main style="max-width: 880px; margin: 96px auto 64px; padding: 0 16px;">
+  <section style="background:#fff; border-radius:16px; box-shadow:0 8px 24px rgba(0,0,0,.08); padding:28px;">
+    <h1 style="margin:0 0 12px; font-size:1.6rem;">アクセスが拒否されました</h1>
+    <p style="color:#555; margin:0 0 18px;">
+      <%= (typeof message !== 'undefined' && message) ? message : 'このページにアクセスする権限がありません。' %>
+    </p>
+
+    <% if (currentUser) { %>
+      <p style="color:#666; margin:0 0 24px;">
+        現在 <strong><%= currentUser.name %></strong> さんでログイン中です。
+        ほかのロールでのアクセスが必要な場合は一度ログアウトして別のアカウントでログインしてください。
+      </p>
+      <form method="POST" action="/logout">
+        <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <% } %>
+        <button class="button">ログアウト</button>
+        <a href="/" class="button secondary" style="margin-left:.5rem;">ホームへ戻る</a>
+      </form>
+    <% } else { %>
+      <a href="/login" class="button">ログインへ</a>
+      <a href="/" class="button secondary" style="margin-left:.5rem;">ホームへ戻る</a>
+    <% } %>
+  </section>
+</main>
+
+<%- include('../partials/footer') %>

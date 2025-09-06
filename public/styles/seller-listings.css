@@ -1,0 +1,162 @@
+/* カラートークン：既存に準拠 */
+:root{
+  --bg:#F9F9F6; --text:#2B2B2B;
+  --main:#4C6B5C; --accent:#A3C9A8; --hi:#D6EADF;
+  --white:#fff; --muted:#6b7280;
+  --border:#e5e7eb; --shadow:0 8px 24px rgba(0,0,0,.08);
+}
+
+.seller-list{max-width:1100px;margin:0 auto;padding:80px 12px 28px}
+.muted{color:var(--muted)}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ツールバー */
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px; flex-wrap: wrap;}
+.toolbar h1{margin:0;font-size:1.45rem}
+.toolbar__right{display:flex;gap:8px;align-items:center;flex-wrap: wrap;}
+.search{display:flex;align-items:center;border:1px solid var(--border);border-radius:12px;background:#fff}
+.toolbar__left{display: flex; justify-content: space-between; width: 80%;}
+.toolbar__left p{margin: 0;}
+.search input{border:none;padding:.55rem .7rem;outline:none;width:220px}
+.search .icon-btn{border:none;background:transparent;padding:.35rem .55rem;cursor:pointer}
+
+.toolbar select{border:1px solid var(--border);border-radius:10px;padding:.52rem .7rem;background:#fff}
+
+/* バルク操作 */
+.bulk{display:flex;flex-direction:column;justify-content:space-between;gap:12px;margin:10px 0 12px}
+.bulk__left{display:flex;align-items:center;gap:10px}
+.check{display:inline-flex;align-items:center;gap:6px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:.55rem .9rem;border-radius:12px;border:1px solid var(--main);background:var(--main);color:#fff;cursor:pointer}
+.btn--ghost{background:#fff;color:var(--main);border-color:var(--border)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.icon-btn{border:1px solid var(--border);background:#fff;border-radius:10px;padding:.35rem .5rem;cursor:pointer}
+.icon-btn.danger{border-color:#ef4444;color:#b91c1c}
+
+/* テーブル */
+.table-wrap{display:block;background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:auto}
+.table{width:100%;border-collapse:separate;border-spacing:0}
+.table thead th{position:sticky;top:0;background:#f8faf9;z-index:1}
+.table th,.table td{padding:.75rem .8rem;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle}
+.col-check{width:44px}
+.col-actions{width:160px}
+.col-main{display:flex;align-items:center;gap:.7rem}
+.thumb{flex:0 0 auto;display:block;width:75px;height:75px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#f0f3f2}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.meta{min-width:0}
+.title{font-weight:700;text-decoration:none;color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:999px;background:#f3f4f6;font-size:12px}
+.badge.is-green{background:#ecfdf5;color:#047857}
+.warn{color:#b45309}
+.danger{color:#b91c1c}
+.status{display:inline-flex;align-items:center;padding:.15rem .55rem;border-radius:999px;border:1px solid var(--border);font-size:.85rem}
+.status--public{background:var(--hi);color:var(--main);border-color:transparent}
+.status--draft{background:#f3f4f6}
+.status--private{background:#eef2ff;color:#3730a3;border-color:transparent}
+
+.actions{display:flex;flex-wrap:wrap;gap:5%;}
+
+/* カード（モバイル） */
+.cards{display:none;list-style:none;padding:0;margin:12px 0 0;gap:10px}
+.card{display:grid;grid-template-columns:96px 1fr;gap:.8rem;padding:.8rem;border:1px solid var(--border);border-radius:14px;background:#fff;box-shadow:var(--shadow)}
+.card__check{position:absolute;margin-left:-6px;margin-top:-6px}
+.card__thumb{width:96px;height:96px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#f0f3f2}
+.card__thumb img{width:100%;height:100%;object-fit:cover}
+.card__title{font-weight:800;color:var(--text);text-decoration:none}
+.card .row{display:flex;justify-content:space-between;gap:8px;margin-top:4px}
+.card .actions{display:flex;gap:8px;margin-top:6px}
+.btn.danger{background:var(--bg);border-color:#b91c1c}
+
+/* 空表示 */
+.empty{max-width:720px;margin:72px auto;text-align:center;background:#fff;border:1px solid var(--border);border-radius:16px;padding:32px 20px;box-shadow:var(--shadow)}
+.empty__icon{font-size:64px;margin-bottom:12px}
+
+/* ページャ */
+.pager{display:flex;gap:6px}
+.pager__link{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);text-decoration:none;color:var(--text)}
+.pager__link.is-active{background:var(--main);color:#fff;border-color:var(--main)}
+
+/* レスポンシブ切替 */
+@media (max-width: 860px){
+  .table-wrap{display:none}
+  .cards{display:grid}
+  .toolbar__right .search input{width:160px}
+}
+
+/* ====== カート準拠のチェックボックス ====== */
+.chk input[type="checkbox"]{
+  appearance: none;
+  -webkit-appearance: none;
+  width: 22px; height: 22px;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.chk input[type="checkbox"]:hover{ border-color: #cfd6dc; }
+.chk input[type="checkbox"]:focus{
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(76,107,92,.20); /* var(--main)の淡フォーカス */
+}
+.chk input[type="checkbox"]:checked{
+  border-color: var(--main);
+  background: var(--main);
+}
+.chk input[type="checkbox"]::after{
+  content: "";
+  width: 10px; height: 14px;
+  transform: rotate(45deg) scale(0);
+  margin-bottom: .25rem;
+  margin-left: .06rem;
+  border-right: 3px solid #fff;
+  border-bottom: 3px solid #fff;
+  transition: transform .12s ease-in-out;
+}
+.chk input[type="checkbox"]:checked::after{ transform: rotate(45deg) scale(1); }
+
+/* テーブル内のサイズ最適化 */
+.col-check { width: 48px; }
+.table .col-check .chk input[type="checkbox"]{
+  width: 20px; height: 20px;
+}
+
+/* モバイルカード用（少し大きめでタップしやすく） */
+.chk--sm input[type="checkbox"]{
+  width: 24px; height: 24px;
+}
+
+/* 行ホバーや選択時のわかりやすさ */
+.table tbody tr:hover { background: #fbfbfb; }
+.table tbody tr.is-selected { background: #f3faf5; }
+.cards .card.is-selected{ border-color: var(--main); box-shadow: 0 0 0 2px rgba(76,107,92,.2), var(--shadow); }
+
+/* バルクバーの微調整 & 選択数の強調 */
+.bulk__left .count{
+  font-weight: 700; color: var(--main);
+}
+
+/* ツールボタンの押下感・アイコンボタン整え */
+.icon-btn{
+  display:inline-flex; align-items:center; gap:6px; justify-content: center;
+  transition: background .15s ease, transform .02s ease;
+  width: 45%;text-decoration: none; margin: .1rem 0;
+}
+a.icon-btn{font-size: 14px; color: var(--main);}
+.icon-btn:hover{ background:#f9fafb; }
+.icon-btn:active{ transform: translateY(1px); }
+
+/* ステータスピルの高さ合わせ */
+.status{ line-height: 1.1; }
+
+/* 検索ボックスのフォーカス */
+.search input:focus{
+  border-color: var(--main);
+  box-shadow: 0 0 0 3px rgba(76,107,92,.12);
+}
+
+/* カードのチェックの位置を安定させる */
+.card{ position: relative; }
+.card__check{ position:absolute; left:8px; top:8px; z-index:2; }

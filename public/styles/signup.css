@@ -1,0 +1,189 @@
+:root{
+  --bg:#F9F9F6; --text:#2B2B2B;
+  --main:#4C6B5C; --accent:#A3C9A8; --hi:#D6EADF;
+  --muted:#6b7280; --white:#fff;
+  --radius:16px; --shadow:0 10px 30px rgba(0,0,0,.08);
+  --danger:#e11d48; --ok:#059669; --warn:#f59e0b;
+}
+
+/* ===== Auth Layout ===== */
+.auth {
+  min-height: 100svh;
+  display: grid;
+  place-items: start;
+  color: var(--text);
+  padding: 12px;
+  margin-top: 80px;
+}
+
+.auth-card {
+  width: min(720px, 100%);
+  backdrop-filter: saturate(1.2) blur(8px);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 20px;
+  box-shadow:
+    0 10px 30px rgba(0,0,0,.45),
+    inset 0 1px 0 rgba(255,255,255,.04);
+  padding: 28px;
+}
+
+.auth-card__header {
+  margin-bottom: 18px;
+}
+.auth-card__header h1 {
+  font-size: 28px;
+  line-height: 1.2;
+  margin: 0 0 6px;
+}
+.auth-card__header .lead {
+  margin: 0;
+}
+
+/* ===== Form ===== */
+.auth-form {
+  display: grid;
+  gap: 16px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+label {
+  font-size: 14px;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+  width: 100%;
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  padding: 12px 14px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+input:focus {
+  border-color: rgba(0,185,255,.6);
+  box-shadow: 0 0 0 4px rgba(0,185,255,.12);
+}
+::placeholder { color: var(--muted); }
+
+.check {
+  display: inline-flex;
+  align-items: start;
+  gap: 0;
+  font-size: 14px;
+  color: var(--text);
+}
+.check input[type="checkbox"] {
+  transform: translateY(3px);
+  margin: 0 .3rem;
+}
+
+.hint {
+  font-size: 12px;
+  color: #8da4bb;
+}
+
+/* ===== Password strength meter ===== */
+.pw-meter {
+  margin-top: .5rem;
+  display: none;
+  align-items: center;
+  gap: .75rem;
+}
+.pw-meter.is-visible { display: flex; }
+
+.pw-meter__track {
+  position: relative;
+  width: 200px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border, #e5e7eb);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+.pw-meter__bar {
+  height: 100%;
+  width: 0%;
+  transition: width .25s ease;
+  background: linear-gradient(90deg, #ef4444, #f59e0b, #22c55e);
+}
+.pw-meter__label {
+  font-size: .875rem;
+  color: var(--muted, #6b7280);
+}
+
+/* アクセシビリティ用（色以外の差も） */
+.pw-meter[data-level="0"] .pw-meter__label { color:#ef4444; }
+.pw-meter[data-level="1"] .pw-meter__label { color:#f97316; }
+.pw-meter[data-level="2"] .pw-meter__label { color:#f59e0b; }
+.pw-meter[data-level="3"] .pw-meter__label { color:#84cc16; }
+.pw-meter[data-level="4"] .pw-meter__label { color:#16a34a; }
+
+/* ===== Buttons / Links ===== */
+.btn{
+    border:none; cursor:pointer; border-radius:12px; padding:.6rem 1.6rem; font-weight:800; font-size:1rem;
+    background:var(--main); color:#fff;
+}
+.btn[disabled]{opacity:.55; cursor:not-allowed}
+
+.link.tiny {
+  background: none;
+  color: #8dcfff;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  cursor: pointer;
+}
+.link.tiny:hover { text-decoration: underline; }
+
+/* ===== Errors ===== */
+.error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--danger);
+  /* 初期はコンパクトに（高さ0でスペースを潰す） */
+  line-height: 0;
+  height: 0;
+  overflow: hidden;
+  transition: line-height .15s ease, margin-top .15s ease;
+}
+.error.is-visible {
+  line-height: 1.4;
+  height: auto;
+  margin-top: 2px;
+}
+
+.global-error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255,120,120,.25);
+  background: rgba(255,80,80,.08);
+  border-radius: 10px;
+  color: var(--danger);
+}
+
+/* ===== Footer ===== */
+.auth-card__footer {
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--text);
+}
+.link{ color: var(--main); text-decoration: none; }
+.link:hover{text-decoration:underline}
+
+/* ===== Responsive ===== */
+@media (max-width: 560px) {
+  .auth-card { padding: 12px; }
+  .auth-card__header h1 { font-size: 24px; }
+}

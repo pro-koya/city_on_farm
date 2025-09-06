@@ -1,7 +1,17 @@
 <%- include('../partials/header', { title: '商品一覧', extraCSS: '/styles/products.css' }) %>
 
 <main class="page page--list">
-    <%- include('../partials/productsFilterBar') %>
+    <%- include('../partials/productsFilterBar', {
+        q,
+        sort,
+        category,
+        categories: categoriesChips,
+        organic,
+        seasonal,
+        instock,
+        bundle,
+        page
+    }) %>
     <section class="grid-wrap grid-wrap--compact" id="grid">
 
         <% if (!products || !products.length) { %>
