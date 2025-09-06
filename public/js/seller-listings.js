@@ -12,6 +12,11 @@
   const bulkForm    = $('#bulkForm'); // hidden の _csrf を拾うため
   const csrfToken   = bulkForm ? bulkForm.querySelector('input[name="_csrf"]')?.value : '';
 
+  const allIds = () => {
+    const ids = $$('.rowCheck').map(cb => String(cb.value));
+    return Array.from(new Set(ids)); // ユニークID配列
+  };
+
   // 選択数表示
   const countEl = document.createElement('span');
   countEl.className = 'count';
@@ -38,7 +43,7 @@
     });
 
     // selectAll の tri-state
-    const total    = rowChecks().length;
+    const total    = allIds().length;
     const selCount = selected.size;
     if (selectAll) {
       selectAll.indeterminate = selCount > 0 && selCount < total;
@@ -85,7 +90,7 @@
   if (selectAll) {
     selectAll.addEventListener('change', () => {
       if (selectAll.checked) {
-        rowChecks().forEach(cb => selected.add(String(cb.value)));
+        allIds().forEach(id => selected.add(id));
       } else {
         selected.clear();
       }
