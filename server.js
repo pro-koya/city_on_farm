@@ -19,7 +19,7 @@ const LOCAL_DB_URL = 'postgresql://koya1104:postgres@127.0.0.1:5432/city_on_firm
 
 /* ========== DB ========== */
 const { Pool } = require('pg');
-const externalDB = 'postgresql://blog_4h20_user:xoBKt5wSOHMsKT0TmdkSEINCEIsUBQr6@dpg-d27g4pm3jp1c73f7hbhg-a.oregon-postgres.render.com/blog_4h20';
+const externalDB = 'postgresql://city_on_firm_user:ruHjBG6tdZIgpWWxDNGmrxNmVkgbfaIP@dpg-d2u1oph5pdvs73a1ick0-a.oregon-postgres.render.com/city_on_firm';
 
 // Renderの接続文字列（環境変数に置くのが推奨）
 const dbUrl = process.env.DATABASE_URL || LOCAL_DB_URL;
