@@ -14,6 +14,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
 try { require('dotenv').config(); } catch { /* no-op */ }
+app.set('trust proxy', 1);
 // ローカル用のデフォルト値（自分の環境に合わせて）
 const LOCAL_DB_URL = 'postgresql://koya1104:postgres@127.0.0.1:5432/city_on_firm';
 
