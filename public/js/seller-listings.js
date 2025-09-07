@@ -166,31 +166,6 @@
     }
   });
 
-  // ---- 複製
-  document.addEventListener('click', async (e) => {
-    const btn = e.target.closest('.js-duplicate');
-    if (!btn) return;
-    const id = btn.getAttribute('data-id');
-    if (!id) return;
-
-    btn.disabled = true;
-    try {
-      const resp = await fetch(`/seller/listings/${encodeURIComponent(id)}/duplicate`, {
-        method: 'POST',
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-          'csrf-token': csrfToken
-        }
-      });
-      if (!resp.ok) throw new Error('dup failed');
-      location.reload();
-    } catch (err) {
-      alert('複製に失敗しました');
-    } finally {
-      btn.disabled = false;
-    }
-  });
-
   // ---- 削除
   document.addEventListener('click', async (e) => {
     const btn = e.target.closest('.js-delete');
