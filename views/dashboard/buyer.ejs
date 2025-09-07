@@ -9,19 +9,3 @@
     `
   })
 %>
-
-# スキーマだけダンプ
-pg_dump \
-  --schema-only \
-  --no-owner \
-  --no-privileges \
-  --dbname "postgres://koya1104:PASS@127.0.0.1:5432/city_on_firm" \
-  --file schema.sql
-
-# サーバー側に適用（※ sslmode=require が必要なことが多い）
-psql "postgres://USER:PASS@HOST:5432/city_on_firm=require" -f schema.sql
-
-psql -h dpg-d2u1oph5pdvs73a1ick0-a.oregon-postgres.render.com -U city_on_firm_user city_on_firm < backupnouser.sql
-psql "postgres://city_on_firm_user:ruHjBG6tdZIgpWWxDNGmrxNmVkgbfaIP@dpg-d2u1oph5pdvs73a1ick0-a:5432/city_on_firm?sslmode=require" < backupnouser.sql
-PGPASSWORD=ruHjBG6tdZIgpWWxDNGmrxNmVkgbfaIP psql -h dpg-d2u1oph5pdvs73a1ick0-a.oregon-postgres.render.com -U city_on_firm_user city_on_firm
-psql "postgresql://city_on_firm_user:ruHjBG6tdZIgpWWxDNGmrxNmVkgbfaIP@dpg-d2u1oph5pdvs73a1ick0-a.oregon-postgres.render.com:5432/city_on_firm?sslmode=require" < backupnouser.sql
