@@ -50,7 +50,7 @@
         <span class="ship"><%= product.shippingNote || '2〜3日以内に発送' %></span>
       </div>
 
-      <form class="buy" id="buyForm" action="/cart" method="POST" novalidate>
+      <form class="buy" id="buyForm" action="/cart/add" method="POST" novalidate>
         <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <% } %>

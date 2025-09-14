@@ -7,7 +7,7 @@
     <% if (orders && orders.length) { %>
       <% orders.slice(0,5).forEach(function(o){ %>
         <li class="row">
-          <span class="mono">#<%= o.id %></span>
+          <span class="mono">注文日：<%= new Date(o.created_at).toLocaleDateString('ja-JP') %></span>
           <span><%= o.date %></span>
           <span>¥<%= o.total.toLocaleString() %></span>
           <a class="btn btn--sm" href="/orders/<%= o.id %>">詳細</a>

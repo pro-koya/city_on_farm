@@ -1,0 +1,186 @@
+<%- include('../partials/header', { title: 'ご注文手続き', extraCSS: '/styles/checkout.css' }) %>
+
+<main class="checkout">
+  <form id="checkoutForm" class="ck-grid" method="POST" action="/checkout">
+    <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% } %>
+
+    <!-- 左カラム：入力領域 -->
+    <section class="ck-left">
+
+      <!-- 配送先 -->
+      <section class="card" id="shippingAddress">
+        <div class="card__head">
+          <h2>配送先住所</h2>
+          <button class="link" type="button" id="openAddressModal" aria-haspopup="dialog">＋ 新しい住所を追加</button>
+        </div>
+
+        <% if (!addresses || !addresses.length) { %>
+          <p class="muted">住所が登録されていません。「新しい住所を追加」からご登録ください。</p>
+        <% } else { %>
+          <ul id="shippingAddrList" class="addr-list" role="list">
+            <% addresses.forEach(function(a){ %>
+              <li class="addr-item">
+                <label class="addr-radio">
+                  <input type="radio" name="shippingAddressId" value="<%= a.id %>" <%= String(form.shippingAddressId) === String(a.id) ? 'checked' : '' %> >
+                  <div class="addr-body">
+                    <div class="addr-name"><%= a.full_name %>（<%= a.phone %>）</div>
+                    <div class="addr-lines">
+                      〒<%= a.postal_code %>：<%= a.prefecture %><%= a.city %><%= a.address_line1 %> <%= a.address_line2 || '' %>
+                    </div>
+                    <% if (a.is_default) { %><span class="badge">既定</span><% } %>
+                  </div>
+                </label>
+              </li>
+            <% }) %>
+          </ul>
+        <% } %>
+      </section>
+
+      <!-- 請求先 -->
+      <section class="card" id="billingAddress">
+        <div class="card__head">
+          <h2>請求先住所</h2>
+        </div>
+
+        <label class="check">
+          <input type="checkbox" id="billSame" name="billSame" value="1" <%= (!selectedBillingId) ? 'checked' : '' %> >
+          配送先と同じにする
+        </label>
+        <button class="link" type="button" id="openBillingAddressModal" aria-haspopup="dialog">＋ 新しい請求先を追加</button>
+
+        <div id="billingBlock" class="<%= (!selectedBillingId) ? 'is-hidden' : '' %>">
+          <% if (!addresses || !addresses.length) { %>
+            <p class="muted">住所が登録されていません。</p>
+          <% } else { %>
+            <ul id="billingAddrList" class="addr-list" role="list">
+              <% addresses.forEach(function(a){ %>
+                <li class="addr-item">
+                  <label class="addr-radio">
+                    <input type="radio" name="billingAddressId" value="<%= a.id %>" <%= String(form.billingAddressId) === String(a.id) ? 'checked' : '' %> >
+                    <div class="addr-body">
+                      <div class="addr-name"><%= a.full_name %>（<%= a.phone %>）</div>
+                      <div class="addr-lines">
+                        〒<%= a.postal_code %>　<%= a.prefecture %><%= a.city %><%= a.address_line1 %> <%= a.address_line2 || '' %>
+                      </div>
+                      <% if (a.is_default) { %><span class="badge">既定</span><% } %>
+                    </div>
+                  </label>
+                </li>
+              <% }) %>
+            </ul>
+          <% } %>
+        </div>
+      </section>
+
+      <!-- 配送方法・日時 -->
+      <section class="card" id="shipMethod">
+        <div class="card__head"><h2>配送方法・日時</h2></div>
+        <div class="field field--row">
+          <div>
+            <label for="shipMethod">配送方法</label>
+            <select name="shipMethod" id="shipMethod" required>
+              <option value="normal" <%= form.shipMethod === 'normal' ? 'selected' : '' %>>常温便</option>
+              <option value="cool"<%= form.shipMethod === 'cool'   ? 'selected' : '' %>>クール便</option>
+            </select>
+          </div>
+          <div>
+            <label for="shipDate">お届け希望日（任意）</label>
+            <input type="date" id="shipDate" name="shipDate" min="<%= new Date().toISOString().slice(0,10) %>" value="<%= form.shipDate %>">
+          </div>
+          <div>
+            <label for="shipTime">お届け時間帯（任意）</label>
+            <select id="shipTime" name="shipTime">
+              <option value="">指定なし</option>
+              <option value="am" <%= form.shipTime === 'am' ? 'selected' : '' %>>午前中</option>
+              <option value="14-16" <%= form.shipTime === '14-16' ? 'selected' : '' %>>14-16時</option>
+              <option value="16-18" <%= form.shipTime === '16-18' ? 'selected' : '' %>>16-18時</option>
+              <option value="18-20" <%= form.shipTime === '18-20' ? 'selected' : '' %>>18-20時</option>
+              <option value="19-21" <%= form.shipTime === '19-21' ? 'selected' : '' %>>19-21時</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- 支払い方法 -->
+      <section class="card">
+        <div class="card__head"><h2>お支払い方法</h2></div>
+        <div class="field">
+          <label class="radio">
+            <input type="radio" name="paymentMethod" value="cod"  <%= form.paymentMethod === 'cod'  ? 'checked' : '' %>> 代金引換
+          </label>
+          <label class="radio">
+            <input type="radio" name="paymentMethod" value="bank" <%= form.paymentMethod === 'bank' ? 'checked' : '' %>> 銀行振込
+          </label>
+        </div>
+      </section>
+
+      <!-- クーポン・メモ -->
+      <section class="card coupon-card">
+        <div class="card__head"><h2>クーポン・ご要望</h2></div>
+        <div class="field field--row">
+          <div class="coupon">
+            <label for="couponCode">クーポンコード</label>
+            <div class="row">
+              <input id="couponCode" type="text" placeholder="例）SUM10">
+              <button type="button" class="btn btn--ghost" id="applyCoupon">適用</button>
+            </div>
+            <p class="help" id="couponMsg"></p>
+          </div>
+          <div class="note">
+            <label for="orderNote">ご要望・備考（任意）</label>
+            <textarea id="orderNote" name="orderNote" rows="3" placeholder="例）不在時は宅配ボックスへ など"><%= form.orderNote %></textarea>
+          </div>
+        </div>
+        <label class="check agree">
+          <input type="checkbox" name="agree" value="1" required> 利用規約とキャンセルポリシーに同意します
+        </label>
+      </section>
+    </section>
+
+    <!-- 右カラム：サマリー -->
+    <aside class="ck-right">
+      <section class="card sticky">
+        <h2>ご注文内容</h2>
+
+        <ul class="mini-cart">
+          <% (items || []).forEach(function(it){ %>
+            <li class="mini-row">
+              <img src="<%= it.image_url || '/images/placeholder.png' %>" alt="" loading="lazy">
+              <div class="mini-main">
+                <div class="mini-title"><%= it.title %></div>
+                <div class="mini-meta"><%= it.quantity %><%= it.unit || '点' %> × ¥<%= Number(it.price).toLocaleString() %></div>
+              </div>
+              <div class="mini-sub">¥<%= Number(it.price*it.quantity).toLocaleString() %></div>
+            </li>
+          <% }) %>
+        </ul>
+
+        <div class="sum">
+          <div class="row"><span>小計</span><strong id="sumSubtotal">¥<%= Number(totals?.subtotal||0).toLocaleString() %></strong></div>
+          <div class="row"><span>割引</span><strong id="sumDiscount">-¥<%= Number(totals?.discount||0).toLocaleString() %></strong></div>
+          <div class="row"><span>送料</span><strong id="sumShipping">¥<%= Number(totals?.shipping||0).toLocaleString() %></strong></div>
+          <hr>
+          <div class="row total"><span>合計</span><strong id="sumTotal">¥<%= Number(totals?.total||0).toLocaleString() %></strong></div>
+        </div>
+
+        <button class="btn btn--primary btn--lg" type="submit" id="toConfirm">確認へ進む</button>
+        <p class="muted small">お支払いは安全に処理されます</p>
+      </section>
+    </aside>
+  </form>
+</main>
+
+<!-- 住所追加モーダル -->
+<%- include('./_address-modal', { csrfToken }) %>
+
+<script>
+  window.__CK__ = {
+    csrfToken: '<%= csrfToken || '' %>',
+    applyCouponUrl: '/checkout/apply-coupon',
+    createAddressUrl: '/addresses'
+  };
+</script>
+<script src="/js/checkout.js"></script>
+<%- include('../partials/footer') %>

@@ -1,0 +1,105 @@
+:root {
+    --color-white: #F9F9F6;
+    --color-main: #4C6B5C;
+    --color-accent: #A3C9A8;
+    --color-highlight: #D6EADF;
+    --color-text: #2B2B2B;
+    --color-link: #355D4A;
+    --color-white: #ffffff;
+    --color-error: #D9534F;
+    --c-primary:#3872ed;
+    --transition-speed: 0.3s;
+}
+
+/* ---- レイアウト ---- */
+.confirm { padding: 24px 0; }
+.cfm-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 24px;
+}
+@media (max-width: 960px) {
+  .cfm-grid { grid-template-columns: 1fr; }
+}
+
+/* ---- カード ---- */
+.card {
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  border-radius: 14px;
+  padding: 16px;
+  margin-top: 50px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.03);
+}
+.card + .card { margin-top: 16px; }
+.card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.card__head h2 { font-size: 18px; margin: 0; }
+.link { color: #2f6feb; text-decoration: none; }
+.link:hover { text-decoration: underline; }
+
+/* ---- 住所表示 ---- */
+.addr__name { font-weight: 600; margin-bottom: 4px; }
+.addr__lines { color: #555; }
+
+/* ---- キーバリュー ---- */
+.kv { display: grid; gap: 8px; }
+.kv dt { color: #666; min-width: 96px; }
+.kv dd { margin: 0; }
+.kv > div { display: grid; grid-template-columns: 120px 1fr; align-items: center; }
+
+/* ---- 備考 ---- */
+.note { margin-top: 12px; }
+.note__label { font-size: 13px; color: #666; margin-bottom: 4px; }
+.note__body {
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 10px 12px;
+  white-space: pre-wrap;
+}
+
+/* ---- ミニカート ---- */
+.mini-cart { list-style: none; padding: 0; margin: 0; }
+.mini-row {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px dashed #eee;
+}
+.mini-row:last-child { border-bottom: 0; }
+.mini-row img {
+  width: 56px; height: 56px; object-fit: cover; border-radius: 10px;
+}
+.mini-title { font-weight: 600; }
+.mini-meta { font-size: 13px; color: #666; }
+.mini-sub { font-weight: 600; }
+
+/* ---- サマリー ---- */
+.sticky { position: sticky; top: 16px; }
+.sum .row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 0;
+}
+.sum hr { border: 0; border-top: 1px solid #eee; margin: 10px 0; }
+.sum .total { font-size: 18px; }
+
+/* ---- ボタン ---- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 10px; padding: 12px 14px; border: 1px solid transparent;
+  background: var(--c-primary); color: var(--color-white); font-weight: 600; cursor: pointer;
+}
+.btn--ghost { background: var(--color-white); color: #333; border-color: #ddd; }
+.btn--lg { width: 100%; margin-top: 8px; }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+
+/* ---- テキスト ---- */
+.muted { color: #777; }
+.small { font-size: 12px; }

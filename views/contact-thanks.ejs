@@ -1,0 +1,38 @@
+<%- include('partials/header', { title: 'お問い合わせありがとうございました', extraCSS: '/styles/contact-thanks.css' }) %>
+
+<main class="thanks">
+  <section class="card">
+    <div class="icon" aria-hidden="true">✅</div>
+    <h1>お問い合わせを受け付けました</h1>
+    <p class="lead">
+      送信ありがとうございます。内容を確認し、順次ご連絡いたします。<br>
+      自動返信メールをお送りしていますのでご確認ください。
+    </p>
+
+    <% if (typeof inquiryNo !== 'undefined' && inquiryNo) { %>
+      <div class="ticket">
+        <div class="ticket__label">受付番号</div>
+        <div class="ticket__value" id="ticketNo"><%= inquiryNo %></div>
+        <button class="copy-btn" type="button" id="copyTicket" aria-label="受付番号をコピー">コピー</button>
+      </div>
+    <% } %>
+
+    <div class="actions">
+      <a class="btn" href="/">トップへ戻る</a>
+      <a class="btn btn--ghost" href="/products/list">商品を探す</a>
+      <a class="link" href="/contact">別のお問い合わせを送る →</a>
+    </div>
+
+    <details class="next-steps">
+      <summary>よくあるご質問</summary>
+      <ul>
+        <li>返信までの目安は1〜3営業日です。</li>
+        <li>迷惑メールに振り分けられる場合があります。受信設定をご確認ください。</li>
+        <li>急ぎのご用件は件名に【至急】と記載のうえ再度お送りください。</li>
+      </ul>
+    </details>
+  </section>
+</main>
+
+<script src="/js/contact-thanks.js" defer></script>
+<%- include('partials/footer') %>

@@ -1,0 +1,169 @@
+<%- include('../partials/header', { title: 'ご注文ありがとうございました', extraCSS: '/styles/checkout-complete.css' }) %>
+
+<link rel="stylesheet" href="/css/checkout-complete.css">
+
+<main class="complete">
+  <section class="complete-hero" aria-labelledby="completeTitle">
+    <div class="complete-hero__icon" aria-hidden="true">✔</div>
+    <h1 id="completeTitle" class="complete-hero__title">ご注文ありがとうございました</h1>
+    <p class="complete-hero__lead">
+      ご注文を受け付けました。<br>確認メールを送信しています。
+    </p>
+
+    <div class="complete-order">
+      <div class="complete-order__no">
+        ご注文番号：
+        <strong id="orderNo"><%= order?.orderNo || order?.id || '-' %></strong>
+      </div>
+      <div class="complete-order__eta">
+        お届け予定：
+        <strong>
+          <%= order?.eta_at ? new Date(order.eta_at).toLocaleDateString('ja-JP') : '追ってご連絡' %>
+        </strong>
+      </div>
+      <div class="complete-order__time">
+        ご注文日時：
+        <%= order?.created_at ? new Date(order.created_at).toLocaleString('ja-JP') : '' %>
+      </div>
+    </div>
+
+    <div class="complete-actions">
+      <a class="btn btn-primary" href="/orders/<%= order?.id || '' %>">注文詳細を見る</a>
+      <a class="btn" href="/products/list">お買い物を続ける</a>
+      <a class="btn" target="_blank" rel="noopener" href="/orders/<%= order.orderNo || order.id %>/invoice.pdf">領収書を表示</a>
+      <button class="btn" id="printOrders" type="button">注文書を印刷</button>
+    </div>
+  </section>
+
+  <section class="complete-progress" aria-label="注文の進捗">
+    <ol class="progress progress--sfpath is-step-3">
+      <li class="is-done">
+        <span class="progress__dot" aria-hidden="true"></span>
+        <span class="progress__label">注文受付</span>
+      </li>
+      <li class="<%= order?.status === 'paid' || order?.status === 'processing' ? 'is-active' : '' %>">
+        <span class="progress__dot" aria-hidden="true"></span>
+        <span class="progress__label">準備中</span>
+      </li>
+      <li class="">
+        <span class="progress__dot" aria-hidden="true"></span>
+        <span class="progress__label">出荷</span>
+      </li>
+      <li class="">
+        <span class="progress__dot" aria-hidden="true"></span>
+        <span class="progress__label">お届け</span>
+      </li>
+    </ol>
+  </section>
+
+  <section class="complete-summary">
+    <h2 class="section-title">ご注文内容</h2>
+
+    <div class="summary">
+      <div class="summary__items">
+        <% (items || []).forEach(function(it){ %>
+          <article class="item">
+            <a class="item__thumb" href="/products/<%= it.slug %>">
+              <img src="<%= it.image_url || '/img/noimage.png' %>" alt="<%= it.title %>">
+            </a>
+            <div class="item__meta">
+              <h3 class="item__title"><a href="/products/<%= it.slug %>"><%= it.title %></a></h3>
+              <div class="item__sub">
+                数量：<%= it.quantity %>　/　単価：¥<%= (it.price||0).toLocaleString() %> <%= it.unit ? ` / ${it.unit}` : '' %>
+              </div>
+              <div class="item__amount">
+                ¥<%= (it.price * it.quantity).toLocaleString() %>
+              </div>
+            </div>
+          </article>
+        <% }) %>
+      </div>
+
+      <aside class="summary__totals" aria-label="合計">
+        <dl class="totals">
+          <div class="row">
+            <dt>小計</dt>
+            <dd>¥<%= (order?.subtotal ?? 0).toLocaleString() %></dd>
+          </div>
+          <div class="row">
+            <dt>割引</dt>
+            <dd>- ¥<%= (order?.discount ?? 0).toLocaleString() %>
+              <% if (coupon?.code) { %>
+                <span class="badge">クーポン: <%= coupon.code %></span>
+              <% } %>
+            </dd>
+          </div>
+          <div class="row">
+            <dt>送料</dt>
+            <dd>¥<%= (order?.shipping_fee ?? 0).toLocaleString() %></dd>
+          </div>
+          <div class="row totals__grand">
+            <dt>合計</dt>
+            <dd>¥<%= (order?.total ?? 0).toLocaleString() %></dd>
+          </div>
+        </dl>
+
+        <div class="payment">
+          <h3>お支払い方法</h3>
+          <p><%= (order?.payment_method || '').toUpperCase() || '-' %></p>
+        </div>
+        <div class="shipping">
+          <h3>配送方法</h3>
+          <p>
+            <%= (order?.ship_method === 'cool' ? 'クール便' : '通常便') %>
+            <% if (order?.eta_at) { %>
+              ／ お届け予定：<%= new Date(order.eta_at).toLocaleDateString('ja-JP') %>
+            <% } %>
+          </p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="complete-address">
+    <div class="addr-card">
+      <h2 class="section-title">配送先</h2>
+      <address>
+        <div><%= shippingAddress?.full_name %>（<%= shippingAddress?.phone %>）</div>
+        <div>〒<%= shippingAddress?.postal_code %></div>
+        <div><%= shippingAddress?.prefecture %><%= shippingAddress?.city %><%= shippingAddress?.address_line1 %></div>
+        <% if (shippingAddress?.address_line2) { %>
+          <div><%= shippingAddress.address_line2 %></div>
+        <% } %>
+      </address>
+    </div>
+
+    <div class="addr-card">
+      <h2 class="section-title">請求先</h2>
+      <address>
+        <% if (billingAddress) { %>
+          <div><%= billingAddress.full_name %>（<%= billingAddress.phone %>）</div>
+          <div>〒<%= billingAddress.postal_code %></div>
+          <div><%= billingAddress.prefecture %><%= billingAddress.city %><%= billingAddress.address_line1 %></div>
+          <% if (billingAddress.address_line2) { %>
+            <div><%= billingAddress.address_line2 %></div>
+          <% } %>
+        <% } else { %>
+          <div>配送先と同じ</div>
+        <% } %>
+      </address>
+    </div>
+  </section>
+
+  <section class="complete-help">
+    <h2 class="section-title">サポート</h2>
+    <p>
+      ご不明点があれば <a href="/contact">お問い合わせ</a> ください。<br>
+      返品・交換についてはフッターの「ご利用ガイド」をご確認ください。
+    </p>
+  </section>
+</main>
+
+<script>
+  window.__CK__ = window.__CK__ || {};
+  __CK__.orderId = '<%= order?.id || '' %>';
+  __CK__.orderNo = '<%= order?.orderNo || order?.id || '' %>';
+</script>
+<script src="/js/checkout-complete.js" defer></script>
+
+<%- include('../partials/footer') %>

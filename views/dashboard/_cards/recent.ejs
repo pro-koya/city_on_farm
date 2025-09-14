@@ -6,8 +6,8 @@
   <div class="rail__track rail__track--tight">
     <% if (recent && recent.length) { %>
       <% recent.slice(0,12).forEach(function(p){ %>
-        <a class="card-mini" href="/products/<%= p.slug || p.id %>" data-product-id="<%= p.id %>">
-          <img src="<%= p.image %>" alt="<%= p.name %>">
+        <a class="card-mini" href="/products/<%= p.slug %>" data-product-id="<%= p.id %>">
+          <img src="<%= p.image %>" alt="<%= p.title %>">
           <div class="card-mini__cap">
             <strong><%= p.name %></strong>
             <span class="muted">¥<%= p.price %></span>

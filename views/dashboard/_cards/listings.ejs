@@ -5,14 +5,14 @@
   </div>
   <ul class="list media">
     <% if (listings && listings.length) { %>
-      <% listings.slice(0,6).forEach(function(l){ %>
+      <% listings.forEach(function(l){ %>
         <li class="row media__row">
-          <img class="thumb" src="<%= l.image %>" alt="<%= l.name %>">
+          <img class="thumb" src="<%= l.image %>" alt="<%= l.title %>">
           <div class="media__meta">
-            <strong><a class="link" href="/products/<%= l.slug || l.id %>"><%= l.name %></a></strong>
+            <strong><a class="link" href="/products/<%= l.slug || l.id %>"><%= l.title %></a></strong>
             <div class="muted">在庫 <%= l.stock %>・価格 ¥<%= l.price %></div>
           </div>
-          <a class="btn btn--sm" href="/seller/listings/<%= l.id %>/edit">編集</a>
+          <a class="btn btn--sm" href="/seller/listing-edit/<%= l.id %>">編集</a>
         </li>
       <% }) %>
     <% } else { %>

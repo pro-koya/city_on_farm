@@ -170,6 +170,38 @@
     recalc();
   });
 
+  const checkoutBtn = document.getElementById('checkoutBtn');
+  checkoutBtn?.addEventListener('click', async (e) => {
+    e.preventDefault();
+
+    // チェックされている行の product_id を収集
+    const checkedLis = [...list.querySelectorAll('.cart-item')]
+      .filter(li => li.querySelector('.rowCheck')?.checked);
+
+    if (!checkedLis.length) {
+      alert('購入対象の商品が選択されていません。チェックを入れてください。');
+      return;
+    }
+
+    const ids = checkedLis.map(li => li.dataset.id).filter(Boolean);
+
+    try {
+      // サーバに「選択中ID」を一時保存
+      const resp = await fetch('/cart/selection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF },
+        body: JSON.stringify({ ids })
+      });
+      if (!resp.ok) throw new Error('save selection failed');
+
+      // 保存できたら /checkout へ遷移
+      window.location.href = '/checkout';
+    } catch (err) {
+      console.error(err);
+      alert('購入手続きの開始に失敗しました。時間をおいて再度お試しください。');
+    }
+  });
+
   // 初期バインド
   [...list.querySelectorAll('.cart-item')].forEach(bindRow);
   recalc();

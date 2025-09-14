@@ -80,6 +80,9 @@ body {
   text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.6);
 }
 
+button { font-size: 16px; color: var(--color-main);}
+a { color: var(--color-main); text-decoration: none;}
+
 /* --- BUTTONS --- */
 .button {
   display: inline-block;

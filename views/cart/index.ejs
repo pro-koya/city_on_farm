@@ -1,7 +1,7 @@
 <%- include('../partials/header', { title: 'カート', extraCSS: '/styles/cart.css' }) %>
 
 <main class="cart">
-  <form id="cart-form" class="cart__wrap" method="POST" action="/checkout">
+  <div id="cart-form" class="cart__wrap">
     <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <% } %>
@@ -78,7 +78,6 @@
                   小計：<strong class="subtotal__val"><%= (it.price * (it.quantity||1)).toLocaleString() %></strong><span>円</span>
                 </div>
                 <div class="switch-buy">
-                  <button class="link" type="button" data-act="save-later">あとで買う</button>
                   <button class="link danger" type="button" data-act="remove">削除</button>
                 </div>
               </div>
@@ -121,7 +120,7 @@
           <div class="summary__total">
             <span>合計（税込）</span><span id="sumTotal">-</span>
           </div>
-          <button class="btn btn--lg btn--primary" type="submit" id="checkoutBtn">購入手続きへ</button>
+          <a class="btn btn--lg btn--primary" id="checkoutBtn" href="/checkout">購入手続きへ</a>
           <p class="summary__note">お支払いは安全に処理されます</p>
         </div>
 
@@ -136,7 +135,7 @@
     </section>
 
     <% } %>
-  </form>
+  </div>
 </main>
 
 <script src="/js/cart.js"></script>

@@ -1,0 +1,29 @@
+@import url('/styles/listing-new.css');
+
+/* 画像並び替えリスト */
+.uploader__list.sortable{
+  display:grid; gap:.6rem; grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+  margin:.6rem 0 .8rem; padding:0; list-style:none;
+}
+.uploader__item{
+  position:relative; border:1px solid var(--border); border-radius:12px; overflow:hidden; background:#fff;
+  box-shadow: var(--shadow);
+  padding-bottom:.4rem;
+}
+.uploader__item img{ display:block; width:100%; aspect-ratio:4/3; object-fit:cover; background:#f0f3f2 }
+.uploader__item .alt{ width:calc(100% - 2*10px); margin:.4rem 10px 0; border:1px solid var(--border); border-radius:8px; padding:.4rem .6rem }
+.uploader__item .img-del{
+  position:absolute; top:6px; right:6px; border:1px solid #ef4444; background:#fff; color:#b91c1c; border-radius:8px; padding:.2rem .45rem;
+}
+.uploader__item .handle{
+  position:absolute; left:6px; top:6px; cursor:grab; background:#fff; border:1px solid var(--border); border-radius:8px; padding:.2rem .45rem;
+}
+
+/* 危険ゾーン */
+.danger-zone .btn.danger{
+  background:#b91c1c; border-color:#b91c1c; color:#fff;
+}
+
+/* キー・バリュー行（ドラッグ用の余白を少し） */
+.kv__row{ display:grid; grid-template-columns:1fr 1fr auto; gap:.5rem; align-items:center; margin-bottom:.5rem }
+.kv__row .kv__del{ border:1px solid var(--border); background:#fff; border-radius:8px; padding:.35rem .55rem }

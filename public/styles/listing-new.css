@@ -21,6 +21,11 @@ html,body{background:var(--bg); color:var(--text)}
 .bar .hint{color:var(--muted); font-size:.9rem}
 .bar .btn{min-height:40px}
 .bar .btn + .btn{margin-left:.4rem}
+/* @media(max-width:720px){
+  .bar{flex-direction: column;}
+  .bar__right{width: 100%;display: flex;justify-content: space-around;}
+  .bar .btn{width: 100%;}
+} */
 
 .grid{
   display:grid; gap:1rem;

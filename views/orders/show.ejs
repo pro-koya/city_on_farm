@@ -1,0 +1,214 @@
+<%- include('../partials/header', { title: `注文詳細 - ${order.orderNumber || order.id}`, extraCSS: '/styles/order-show.css' }) %>
+
+<main class="order-show">
+  <header class="order-head">
+    <div class="order-head__left">
+      <h1>注文詳細</h1>
+      <div class="order-meta">
+        <div class="meta-row">
+          <span class="label">注文番号</span>
+          <span class="value mono"><%= order.orderNumber || order.id %></span>
+          <% if (order.createdAt) { %>
+            <span class="dot">•</span>
+            <span class="label">注文日時</span>
+            <span class="value"><%= new Date(order.createdAt).toLocaleString('ja-JP') %></span>
+          <% } %>
+        </div>
+        <div class="meta-row">
+          <span class="label">ステータス</span>
+          <span class="value status status--<%= order.status %>">
+            <%= ({pending:'受付', paid:'支払い完了', processing:'処理中', shipped:'出荷済み', delivered:'配達完了', canceled:'キャンセル'})[order.status] || order.status %>
+          </span>
+          <% if (order.etaAt) { %>
+            <span class="dot">•</span>
+            <span class="label">お届け予定</span>
+            <span class="value"><%= new Date(order.etaAt).toLocaleDateString('ja-JP') %></span>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <div class="order-head__right">
+      <div class="order-actions">
+        <% if (order.status !== 'canceled') { %>
+          <form method="POST" action="/orders/<%= order.orderNumber || order.id %>/reorder" class="inline">
+            <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <% } %>
+            <button type="submit" class="btn btn--primary">同じ内容で再注文</button>
+          </form>
+        <% } %>
+        <a class="btn btn--ghost" href="/orders/recent">注文一覧へ戻る</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- パス式ステップ（Salesforce Path風） -->
+  <section class="order-progress">
+    <ul class="progress progress--sfpath <%= order._pathStepClass || '' %>">
+      <li class="<%= order.statusRank>=1 ? 'is-done' : (order.statusRank===0?'is-active':'') %>">
+        <span class="progress__dot"></span>
+        <span class="progress__label">受付</span>
+      </li>
+      <li class="<%= order.statusRank>=2 ? 'is-done' : (order.statusRank===1?'is-active':'') %>">
+        <span class="progress__dot"></span>
+        <span class="progress__label">処理中</span>
+      </li>
+      <li class="<%= order.statusRank>=3 ? 'is-done' : (order.statusRank===2?'is-active':'') %>">
+        <span class="progress__dot"></span>
+        <span class="progress__label">出荷</span>
+      </li>
+      <li class="<%= order.statusRank>=4 ? 'is-done' : (order.statusRank===3?'is-active':'') %>">
+        <span class="progress__dot"></span>
+        <span class="progress__label">完了</span>
+      </li>
+    </ul>
+  </section>
+
+  <section class="grid">
+    <!-- 左：アイテム & 配送/請求 -->
+    <div class="grid__left">
+      <!-- 商品一覧 -->
+      <section class="card">
+        <div class="card__head">
+          <h2>注文商品</h2>
+          <% if (order.note) { %><span class="badge">メモ</span><span class="note"><%= order.note %></span><% } %>
+        </div>
+
+        <ul class="items">
+          <% (items || []).forEach(function(it){ %>
+          <li class="item">
+            <a class="item__thumb" href="/products/<%= it.slug %>">
+              <img src="<%= it.image_url || '/images/placeholder.png' %>" alt="">
+            </a>
+            <div class="item__main">
+              <a class="item__title" href="/products/<%= it.slug %>"><%= it.title %></a>
+              <div class="item__meta">
+                <span><%= it.quantity %><%= it.unit || '点' %></span>
+                <span class="dot">•</span>
+                <span>¥<%= Number(it.unit_price || it.price).toLocaleString() %> / 単価</span>
+                <% if (it.seller_name) { %>
+                  <span class="dot">•</span>
+                  <span><%= it.seller_name %></span>
+                <% } %>
+              </div>
+            </div>
+            <div class="item__amount">¥<%= Number((it.unit_price||it.price) * it.quantity).toLocaleString() %></div>
+          </li>
+          <% }) %>
+        </ul>
+
+        <dl class="totals">
+          <div class="row"><dt>小計</dt><dd>¥<%= Number(totals.subtotal||0).toLocaleString() %></dd></div>
+          <div class="row"><dt>割引</dt><dd>-¥<%= Number(totals.discount||0).toLocaleString() %></dd></div>
+          <div class="row"><dt>送料</dt><dd>¥<%= Number(totals.shipping||0).toLocaleString() %></dd></div>
+          <% if (totals.tax !== undefined) { %>
+            <div class="row"><dt>税</dt><dd>¥<%= Number(totals.tax||0).toLocaleString() %></dd></div>
+          <% } %>
+          <div class="row grand"><dt>合計</dt><dd>¥<%= Number(totals.total||0).toLocaleString() %></dd></div>
+        </dl>
+      </section>
+
+      <!-- 配送・請求先 -->
+      <section class="card">
+        <div class="card__head"><h2>お届け先・請求先</h2></div>
+
+        <div class="addr-grid">
+          <div class="addr-card">
+            <h3>配送先</h3>
+            <% if (shippingAddress) { %>
+              <address>
+                <div><%= shippingAddress.full_name %></div>
+                <div>〒<%= shippingAddress.postal_code %></div>
+                <div><%= shippingAddress.prefecture %><%= shippingAddress.city %><%= shippingAddress.address_line1 %> <%= shippingAddress.address_line2 || '' %></div>
+                <% if (shippingAddress.phone) { %><div>TEL: <%= shippingAddress.phone %></div><% } %>
+              </address>
+            <% } else { %>
+              <p class="muted">配送先情報が見つかりません。</p>
+            <% } %>
+          </div>
+
+          <div class="addr-card">
+            <h3>請求先</h3>
+            <% if (billingAddress) { %>
+              <address>
+                <div><%= billingAddress.full_name %></div>
+                <div>〒<%= billingAddress.postal_code %></div>
+                <div><%= billingAddress.prefecture %><%= billingAddress.city %><%= billingAddress.address_line1 %> <%= billingAddress.address_line2 || '' %></div>
+                <% if (billingAddress.phone) { %><div>TEL: <%= billingAddress.phone %></div><% } %>
+              </address>
+            <% } else { %>
+              <p class="muted">請求先は配送先と同一です。</p>
+            <% } %>
+          </div>
+        </div>
+      </section>
+
+      <!-- 配送状況 -->
+      <!-- <section class="card">
+        <div class="card__head"><h2>配送状況</h2></div>
+        <% if (shipments && shipments.length) { %>
+          <ul class="shipments">
+            <% shipments.forEach(function(s){ %>
+              <li class="shipment">
+                <div class="shipment__head">
+                  <span class="badge badge--soft"><%= s.carrier || '配送業者' %></span>
+                  <% if (s.tracking_number) { %>
+                    <span class="mono">#<%= s.tracking_number %></span>
+                    <% if (s.tracking_url) { %>
+                      <a class="btn-link" target="_blank" rel="noopener" href="<%= s.tracking_url %>">追跡</a>
+                    <% } %>
+                  <% } %>
+                </div>
+                <div class="shipment__meta">
+                  <span>状態：<strong><%= s.status %></strong></span>
+                  <% if (s.shipped_at){ %><span class="dot">•</span><span>出荷：<%= new Date(s.shipped_at).toLocaleString('ja-JP') %></span><% } %>
+                  <% if (s.delivered_at){ %><span class="dot">•</span><span>配達：<%= new Date(s.delivered_at).toLocaleString('ja-JP') %></span><% } %>
+                </div>
+              </li>
+            <% }) %>
+          </ul>
+        <% } else { %>
+          <p class="muted">配送情報はまだありません。</p>
+        <% } %>
+      </section> -->
+    </div>
+
+    <!-- 右：支払い/操作 -->
+    <aside class="grid__right">
+        <div class="sticky">
+            <section class="card">
+              <h2>支払い情報</h2>
+              <dl class="payinfo">
+                <div class="row">
+                  <dt>支払い方法</dt>
+                  <dd><%= (payment && payment.method_label) || order.paymentMethod || '—' %></dd>
+                </div>
+                <div class="row">
+                  <dt>支払い状態</dt>
+                  <dd><%= (payment && payment.status_label) || order.paymentStatus || '—' %></dd>
+                </div>
+                <% if (payment && payment.transaction_id) { %>
+                <div class="row">
+                  <dt>取引ID</dt><dd class="mono"><%= payment.transaction_id %></dd>
+                </div>
+                <% } %>
+              </dl>
+      
+              <div class="side-actions">
+                <a class="btn btn--ghost" target="_blank" rel="noopener" href="/orders/<%= order.orderNumber || order.id %>/invoice.pdf">領収書を表示</a>
+              </div>
+            </section>
+      
+            <section class="card">
+              <h2>サポート</h2>
+              <p class="muted">ご不明な点があればお気軽にお問い合わせください。</p>
+              <a class="btn" href="/contact?type=order&ref=<%= order.orderNumber || order.id %>">問い合わせる</a>
+            </section>
+        </div>
+    </aside>
+  </section>
+</main>
+
+<script src="/js/order-show.js"></script>
+<%- include('../partials/footer') %>
