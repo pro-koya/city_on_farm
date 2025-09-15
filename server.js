@@ -3221,23 +3221,13 @@ async function fetchInvoiceData(query, { orderNo, userId }) {
 let __puppeteer__ = null;
 async function getPuppeteer() {
   if (__puppeteer__) return __puppeteer__;
-  try {
-    // 通常は puppeteer を使う（Chromium 同梱）
-    __puppeteer__ = require('puppeteer');
-  } catch (_) {
-    // Render 等で puppeteer-core を使う場合（Chromium のパスは環境変数で指定）
-    __puppeteer__ = require('puppeteer-core');
-  }
+  __puppeteer__ = require('puppeteer');
   return __puppeteer__;
 }
 
 // Node.js の環境（Render等）で必要になりがちな起動オプション
 function buildLaunchOptions() {
-  const executablePath =
-    process.env.CHROMIUM_PATH ||
-    process.env.PLAYWRIGHT_BROWSERS_PATH ||
-    process.env.PUPPETEER_EXECUTABLE_PATH ||
-    undefined;
+  const executablePath = undefined;
 
   if (executablePath && !fs.existsSync(executablePath)) {
     console.warn('[puppeteer] Not found at executablePath:', executablePath, '→ falling back to bundled Chromium');
@@ -3252,8 +3242,7 @@ function buildLaunchOptions() {
       '--font-render-hinting=medium',
       '--disable-gpu',
       '--disable-dev-shm-usage'
-    ],
-    executablePath
+    ]
   };
 }
 
