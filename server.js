@@ -9,6 +9,7 @@ const bcrypt  = require('bcryptjs');
 const { body, validationResult, param } = require('express-validator');
 const multer = require('multer');
 const ejs = require('ejs');
+const fs = require('fs');
 const upload = multer();
 
 const app = express();
@@ -17,7 +18,7 @@ const isProd = process.env.NODE_ENV === 'production';
 try { require('dotenv').config(); } catch { /* no-op */ }
 app.set('trust proxy', 1);
 // ローカル用のデフォルト値（自分の環境に合わせて）
-const LOCAL_DB_URL = 'postgresql://koya1104:postgres@127.0.0.1:5432/city_on_firm';
+const LOCAL_DB_URL = 'postgresql://city_on_firm_user:ruHjBG6tdZIgpWWxDNGmrxNmVkgbfaIP@dpg-d2u1oph5pdvs73a1ick0-a.oregon-postgres.render.com/city_on_firm';
 
 /* ========== DB ========== */
 const { Pool } = require('pg');
@@ -3238,12 +3239,18 @@ function buildLaunchOptions() {
     process.env.PUPPETEER_EXECUTABLE_PATH ||
     undefined;
 
+  if (executablePath && !fs.existsSync(executablePath)) {
+    console.warn('[puppeteer] Not found at executablePath:', executablePath, '→ falling back to bundled Chromium');
+    executablePath = undefined;
+  }
+
   return {
     headless: 'new',
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--font-render-hinting=medium',
+      '--disable-gpu',
       '--disable-dev-shm-usage'
     ],
     executablePath
