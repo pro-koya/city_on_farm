@@ -3274,7 +3274,8 @@ async function buildLaunchOptions() {
       '--disable-setuid-sandbox',
       '--font-render-hinting=medium',
       '--disable-gpu',
-      '--disable-dev-shm-usage'
+      '--disable-dev-shm-usage',
+      '--lang=ja-JP'
     ]
   };
 }
