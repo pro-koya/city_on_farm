@@ -3219,8 +3219,12 @@ async function fetchInvoiceData(query, { orderNo, userId }) {
 }
 
 async function resolveChromiumExecutable() {
-  // 1) 環境変数があれば最優先
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH;
+
+  // 1) 環境変数があれば最優先（※存在確認つき）
+  const envPath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  if (envPath && fs.existsSync(envPath)) {
+    return envPath;
+  }
 
   // 2) puppeteer が管理している実体（ビルド時に npx で入れておく想定）
   try {
@@ -3249,6 +3253,11 @@ async function resolveChromiumExecutable() {
 // Node.js の環境（Render等）で必要になりがちな起動オプション
 async function buildLaunchOptions() {
   const executablePath = await resolveChromiumExecutable();
+  if (process.env.NODE_ENV !== 'production') {
+    // no-op
+  } else {
+    console.log('[puppeteer] resolved executablePath =', executablePath || '(auto)');
+  }
   return {
     headless: 'new',
     executablePath: executablePath || undefined,
