@@ -7,7 +7,7 @@
   font-display: block;
 }
 *{ box-sizing:border-box; }
-html,body{ margin:0; padding:0; color:var(--ink); font-family:'Noto Sans JP Var', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+html,body{ margin:0; padding:0; color:var(--ink); font-family:'Noto Sans JP Var', sans-serif; }
 .page{
     max-width:980px; margin:24px auto; padding:0 16px 48px;
 }
