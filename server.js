@@ -51,6 +51,10 @@ async function dbQuery(text, params = []) {
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/fonts', express.static(path.join(__dirname, 'public', 'fonts'), {
+  immutable: true,
+  maxAge: '1y'
+}));
 
 /* ========== Parsers / Security ========== */
 app.use(cookieParser());
@@ -2367,7 +2371,6 @@ app.post('/checkout', csrfProtection, async (req, res, next) => {
   try {
     if (!req.session.user) return res.redirect('/login?next=' + encodeURIComponent('/checkout'));
 
-    console.log('注文確認');
     const {
       shippingAddressId,
       billSame,
@@ -3222,7 +3225,6 @@ async function resolveChromiumExecutable() {
 
   // 1) 環境変数があれば最優先（※存在確認つき）
   const envPath = process.env.PUPPETEER_EXECUTABLE_PATH;
-  console.log(envPath);
   if (envPath && fs.existsSync(envPath)) return envPath;
 
   // 2) puppeteer が管理している実体（ビルド時に npx で入れておく想定）
@@ -3260,14 +3262,6 @@ async function resolveChromiumExecutable() {
 // Node.js の環境（Render等）で必要になりがちな起動オプション
 async function buildLaunchOptions() {
   let executablePath = await resolveChromiumExecutable();
-  console.log(executablePath);
-  if (process.env.NODE_ENV !== 'production') {
-    // no-op
-    executablePath = undefined;
-  } else {
-    console.log('[puppeteer] resolved executablePath =', executablePath || '(auto)');
-  }
-  console.log(executablePath);
   return {
     headless: 'new',
     executablePath: executablePath || undefined,
@@ -3290,7 +3284,6 @@ async function buildLaunchOptions() {
 async function htmlToPdfBuffer(html, baseUrl) {
   const puppeteer = require('puppeteer');
   const launchOpts = await buildLaunchOptions();
-  console.log(launchOpts);
   const browser = await puppeteer.launch(launchOpts);
   try {
     const page = await browser.newPage();
@@ -3304,6 +3297,7 @@ async function htmlToPdfBuffer(html, baseUrl) {
     await page.setContent(htmlWithBase, {
       waitUntil: ['load', 'domcontentloaded', 'networkidle0']
     });
+    await page.evaluate(() => document.fonts && document.fonts.ready);
 
     // 画面用のCSSを反映（必要に応じて 'print' に切替）
     await page.emulateMediaType('screen');
@@ -3397,19 +3391,4 @@ app.use((err, req, res, next) => {
  * =======================================================*/
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
-});
-
-app.get('/__puppeteer_diag', async (req, res) => {
-  try {
-    const puppeteer = require('puppeteer');
-    const ep = await puppeteer.executablePath();
-    res.type('text/plain').send(JSON.stringify({
-      env_exec: process.env.PUPPETEER_EXECUTABLE_PATH || null,
-      cache_dir: process.env.PUPPETEER_CACHE_DIR || null,
-      resolved_exec: ep,
-      exists: ep ? fs.existsSync(ep) : false,
-    }, null, 2));
-  } catch (e) {
-    res.status(500).send(String(e));
-  }
 });
