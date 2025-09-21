@@ -3255,6 +3255,8 @@ function buildLaunchOptions() {
 async function htmlToPdfBuffer(html, baseUrl) {
   const puppeteer = await getPuppeteer();
   const browser = await puppeteer.launch(buildLaunchOptions());
+  const ep = await puppeteer.executablePath();
+  console.log('[puppeteer] executablePath:', ep);
   try {
     const page = await browser.newPage();
 
