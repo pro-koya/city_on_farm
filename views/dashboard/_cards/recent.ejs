@@ -7,10 +7,10 @@
     <% if (recent && recent.length) { %>
       <% recent.slice(0,12).forEach(function(p){ %>
         <a class="card-mini" href="/products/<%= p.slug %>" data-product-id="<%= p.id %>">
-          <img src="<%= p.image %>" alt="<%= p.title %>">
+          <img src="<%= p.image_url || '/images/placeholder.png' %>" alt="<%= p.title %>">
           <div class="card-mini__cap">
-            <strong><%= p.name %></strong>
-            <span class="muted">¥<%= p.price %></span>
+            <strong><%= p.title %></strong>
+            <span class="muted">¥<%= Number(p.price||0).toLocaleString() %></span>
           </div>
         </a>
       <% }) %>

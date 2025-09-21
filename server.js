@@ -345,6 +345,7 @@ app.post(
 
       req.session.user = { id: user.id, name: user.name, email: user.email, roles: user.roles || [] };
       await mergeSessionCartToDb(req, user.id);
+      await mergeSessionRecentToDb(req);
       const roles = user.roles || [];
       return res.redirect(roles.includes('seller') ? '/dashboard/seller' : '/dashboard/buyer');
     } catch (err) {
@@ -642,6 +643,100 @@ app.get('/contact/thanks', (req, res) => {
   });
 });
 
+/* ===== 最近参照: 記録（ログイン時はDB、未ログインはセッション） ===== */
+function ensureRecentSession(req) {
+  if (!req.session.recent) req.session.recent = []; // [{productId, viewedAtISO}]
+  return req.session.recent;
+}
+
+// 記録
+async function recordProductView(req, productId) {
+  const uid = req.session?.user?.id || null;
+  const nowIso = new Date().toISOString();
+
+  if (uid) {
+    // upsert: 同一(product)があれば viewed_at 更新
+    await dbQuery(
+      `INSERT INTO user_recent_products (user_id, product_id, viewed_at)
+       VALUES ($1::uuid, $2::uuid, now())
+       ON CONFLICT (user_id, product_id)
+       DO UPDATE SET viewed_at = EXCLUDED.viewed_at`,
+      [uid, productId]
+    );
+  } else {
+    // セッション保持（重複排除 & 先頭へ）
+    const list = ensureRecentSession(req);
+    const id = String(productId);
+    const next = list.filter(x => x.productId !== id);
+    next.unshift({ productId: id, viewedAt: nowIso });
+    req.session.recent = next.slice(0, 50); // 上限は適宜
+  }
+}
+
+// 取得
+async function fetchRecentProducts(req, limit = 8) {
+  const uid = req.session?.user?.id || null;
+
+  if (uid) {
+    const rows = await dbQuery(
+      `
+      SELECT p.id, p.slug, p.title, p.price, p.unit,
+             (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
+        FROM user_recent_products urp
+        JOIN products p ON p.id = urp.product_id
+       WHERE urp.user_id = $1
+       ORDER BY urp.viewed_at DESC
+       LIMIT $2
+      `,
+      [uid, limit]
+    );
+    return rows;
+  }
+
+  // ゲスト：セッションのID配列から情報を取得
+  const list = (req.session?.recent || [])
+    .slice(0, limit)
+    .map(r => r.productId)
+    .filter(isUuid);
+
+  if (!list.length) return [];
+
+  // 順序維持で取得
+  const ph = list.map((_, i) => `$${i+1}`).join(',');
+  const rows = await dbQuery(
+    `
+    SELECT p.id, p.slug, p.title, p.price, p.unit,
+           (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
+      FROM products p
+     WHERE p.id IN (${ph})
+    `,
+    list
+  );
+  const byId = new Map(rows.map(r => [r.id, r]));
+  return list.map(id => byId.get(id)).filter(Boolean);
+}
+
+// ログイン時：セッション保持分をDBへ移行（任意、ログイン直後に呼ぶ）
+async function mergeSessionRecentToDb(req) {
+  const uid = req.session?.user?.id || null;
+  if (!uid) return;
+  const list = (req.session?.recent || []).filter(x => isUuid(x.productId));
+  if (!list.length) return;
+
+  // 最新順で upsert（見た順番に更新）
+  for (const r of list) {
+    await dbQuery(
+      `INSERT INTO user_recent_products (user_id, product_id, viewed_at)
+       VALUES ($1::uuid, $2::uuid, $3::timestamptz)
+       ON CONFLICT (user_id, product_id)
+       DO UPDATE SET viewed_at = GREATEST(user_recent_products.viewed_at, EXCLUDED.viewed_at)`,
+      [uid, r.productId, r.viewedAt || new Date()]
+    );
+  }
+  // セッション側はクリア
+  req.session.recent = [];
+}
+
 /* =========================================================
  *  商品一覧 / 詳細（DB）
  * =======================================================*/
@@ -757,11 +852,15 @@ app.get('/products/:slug', csrfProtection, attachCsrf, async (req, res, next) =>
        LIMIT 10
     `, [product.category_id, product.id]);
 
+    await recordProductView(req, product.id);
+    const recentlyViewed = await fetchRecentProducts(req, 8);
+
     console.log(specs);
     res.set('Cache-Control', 'no-store');
     res.render('products/show', {
       title: product.title,
-      product, images, specs, tags, related
+      product, images, specs, tags, related,
+      recentlyViewed
     });
   } catch (e) { next(e); }
 });
@@ -1552,11 +1651,14 @@ app.get('/dashboard/buyer', requireAuth, async (req, res, next) => {
       `, [uid]),
       dbQuery(`SELECT COUNT(*)::int AS cnt FROM orders WHERE buyer_id = $1`, [uid])
     ]);
+
+    const recentProducts = await fetchRecentProducts(req, 12);
+
     res.render('dashboard/buyer', {
       title: 'ダッシュボード（購入者）',
       currentUser: req.session.user,
       orders: recentOrders,
-      recent: recentOrders,
+      recent: recentProducts,
       notices: [],
       totalOrders: count[0]?.cnt || 0
     });
