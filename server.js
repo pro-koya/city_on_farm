@@ -3260,12 +3260,15 @@ async function resolveChromiumExecutable() {
 // Node.js の環境（Render等）で必要になりがちな起動オプション
 async function buildLaunchOptions() {
   let executablePath = await resolveChromiumExecutable();
+  console.log(executablePath);
   if (process.env.NODE_ENV !== 'production') {
     // no-op
     executablePath = undefined;
   } else {
     console.log('[puppeteer] resolved executablePath =', executablePath || '(auto)');
+    executablePath = process.env.PUPPETEER_CACHE_DIR;
   }
+  console.log(executablePath);
   return {
     headless: 'new',
     executablePath: executablePath || undefined,
