@@ -3218,22 +3218,8 @@ async function fetchInvoiceData(query, { orderNo, userId }) {
   };
 }
 
-let __puppeteer__ = null;
-async function getPuppeteer() {
-  if (__puppeteer__) return __puppeteer__;
-  __puppeteer__ = require('puppeteer');
-  return __puppeteer__;
-}
-
 // Node.js の環境（Render等）で必要になりがちな起動オプション
 function buildLaunchOptions() {
-  const executablePath = undefined;
-
-  if (executablePath && !fs.existsSync(executablePath)) {
-    console.warn('[puppeteer] Not found at executablePath:', executablePath, '→ falling back to bundled Chromium');
-    executablePath = undefined;
-  }
-
   return {
     headless: 'new',
     args: [
@@ -3253,7 +3239,7 @@ function buildLaunchOptions() {
  * @returns {Buffer}
  */
 async function htmlToPdfBuffer(html, baseUrl) {
-  const puppeteer = await getPuppeteer();
+  const puppeteer = require('puppeteer');
   const browser = await puppeteer.launch(buildLaunchOptions());
   const ep = await puppeteer.executablePath();
   console.log('[puppeteer] executablePath:', ep);
