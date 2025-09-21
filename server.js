@@ -3222,36 +3222,33 @@ async function resolveChromiumExecutable() {
 
   // 1) 環境変数があれば最優先（※存在確認つき）
   const envPath = process.env.PUPPETEER_EXECUTABLE_PATH;
-  if (envPath && fs.existsSync(envPath)) {
-    return envPath;
-  }
+  if (envPath && fs.existsSync(envPath)) return envPath;
 
   // 2) puppeteer が管理している実体（ビルド時に npx で入れておく想定）
   try {
     const puppeteer = require('puppeteer');
-    const ep = await puppeteer.executablePath();
+    const ep = await puppeteer.executablePath(); // v22+ は async
     if (ep && fs.existsSync(ep)) return ep;
   } catch (_) {}
 
-  const cacheDir = process.env.PUPPETEER_CACHE_DIR || '/opt/render/.cache/puppeteer';
+  const cacheCandidates = [
+    process.env.PUPPETEER_CACHE_DIR || '/opt/render/.cache/puppeteer',
+    '/opt/render/project/.cache/puppeteer', // 設定ファイルを __dirname 基準にした場合にこちらに入ることがある
+  ];
 
-  try {
-    const entries = fs.readdirSync(cacheDir, { withFileTypes: true })
-      .filter(d => d.isDirectory() && d.name.startsWith('chrome'));
-    for (const d of entries) {
-      const p = path.join(cacheDir, d.name, 'chrome-linux64', 'chrome');
-      if (fs.existsSync(p)) return p;
-    }
-  } catch (_) {}
+  for (const cacheDir of cacheCandidates) {
+    try {
+      const entries = fs.readdirSync(cacheDir, { withFileTypes: true })
+        .filter(d => d.isDirectory() && d.name.startsWith('chrome'));
+      for (const d of entries) {
+        const p = path.join(cacheDir, d.name, 'chrome-linux64', 'chrome');
+        if (fs.existsSync(p)) return p;
+      }
+    } catch (_) {}
+  }
 
   // 3) よくあるシステムパス
-  const candidates = [
-    '/usr/bin/chromium',
-    '/usr/bin/chromium-browser',
-    '/usr/bin/google-chrome',
-    '/usr/bin/google-chrome-stable',
-  ];
-  for (const p of candidates) {
+  for (const p of ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable']) {
     if (fs.existsSync(p)) return p;
   }
 
@@ -3264,6 +3261,7 @@ async function buildLaunchOptions() {
   let executablePath = await resolveChromiumExecutable();
   if (process.env.NODE_ENV !== 'production') {
     // no-op
+    executablePath = undefined;
   } else {
     console.log('[puppeteer] resolved executablePath =', executablePath || '(auto)');
   }
@@ -3395,4 +3393,19 @@ app.use((err, req, res, next) => {
  * =======================================================*/
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+});
+
+app.get('/__puppeteer_diag', async (req, res) => {
+  try {
+    const puppeteer = require('puppeteer');
+    const ep = await puppeteer.executablePath();
+    res.type('text/plain').send(JSON.stringify({
+      env_exec: process.env.PUPPETEER_EXECUTABLE_PATH || null,
+      cache_dir: process.env.PUPPETEER_CACHE_DIR || null,
+      resolved_exec: ep,
+      exists: ep ? fs.existsSync(ep) : false,
+    }, null, 2));
+  } catch (e) {
+    res.status(500).send(String(e));
+  }
 });
