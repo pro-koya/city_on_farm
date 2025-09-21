@@ -3287,6 +3287,10 @@ async function buildLaunchOptions() {
 async function htmlToPdfBuffer(html, baseUrl) {
   const puppeteer = require('puppeteer');
   const launchOpts = await buildLaunchOptions();
+  console.log(launchOpts);
+  for (const launch of launchOpts) {
+    console.log(launch);
+  }
   const browser = await puppeteer.launch(launchOpts);
   try {
     const page = await browser.newPage();
