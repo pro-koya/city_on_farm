@@ -1,13 +1,27 @@
 :root { --ink:#111; --muted:#666; --border:#e5e7eb; --brand:#0ea5e9; --main:#4C6B5C; }
 @font-face {
-  font-family: 'Noto Sans JP Var';
-  src: url('/fonts/noto-sans-jp/NotoSansJP-Variable.woff2') format('woff2');
-  font-weight: 100 900;      /* ← 可変の重み範囲 */
-  font-style: normal/italic;
+  font-family: 'Noto Sans JP Local';
+  src: url('/fonts/noto-sans-jp/noto-sans-jp-japanese-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Noto Sans JP Local';
+  src: url('/fonts/noto-sans-jp/noto-sans-jp-japanese-500-normal.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Noto Sans JP Local';
+  src: url('/fonts/noto-sans-jp/noto-sans-jp-japanese-700-normal.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
   font-display: block;
 }
 *{ box-sizing:border-box; }
-html,body{ margin:0; padding:0; color:var(--ink); font-family:'Noto Sans JP Var', sans-serif; }
+html,body{ margin:0; padding:0; color:var(--ink); font-family:'Noto Sans JP Local', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
 .page{
     max-width:980px; margin:24px auto; padding:0 16px 48px;
 }
