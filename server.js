@@ -3266,7 +3266,6 @@ async function buildLaunchOptions() {
     executablePath = undefined;
   } else {
     console.log('[puppeteer] resolved executablePath =', executablePath || '(auto)');
-    executablePath = process.env.PUPPETEER_CACHE_DIR;
   }
   console.log(executablePath);
   return {

@@ -3,9 +3,16 @@
  * @type {import('puppeteer').Configuration}
  */
 
-// module.exports = {
-//   // ここへ必ず入れる
-//   cacheDirectory: '/opt/render/.cache/puppeteer',
-//   // 念のため Chrome のダウンロードを明示
-//   chrome: { skipDownload: false },
-// };
+let path;
+if (process.env.NODE_ENV !== 'production') {
+    path = undefined;
+    return;
+} else {
+    path = '/opt/render/project/.cache/puppeteer';
+}
+module.exports = {
+//   ここへ必ず入れる
+  cacheDirectory: path,
+//   念のため Chrome のダウンロードを明示
+  chrome: { skipDownload: false },
+};
