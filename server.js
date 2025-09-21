@@ -51,10 +51,13 @@ async function dbQuery(text, params = []) {
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/fonts', express.static(path.join(__dirname, 'public', 'fonts'), {
-  immutable: true,
-  maxAge: '1y'
-}));
+app.use(
+  '/fonts/noto-sans-jp',
+  express.static(
+    path.join(__dirname, 'node_modules', '@fontsource', 'noto-sans-jp', 'files'),
+    { immutable: true, maxAge: '1y' }
+  )
+);
 
 /* ========== Parsers / Security ========== */
 app.use(cookieParser());
@@ -87,6 +90,7 @@ function attachCsrf(req, res, next) {
 /* ========== 共通locals ========== */
 app.use(async (req, res, next) => {
   res.locals.currentUser = req.session.user || null;
+  if (req.path.endsWith('.woff2')) res.type('font/woff2');
 
   // デフォルトはセッション内カート件数（未ログイン時や障害時のフォールバック）
   const sessItems = req.session?.cart?.items || [];
