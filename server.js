@@ -3229,9 +3229,18 @@ async function resolveChromiumExecutable() {
   // 2) puppeteer が管理している実体（ビルド時に npx で入れておく想定）
   try {
     const puppeteer = require('puppeteer');
-    if (typeof puppeteer.executablePath === 'function') {
-      const ep = await puppeteer.executablePath();
-      if (ep && fs.existsSync(ep)) return ep;
+    const ep = await puppeteer.executablePath();
+    if (ep && fs.existsSync(ep)) return ep;
+  } catch (_) {}
+
+  const cacheDir = process.env.PUPPETEER_CACHE_DIR || '/opt/render/.cache/puppeteer';
+
+  try {
+    const entries = fs.readdirSync(cacheDir, { withFileTypes: true })
+      .filter(d => d.isDirectory() && d.name.startsWith('chrome'));
+    for (const d of entries) {
+      const p = path.join(cacheDir, d.name, 'chrome-linux64', 'chrome');
+      if (fs.existsSync(p)) return p;
     }
   } catch (_) {}
 
@@ -3252,7 +3261,7 @@ async function resolveChromiumExecutable() {
 
 // Node.js の環境（Render等）で必要になりがちな起動オプション
 async function buildLaunchOptions() {
-  const executablePath = await resolveChromiumExecutable();
+  let executablePath = await resolveChromiumExecutable();
   if (process.env.NODE_ENV !== 'production') {
     // no-op
   } else {
