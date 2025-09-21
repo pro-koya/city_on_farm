@@ -1,9 +1,9 @@
 :root { --ink:#111; --muted:#666; --border:#e5e7eb; --brand:#0ea5e9; --main:#4C6B5C; }
 @font-face {
   font-family: 'Noto Sans JP Var';
-  src: url('/fonts/NotoSansJP-Variable.woff2') format('woff2');
+  src: url('/fonts/noto-sans-jp/NotoSansJP-Variable.woff2') format('woff2');
   font-weight: 100 900;      /* ← 可変の重み範囲 */
-  font-style: normal;
+  font-style: normal/italic;
   font-display: block;
 }
 *{ box-sizing:border-box; }
