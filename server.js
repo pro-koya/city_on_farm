@@ -3218,10 +3218,40 @@ async function fetchInvoiceData(query, { orderNo, userId }) {
   };
 }
 
+async function resolveChromiumExecutable() {
+  // 1) 環境変数があれば最優先
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH;
+
+  // 2) puppeteer が管理している実体（ビルド時に npx で入れておく想定）
+  try {
+    const puppeteer = require('puppeteer');
+    if (typeof puppeteer.executablePath === 'function') {
+      const ep = await puppeteer.executablePath();
+      if (ep && fs.existsSync(ep)) return ep;
+    }
+  } catch (_) {}
+
+  // 3) よくあるシステムパス
+  const candidates = [
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+
+  // 見つからなければ null（Puppeteer に任せる → 失敗時は上のエラー）
+  return null;
+}
+
 // Node.js の環境（Render等）で必要になりがちな起動オプション
-function buildLaunchOptions() {
+async function buildLaunchOptions() {
+  const executablePath = await resolveChromiumExecutable();
   return {
     headless: 'new',
+    executablePath: executablePath || undefined,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -3240,9 +3270,8 @@ function buildLaunchOptions() {
  */
 async function htmlToPdfBuffer(html, baseUrl) {
   const puppeteer = require('puppeteer');
-  const browser = await puppeteer.launch(buildLaunchOptions());
-  const ep = await puppeteer.executablePath();
-  console.log('[puppeteer] executablePath:', ep);
+  const launchOpts = await buildLaunchOptions();
+  const browser = await puppeteer.launch(launchOpts);
   try {
     const page = await browser.newPage();
 
