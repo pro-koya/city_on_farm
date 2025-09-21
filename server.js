@@ -3222,6 +3222,7 @@ async function resolveChromiumExecutable() {
 
   // 1) 環境変数があれば最優先（※存在確認つき）
   const envPath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  console.log(envPath);
   if (envPath && fs.existsSync(envPath)) return envPath;
 
   // 2) puppeteer が管理している実体（ビルド時に npx で入れておく想定）
