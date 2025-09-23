@@ -95,11 +95,22 @@
         <section class="card">
           <h2 class="card__title">商品画像 *</h2>
           <p class="help">1枚以上、最大8枚まで。最初の画像がサムネイルになります。</p>
-          <div class="uploader" id="uploader" data-max="8">
-            <input id="images" name="images" type="file" accept="image/*" multiple hidden>
-            <button type="button" class="uploader__drop" id="openPicker">画像を選択 or ドロップ</button>
+
+          <!-- R2 直アップローダ -->
+          <div class="uploader" id="r2Uploader" data-max="8">
+            <input id="uploaderInput" type="file" accept="image/*" multiple hidden>
+            <button type="button" class="uploader__drop" id="openPicker">画像を選択</button>
             <ul class="uploader__list" id="previewList" aria-live="polite"></ul>
+            <p id="uploaderMsg" class="muted small"></p>
           </div>
+
+          <!-- 既存の保存フローと接続：アップ後のURLをここへ追記してサーバへ送る -->
+          <div class="field">
+            <label for="imageUrls">画像URL（1行1枚）</label>
+            <textarea name="imageUrls" id="imageUrls" rows="5" placeholder="https://..."><%= values?.imageUrls || '' %></textarea>
+            <p class="help">アップロード完了後、ここへ自動でURLを追記します。順番は後から並べ替え可能です。</p>
+          </div>
+
           <p class="error" data-for="images"></p>
         </section>
 
@@ -154,5 +165,6 @@
   </form>
 </main>
 
+<script src="/js/uploader-r2.js"></script>
 <script src="/js/listing-new.js"></script>
 <%- include('../partials/footer') %>

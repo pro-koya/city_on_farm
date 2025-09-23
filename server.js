@@ -1,5 +1,6 @@
 // server.js
 const path = require('path');
+try { require('dotenv').config(); } catch { /* no-op */ }
 const express = require('express');
 const session = require('express-session');
 const helmet  = require('helmet');
@@ -10,12 +11,15 @@ const { body, validationResult, param } = require('express-validator');
 const multer = require('multer');
 const ejs = require('ejs');
 const fs = require('fs');
+const { PutObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const { r2, R2_BUCKET, R2_PUBLIC_BASE_URL } = require('./r2');
+const { randomUUID } = require('crypto');
 const upload = multer();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
-try { require('dotenv').config(); } catch { /* no-op */ }
 app.set('trust proxy', 1);
 // ローカル用のデフォルト値（自分の環境に合わせて）
 const LOCAL_DB_URL = 'postgresql://city_on_firm_user:ruHjBG6tdZIgpWWxDNGmrxNmVkgbfaIP@dpg-d2u1oph5pdvs73a1ick0-a.oregon-postgres.render.com/city_on_firm';
@@ -46,6 +50,18 @@ async function dbQuery(text, params = []) {
     client.release();
   }
 }
+
+/* ========== MIME ========== */
+const ALLOWED_IMAGE_MIME = new Set([
+  'image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif'
+]);
+const EXT_BY_MIME = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/avif': 'avif',
+  'image/gif': 'gif'
+};
 
 /* ========== View / Static ========== */
 app.set('view engine', 'ejs');
@@ -136,6 +152,15 @@ function requireRole(role) {
 }
 
 /* ========== Utils ========== */
+function buildR2Key({ scope='products', sellerId='anon', productId=null, ext='jpg' } = {}){
+  const y = new Date().getUTCFullYear();
+  const m = String(new Date().getUTCMonth()+1).padStart(2,'0');
+  const base = `${scope}/${y}/${m}/${sellerId}`;
+  const name = `${Date.now()}-${randomUUID()}.${ext}`;
+  // productId がある場合はそれもパスに含めると整理しやすい
+  return productId ? `${base}/${productId}/${name}` : `${base}/${name}`;
+}
+
 function toSlug(s) {
   return String(s || '')
     .trim().toLowerCase()
@@ -831,12 +856,17 @@ app.get('/products/:slug', csrfProtection, attachCsrf, async (req, res, next) =>
     const product = rows[0];
     if (!product) return next();
 
-    const images = await dbQuery(
+    // 画像（R2に保存されているURLを取得）
+    const imageRows = await dbQuery(
       `SELECT url, alt FROM product_images WHERE product_id = $1 ORDER BY position ASC`, [product.id]
     );
+    // ← ここで EJS が使う形に整える（配列にして product.images に格納）
+    product.images = imageRows.map(r => r.url);
+
     const specs = await dbQuery(
       `SELECT label, value FROM product_specs WHERE product_id = $1 ORDER BY position ASC`, [product.id]
     );
+
     const tags = await dbQuery(
       `SELECT t.name, t.slug FROM product_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.product_id = $1 ORDER BY t.name ASC`,
       [product.id]
@@ -859,7 +889,7 @@ app.get('/products/:slug', csrfProtection, attachCsrf, async (req, res, next) =>
     res.set('Cache-Control', 'no-store');
     res.render('products/show', {
       title: product.title,
-      product, images, specs, tags, related,
+      product, specs, tags, related,
       recentlyViewed
     });
   } catch (e) { next(e); }
@@ -1004,8 +1034,47 @@ app.post(
       ]);
       const productId = pr[0].id;
 
-      // 画像
-      if (imageUrls.length) {
+      // 画像（URLのみ or メタ付きJSONの両対応）
+      const imageJsonRaw = (req.body.imageJson || '').trim();
+      let imageMetaRows = [];
+      if (imageJsonRaw) {
+        try {
+          const arr = JSON.parse(imageJsonRaw);
+          if (Array.isArray(arr)) {
+            imageMetaRows = arr
+              .map((x, idx) => ({
+                url:  String(x.url || '').trim(),
+                r2_key: String(x.r2_key || x.key || '').trim() || null,
+                mime: String(x.mime || '').trim() || null,
+                bytes: Number.isFinite(Number(x.bytes)) ? Number(x.bytes) : null,
+                width: Number.isFinite(Number(x.width)) ? Number(x.width) : null,
+                height: Number.isFinite(Number(x.height)) ? Number(x.height) : null,
+                position: idx
+              }))
+              .filter(x => x.url);
+          }
+        } catch (e) {
+          // JSON不正時は無視して従来の imageUrls を使う
+        }
+      }
+
+      if (imageMetaRows.length) {
+        const values = imageMetaRows.map((_, i) => {
+          // ($1, $2, $3, $4, $5, $6, $7, position)
+          const base = i * 7;
+          return `($1, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, ${imageMetaRows[i].position})`;
+        }).join(',');
+        const params = [
+          productId,
+          ...imageMetaRows.flatMap(x => [x.url, x.r2_key, x.mime, x.bytes, x.width, x.height])
+        ];
+        await client.query(
+          `INSERT INTO product_images
+             (product_id, url, r2_key, mime, bytes, width, height, position)
+           VALUES ${values}`,
+          params
+        );
+      } else if (imageUrls.length) {
         const valuesSql = imageUrls.map((_, i) => `($1, $${i + 2}, ${i})`).join(',');
         await client.query(
           `INSERT INTO product_images (product_id, url, position) VALUES ${valuesSql}`,
@@ -1330,8 +1399,28 @@ app.post(
         }
       }
 
-      // 5) INSERT: 新規URL行を末尾に追加
-      if (newImageUrls.length) {
+      // 5) INSERT: 新規画像（メタ付きJSONがあれば優先、無ければURLのみ）
+      const newImageJsonRaw = (req.body.imageJson || '').trim();
+      let newImageMeta = [];
+      if (newImageJsonRaw) {
+        try {
+          const arr = JSON.parse(newImageJsonRaw);
+          if (Array.isArray(arr)) {
+            newImageMeta = arr.map(x => ({
+              url:  String(x.url || '').trim(),
+              r2_key: String(x.r2_key || x.key || '').trim() || null,
+              mime: String(x.mime || '').trim() || null,
+              bytes: Number.isFinite(Number(x.bytes)) ? Number(x.bytes) : null,
+              width: Number.isFinite(Number(x.width)) ? Number(x.width) : null,
+              height: Number.isFinite(Number(x.height)) ? Number(x.height) : null
+            })).filter(x => x.url);
+          }
+        } catch (e) {
+          // JSON不正時は無視
+        }
+      }
+
+      if (newImageMeta.length || newImageUrls.length) {
         // 現在の最大 position を取得
         const maxPosRes = await client.query(
           `SELECT COALESCE(MAX(position), -1) AS maxp
@@ -1339,12 +1428,33 @@ app.post(
             WHERE product_id = $1::uuid`,
           [id]
         );
-        let p = Number(maxPosRes.rows[0]?.maxp || -1);
-        const values = newImageUrls.map((_, i) => `($1, $${i+2}, ${p + i + 1})`).join(',');
-        await client.query(
-          `INSERT INTO product_images (product_id, url, position) VALUES ${values}`,
-          [id, ...newImageUrls]
-        );
+        let basePos = Number(maxPosRes.rows[0]?.maxp || -1);
+
+        if (newImageMeta.length) {
+          const values = newImageMeta.map((_, i) => {
+            const base = i * 7; // url, r2_key, mime, bytes, width, height
+            return `($1, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, ${basePos + i + 1})`;
+          }).join(',');
+          const params = [
+            id,
+            ...newImageMeta.flatMap(x => [x.url, x.r2_key, x.mime, x.bytes, x.width, x.height])
+          ];
+          await client.query(
+            `INSERT INTO product_images
+               (product_id, url, r2_key, mime, bytes, width, height, position)
+             VALUES ${values}`,
+            params
+          );
+          basePos += newImageMeta.length;
+        }
+
+        if (newImageUrls.length) {
+          const values = newImageUrls.map((_, i) => `($1, $${i+2}, ${basePos + i + 1})`).join(',');
+          await client.query(
+            `INSERT INTO product_images (product_id, url, position) VALUES ${values}`,
+            [id, ...newImageUrls]
+          );
+        }
       }
 
       /* ===== スペック ===== */
@@ -3479,6 +3589,75 @@ app.get('/orders/:no/invoice.pdf', requireAuth, async (req, res, next) => {
     if (err.code === 'NOT_FOUND') return res.status(404).render('errors/404', { title: '領収書が見つかりません' });
     next(err);
   }
+});
+
+app.post('/uploads/sign', requireAuth /* 任意: requireRole('seller') */, async (req, res, next) => {
+  try {
+    const { mime, ext: extFromClient, productId } = req.body || {};
+    const m = String(mime || '').toLowerCase();
+
+    if (!ALLOWED_IMAGE_MIME.has(m)) {
+      return res.status(400).json({ ok:false, message:'このMIMEタイプはアップロードできません。' });
+    }
+    const ext = EXT_BY_MIME[m] || String(extFromClient || '').replace(/^\./,'').toLowerCase() || 'jpg';
+
+    const sellerId = req.session?.user?.id || 'anon';
+    const key = buildR2Key({ scope: 'products', sellerId, productId, ext });
+
+    const cmd = new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: key,
+      ContentType: m,
+      // R2はACL無視だが将来S3互換でGETする場合のため
+      //ACL: 'public-read'
+    });
+
+    const putUrl = await getSignedUrl(r2, cmd, { expiresIn: 60 * 5 }); // 5分
+    res.json({ ok:true, key, putUrl });
+  } catch (e) { next(e); }
+});
+
+app.post('/uploads/confirm', requireAuth /* 任意: requireRole('seller') */, async (req, res, next) => {
+  try {
+    const { key, productId, alt } = req.body || {};
+    if (!key) return res.status(400).json({ ok:false, message:'key が必要です。' });
+
+    // R2に本当に存在するか軽く確認（HeadObject）
+    let head = null;
+    try {
+      head = await r2.send(new HeadObjectCommand({ Bucket: R2_BUCKET, Key: key }));
+    } catch {
+      return res.status(404).json({ ok:false, message:'R2にオブジェクトが見つかりません。' });
+    }
+
+    const bytes = Number(head.ContentLength || 0);
+    const mime  = String(head.ContentType || '');
+
+    // 公開URLを組み立て（CFの公開ドメインを使う / なければ endpoint + key を使ってもOK）
+    const url = R2_PUBLIC_BASE_URL
+      ? `${R2_PUBLIC_BASE_URL.replace(/\/$/,'')}/${key}`
+      : `${process.env.R2_ENDPOINT.replace(/^https?:\/\//,'https://')}/${R2_BUCKET}/${key}`;
+
+    if (productId) {
+      // product_imagesへ追記（positionは末尾）
+      const posRow = await dbQuery(
+        `SELECT COALESCE(MAX(position), -1) AS maxp FROM product_images WHERE product_id = $1::uuid`,
+        [productId]
+      );
+      const pos = Number(posRow?.[0]?.maxp || -1) + 1;
+
+      const ins = await dbQuery(
+        `INSERT INTO product_images (product_id, url, position, alt, r2_key, mime, bytes)
+         VALUES ($1::uuid, $2, $3, $4, $5, $6, $7)
+         RETURNING id, url, position, alt`,
+        [productId, url, pos, alt || null, key, mime || null, bytes || null]
+      );
+      return res.json({ ok:true, image: ins[0] });
+    }
+
+    // 単なるアップロードだけ（商品紐付けは後で）という運用のとき
+    return res.json({ ok:true, url, key, bytes, mime });
+  } catch (e) { next(e); }
 });
 
 /* =========================================================
