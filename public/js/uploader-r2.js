@@ -3,12 +3,14 @@
   /**
    * R2 直アップローダ初期化
    * @param {Object} opt
-   * @param {string} opt.openBtnId - 画像選択ボタンのID
-   * @param {string} opt.fileInputId - <input type="file"> のID
-   * @param {string} opt.listId - プレビューULのID
-   * @param {string} opt.textareaId - URLを書き込む<textarea>のID（1行1URL）
-   * @param {string} opt.msgId - メッセージ表示要素のID
-   * @param {number} opt.max - 最大枚数
+   * @param {string} opt.openBtnId
+   * @param {string} opt.fileInputId
+   * @param {string} opt.listId
+   * @param {string} opt.textareaId
+   * @param {string} opt.msgId
+   * @param {number} opt.max
+   * @param {function():number} [opt.countFn]  // ★追加：現在の枚数を返す関数（省略時は textarea 行数）
+   * @param {function(meta:Object):void} [opt.onUploaded] // ★追加：アップロード完了1件ごとに呼ばれる
    */
   function initR2Uploader(opt) {
     const openBtn = document.getElementById(opt.openBtnId);
@@ -23,15 +25,9 @@
       return;
     }
 
-    // 許可MIME
-    const ALLOWED = new Set([
-      'image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif'
-    ]);
-
-    // CSRF
+    const ALLOWED = new Set(['image/jpeg','image/png','image/webp','image/avif','image/gif']);
     const CSRF = document.querySelector('input[name="_csrf"]')?.value || '';
 
-    // ユーティリティ
     function setMsg(text) { msg.textContent = text || ''; }
     function appendUrl(url) {
       ta.value = (ta.value ? (ta.value.replace(/\s+$/,'') + '\n') : '') + url;
@@ -42,10 +38,15 @@
       li.innerHTML = `<img src="${url}" alt="">`;
       list.appendChild(li);
     }
-    function currentCount() {
+    function currentCountByTextarea() {
       const trimmed = ta.value.trim();
       if (!trimmed) return 0;
       return trimmed.split('\n').filter(Boolean).length;
+    }
+    // ★ ここだけ差し替え可能に
+    function currentCount() {
+      try { if (typeof opt.countFn === 'function') return Number(opt.countFn()) || 0; } catch {}
+      return currentCountByTextarea();
     }
 
     async function signOne(file) {
@@ -62,40 +63,37 @@
     }
 
     async function confirmOne(key, file) {
-      // 可能なら bytes/mime も送る（サーバ側が無視してもOK）
       const res = await fetch('/uploads/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF },
-        body: JSON.stringify({
-          key,
-          bytes: file?.size || undefined,
-          mime: file?.type || undefined
-        })
+        body: JSON.stringify({ key, bytes: file?.size, mime: file?.type })
       });
       if (!res.ok) throw new Error('confirm failed');
-      const data = await res.json(); // { ok, url } or { ok, image:{url,...} }
+      const data = await res.json(); // { ok, url } | { ok, image:{url,r2_key,bytes,mime,width,height} }
       const url = data?.image?.url || data?.url;
       if (!data?.ok || !url) throw new Error('confirm bad payload');
-      return url;
+
+      // ★ 呼び出し側で使いやすいメタを返す
+      return {
+        url,
+        r2_key: data?.image?.r2_key || key,
+        bytes:  data?.image?.bytes ?? file?.size ?? null,
+        mime:   data?.image?.mime  ?? file?.type ?? null,
+        width:  data?.image?.width ?? null,
+        height: data?.image?.height ?? null,
+      };
     }
 
     async function uploadFiles(files) {
       const filesArr = Array.from(files || []);
       if (!filesArr.length) return;
 
-      // 枚数制限
       const room = max - currentCount();
-      if (room <= 0) {
-        setMsg(`最大 ${max} 枚までです。`);
-        return;
-      }
+      if (room <= 0) { setMsg(`最大 ${max} 枚までです。`); return; }
+
       const take = filesArr.slice(0, room);
       const skip = filesArr.length - take.length;
-      if (skip > 0) {
-        setMsg(`最大 ${max} 枚までです。（${skip} 枚をスキップしました）`);
-      } else {
-        setMsg('アップロード中…');
-      }
+      setMsg(skip > 0 ? `最大 ${max} 枚までです。（${skip} 枚をスキップしました）` : 'アップロード中…');
 
       try {
         for (const file of take) {
@@ -103,20 +101,19 @@
             setMsg('対応していない画像形式です。JPEG/PNG/WebP/AVIF/GIF をご利用ください。');
             continue;
           }
-
-          // 1) 署名URL
           const { key, putUrl } = await signOne(file);
-
-          // 2) R2 に直接PUT
           const putRes = await fetch(putUrl, { method: 'PUT', body: file });
           if (!putRes.ok) throw new Error('PUT failed');
 
-          // 3) confirm → DB保存 → URL取得
-          const url = await confirmOne(key, file);
+          const meta = await confirmOne(key, file); // ★ {url,r2_key,bytes,mime,width,height}
 
-          // 4) UI反映
-          appendUrl(url);
-          addPreview(url);
+          // ★ onUploaded があれば委譲、なければ従来どおりにテキストエリア＆プレビューへ
+          if (typeof opt.onUploaded === 'function') {
+            try { opt.onUploaded(meta); } catch {}
+          } else {
+            appendUrl(meta.url);
+            addPreview(meta.url);
+          }
         }
         setMsg('アップロードが完了しました。');
       } catch (e) {
@@ -127,19 +124,16 @@
       }
     }
 
-    // イベント
     openBtn.addEventListener('click', () => input.click());
     input.addEventListener('change', () => {
       if (input.files && input.files.length) uploadFiles(input.files);
     });
 
-    // 任意：ドラッグ&ドロップ（input要素に drop を委譲）
+    // D&D
     const dropZone = input.closest('#uploader') || input.parentElement;
     if (dropZone) {
       const stop = e => { e.preventDefault(); e.stopPropagation(); };
-      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => {
-        dropZone.addEventListener(ev, stop);
-      });
+      ['dragenter','dragover','dragleave','drop'].forEach(ev => dropZone.addEventListener(ev, stop));
       dropZone.addEventListener('drop', e => {
         const dtFiles = e.dataTransfer?.files;
         if (dtFiles && dtFiles.length) uploadFiles(dtFiles);
@@ -147,6 +141,5 @@
     }
   }
 
-  // グローバル公開
   window.initR2Uploader = initR2Uploader;
 })();

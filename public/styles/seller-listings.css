@@ -30,7 +30,7 @@
 .btn{display:inline-flex;align-items:center;justify-content:center;padding:.55rem .9rem;border-radius:12px;border:1px solid var(--main);background:var(--main);color:#fff;cursor:pointer}
 .btn--ghost{background:#fff;color:var(--main);border-color:var(--border)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
-.icon-btn{border:1px solid var(--border);background:#fff;border-radius:10px;padding:.35rem .5rem;cursor:pointer}
+.icon-btn{border:1px solid var(--border);background:#fff;border-radius:10px;padding:.35rem .5rem;cursor:pointer; font-size: 14px;}
 .icon-btn.danger{border-color:#ef4444;color:#b91c1c}
 
 /* テーブル */

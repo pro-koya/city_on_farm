@@ -10,13 +10,35 @@
   box-shadow: var(--shadow);
   padding-bottom:.4rem;
 }
-.uploader__item img{ display:block; width:100%; aspect-ratio:4/3; object-fit:cover; background:#f0f3f2 }
+.uploader__item img{
+  display:block; width:100%; aspect-ratio:4/3; object-fit:cover; background:#f0f3f2;
+  user-drag: none;           /* Safari */
+  -webkit-user-drag: none;   /* Safari 旧 */
+  pointer-events: none;      /* 画像上でもハンドルにヒットしやすくする */
+}
 .uploader__item .alt{ width:calc(100% - 2*10px); margin:.4rem 10px 0; border:1px solid var(--border); border-radius:8px; padding:.4rem .6rem }
 .uploader__item .img-del{
   position:absolute; top:6px; right:6px; border:1px solid #ef4444; background:#fff; color:#b91c1c; border-radius:8px; padding:.2rem .45rem;
 }
+/* 追記：ハンドルでのドラッグをモバイルでも快適に */
 .uploader__item .handle{
-  position:absolute; left:6px; top:6px; cursor:grab; background:#fff; border:1px solid var(--border); border-radius:8px; padding:.2rem .45rem;
+  position:absolute; left:6px; top:6px; cursor:grab; background:#fff;
+  border:1px solid var(--border); border-radius:8px; padding:.2rem .45rem;
+  touch-action: none;           /* ← これが超重要（画面スクロールを抑止） */
+  user-select: none;
+}
+.uploader__list.sortable{ position: relative; } /* 絶対配置のドラッグ要素の基準 */
+
+.uploader__item.dragging{
+  opacity: .9;
+  box-shadow: 0 12px 28px rgba(0,0,0,.18);
+  cursor:grabbing;
+}
+
+.uploader__placeholder{
+  border:2px dashed #cbd5e1;
+  border-radius:12px;
+  background: #f8fafc;
 }
 
 /* 危険ゾーン */

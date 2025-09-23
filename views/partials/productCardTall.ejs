@@ -1,5 +1,5 @@
 <a class="card--tall" href="/products/<%= p.slug || p.id %>" data-product-id="<%= p.id %>" aria-label="<%= p.name %>の詳細">
-  <img src="<%= p.image %>" alt="<%= p.title %>">
+  <img src="<%= p.image_url %>" alt="<%= p.title %>">
   <div class="body">
     <h3 class="name"><%= p.title %></h3>
     <% if (p.producer) { %><p class="producer"><%= p.producer %></p><% } %>

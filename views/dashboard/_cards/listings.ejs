@@ -7,7 +7,7 @@
     <% if (listings && listings.length) { %>
       <% listings.forEach(function(l){ %>
         <li class="row media__row">
-          <img class="thumb" src="<%= l.image %>" alt="<%= l.title %>">
+          <img class="thumb" src="<%= l.image_url %>" alt="<%= l.title %>">
           <div class="media__meta">
             <strong><a class="link" href="/products/<%= l.slug || l.id %>"><%= l.title %></a></strong>
             <div class="muted">在庫 <%= l.stock %>・価格 ¥<%= l.price %></div>

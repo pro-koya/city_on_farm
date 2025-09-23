@@ -1060,25 +1060,47 @@ app.post(
 
       if (imageMetaRows.length) {
         const values = imageMetaRows.map((_, i) => {
-          // ($1, $2, $3, $4, $5, $6, $7, position)
-          const base = i * 7;
-          return `($1, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, ${imageMetaRows[i].position})`;
+        const base = i * 7;
+        return `(
+          $1,                       -- product_id（全行共通）
+          $${base + 2},            -- url
+          $${base + 3},            -- r2_key
+          $${base + 4},            -- mime
+          $${base + 5},            -- bytes
+          $${base + 6},            -- width
+          $${base + 7},            -- height
+          $${base + 8}             -- position
+        )`;
         }).join(',');
         const params = [
           productId,
-          ...imageMetaRows.flatMap(x => [x.url, x.r2_key, x.mime, x.bytes, x.width, x.height])
+          ...imageMetaRows.flatMap(x => [
+            x.url,
+            x.r2_key,
+            x.mime,
+            x.bytes,
+            x.width,
+            x.height,
+            x.position
+          ])
         ];
         await client.query(
           `INSERT INTO product_images
-             (product_id, url, r2_key, mime, bytes, width, height, position)
-           VALUES ${values}`,
+            (product_id, url, r2_key, mime, bytes, width, height, position)
+          VALUES ${values}`,
           params
         );
       } else if (imageUrls.length) {
-        const valuesSql = imageUrls.map((_, i) => `($1, $${i + 2}, ${i})`).join(',');
+        const rowsSql = imageUrls.map((_, i) => `($${i*2+2}, $${i*2+3})`).join(',');
+        const params = [productId, ...imageUrls.flatMap((url, i) => [url, i])];
+
         await client.query(
-          `INSERT INTO product_images (product_id, url, position) VALUES ${valuesSql}`,
-          [productId, ...imageUrls]
+          `
+          INSERT INTO product_images (product_id, url, position)
+          SELECT $1, v.url, v.pos
+            FROM (VALUES ${rowsSql}) AS v(url, pos)
+          `,
+          params
         );
       }
 
@@ -1233,7 +1255,7 @@ app.post(
   '/seller/listing-edit/:id',
   requireAuth,
   requireRole('seller'),
-  upload.none(),
+  upload.fields([{ name: 'images', maxCount: 8 }]),
   csrfProtection,
   [
     body('title').trim().isLength({ min: 1, max: 80 }).withMessage('商品名を入力してください（80文字以内）。'),

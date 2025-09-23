@@ -109,6 +109,7 @@
         <section class="card">
           <h2 class="card__title">商品画像</h2>
           <p class="help">ドラッグで順番変更、✕で削除。下で新規追加もできます。</p>
+          <input type="hidden" id="imageJson" name="imageJson" value="[]">
 
           <ul class="uploader__list sortable" id="currentImages" aria-live="polite">
             <% (images || []).forEach(function(img, i){ %>
@@ -125,16 +126,12 @@
           </ul>
 
           <div class="uploader" id="uploader" data-max="8">
-            <input id="images" name="images" type="file" accept="image/*" multiple hidden>
+            <input id="images" type="file" accept="image/*" multiple hidden>
             <button type="button" class="uploader__drop" id="openPicker">画像を追加</button>
-            <ul class="uploader__list" id="previewList" aria-live="polite"></ul>
+            <p id="uploaderMsg" class="help"></p>
+            <ul class="uploader__list" id="previewList" aria-live="polite" hidden></ul>
           </div>
-
-          <!-- URLで追加したい場合はテキストエリアで受けてもOK -->
-          <div class="field">
-            <label for="imageUrls">画像URL（1行1枚・任意）</label>
-            <textarea id="imageUrls" name="imageUrls" rows="3" placeholder="https://..."></textarea>
-          </div>
+          <textarea id="imageUrls" name="imageUrls" hidden></textarea>
         </section>
 
         <!-- 出荷/配送 -->
@@ -201,5 +198,6 @@
     maxImages: 8
   };
 </script>
+<script src="/js/uploader-r2.js"></script>
 <script src="/js/listing-edit.js"></script>
 <%- include('../partials/footer') %>
