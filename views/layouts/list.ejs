@@ -1,0 +1,46 @@
+<%- include('../partials/header', {
+  title,
+  // 既存の extraCSS / extraJS が未定義でも動くように安全に連結します
+  extraCSS: ((typeof extraCSS!=='undefined' && extraCSS) ? extraCSS + ',' : '') + '/styles/listview.css',
+  extraJS:  ((typeof extraJS!=='undefined' && extraJS) ? extraJS + ',' : '') + '/js/listview.js'
+}) %>
+
+<main class="lv">
+  <header class="lv__head">
+    <h1 class="lv__title"><%= pageTitle || title || '' %></h1>
+
+    <!-- ツールバー（検索＋フィルタ＋新規アクションなど） -->
+    <form class="lv__toolbar" action="<%= (typeof searchAction!=='undefined' && searchAction) ? searchAction : '' %>" method="get">
+      <div class="lv__toolbar-row">
+
+        <!-- 検索ボックス（アイコン付き、モバイルは全幅） -->
+        <div class="lv__search">
+          <span class="lv__icon" aria-hidden="true">🔍</span>
+          <input class="lv__input" type="search" name="q" value="<%= q || '' %>" placeholder="番号・商品名・出品者で検索">
+          <% if (q) { %><a class="lv__clear" href="<%= (request?.path || '') %>">×</a><% } %>
+        </div>
+
+        <!-- プルダウン群（必要なページで filtersHTML を差し込む） -->
+        <div class="lv__filters" id="lvFilters">
+          <%- typeof filtersHTML !== 'undefined' ? filtersHTML : '' %>
+        </div>
+
+        <!-- 実行系 -->
+        <div class="lv__actions">
+          <button class="btn" type="submit">検索</button>
+          <% if (typeof extraActionsHTML !== 'undefined') { %>
+            <%= extraActionsHTML %>
+          <% } %>
+        </div>
+
+      </div>
+    </form>
+  </header>
+
+  <!-- コンテンツ（各ページから body を差し込む） -->
+  <section class="lv__body">
+    <%- body %>
+  </section>
+</main>
+
+<%- include('../partials/footer') %>

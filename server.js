@@ -1858,7 +1858,7 @@ app.get('/dashboard/buyer', requireAuth, async (req, res, next) => {
 app.get('/dashboard/seller', requireAuth, requireRole('seller'), async (req, res, next) => {
   try {
     const uid = req.session.user.id;
-    const [listings, trades, revenue] = await Promise.all([
+    const [listings, tradesRecent, tradesCount, revenue] = await Promise.all([
       dbQuery(`
         SELECT p.slug, p.title, p.price, p.stock, p.id,
                (SELECT url FROM product_images WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
@@ -1867,26 +1867,382 @@ app.get('/dashboard/seller', requireAuth, requireRole('seller'), async (req, res
          ORDER BY p.updated_at DESC
          LIMIT 12
       `, [uid]),
+
+      /* 直近6件の「自分が関与する注文」 */
       dbQuery(`
-        SELECT COUNT(*)::int AS cnt
+        SELECT
+          o.id,
+          COALESCE(o.order_number, o.id::text) AS order_no,
+          o.status AS order_status,
+          o.created_at,
+          SUM(oi.price * oi.quantity)::int AS amount
+        FROM orders o
+        JOIN order_items oi ON oi.order_id = o.id
+       WHERE oi.seller_id = $1
+       GROUP BY o.id
+       ORDER BY o.created_at DESC
+       LIMIT 6
+      `, [uid]),
+
+      /* 総件数 */
+      dbQuery(`
+        SELECT COUNT(DISTINCT o.id)::int AS cnt
+          FROM orders o
+          JOIN order_items oi ON oi.order_id = o.id
+         WHERE oi.seller_id = $1
+      `, [uid]),
+
+      /* 売上合計（支払い済のみカウントする場合は必要に応じて WHERE を追加）*/
+      dbQuery(`
+        SELECT COALESCE(SUM(oi.price * oi.quantity),0)::int AS total
           FROM order_items oi
           JOIN orders o ON o.id = oi.order_id
          WHERE oi.seller_id = $1
-      `, [uid]),
-      dbQuery(`
-        SELECT COALESCE(SUM(oi.price),0)::int AS total
-          FROM order_items oi
-          JOIN orders o ON o.id = oi.order_id
-         WHERE oi.seller_id = $1 AND o.status = 'paid'
+           AND o.payment_status IN ('paid','refunded') -- 例）入金確定ベース
       `, [uid])
     ]);
+
+    // カード用「取引履歴」の日本語ラベル化
+    const tradesCard = tradesRecent.map(t => ({
+      id: t.id,
+      date: new Date(t.created_at).toLocaleDateString('ja-JP'),
+      amount: t.amount,
+      status: jaLabel('order_status', t.order_status) // ← JA
+    }));
+
     res.render('dashboard/seller', {
       title: 'ダッシュボード（出品者）',
       currentUser: req.session.user,
       listings,
-      trades: trades[0]?.cnt || 0,
+      trades: tradesCard,                       // ← カードに渡す
+      totalTrades: tradesCount[0]?.cnt || 0,    // ← 使うなら表示
       revenue: revenue[0]?.total || 0
     });
+  } catch (e) { next(e); }
+});
+
+// 出品者の取引一覧
+app.get('/seller/trades', requireAuth, requireRole('seller'), async (req, res, next) => {
+  try {
+    const uid = req.session.user.id;
+    const { q = '', status = 'all', payment = 'all', ship = 'all', page = 1 } = req.query;
+
+    const where = ['EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $1)'];
+    const params = [uid];
+
+    if (q) {
+      params.push(`%${q}%`);
+      const like = `$${params.length}`;
+      where.push(`(
+        COALESCE(o.order_number, o.id::text) ILIKE ${like}
+        OR EXISTS (
+          SELECT 1 FROM order_items oi
+          JOIN products p ON p.id = oi.product_id
+          LEFT JOIN users su ON su.id = p.seller_id
+          WHERE oi.order_id = o.id
+            AND (p.title ILIKE ${like} OR COALESCE(su.name,'') ILIKE ${like})
+        )
+      )`);
+    }
+    if (status !== 'all') { params.push(status); where.push(`o.status = $${params.length}`); }
+    if (payment !== 'all') { params.push(payment); where.push(`o.payment_status = $${params.length}`); }
+    if (ship !== 'all') { params.push(ship); where.push(`o.shipment_status = $${params.length}`); }
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const pageSize = 20, offset = (pageNum - 1) * pageSize;
+
+    const total = (await dbQuery(
+      `SELECT COUNT(*)::int AS cnt FROM orders o WHERE ${where.join(' AND ')}`, params
+    ))[0]?.cnt || 0;
+
+    const rows = await dbQuery(
+      `
+      SELECT
+        o.id, COALESCE(o.order_number, o.id::text) AS order_no,
+        o.status, o.payment_status, o.shipment_status,
+        o.total, o.created_at
+      FROM orders o
+      WHERE ${where.join(' AND ')}
+      ORDER BY o.created_at DESC
+      LIMIT ${pageSize} OFFSET ${offset}
+      `,
+      params
+    );
+
+    const items = rows.map(r => ({
+      id: r.id,
+      orderNo: r.order_no,
+      status: r.status,
+      status_ja: jaLabel('order_status', r.status),
+      payment_status: r.payment_status,
+      payment_status_ja: jaLabel('payment_status', r.payment_status),
+      shipment_status: r.shipment_status,
+      shipment_status_ja: jaLabel('shipment_status', r.shipment_status),
+      total: r.total,
+      created_at: new Date(r.created_at).toLocaleString('ja-JP')
+    }));
+
+    // フィルタHTML（プルダウンをモダン化）
+    const filtersHTML = `
+      <select name="status" class="select">
+        <option value="all"${status==='all'?' selected':''}>すべての注文状況</option>
+        <option value="pending"${status==='pending'?' selected':''}>受付中</option>
+        <option value="confirmed"${status==='confirmed'?' selected':''}>確定</option>
+        <option value="paid"${status==='paid'?' selected':''}>支払い済み</option>
+        <option value="processing"${status==='processing'?' selected':''}>準備中</option>
+        <option value="fulfilled"${status==='fulfilled'?' selected':''}>出荷完了</option>
+        <option value="shipped"${status==='shipped'?' selected':''}>発送済み</option>
+        <option value="delivered"${status==='delivered'?' selected':''}>配達完了</option>
+        <option value="canceled"${status==='canceled'?' selected':''}>キャンセル</option>
+        <option value="refunded"${status==='refunded'?' selected':''}>返金済み</option>
+      </select>
+      <select name="payment" class="select">
+        <option value="all"${payment==='all'?' selected':''}>すべての支払い状況</option>
+        <option value="unpaid"${payment==='unpaid'?' selected':''}>未入金</option>
+        <option value="paid"${payment==='paid'?' selected':''}>入金完了</option>
+        <option value="canceled"${payment==='canceled'?' selected':''}>キャンセル</option>
+        <option value="refunded"${payment==='refunded'?' selected':''}>返金済み</option>
+      </select>
+      <select name="ship" class="select">
+        <option value="all"${ship==='all'?' selected':''}>すべての出荷状況</option>
+        <option value="preparing"${ship==='preparing'?' selected':''}>出荷準備中</option>
+        <option value="in_transit"${ship==='in_transit'?' selected':''}>お届け中</option>
+        <option value="delivered"${ship==='delivered'?' selected':''}>配達完了</option>
+        <option value="lost"${ship==='lost'?' selected':''}>紛失</option>
+        <option value="returned"${ship==='returned'?' selected':''}>返品</option>
+      </select>
+    `;
+
+    const pagination = { page: pageNum, pageCount: Math.max(1, Math.ceil(total / pageSize)) };
+    const buildQuery = (p={}) => {
+      const merged = { q, status, payment, ship, page: pageNum, ...p };
+      Object.keys(merged).forEach(k => (merged[k]==='' || merged[k]==null) && delete merged[k]);
+      const qs = new URLSearchParams(merged).toString();
+      return `/seller/trades${qs ? `?${qs}` : ''}`;
+    };
+
+    res.render('seller/trades/index', {
+      title: '取引一覧',
+      pageTitle: '取引一覧',
+      request: req, // list.ejs の action で使う
+      q, status, payment, ship,
+      items, total, pagination, buildQuery,
+      // レイアウト用差し込み
+      searchAction: '/seller/trades',
+      filtersHTML
+    });
+  } catch (e) { next(e); }
+});
+
+// 詳細
+app.get('/seller/trades/:id', requireAuth, requireRole('seller'), async (req, res, next) => {
+  try {
+    const uid = req.session.user.id;
+    const id = String(req.params.id || '').trim();
+
+    // 所有チェック（この注文に出品者自身の明細があるか）
+    const own = await dbQuery(
+      `SELECT 1
+         FROM order_items oi
+        WHERE oi.order_id = $1::uuid AND oi.seller_id = $2::uuid
+        LIMIT 1`,
+      [id, uid]
+    );
+    if (!own.length) return res.status(404).render('errors/404', { title: '見つかりません' });
+
+    // 注文本体
+    const orderRows = await dbQuery(
+      `SELECT o.*,
+              COALESCE(o.order_number, o.id::text) AS order_no,
+              u.name AS buyer_name, u.email AS buyer_email
+         FROM orders o
+         JOIN users u ON u.id = o.buyer_id
+        WHERE o.id = $1::uuid
+        LIMIT 1`,
+      [id]
+    );
+    const o = orderRows[0];
+    if (!o) return res.status(404).render('errors/404', { title: '見つかりません' });
+
+    // 住所（配送/請求）
+    const [shipping] = await dbQuery(
+      `SELECT * FROM order_addresses WHERE order_id = $1::uuid AND address_type = 'shipping' LIMIT 1`,
+      [id]
+    );
+    const [billing] = await dbQuery(
+      `SELECT * FROM order_addresses WHERE order_id = $1::uuid AND address_type = 'billing' LIMIT 1`,
+      [id]
+    );
+
+    // 支払い・出荷（最新を取る想定）
+    const [payment] = await dbQuery(
+      `SELECT * FROM payments WHERE order_id = $1::uuid ORDER BY created_at DESC LIMIT 1`,
+      [id]
+    );
+    const [shipment] = await dbQuery(
+      `SELECT * FROM shipments WHERE order_id = $1::uuid ORDER BY created_at DESC LIMIT 1`,
+      [id]
+    );
+
+    // 明細（商品画像つき）
+    const items = await dbQuery(
+      `
+      SELECT
+        oi.id, oi.quantity, oi.price,
+        p.id AS product_id, p.slug, p.title, p.unit,
+        (SELECT url FROM product_images pi WHERE pi.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url,
+        u.name AS producer
+      FROM order_items oi
+      JOIN products p ON p.id = oi.product_id
+      LEFT JOIN users u ON u.id = p.seller_id
+      WHERE oi.order_id = $1::uuid
+      ORDER BY oi.id ASC
+      `,
+      [id]
+    );
+
+    // 日本語ラベル
+    const vm = {
+      id: o.id,
+      orderNo: o.order_no,
+      status: o.status,
+      status_ja: jaLabel('order_status', o.status),
+      payment_status: o.payment_status,
+      payment_status_ja: jaLabel('payment_status', o.payment_status),
+      payment_method: o.payment_method,
+      payment_method_ja: jaLabel('payment_method', o.payment_method),
+      ship_method: o.ship_method,
+      ship_method_ja: jaLabel('ship_method', o.ship_method),
+      shipment_status: o.shipment_status,
+      shipment_status_ja: jaLabel('shipment_status', o.shipment_status),
+      created_at: new Date(o.created_at).toLocaleString('ja-JP'),
+      eta: o.eta_at ? new Date(o.eta_at).toLocaleDateString('ja-JP') : null,
+      subtotal: o.subtotal, discount: o.discount, shipping_fee: o.shipping_fee, tax: o.tax, total: o.total,
+      buyer: { name: o.buyer_name, email: o.buyer_email },
+      shipping, billing,
+      payment, shipment,
+      items: items.map(it => ({
+        ...it,
+        subtotal: (it.price || 0) * (it.quantity || 0)
+      }))
+    };
+
+    res.render('seller/trades/show', {
+      title: `取引 #${vm.orderNo}`,
+      order: vm
+    });
+  } catch (e) { next(e); }
+});
+
+// ステータス更新（簡易）
+app.post('/seller/trades/:id/status',
+  requireAuth, requireRole('seller'),
+  async (req, res, next) => {
+    try {
+      const id = String(req.params.id).trim();
+      const { order_status, payment_status, shipment_status } = req.body || {};
+
+      // 所有者チェック：この注文が本人（出品者）の受注に含まれるか（必要であれば厳格化）
+      const own = await dbQuery(`
+        SELECT 1
+          FROM orders o
+         WHERE o.id = $1
+           AND EXISTS (
+             SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $2
+           )
+         LIMIT 1
+      `, [id, req.session.user.id]);
+      if (!own.length) return res.status(404).json({ ok:false, message:'not found' });
+
+      // 値のバリデーション（ENUMに合わせて）
+      const okOrder    = ['pending','confirmed','paid','fulfilled','canceled','refunded'];
+      const okPayment  = ['unpaid','paid','canceled','refunded'];
+      const okShipment = ['preparing','in_transit','delivered','returned'];
+
+      const updates = [];
+      const params  = [];
+      if (order_status && okOrder.includes(order_status)) {
+        updates.push(`status = $${params.length+1}`); params.push(order_status);
+      }
+      if (payment_status && okPayment.includes(payment_status)) {
+        updates.push(`payment_status = $${params.length+1}`); params.push(payment_status);
+      }
+      if (shipment_status && okShipment.includes(shipment_status)) {
+        updates.push(`shipment_status = $${params.length+1}`); params.push(shipment_status);
+      }
+      if (!updates.length) return res.status(400).json({ ok:false, message:'no valid fields' });
+
+      params.push(id);
+
+      await dbQuery(`UPDATE orders SET ${updates.join(', ')}, updated_at = now() WHERE id = $${params.length}`, params);
+
+      // フロントでそのまま使えるよう返す
+      return res.json({
+        ok: true,
+        order: {
+          order_status,
+          payment_status,
+          shipment_status
+        }
+      });
+    } catch (e) { next(e); }
+  }
+);
+
+// server.js（任意）: 出荷ステータス更新（出品者は自分の明細がある注文のみ可）
+app.post('/seller/trades/:id/shipment-status', requireAuth, requireRole('seller'), async (req, res, next) => {
+  try {
+    const uid = req.session.user.id;
+    const id = String(req.params.id || '').trim();
+    const next = String(req.body.status || '');
+
+    if (!['preparing','in_transit','delivered','returned'].includes(next)) {
+      return res.status(400).json({ ok:false, message:'不正な状態です。' });
+    }
+
+    const own = await dbQuery(
+      `SELECT 1 FROM order_items oi WHERE oi.order_id = $1::uuid AND oi.seller_id = $2::uuid LIMIT 1`,
+      [id, uid]
+    );
+    if (!own.length) return res.status(404).json({ ok:false });
+
+    await dbQuery(`UPDATE orders SET shipment_status = $1, updated_at = now() WHERE id = $2::uuid`, [next, id]);
+    return res.json({ ok:true });
+  } catch (e) { next(e); }
+});
+
+// 一括更新（任意）
+app.post('/seller/trades/bulk', requireAuth, requireRole('seller'), async (req, res, next) => {
+  try {
+    const uid = req.session.user.id;
+    const ids = []
+      .concat(req.body.ids || [])
+      .map(String).map(s => s.trim())
+      .filter(isUuid);
+
+    const action = String(req.body.action || '');
+
+    const map = {
+      ship_prep:  'confirmed',   // 例：出荷準備中は confirmed として扱う
+      in_transit: 'shipped',
+      delivered:  'shipped',     // ※ 別カラムがある場合は要調整
+      returned:   'cancelled'    // ※ 簡易対応
+    };
+    const nextStatus = map[action];
+    if (!ids.length || !nextStatus) return res.redirect('/seller/trades');
+
+    // この出品者の行に限定して更新
+    await dbQuery(
+      `
+      UPDATE orders o
+         SET status = $1, updated_at = now()
+       WHERE o.id = ANY($2::uuid[])
+         AND EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $3)
+      `,
+      [nextStatus, ids, uid]
+    );
+
+    return res.redirect('/seller/trades');
   } catch (e) { next(e); }
 });
 

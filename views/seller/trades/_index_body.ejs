@@ -1,0 +1,76 @@
+<section class="card">
+    <h2>取引一覧</h2>
+
+    <form method="GET" class="field--row" style="grid-template-columns:2fr 1fr 1fr auto">
+        <input type="text" name="q" value="<%= q || '' %>" placeholder="注文番号/商品名">
+        <select name="status">
+            <option value="all" <%=status==='all' ?'selected':'' %> >すべて</option>
+            <option value="pending" <%=status==='pending' ?'selected':'' %> >受付中</option>
+            <option value="confirmed" <%=status==='confirmed' ?'selected':'' %>>確定</option>
+            <option value="paid" <%=status==='paid' ?'selected':'' %> >支払い済み</option>
+            <option value="shipped" <%=status==='shipped' ?'selected':'' %> >出荷完了</option>
+            <option value="cancelled" <%=status==='cancelled' ?'selected':'' %>>キャンセル</option>
+            <option value="refunded" <%=status==='refunded' ?'selected':'' %> >返金済み</option>
+        </select>
+        <select name="range">
+            <option value="all" <%=range==='all' ?'selected':'' %> >期間指定なし</option>
+            <option value="7d" <%=range==='7d' ?'selected':'' %> >直近7日</option>
+            <option value="30d" <%=range==='30d' ?'selected':'' %> >直近30日</option>
+            <option value="90d" <%=range==='90d' ?'selected':'' %> >直近90日</option>
+        </select>
+        <button class="btn">絞り込む</button>
+    </form>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>注文番号</th>
+                <th>取引状況</th>
+                <th>支払い</th>
+                <th>出荷</th>
+                <th>金額</th>
+                <th>作成</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            <% if ((items||[]).length) { items.forEach(function(r){ %>
+                <tr>
+                    <td class="mono">
+                        <%= r.orderNo %>
+                    </td>
+                    <td>
+                        <%= r.orderStatus %>
+                    </td>
+                    <td>
+                        <%= r.paymentStatus %>
+                    </td>
+                    <td>
+                        <%= r.shipmentStatus %>
+                    </td>
+                    <td>¥<%= Number(r.amount||0).toLocaleString() %>
+                    </td>
+                    <td>
+                        <%= r.createdAt %>
+                    </td>
+                    <td><a class="link" href="/seller/trades/<%= r.id %>">詳細</a></td>
+                </tr>
+                <% }) } else { %>
+                    <tr>
+                        <td colspan="7" class="empty">取引がありません。</td>
+                    </tr>
+                    <% } %>
+        </tbody>
+    </table>
+
+    <% if (pagination && pagination.pageCount> 1) { %>
+        <nav class="pager">
+            <% for (let p=1; p<=pagination.pageCount; p++){ %>
+                <a class="page <%= p===pagination.page?'is-active':'' %>"
+                    href="?<%= new URLSearchParams({ q: q||'', status, range, page: p }).toString() %>">
+                    <%= p %>
+                </a>
+                <% } %>
+        </nav>
+        <% } %>
+</section>

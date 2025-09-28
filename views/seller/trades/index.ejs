@@ -1,0 +1,43 @@
+<%-
+  include('../../layouts/list', {
+    title,
+    pageTitle: '取引一覧',
+    request,
+    q,
+    searchAction,
+    filtersHTML,
+    body: `
+      <table class="lv-table">
+        <thead>
+          <tr>
+            <th>注文番号</th>
+            <th>注文状況</th>
+            <th>支払い</th>
+            <th>出荷</th>
+            <th>合計</th>
+            <th>注文日時</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items.map(it => `
+            <tr>
+              <td data-label="注文番号">#${it.orderNo}</td>
+              <td data-label="注文状況"><span class="lv-badge">${it.status_ja}</span></td>
+              <td data-label="支払い"><span class="lv-badge ${it.payment_status==='paid'?'ok': it.payment_status==='unpaid'?'warn':''}">${it.payment_status_ja}</span></td>
+              <td data-label="出荷"><span class="lv-badge ${it.shipment_status==='delivered'?'ok': it.shipment_status==='returned'?'ng':''}">${it.shipment_status_ja}</span></td>
+              <td data-label="合計">¥${(it.total||0).toLocaleString()}</td>
+              <td data-label="注文日時">${it.created_at}</td>
+              <td data-label="">
+                <a class="btn btn--ghost" href="/seller/trades/${it.id}">詳細</a>
+              </td>
+            </tr>
+          `).join('')}
+          ${items.length ? '' : `
+            <tr><td colspan="7" style="text-align:center;color:#6b7280">該当する取引がありません。</td></tr>
+          `}
+        </tbody>
+      </table>
+    `
+  })
+%>

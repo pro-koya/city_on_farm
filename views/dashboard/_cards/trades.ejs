@@ -5,12 +5,14 @@
   </div>
   <ul class="list">
     <% if (trades && trades.length) { %>
-      <% trades.slice(0,6).forEach(function(t){ %>
+      <% trades.forEach(function(t){ %>
         <li class="row">
           <span class="mono">#<%= t.id %></span>
           <span><%= t.date %></span>
-          <span class="<%= t.status==='完了'?'ok': t.status==='キャンセル'?'ng':'pending' %>"><%= t.status %></span>
-          <span>¥<%= t.amount.toLocaleString() %></span>
+          <span class="<%= /完了|配達完了|支払い済み/.test(t.status)?'ok' : /キャンセル|返金済み/.test(t.status)?'ng' : 'pending' %>">
+            <%= t.status %>
+          </span>
+          <span>¥<%= Number(t.amount||0).toLocaleString() %></span>
         </li>
       <% }) %>
     <% } else { %>

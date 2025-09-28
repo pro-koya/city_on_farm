@@ -1,0 +1,241 @@
+<%- include('../../partials/header', { title, extraCSS: '/styles/trade-detail.css' }) %>
+<main class="td">
+<style>
+  .td-status-form{display:block}
+  .td-status-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin:.6rem 0}
+  @media(max-width:900px){.td-status-grid{grid-template-columns:1fr}}
+  .td-status-field select{width:100%;min-height:40px;border:1px solid #e5e7eb;border-radius:10px;padding:.4rem .6rem;background:#fff}
+  .td-status-label{display:block;font-size:.9rem;color:#6b7280;margin-bottom:.2rem}
+  .td-status-hint{margin:.4rem 0 0;font-size:.9rem}
+</style>
+  <header class="td__head">
+    <div>
+      <h1 class="td__title">取引 #<%= order.orderNo %></h1>
+      <div class="td__meta">
+        <span>作成: <%= order.created_at %></span>
+        <% if (order.eta) { %><span>お届け予定日: <%= order.eta %></span><% } %>
+      </div>
+    </div>
+    <div class="td__head-right">
+      <span class="status-badge status--<%= order.status_ja %>"><%= order.status_ja %></span>
+      <div class="price">合計 ¥<%= order.total.toLocaleString() %></div>
+    </div>
+  </header>
+
+  <section class="td__grid">
+    <article class="td-card">
+      <h2 class="td-card__title">注文情報</h2>
+      <div class="kv">
+        <div class="kv__row"><div class="kv__key">支払い方法</div><div class="kv__val"><%= order.payment_method_ja %></div></div>
+        <div class="kv__row"><div class="kv__key">支払い状況</div><div class="kv__val"><%= order.payment_status_ja %></div></div>
+        <div class="kv__row"><div class="kv__key">出荷方法</div><div class="kv__val"><%= order.ship_method_ja || order.ship_method %></div></div>
+        <div class="kv__row"><div class="kv__key">出荷状況</div><div class="kv__val"><%= order.shipment_status_ja %></div></div>
+        <% if (order.ship_tracking_no) { %>
+          <div class="kv__row"><div class="kv__key">追跡番号</div><div class="kv__val mono"><%= order.ship_tracking_no %></div></div>
+        <% } %>
+      </div>
+    </article>
+
+    <aside class="td-card">
+      <h2 class="td-card__title">お届け先</h2>
+      <div class="addr">
+        <div class="addr__name">氏名：<%= order.shipping.full_name %></div>
+        <div class="addr__row">〒<%= order.shipping.postal_code %></div>
+        <div class="addr__row"><%= order.shipping.prefecture %><%= order.shipping.city %><%= order.shipping.address_line1 %> <%= order.shipping.address_line2 %></div>
+        <div class="addr__muted">TEL：<%= order.shipping.phone %></div>
+      </div>
+    </aside>
+  </section>
+
+  <section class="td-items">
+    <table>
+      <thead>
+        <tr>
+          <th>商品</th><th>数量</th><th>単価</th><th>小計</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% order.items.forEach(it => { %>
+          <tr>
+            <td>
+              <div class="td-item__prod">
+                <img class="td-item__img" src="<%= it.image %>" alt="">
+                <div>
+                  <p class="td-item__title"><%= it.title %></p>
+                  <div class="td-item__meta"><%= it.producer %> / <%= it.unit %></div>
+                </div>
+              </div>
+            </td>
+            <td><%= it.quantity %></td>
+            <td class="price">¥<%= it.price.toLocaleString() %></td>
+            <td class="price">¥<%= (it.price * it.quantity).toLocaleString() %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="td-summary">
+    <div class="td-summary__row">
+      <div class="td-summary__key">小計：</div>
+      <div class="td-summary__val price">¥<%= order.subtotal.toLocaleString() %></div>
+    </div>
+    <% if (order.discount && order.discount > 0) { %>
+      <div class="td-summary__row">
+        <div class="td-summary__key">割引：</div>
+        <div class="td-summary__val price">-¥<%= order.discount.toLocaleString() %></div>
+      </div>
+    <% } %>
+    <div class="td-summary__row">
+      <div class="td-summary__key">送料：</div>
+      <div class="td-summary__val price">¥<%= order.shipping_fee.toLocaleString() %></div>
+    </div>
+    <div class="td-summary__row td-summary__total">
+      <div class="td-summary__key">合計：</div>
+      <div class="td-summary__val price">¥<%= order.total.toLocaleString() %></div>
+    </div>
+  </section>
+
+  <section class="td-card td-action">
+    <h2 class="td-card__title">ステータス更新</h2>
+    <form id="statusForm" class="td-status-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>">
+      <div class="td-status-grid">
+        <label class="td-status-field">
+          <span class="td-status-label">注文ステータス</span>
+          <select name="order_status" id="orderStatus">
+            <option value="pending"   <%= order.status === 'pending'   ? 'selected' : '' %>>受付中</option>
+            <option value="confirmed" <%= order.status === 'confirmed' ? 'selected' : '' %>>確定</option>
+            <option value="paid"      <%= order.status === 'paid'      ? 'selected' : '' %>>支払い済み</option>
+            <option value="fulfilled" <%= order.status === 'fulfilled' ? 'selected' : '' %>>出荷完了</option>
+            <option value="canceled"  <%= order.status === 'canceled'  ? 'selected' : '' %>>キャンセル</option>
+            <option value="refunded"  <%= order.status === 'refunded'  ? 'selected' : '' %>>返金済み</option>
+          </select>
+        </label>
+        <label class="td-status-field">
+          <span class="td-status-label">支払いステータス</span>
+          <select name="payment_status" id="paymentStatus">
+            <option value="unpaid"   <%= order.payment_status === 'unpaid'   ? 'selected' : '' %>>未入金</option>
+            <option value="paid"     <%= order.payment_status === 'paid'     ? 'selected' : '' %>>入金完了</option>
+            <option value="canceled" <%= order.payment_status === 'canceled' ? 'selected' : '' %>>キャンセル</option>
+            <option value="refunded" <%= order.payment_status === 'refunded' ? 'selected' : '' %>>返金済み</option>
+          </select>
+        </label>
+        <label class="td-status-field">
+          <span class="td-status-label">配送ステータス</span>
+          <select name="shipment_status" id="shipmentStatus">
+            <option value="preparing"  <%= order.shipment_status === 'preparing'  ? 'selected' : '' %>>出荷準備中</option>
+            <option value="in_transit" <%= order.shipment_status === 'in_transit' ? 'selected' : '' %>>お届け中</option>
+            <option value="delivered"  <%= order.shipment_status === 'delivered'  ? 'selected' : '' %>>配達完了</option>
+            <option value="returned"   <%= order.shipment_status === 'returned'   ? 'selected' : '' %>>返品</option>
+          </select>
+        </label>
+      </div>
+      <div class="td-actions">
+        <button class="btn" type="submit">更新する</button>
+      </div>
+    </form>
+    <p class="td-status-hint" id="statusMsg" aria-live="polite"></p>
+  </section>
+</main>
+<script>
+  (function(){
+    const form = document.getElementById('statusForm');
+    const msg  = document.getElementById('statusMsg');
+    const csrf = form?.querySelector('input[name="_csrf"]')?.value || '';
+    const initial = {
+      order: '<%= order.status %>',
+      pay:   '<%= order.payment_status %>',
+      ship:  '<%= order.shipment_status %>'
+    };
+
+    function setMsg(t, ok=true){
+      if (!msg) return;
+      msg.textContent = t || '';
+      msg.style.color = ok ? '#14532d' : '#7f1d1d';
+    }
+
+    document.getElementById('revertStatus')?.addEventListener('click', () => {
+      document.getElementById('orderStatus').value    = initial.order || 'pending';
+      document.getElementById('paymentStatus').value  = initial.pay   || 'unpaid';
+      document.getElementById('shipmentStatus').value = initial.ship  || 'preparing';
+      setMsg('元に戻しました。');
+    });
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setMsg('更新中…');
+      const payload = {
+        order_status: document.getElementById('orderStatus').value,
+        payment_status: document.getElementById('paymentStatus').value,
+        shipment_status: document.getElementById('shipmentStatus').value
+      };
+      try {
+        // 現在URLが /seller/trades/:id である前提で /status へPOST
+        const url = location.pathname.replace(/\/?$/, '') + '/status';
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'CSRF-Token': csrf
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const t = await res.text();
+          throw new Error(t || ('HTTP ' + res.status));
+        }
+        const data = await res.json(); // { ok:true, order:{...} }
+        if (!data?.ok) throw new Error(data?.message || '更新に失敗しました');
+
+        // 画面上の表示を最新に反映（日本語ラベルはサーバから返してもらえると尚良いが、ここでは簡易マップ）
+        const ja = {
+          order_status: {
+            pending: '受付中', confirmed: '確定', paid: '支払い済み', fulfilled: '出荷完了', canceled: 'キャンセル', refunded: '返金済み'
+          },
+          payment_status: {
+            unpaid: '未入金', paid: '入金完了', canceled: 'キャンセル', refunded: '返金済み'
+          },
+          shipment_status: {
+            preparing: '出荷準備中', in_transit: 'お届け中', delivered: '配達完了', returned: '返品'
+          }
+        };
+        const updated = data.order || payload;
+        // ヘッダーのバッジ
+        const badge = document.querySelector('.status-badge');
+        if (badge) {
+          badge.textContent = ja.order_status[updated.order_status] || badge.textContent;
+        }
+        // KV 表示
+        const setKv = (key, text) => {
+          const el = document.querySelector('.kv__row .kv__key:contains("'+key+'")');
+          // :contains はブラウザに無いので次のように全走査
+        };
+        const mapSet = [
+          ['支払い状況', ja.payment_status[updated.payment_status]],
+          ['出荷状況',   ja.shipment_status[updated.shipment_status]],
+          ['注文ステータス', ja.order_status[updated.order_status]]
+        ];
+        document.querySelectorAll('.kv__row').forEach(row => {
+          const k = row.querySelector('.kv__key')?.textContent?.trim();
+          const vEl = row.querySelector('.kv__val');
+          const found = mapSet.find(([label]) => label === k);
+          if (found && vEl) vEl.textContent = found[1] || vEl.textContent;
+        });
+
+        // 初期値更新
+        initial.order = updated.order_status;
+        initial.pay   = updated.payment_status;
+        initial.ship  = updated.shipment_status;
+
+        setMsg('更新しました。', true);
+      } catch (err) {
+        console.error(err);
+        setMsg('更新に失敗しました。時間をおいて再度お試しください。', false);
+      }
+    });
+  })();
+</script>
+<%- include('../../partials/footer') %>

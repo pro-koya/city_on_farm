@@ -1,14 +1,18 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title><%= title %></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>
+    <%= title %>
+  </title>
   <link rel="stylesheet" href="/styles/styles.css" />
   <% if (extraCSS) { %>
     <link rel="stylesheet" href="<%= extraCSS %>" />
-  <% } %>
+    <% } %>
 </head>
+
 <body>
   <header class="navbar">
     <div class="navbar-container">
@@ -20,22 +24,28 @@
         <% if (currentUser) { %>
           <!-- PC専用のログインピル（モバイルでは非表示） -->
           <span class="nav-loginstatus__pill nav-loginstatus--desktop" aria-live="polite">
-            <strong><%= currentUser.name %></strong> さんとしてログイン中
+            <strong>
+              <%= currentUser.name %>
+            </strong> さんとしてログイン中
           </span>
-        <% } %>
+          <% } %>
 
-        <!-- ✅ カートボタン -->
-        <a href="/cart" class="navbar-cart" aria-label="カートへ">
-          <!-- ショッピングカートの簡易SVGアイコン -->
-          <svg class="cart-icon" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="currentColor" d="M7 18a2 2 0 1 0 0 4a2 2 0 0 0 0-4m10 0a2 2 0 1 0 0 4a2 2 0 0 0 0-4M7.2 14h9.9c.8 0 1.5-.5 1.7-1.3l1.7-6.3c.1-.5-.2-1-.8-1H6.2L5.7 3H3v2h1.2l2.3 9c.2.7.9 1.2 1.7 1.2Z"/>
-          </svg>
-          <span class="cart-badge" aria-live="polite"><%= (typeof cartCount!=='undefined' ? cartCount : 0) %></span>
-        </a>
+            <!-- ✅ カートボタン -->
+            <a href="/cart" class="navbar-cart" aria-label="カートへ">
+              <!-- ショッピングカートの簡易SVGアイコン -->
+              <svg class="cart-icon" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor"
+                  d="M7 18a2 2 0 1 0 0 4a2 2 0 0 0 0-4m10 0a2 2 0 1 0 0 4a2 2 0 0 0 0-4M7.2 14h9.9c.8 0 1.5-.5 1.7-1.3l1.7-6.3c.1-.5-.2-1-.8-1H6.2L5.7 3H3v2h1.2l2.3 9c.2.7.9 1.2 1.7 1.2Z" />
+              </svg>
+              <span class="cart-badge" aria-live="polite">
+                <%= (typeof cartCount!=='undefined' ? cartCount : 0) %>
+              </span>
+            </a>
 
-        <button class="navbar-toggle" id="navbar-toggle" aria-label="メニューを開閉" aria-controls="navbar-menu" aria-expanded="false">
-          <span id="toggle-icon">☰</span>
-        </button>
+            <button class="navbar-toggle" id="navbar-toggle" aria-label="メニューを開閉" aria-controls="navbar-menu"
+              aria-expanded="false">
+              <span id="toggle-icon">☰</span>
+            </button>
       </div>
     </div>
 
@@ -45,28 +55,32 @@
       <li role="none"><a role="menuitem" href="/products">農作物一覧</a></li>
       <li role="none"><a role="menuitem" href="/blog">ブログ</a></li>
       <li role="none"><a role="menuitem" href="/contact">お問い合わせ</a></li>
-      <li role="none"><a role="menuitem" href="/cart">カート（<%= (typeof cartCount!=='undefined' ? cartCount : 0) %>）</a></li>
+      <li role="none"><a role="menuitem" href="/cart">カート（<%= (typeof cartCount!=='undefined' ? cartCount : 0) %>）</a>
+      </li>
       <% if (currentUser) { %>
-        <li role="none"><a role="menuitem" href="/dashboard/<%= (currentUser.roles?.includes('seller') ? 'seller' : 'buyer') %>">ダッシュボード</a></li>
+        <li role="none"><a role="menuitem"
+            href="/dashboard/<%= (currentUser.roles?.includes('seller') ? 'seller' : 'buyer') %>">ダッシュボード</a></li>
         <li class="nav-logout" role="none">
           <form method="POST" action="/logout">
-            <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+            <% if (typeof csrfToken !=='undefined' && csrfToken) { %>
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <button type="submit" class="linklike" role="menuitem">ログアウト</button>
-            <% } %>
+              <% } %>
           </form>
         </li>
 
         <!-- モバイル専用：メニュー最下部にログインピル（PCでは非表示） -->
         <li class="nav-loginstatus" aria-live="polite">
           <span class="nav-loginstatus__pill">
-            <strong><%= currentUser.name %></strong> さんとしてログイン中
+            <strong>
+              <%= currentUser.name %>
+            </strong> さんとしてログイン中
           </span>
         </li>
-      <% } else { %>
-        <li role="none"><a role="menuitem" href="/login">ログイン</a></li>
-        <li role="none"><a role="menuitem" href="/signup">サインアップ</a></li>
-      <% } %>
+        <% } else { %>
+          <li role="none"><a role="menuitem" href="/login">ログイン</a></li>
+          <li role="none"><a role="menuitem" href="/signup">サインアップ</a></li>
+          <% } %>
     </ul>
   </header>
 

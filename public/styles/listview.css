@@ -1,0 +1,278 @@
+/* public/styles/listview.css */
+.lv {
+    --gap: 12px;
+    --radius: 12px;
+    --border: #e5e7eb;
+    --muted: #6b7280;
+}
+
+.lv__head {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.lv__title {
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+.lv__toolbar {
+    display: block;
+    margin: 45px .3rem 0 .3rem;
+}
+
+.lv__toolbar-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: .6rem;
+    align-items: center;
+}
+
+@media (max-width: 821px) {
+    .lv__toolbar-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* 検索 */
+.lv__search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 8px 12px 8px 36px;
+    min-height: 44px;
+}
+
+.lv__icon {
+    position: absolute;
+    left: 10px;
+    opacity: .6;
+}
+
+.lv__input {
+    border: none;
+    outline: none;
+    width: 100%;
+    font-size: .95rem;
+    background: transparent;
+}
+
+.lv__clear {
+    margin-left: 6px;
+    font-weight: 700;
+    color: #999;
+    text-decoration: none;
+}
+
+/* フィルタ群 */
+.lv__filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    align-items: center;
+}
+
+.lv__filters select,
+.lv__filters .select {
+    min-height: 40px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0 12px;
+    background: #fff;
+}
+
+/* 右端ボタン群 */
+.lv__actions {
+    display: flex;
+    gap: .4rem;
+}
+
+.btn {
+    background: #4C6B5C;
+    color: #fff;
+    border: 1px solid #4C6B5C;
+    border-radius: 12px;
+    padding: .55rem .9rem;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.btn--ghost {
+    background: #fff;
+    color: #4C6B5C;
+    border: 1px solid var(--border);
+}
+
+@media (max-width: 821px) {
+    .lv__toolbar-row {
+        grid-template-columns: 1fr auto;
+        grid-auto-rows: auto;
+    }
+
+    .lv__search {
+        grid-column: 1 / -1;
+    }
+
+    .lv__actions {
+        justify-self: end;
+    }
+
+    .lv__filters {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        gap: .5rem;
+        padding: .4rem 0 0;
+        grid-column: 1 / -1;
+    }
+
+    /* 横スクロールを示すスクロールインジケータ（左右のシャドウ） */
+    .lv__filters { position: relative; scrollbar-width: thin; }
+    .lv__filters::-webkit-scrollbar { height: 6px; }
+    .lv__filters::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+
+    .lv__filters.has-right::after,
+    .lv__filters.has-left::before {
+        content: '';
+        position: absolute;
+        top: 0; bottom: 0;
+        width: 28px;
+        pointer-events: none;
+    }
+    .lv__filters.has-right::after { right: 0; background: linear-gradient(to left, rgba(0,0,0,.06), rgba(0,0,0,0)); }
+    .lv__filters.has-left::before { left: 0;  background: linear-gradient(to right, rgba(0,0,0,.06), rgba(0,0,0,0)); }
+
+    /* モバイル時：フィルタをモーダル（全画面）表示するスタイル */
+    #lvFilters.is-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        background: #fff;
+        display: block;            /* 強制表示 */
+        padding: 14px;
+        overflow-y: auto;
+    }
+    /* モーダル用の簡易ヘッダー／クローズボタン */
+    #lvFilters.is-modal .lv__modal-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        padding: 0 .9rem;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: #fff;
+        margin-bottom: 10px;
+        font-weight: 700;
+    }
+
+    /* バックドロップ */
+    .lv__backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 999;
+        background: rgba(0,0,0,.35);
+    }
+
+    .lv__filters select {
+        flex: 0 0 auto;
+    }
+
+    .lv__filters.is-open {
+        display: block;
+    }
+}
+
+/* リスト（表） */
+.lv-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.lv-table th,
+.lv-table td {
+    padding: .7rem .8rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.lv-table th {
+    background: #fbfbfb;
+    font-size: .9rem;
+    color: #374151;
+}
+
+.lv-badge {
+    display: inline-block;
+    padding: .2rem .5rem;
+    border-radius: 999px;
+    font-size: .8rem;
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.lv-badge.ok {
+    background: #E7F7EE;
+    color: #0F5132
+}
+
+.lv-badge.warn {
+    background: #FFF7E6;
+    color: #8B5E00
+}
+
+.lv-badge.ng {
+    background: #FDECEC;
+    color: #8A1C1C
+}
+
+/* モバイル：表 → カード風 */
+@media (max-width: 821px) {
+    .lv-table {
+        border: none;
+        background: transparent;
+    }
+
+    .lv-table thead {
+        display: none;
+    }
+
+    .lv-table tr {
+        display: block;
+        margin-bottom: 12px;
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, .04);
+    }
+
+    .lv-table td {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        border-bottom: 1px dashed var(--border);
+        white-space: normal;
+    }
+
+    .lv-table td:last-child {
+        border-bottom: none;
+    }
+
+    .lv-table td::before {
+        content: attr(data-label);
+        color: var(--muted);
+    }
+}

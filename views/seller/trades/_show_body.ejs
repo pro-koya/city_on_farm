@@ -1,0 +1,68 @@
+<section class="card">
+    <h2>取引詳細</h2>
+    <div class="grid" style="grid-template-columns:2fr 1fr; gap:1rem">
+        <div>
+            <p><b>注文番号:</b> ${trade.orderNo}</p>
+            <p><b>取引状況:</b> ${trade.orderStatus}</p>
+            <p><b>支払い:</b> ${trade.paymentStatus}（${trade.paymentMethod}）</p>
+            <p><b>出荷:</b> ${trade.shipmentStatus}</p>
+            <p><b>作成:</b> ${trade.createdAt}</p>
+            ${trade.eta ? `<p><b>お届け予定:</b> ${trade.eta}</p>` : ''}
+            ${trade.note ? `<p><b>メモ:</b> ${trade.note}</p>` : ''}
+
+            <h3>ステータス更新</h3>
+            <form method="POST" action="/seller/trades/${trade.id}/status">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <div class="field--row">
+                    <label>出荷状況</label>
+                    <select name="shipment_status">
+                        <option value="">—変更しない—</option>
+                        <option value="preparing">出荷準備中</option>
+                        <option value="in_transit">お届け中</option>
+                        <option value="delivered">配達完了</option>
+                        <option value="returned">返品</option>
+                    </select>
+
+                    <label>取引状況</label>
+                    <select name="order_status">
+                        <option value="">—変更しない—</option>
+                        <option value="confirmed">確定</option>
+                        <option value="paid">支払い済み</option>
+                        <option value="shipped">出荷完了</option>
+                        <option value="cancelled">キャンセル</option>
+                        <option value="refunded">返金済み</option>
+                    </select>
+
+                    <button class="btn">更新</button>
+                </div>
+                <p class="help">※ 現在のスキーマでは注文全体のステータスが更新されます（複数出品者が含まれる注文に注意）。</p>
+            </form>
+
+            <h3>商品</h3>
+            <ul class="list">
+                <% trade.items.forEach(function(it){ %>
+                    <li class="row">
+                        <img src="<%= it.image_url %>" alt=""
+                            style="width:60px;height:45px;object-fit:cover;border-radius:8px">
+                        <a class="link" href="/products/<%= it.slug %>">
+                            <%= it.title %>
+                        </a>
+                        <span>× <%= it.quantity %>
+                                <%= it.unit || '' %></span>
+                        <span class="mono">¥<%= (it.price * it.quantity).toLocaleString() %></span>
+                    </li>
+                    <% }) %>
+            </ul>
+        </div>
+
+        <aside class="card">
+            <h3>合計</h3>
+            <p>小計: ¥${(trade.totals.subtotal||0).toLocaleString()}</p>
+            <p>割引: -¥${(trade.totals.discount||0).toLocaleString()}</p>
+            <p>送料: ¥${(trade.totals.shipping||0).toLocaleString()}</p>
+            <p>税: ¥${(trade.totals.tax||0).toLocaleString()}</p>
+            <hr />
+            <p><b>合計: ¥${(trade.totals.total||0).toLocaleString()}</b></p>
+        </aside>
+    </div>
+</section>
