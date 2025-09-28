@@ -105,12 +105,12 @@
 
         <div class="payment">
           <h3>お支払い方法</h3>
-          <p><%= (order?.payment_method || '').toUpperCase() || '-' %></p>
+          <p><%= order.payment_method_ja || (order?.payment_method || '').toUpperCase() || '-' %></p>
         </div>
         <div class="shipping">
           <h3>配送方法</h3>
           <p>
-            <%= (order?.ship_method === 'cool' ? 'クール便' : '通常便') %>
+            <%= order.ship_method_ja || order.ship_method || '-' %>
             <% if (order?.eta_at) { %>
               ／ お届け予定：<%= new Date(order.eta_at).toLocaleDateString('ja-JP') %>
             <% } %>

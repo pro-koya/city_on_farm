@@ -96,16 +96,14 @@ app.use(session({
 }));
 
 /* ========== CSRF（局所適用） ========== */
-const csrfProtection = csrf({ cookie: false });
-function attachCsrf(req, res, next) {
-  try { res.locals.csrfToken = req.csrfToken(); }
-  catch(e){ res.locals.csrfToken = ''; }
-  next();
-}
+app.use(csrf({ cookie: false, ignoreMethods: ['GET','HEAD','OPTIONS'] }));
 
 /* ========== 共通locals ========== */
 app.use(async (req, res, next) => {
   res.locals.currentUser = req.session.user || null;
+  if (typeof req.csrfToken === 'function') {
+    try { res.locals.csrfToken = req.csrfToken(); } catch {}
+  }
   if (req.path.endsWith('.woff2')) res.type('font/woff2');
 
   // デフォルトはセッション内カート件数（未ログイン時や障害時のフォールバック）
@@ -318,7 +316,7 @@ async function mergeSessionCartToDb(req, userId){
  *  認証
  * =======================================================*/
 // GET /login（CSRF付与）
-app.get('/login', csrfProtection, attachCsrf, (req, res) => {
+app.get('/login', (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.render('auth/login', {
     title:'ログイン',
@@ -331,7 +329,6 @@ app.get('/login', csrfProtection, attachCsrf, (req, res) => {
 // POST /login
 app.post(
   '/login',
-  csrfProtection,
   [
     body('email').trim().isEmail().withMessage('有効なメールアドレスを入力してください。').normalizeEmail(),
     body('password').isLength({ min: 8 }).withMessage('パスワードは8文字以上で入力してください。')
@@ -380,7 +377,7 @@ app.post(
 );
 
 // POST /logout
-app.post('/logout', csrfProtection, (req, res) => {
+app.post('/logout', (req, res) => {
   req.session.destroy(() => {
     res.clearCookie('cof.sid');
     res.redirect('/login');
@@ -388,7 +385,7 @@ app.post('/logout', csrfProtection, (req, res) => {
 });
 
 // GET /signup（トークン発行＆フォーム描画）
-app.get('/signup', csrfProtection, attachCsrf, (req, res) => {
+app.get('/signup', (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.render('auth/signup', {
     title: 'アカウント作成',
@@ -401,7 +398,6 @@ app.get('/signup', csrfProtection, attachCsrf, (req, res) => {
 // POST /signup（最終ガードのみ＝強制検証）
 app.post(
   '/signup',
-  csrfProtection,
   [
     body('name')
       .trim()
@@ -523,10 +519,9 @@ app.get('/', async (req, res, next) => {
  * お問い合わせフォーム表示
  * GET /contact
  * =======================================================*/
-app.get('/contact', csrfProtection, attachCsrf, (req, res) => {
+app.get('/contact', (req, res) => {
   res.render('contact', {
     title: 'お問い合わせ',
-    csrfToken: req.csrfToken(),
     form: {}
   });
 });
@@ -560,7 +555,6 @@ if (hasSmtp) {
  * =======================================================*/
 app.post(
   '/contact',
-  csrfProtection,
   [
     body('name').trim().notEmpty().withMessage('お名前を入力してください'),
     body('email').isEmail().withMessage('有効なメールアドレスを入力してください'),
@@ -763,6 +757,57 @@ async function mergeSessionRecentToDb(req) {
 }
 
 /* =========================================================
+ * option_labels キャッシュ（日本語ラベル解決）
+ * =======================================================*/
+const OPTION_LABELS = {
+  map: new Map(),   // key: `${category}:${value}` → label_ja
+  loaded: false
+};
+
+/** DBから option_labels を読み込み、メモリにキャッシュ */
+async function refreshOptionLabelsCache() {
+  const rows = await dbQuery(`
+    SELECT category, value, label_ja
+      FROM option_labels
+     WHERE active = true
+  `);
+  const m = new Map();
+  for (const r of rows) {
+    const key = `${String(r.category)}:${String(r.value)}`;
+    m.set(key, String(r.label_ja || ''));
+  }
+  OPTION_LABELS.map = m;
+  OPTION_LABELS.loaded = true;
+  if (process.env.NODE_ENV !== 'test') {
+    console.log(`[labels] option_labels cached: ${rows.length} rows`);
+  }
+}
+
+/** 日本語ラベルを返す（見つからない場合は value をそのまま返す） */
+function jaLabel(category, value) {
+  const key = `${String(category)}:${String(value ?? '')}`;
+  return OPTION_LABELS.map.get(key) || String(value ?? '');
+}
+
+// 起動時に初回ロード
+(async () => {
+  try {
+    await refreshOptionLabelsCache();
+  } catch (e) {
+    console.error('[labels] initial cache load failed:', e.message);
+  }
+})();
+
+// 任意: 定期リフレッシュ（5分ごと）
+if (!process.env.LABELS_NO_REFRESH) {
+  setInterval(() => {
+    refreshOptionLabelsCache().catch(e => {
+      console.error('[labels] refresh failed:', e.message);
+    });
+  }, 5 * 60 * 1000);
+}
+
+/* =========================================================
  *  商品一覧 / 詳細（DB）
  * =======================================================*/
 // 先頭あたりに追加
@@ -842,7 +887,7 @@ app.get('/products/list', async (req, res, next) => {
 });
 
 // /products/:slug（詳細）
-app.get('/products/:slug', csrfProtection, attachCsrf, async (req, res, next) => {
+app.get('/products/:slug', async (req, res, next) => {
   try {
     const slug = req.params.slug;
     const rows = await dbQuery(`
@@ -885,7 +930,6 @@ app.get('/products/:slug', csrfProtection, attachCsrf, async (req, res, next) =>
     await recordProductView(req, product.id);
     const recentlyViewed = await fetchRecentProducts(req, 8);
 
-    console.log(specs);
     res.set('Cache-Control', 'no-store');
     res.render('products/show', {
       title: product.title,
@@ -903,7 +947,6 @@ app.get(
   '/seller/listing-new',
   requireAuth,
   requireRole('seller'),
-  csrfProtection, attachCsrf,
   async (req, res, next) => {
     try {
       const [categories, tags] = await Promise.all([
@@ -924,7 +967,6 @@ app.post(
   requireAuth,
   requireRole('seller'),
   upload.array('images', 8),   // 画像バイナリは今回は未保存。imageUrls テキストを利用
-  csrfProtection,
   [
     body('title').trim().isLength({ min: 1, max: 80 }).withMessage('商品名を入力してください（80文字以内）。'),
     body('price').isInt({ min: 0 }).withMessage('価格は0以上の整数で入力してください。'),
@@ -1207,7 +1249,6 @@ app.get(
   '/seller/listing-edit/:id',
   requireAuth,
   requireRole('seller'),
-  csrfProtection, attachCsrf,
   async (req, res, next) => {
     try {
       const id = String(req.params.id || '').trim();
@@ -1244,7 +1285,6 @@ app.get(
       return res.render('seller/listing-edit', {
         title: '出品を編集',
         product, categories, images, specs, tags,
-        csrfToken: req.csrfToken()
       });
     } catch (e) { next(e); }
   }
@@ -1256,7 +1296,6 @@ app.post(
   requireAuth,
   requireRole('seller'),
   upload.fields([{ name: 'images', maxCount: 8 }]),
-  csrfProtection,
   [
     body('title').trim().isLength({ min: 1, max: 80 }).withMessage('商品名を入力してください（80文字以内）。'),
     body('price').isInt({ min: 0 }).withMessage('価格は0以上の整数で入力してください。'),
@@ -1677,6 +1716,10 @@ app.get('/orders/recent', requireAuth, async (req, res, next) => {
         o.id,
         COALESCE(o.order_number, o.id::text) AS order_no,
         o.status,
+        o.payment_status,
+        o.payment_method,
+        o.shipment_status,
+        o.ship_method,
         o.total,
         o.subtotal,
         o.discount,
@@ -1717,10 +1760,22 @@ app.get('/orders/recent', requireAuth, async (req, res, next) => {
       params
     );
 
-    // EJS の期待プロパティ名に合わせて整形
+    // EJS の期待プロパティ名に合わせて整形（日本語ラベル含む）
     const items = rows.map(r => ({
       orderNo: r.order_no,
+      // original (keep for internal logic / links)
       status: r.status,
+      payment_status: r.payment_status || null,
+      payment_method: r.payment_method || null,
+      shipment_status: r.shipment_status || null,
+      ship_method: r.ship_method || null,
+      // Japanese labels for UI
+      status_ja: jaLabel('order_status', r.status),
+      payment_status_ja: r.payment_status ? jaLabel('payment_status', r.payment_status) : null,
+      payment_method_ja: r.payment_method ? jaLabel('payment_method', r.payment_method) : null,
+      shipment_status_ja: r.shipment_status ? jaLabel('shipment_status', r.shipment_status) : null,
+      ship_method_ja: r.ship_method ? jaLabel('ship_method', r.ship_method) : null,
+
       total: r.total,
       created_at: new Date(r.created_at).toLocaleString('ja-JP'),
       eta: r.eta_at ? new Date(r.eta_at).toLocaleDateString('ja-JP') : null,
@@ -1786,10 +1841,16 @@ app.get('/dashboard/buyer', requireAuth, async (req, res, next) => {
 
     const recentProducts = await fetchRecentProducts(req, 12);
 
+    // 日本語ラベル付与（注文状況）
+    const ordersWithJa = recentOrders.map(o => ({
+      ...o,
+      status_ja: jaLabel('order_status', o.status)
+    }));
+
     res.render('dashboard/buyer', {
       title: 'ダッシュボード（購入者）',
       currentUser: req.session.user,
-      orders: recentOrders,
+      orders: ordersWithJa,
       recent: recentProducts,
       notices: [],
       totalOrders: count[0]?.cnt || 0
@@ -1991,7 +2052,7 @@ function genOrderNo(){
 /* ----------------------------
  *  GET /cart  カート表示
  * -------------------------- */
-app.get('/cart', csrfProtection, async (req, res, next) => {
+app.get('/cart', async (req, res, next) => {
   try {
     const cartItems = await loadCartItems(req);               // ← 変更
     const items = await fetchCartItemsWithDetails(cartItems); // ← 変更
@@ -2001,7 +2062,6 @@ app.get('/cart', csrfProtection, async (req, res, next) => {
       title: 'カート',
       items,
       totals,
-      csrfToken: req.csrfToken()
     });
   } catch (e) { next(e); }
 });
@@ -2010,7 +2070,7 @@ app.get('/cart', csrfProtection, async (req, res, next) => {
  *  POST /cart/add  カート追加
  *  body: { productId, quantity }
  * -------------------------- */
-app.post('/cart/add', upload.none(), csrfProtection, async (req, res, next) => {
+app.post('/cart/add', upload.none(), async (req, res, next) => {
   try {
     const body = req.body || {};
     const productId = String(body.productId || '').trim();
@@ -2067,7 +2127,7 @@ app.post('/cart/add', upload.none(), csrfProtection, async (req, res, next) => {
  *  PATCH /cart/:id  数量変更
  *  body: { quantity }
  * -------------------------- */
-app.patch('/cart/:id', csrfProtection, async (req, res, next) => {
+app.patch('/cart/:id', async (req, res, next) => {
   try {
     const productId = req.params.id;
     let qty = Math.max(1, toInt(req.body?.quantity, 1));
@@ -2094,7 +2154,7 @@ app.patch('/cart/:id', csrfProtection, async (req, res, next) => {
 /* ----------------------------
  *  DELETE /cart/:id  行削除
  * -------------------------- */
-app.delete('/cart/:id', csrfProtection, async (req, res, next) => {
+app.delete('/cart/:id', async (req, res, next) => {
   try {
     const productId = req.params.id;
     const uid = authedUserId(req);
@@ -2113,7 +2173,7 @@ app.delete('/cart/:id', csrfProtection, async (req, res, next) => {
  *  body: { code }
  *  例: SUM10 → 10%OFF
  * -------------------------- */
-app.post('/cart/apply-coupon', csrfProtection, async (req, res, next) => {
+app.post('/cart/apply-coupon', async (req, res, next) => {
   try {
     const { code } = req.body;
     const uid = authedUserId(req);
@@ -2183,7 +2243,7 @@ app.post('/cart/apply-coupon', csrfProtection, async (req, res, next) => {
 });
 
 // POST /cart/selection  選択中のカート商品IDを一時保存
-app.post('/cart/selection', csrfProtection, (req, res) => {
+app.post('/cart/selection', (req, res) => {
   const ids = []
     .concat(req.body?.ids || [])
     .map(String)
@@ -2205,7 +2265,6 @@ app.post('/cart/selection', csrfProtection, (req, res) => {
  * =======================================================*/
 app.get('/seller/listings',
   requireAuth, requireRole('seller'),
-  csrfProtection, attachCsrf,
   async (req, res, next) => {
     try {
       const sellerId = req.session.user.id;
@@ -2262,7 +2321,6 @@ app.get('/seller/listings',
         total, q, status, sort,
         pagination,
         buildQuery,
-        csrfToken: req.csrfToken()
       });
     } catch (e) { next(e); }
   }
@@ -2274,7 +2332,6 @@ app.get('/seller/listings',
  * =======================================================*/
 app.post('/seller/listings/bulk',
   requireAuth, requireRole('seller'),
-  csrfProtection,
   async (req, res, next) => {
     try {
       const sellerId = req.session.user.id;
@@ -2332,7 +2389,6 @@ app.post('/seller/listings/bulk',
  * =======================================================*/
 app.post('/seller/listings/:id/status',
   requireAuth, requireRole('seller'),
-  csrfProtection,
   async (req, res, next) => {
     try {
       const sellerId = req.session.user.id;
@@ -2360,7 +2416,6 @@ app.post('/seller/listings/:id/status',
  * =======================================================*/
 app.post('/seller/listings/:id/delete',
   requireAuth, requireRole('seller'),
-  csrfProtection,
   async (req, res, next) => {
     try {
       const sellerId = req.session.user.id;
@@ -2401,7 +2456,6 @@ app.post('/seller/listings/:id/delete',
 app.get('/admin/contacts',
   requireAuth,
   requireRole('admin'),
-  csrfProtection, attachCsrf,
   async (req, res, next) => {
     try {
       const { q = '', status = 'all', type = 'all', page = 1 } = req.query;
@@ -2448,7 +2502,6 @@ app.get('/admin/contacts',
         items: list,
         total, q, status, type,
         pagination, buildQuery,
-        csrfToken: req.csrfToken()
       });
     } catch (e) { next(e); }
   }
@@ -2460,7 +2513,6 @@ app.get('/admin/contacts',
  * =======================================================*/
 app.get('/admin/contacts/:id',
   requireAuth, requireRole('admin'),
-  csrfProtection, attachCsrf,
   async (req, res, next) => {
     try {
       const id = String(req.params.id || '').trim();
@@ -2479,7 +2531,6 @@ app.get('/admin/contacts/:id',
         title: `お問い合わせ詳細`,
         item: c,
         handler,
-        csrfToken: req.csrfToken()
       });
     } catch (e) { next(e); }
   }
@@ -2491,7 +2542,6 @@ app.get('/admin/contacts/:id',
  * =======================================================*/
 app.post('/admin/contacts/:id/status',
   requireAuth, requireRole('admin'),
-  csrfProtection,
   async (req, res, next) => {
     try {
       const id = String(req.params.id || '').trim();
@@ -2527,7 +2577,7 @@ app.post('/admin/contacts/:id/status',
 /* ----------------------------
  *  GET /checkout  注文情報入力ページ
  * -------------------------- */
-app.get('/checkout', csrfProtection, async (req, res, next) => {
+app.get('/checkout', async (req, res, next) => {
   try {
     if (!req.session.user) {
       const nextUrl = encodeURIComponent('/checkout');
@@ -2597,7 +2647,6 @@ app.get('/checkout', csrfProtection, async (req, res, next) => {
       coupon: req.session?.cart?.coupon || null,
       form,
       isInitial,
-      csrfToken: req.csrfToken()
     });
   } catch (e) { next(e); }
 });
@@ -2605,7 +2654,7 @@ app.get('/checkout', csrfProtection, async (req, res, next) => {
 /* ----------------------------
  *  POST /checkout  入力値をセッションの注文ドラフトに保存 → 確認へ
  * -------------------------- */
-app.post('/checkout', csrfProtection, async (req, res, next) => {
+app.post('/checkout', async (req, res, next) => {
   try {
     if (!req.session.user) return res.redirect('/login?next=' + encodeURIComponent('/checkout'));
 
@@ -2696,7 +2745,7 @@ app.post('/checkout', csrfProtection, async (req, res, next) => {
 /* ----------------------------
  *  POST /checkout/apply-coupon
  * -------------------------- */
-app.post('/checkout/apply-coupon', csrfProtection, async (req, res, next) => {
+app.post('/checkout/apply-coupon', async (req, res, next) => {
   try {
     const { code } = req.body || {};
     const cart = ensureCart(req);
@@ -2731,7 +2780,6 @@ app.post('/checkout/apply-coupon', csrfProtection, async (req, res, next) => {
 app.post(
   '/addresses',
   requireAuth,
-  csrfProtection,
   [
     body('full_name').trim().notEmpty().withMessage('お名前を入力してください。'),
     body('phone').trim().notEmpty().withMessage('電話番号を入力してください。'),
@@ -2823,7 +2871,7 @@ app.post(
 /* ----------------------------
  *  GET /checkout/confirm  確認ページ
  * -------------------------- */
-app.get('/checkout/confirm', csrfProtection, async (req, res, next) => {
+app.get('/checkout/confirm', async (req, res, next) => {
   try {
     if (!req.session?.user) {
       return res.redirect('/login?next=' + encodeURIComponent('/checkout/confirm'));
@@ -2856,6 +2904,9 @@ app.get('/checkout/confirm', csrfProtection, async (req, res, next) => {
     // 合計（クーポンはセッションの cart.coupon を利用）
     const totals = calcTotals(items, req.session?.cart?.coupon || null);
 
+    const shipMethod_ja = jaLabel('ship_method', draft.shipMethod) || draft.shipMethod;
+    const paymentMethod_ja = jaLabel('payment_method', draft.paymentMethod) || draft.paymentMethod;
+
     res.render('checkout/confirm', {
       title: 'ご注文内容の確認',
       items,
@@ -2864,11 +2915,12 @@ app.get('/checkout/confirm', csrfProtection, async (req, res, next) => {
       shippingAddress,
       billingAddress,
       shipMethod: draft.shipMethod,
+      shipMethod_ja: shipMethod_ja,
       shipDate: draft.shipDate || null,
       shipTime: draft.shipTime || '',
       paymentMethod: draft.paymentMethod,
+      paymentMethod_ja: paymentMethod_ja,
       orderNote: draft.orderNote || '',
-      csrfToken: req.csrfToken()
     });
   } catch (e) {
     next(e);
@@ -2913,7 +2965,7 @@ async function insertOrderAddresses(client, {
 /* ----------------------------
  *  POST /checkout/confirm  注文を確定
  * -------------------------- */
-app.post('/checkout/confirm', csrfProtection, async (req, res, next) => {
+app.post('/checkout/confirm', async (req, res, next) => {
   const client = await pool.connect();
   try {
     if (!req.session?.user) {
@@ -2991,17 +3043,17 @@ app.post('/checkout/confirm', csrfProtection, async (req, res, next) => {
       `INSERT INTO orders
          (order_number, buyer_id, status,
           subtotal, discount, shipping_fee, total,
-          payment_method, note, eta_at, coupon_code)
+          payment_method, note, eta_at, coupon_code, ship_method)
        VALUES
          ($1, $2, 'pending',
           $3, $4, $5, $6,
-          $7, $8, $9, $10)
+          $7, $8, $9, $10, $11)
        RETURNING id`,
       [
         orderNo, uid,
         subtotal, discount, shipping_fee, total,
         draft.paymentMethod, (draft.orderNote || '').slice(0,1000), etaAt,
-        coupon?.code || null
+        coupon?.code || null, draft.shipMethod
       ]
     );
     const orderId = oins.rows[0].id;
@@ -3161,7 +3213,9 @@ app.get('/checkout/complete', async (req, res, next) => {
       created_at: order.created_at,
       eta_at: order.eta_at,
       payment_method: order.payment_method,
-      ship_method: order.ship_method
+      ship_method: order.ship_method,
+      payment_method_ja: jaLabel('payment_method', order.payment_method) || null,
+      ship_method_ja: jaLabel('ship_method', order.ship_method) || null
     };
 
     const coupon = order.coupon_code ? { code: order.coupon_code } : null;
@@ -3185,7 +3239,7 @@ app.get('/checkout/complete', async (req, res, next) => {
 //  - :no は order_number か UUID（id）のどちらでも可
 //  - 購入者本人のみ閲覧可能
 // =========================================================
-app.get('/orders/:no', requireAuth, csrfProtection, async (req, res, next) => {
+app.get('/orders/:no', requireAuth, async (req, res, next) => {
   try {
     const no = String(req.params.no || '').trim();
     const uid = req.session.user.id;
@@ -3204,6 +3258,11 @@ app.get('/orders/:no', requireAuth, csrfProtection, async (req, res, next) => {
       [no, uid]
     );
     const order = orderRows[0];
+    order.status_ja = jaLabel('order_status', order.status);
+    order.paymentMethod = jaLabel('payment_method', order.payment_method);
+    order.paymentStatus = jaLabel('payment_status', order.payment_status);
+    console.log(order.payment_status + ' : ' + order.paymentStatus);
+    order.status_ja = jaLabel('order_status', order.status);
     if (!order) return res.status(404).render('errors/404', { title: '注文が見つかりません' });
 
     // ─ 2) アイテム一覧
@@ -3278,15 +3337,13 @@ app.get('/orders/:no', requireAuth, csrfProtection, async (req, res, next) => {
       [order.id]
     );
     const pay = payRows[0] || null;
-    const methodLabelMap = { cod: '代金引換', bank: '銀行振込', card: 'クレジットカード' };
-    const statusLabelMap = { pending: '保留', authorized: '与信済み', captured: '支払い完了', failed: '失敗', refunded: '返金済み' };
     const payment = pay
       ? {
           method: pay.method || '',
           status: pay.status || '',
-          txid: pay.txid || '',
-          method_label: methodLabelMap[pay.method] || pay.method || '—',
-          status_label: statusLabelMap[pay.status] || pay.status || '—'
+          transaction_id: pay.transaction_id || '',
+          method_label: jaLabel('payment_method', pay.method) || null,
+          status_label: jaLabel('payment_status', pay.status) || null
         }
       : null;
 
@@ -3323,7 +3380,6 @@ app.get('/orders/:no', requireAuth, csrfProtection, async (req, res, next) => {
       billingAddress: billingAddress,
       shipments,
       payment,
-      csrfToken: req.csrfToken()
     });
   } catch (e) {
     next(e);
@@ -3373,6 +3429,9 @@ async function fetchInvoiceData(query, { orderNo, userId }) {
     [orderNo]
   );
   const o = ordRows[0];
+  o.status_ja = jaLabel('order_status', o.status) || null;
+  o.payment_status_ja = jaLabel('payment_status', o.payment_status) || null;
+  o.payment_method_ja = jaLabel('payment_method', o.payment_method) || null;
   if (!o) {
     const err = new Error('ORDER_NOT_FOUND');
     err.code = 'ORDER_NOT_FOUND';
@@ -3432,10 +3491,10 @@ async function fetchInvoiceData(query, { orderNo, userId }) {
   const order = {
     id: o.id,
     orderNo: o.order_no,
-    status: o.status,
+    status: o.status_ja || o.status,
     createdAt: o.created_at,
-    paymentMethod: o.payment_method || '',
-    paymentStatus: o.payment_status || '',
+    paymentMethod: o.payment_method_ja || o.payment_method || '',
+    paymentStatus: o.payment_status_ja || o.payment_status || ''
   };
 
   const items = itemRows.map(r => ({

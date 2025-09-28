@@ -15,12 +15,10 @@
 .confirm { padding: 24px 0; }
 .cfm-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 1fr) .65fr;
   gap: 24px;
 }
-@media (max-width: 960px) {
-  .cfm-grid { grid-template-columns: 1fr; }
-}
+section { margin: 0;}
 
 /* ---- カード ---- */
 .card {
@@ -82,13 +80,19 @@
 .mini-sub { font-weight: 600; }
 
 /* ---- サマリー ---- */
-.sticky { position: sticky; top: 16px; }
+.cfm-right { padding-top: 2rem; }
+.sticky { position: sticky; top: 86px; margin-right: 1rem;}
 .sum .row {
   display: flex; justify-content: space-between; align-items: center;
   padding: 6px 0;
 }
 .sum hr { border: 0; border-top: 1px solid #eee; margin: 10px 0; }
 .sum .total { font-size: 18px; }
+@media (max-width: 960px) {
+  .cfm-grid { grid-template-columns: 1fr; }
+  .cfm-right { padding-top: 0; }
+  .sticky { margin: 0 .5rem; }
+}
 
 /* ---- ボタン ---- */
 .btn {

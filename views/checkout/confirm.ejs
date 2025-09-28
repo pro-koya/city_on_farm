@@ -57,7 +57,7 @@
         <dl class="kv">
           <div>
             <dt>配送方法</dt>
-            <dd><%= shipMethod==='cool' ? 'クール便' : '常温便' %></dd>
+            <dd><%= shipMethod_ja || shipMethod %></dd>
           </div>
           <div>
             <dt>希望日</dt>
@@ -79,11 +79,7 @@
           <div>
             <dt>お支払い</dt>
             <dd>
-              <%= ({
-                    'cod': '代金引換',
-                    'bank': '銀行振込',
-                    'card': 'クレジットカード'
-                  })[paymentMethod] %>
+              <%= paymentMethod_ja || paymentMethod %>
             </dd>
           </div>
         </dl>

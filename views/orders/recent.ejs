@@ -59,11 +59,11 @@
           <header class="order__head">
             <div class="order__meta">
               <div class="order__id">注文番号：<strong><%= o.orderNo %></strong></div>
-              <div class="order__date"><%= o.created_at %></div>
             </div>
             <div class="order__status">
+              <div class="order__date"><%= o.created_at %></div>
               <span class="status status--<%= o.status %>">
-                <%= ({processing:'処理中', shipped:'出荷済み', delivered:'配達完了', canceled:'キャンセル'})[o.status] || o.status %>
+                <%= o.status_ja || o.status %>
               </span>
             </div>
           </header>

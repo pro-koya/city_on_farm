@@ -52,8 +52,8 @@
           <form method="POST" action="/logout">
             <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button type="submit" class="linklike" role="menuitem">ログアウト</button>
             <% } %>
-            <button type="submit" class="linklike" role="menuitem">ログアウト</button>
           </form>
         </li>
 

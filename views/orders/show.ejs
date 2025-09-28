@@ -17,7 +17,7 @@
         <div class="meta-row">
           <span class="label">ステータス</span>
           <span class="value status status--<%= order.status %>">
-            <%= ({pending:'受付', paid:'支払い完了', processing:'処理中', shipped:'出荷済み', delivered:'配達完了', canceled:'キャンセル'})[order.status] || order.status %>
+            <%= order.status_ja || order.status %>
           </span>
           <% if (order.etaAt) { %>
             <span class="dot">•</span>
