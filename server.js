@@ -778,9 +778,6 @@ async function refreshOptionLabelsCache() {
   }
   OPTION_LABELS.map = m;
   OPTION_LABELS.loaded = true;
-  if (process.env.NODE_ENV !== 'test') {
-    console.log(`[labels] option_labels cached: ${rows.length} rows`);
-  }
 }
 
 /** 日本語ラベルを返す（見つからない場合は value をそのまま返す） */
@@ -3261,7 +3258,6 @@ app.get('/orders/:no', requireAuth, async (req, res, next) => {
     order.status_ja = jaLabel('order_status', order.status);
     order.paymentMethod = jaLabel('payment_method', order.payment_method);
     order.paymentStatus = jaLabel('payment_status', order.payment_status);
-    console.log(order.payment_status + ' : ' + order.paymentStatus);
     order.status_ja = jaLabel('order_status', order.status);
     if (!order) return res.status(404).render('errors/404', { title: '注文が見つかりません' });
 
