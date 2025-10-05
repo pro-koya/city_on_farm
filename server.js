@@ -2,9 +2,9 @@
 const path = require('path');
 try { require('dotenv').config(); } catch { /* no-op */ }
 const express = require('express');
+const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const helmet  = require('helmet');
-const cookieParser = require('cookie-parser');
 const csrf    = require('csurf');
 const bcrypt  = require('bcryptjs');
 const { body, validationResult, param } = require('express-validator');
@@ -95,8 +95,14 @@ app.use(session({
   }
 }));
 
-/* ========== CSRF（局所適用） ========== */
-app.use(csrf({ cookie: false, ignoreMethods: ['GET','HEAD','OPTIONS'] }));
+/* ========== CSRF ========== */
+// デフォルトの ignoreMethods(['GET','HEAD','OPTIONS']) を使う
+// これで「閲覧系は発行のみ・更新系(POST等)は検証」になる
+const csrfBrowseOnly = csrf();
+app.use(csrfBrowseOnly);
+
+// ルート単位で multer 後に検証したい場合のハンドラ
+const csrfProtect = csrf();
 
 /* ========== 共通locals ========== */
 app.use(async (req, res, next) => {
@@ -329,6 +335,7 @@ app.get('/login', (req, res) => {
 // POST /login
 app.post(
   '/login',
+  csrfProtect,
   [
     body('email').trim().isEmail().withMessage('有効なメールアドレスを入力してください。').normalizeEmail(),
     body('password').isLength({ min: 8 }).withMessage('パスワードは8文字以上で入力してください。')
@@ -377,7 +384,7 @@ app.post(
 );
 
 // POST /logout
-app.post('/logout', (req, res) => {
+app.post('/logout', csrfProtect, (req, res) => {
   req.session.destroy(() => {
     res.clearCookie('cof.sid');
     res.redirect('/login');
@@ -398,6 +405,7 @@ app.get('/signup', (req, res) => {
 // POST /signup（最終ガードのみ＝強制検証）
 app.post(
   '/signup',
+  csrfProtect,
   [
     body('name')
       .trim()
@@ -555,6 +563,7 @@ if (hasSmtp) {
  * =======================================================*/
 app.post(
   '/contact',
+  csrfProtect,
   [
     body('name').trim().notEmpty().withMessage('お名前を入力してください'),
     body('email').isEmail().withMessage('有効なメールアドレスを入力してください'),
@@ -963,7 +972,7 @@ app.post(
   '/seller/listing-new',
   requireAuth,
   requireRole('seller'),
-  upload.array('images', 8),   // 画像バイナリは今回は未保存。imageUrls テキストを利用
+  upload.array('images', 8),
   [
     body('title').trim().isLength({ min: 1, max: 80 }).withMessage('商品名を入力してください（80文字以内）。'),
     body('price').isInt({ min: 0 }).withMessage('価格は0以上の整数で入力してください。'),
@@ -1006,8 +1015,7 @@ app.post(
       return res.status(422).render('seller/listing-new', {
         title: '新規出品',
         values, categories, tags: tagsMaster,
-        fieldErrors,
-        csrfToken: req.csrfToken()
+        fieldErrors
       });
     }
 
@@ -1232,8 +1240,8 @@ app.post(
         title: '新規出品',
         values, categories, tags: tagsMaster,
         fieldErrors: {},
-        globalError: '保存中にエラーが発生しました。時間をおいて再度お試しください。',
-        csrfToken: req.csrfToken()
+        globalError: '保存中にエラーが発生しました。時間をおいて再度お試しください。'
+        // csrfToken: req.csrfToken()
       });
     } finally {
       client.release();
@@ -1281,7 +1289,7 @@ app.get(
 
       return res.render('seller/listing-edit', {
         title: '出品を編集',
-        product, categories, images, specs, tags,
+        product, categories, images, specs, tags
       });
     } catch (e) { next(e); }
   }
@@ -1332,11 +1340,10 @@ app.post(
 
       const fieldErrors = {};
       for (const e of errors.array()) if (!fieldErrors[e.path]) fieldErrors[e.path] = e.msg;
-
+      console.log('バリデーションエラーでエラーになっています。');
       return res.status(422).render('seller/listing-edit', {
         title: '出品を編集',
         product, categories, images, specs, tags,
-        csrfToken: req.csrfToken(),
         fieldErrors
       });
     }
@@ -1604,6 +1611,7 @@ app.post(
       }
 
       await client.query('COMMIT');
+      console.log('ここまできました');
 
       // 保存後は商品詳細へ（slugは据え置き）
       const prod = await dbQuery(`SELECT slug FROM products WHERE id = $1::uuid LIMIT 1`, [id]);
@@ -1932,13 +1940,28 @@ async function getRevenueCardData(dbQuery, sellerId) {
   return { month, week, all };
 }
 
-/**
- * 詳細画面：period = 'week'|'month'|'year'
- *  - week: 日単位
- *  - month: 週単位
- *  - year: 月単位（全期間でもこの粒度でOK）
- */
-async function getAnalyticsBuckets(dbQuery, sellerId, { period, q, categoryId, paymentMethod }) {
+// yyyy-mm, yyyy-ww, yyyy などを安全にパースする小ヘルパ
+function parseRangeFromQuery(q) {
+  const {
+    granularity = '',          // 'day' | 'week' | 'month' | 'year'（新）
+    dateFrom = '',             // 'YYYY-MM-DD'（day用: from）
+    dateTo   = '',             // 'YYYY-MM-DD'（day用: to）
+    week     = '',             // 'YYYY-Www'  （week用）
+    ym       = '',             // 'YYYY-MM'    (month用)
+    year     = ''              // 'YYYY'       (year用)
+  } = q || {};
+
+  // 後方互換: 旧 period を granularity に寄せる
+  let g = granularity || q.period || 'month';
+
+  // 正規化
+  if (!['day','week','month','year'].includes(g)) g = 'month';
+
+  return { g, dateFrom, dateTo, week, ym, year };
+}
+
+// 汎用フィルタ（既存の buildSellerFilters をそのまま活用）
+async function getAnalyticsBucketsV2(dbQuery, sellerId, { g, q, categoryId, paymentMethod, dateFrom, dateTo, week, ym, year }) {
   const { where, params } = buildSellerFilters({
     sellerId,
     q,
@@ -1947,68 +1970,138 @@ async function getAnalyticsBuckets(dbQuery, sellerId, { period, q, categoryId, p
     paidOnly: true
   });
 
-  let sql;
-  if (period === 'week') {
-    sql = `
-      WITH span AS (
-        SELECT date_trunc('week', (now() AT TIME ZONE $${params.length+1})) AS wstart
-      )
+  // 開始・終了日時（JSTベース）を決定
+  let startExpr = null;
+  let endExpr   = null;
+  const tzBindPos = params.length + 1; // $N として利用
+  params.push(JST_TZ);
+
+  // 粒度に応じて期間を決定
+  if (g === 'day') {
+    // パラメータ：最初にTZを入れてある前提（tzBindPos = params.length+1; params.push(JST_TZ);）
+    let startExpr, endExpr;
+
+    if (dateFrom) { params.push(`${dateFrom} 00:00:00`); startExpr = `$${params.length}::timestamp`; }
+    if (dateTo)   { params.push(`${dateTo} 23:59:59`);   endExpr   = `$${params.length}::timestamp`; }
+
+    // 未指定なら「今月」範囲（ローカル＝JSTの月初〜月末）
+    if (!startExpr || !endExpr) {
+      startExpr = `date_trunc('month', (now() AT TIME ZONE $${tzBindPos}))`;
+      endExpr   = `date_trunc('month', (now() AT TIME ZONE $${tzBindPos})) + interval '1 month'`;
+    }
+
+    const sql = `
       SELECT
-        to_char(date_trunc('day', o.created_at AT TIME ZONE $${params.length+1}), 'MM/DD') AS label,
-        ${SUM_REVENUE_SQL}::int AS revenue,
-        ${COUNT_ORDERS_SQL}     AS orders
-      FROM orders o
-      JOIN order_items oi ON oi.order_id = o.id
-      CROSS JOIN span
-      WHERE ${where.join(' AND ')}
-        AND (o.created_at AT TIME ZONE $${params.length+1}) >= span.wstart
-        AND (o.created_at AT TIME ZONE $${params.length+1}) <  span.wstart + interval '7 days'
-      GROUP BY label
-      ORDER BY MIN(date_trunc('day', o.created_at AT TIME ZONE $${params.length+1})) ASC
-    `;
-    params.push(JST_TZ);
-  } else if (period === 'month') {
-    sql = `
-      WITH span AS (
-        SELECT date_trunc('month', (now() AT TIME ZONE $${params.length+1})) AS mstart
-      )
-      SELECT
-        to_char(date_trunc('week', o.created_at AT TIME ZONE $${params.length+1}), 'MM/DD') AS label,
+        to_char(date_trunc('day', o.created_at AT TIME ZONE $${tzBindPos}), 'MM/DD') AS label,
         ${SUM_REVENUE_SQL}::int AS revenue,
         ${COUNT_ORDERS_SQL}     AS orders,
-        MIN(date_trunc('week', o.created_at AT TIME ZONE $${params.length+1})) AS w
+        MIN(date_trunc('day', o.created_at AT TIME ZONE $${tzBindPos})) AS d
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.id
+      WHERE ${where.join(' AND ')}
+        AND (o.created_at AT TIME ZONE $${tzBindPos}) >= ${startExpr}
+        AND (o.created_at AT TIME ZONE $${tzBindPos}) <  ${endExpr}
+      GROUP BY label
+      ORDER BY d ASC
+    `;
+    const rows = await dbQuery(sql, params);
+    return rows.map(r => ({ label: r.label, revenue: r.revenue, orders: r.orders }));
+  }
+
+  if (g === 'week') {
+    // ISO週 'YYYY-Www' を採用（例：2025-W39）
+    // 週が未指定なら「今週」
+    let weekStartExpr;
+    if (week && /^\d{4}-W\d{2}$/.test(week)) {
+      // ISO週の月曜（ローカル）を timestamp で作って使う
+      params.push(week + '-1'); // 月曜日
+      const pos = params.length;
+      weekStartExpr = `date_trunc('week', to_date($${pos}, 'IYYY-"W"IW-ID')::timestamp)`;
+    } else {
+      weekStartExpr = `date_trunc('week', (now() AT TIME ZONE $${tzBindPos}))`;
+    }
+
+    const sql = `
+      WITH span AS (SELECT ${weekStartExpr} AS wstart)
+      SELECT
+        to_char(date_trunc('day', o.created_at AT TIME ZONE $${tzBindPos}), 'MM/DD') AS label,
+        ${SUM_REVENUE_SQL}::int AS revenue,
+        ${COUNT_ORDERS_SQL}     AS orders,
+        MIN(date_trunc('day', o.created_at AT TIME ZONE $${tzBindPos})) AS d
       FROM orders o
       JOIN order_items oi ON oi.order_id = o.id
       CROSS JOIN span
       WHERE ${where.join(' AND ')}
-        AND (o.created_at AT TIME ZONE $${params.length+1}) >= span.mstart
-        AND (o.created_at AT TIME ZONE $${params.length+1}) <  span.mstart + interval '1 month'
+        AND (o.created_at AT TIME ZONE $${tzBindPos}) >= span.wstart
+        AND (o.created_at AT TIME ZONE $${tzBindPos}) <  span.wstart + interval '7 days'
+      GROUP BY label
+      ORDER BY d ASC
+    `;
+    const rows = await dbQuery(sql, params);
+    return rows.map(r => ({ label: r.label, revenue: r.revenue, orders: r.orders }));
+  }
+
+  if (g === 'month') {
+    // ym = 'YYYY-MM' の月（未指定なら今月）
+    let monthStartExpr;
+    if (ym && /^\d{4}-\d{2}$/.test(ym)) {
+      params.push(ym + '-01 00:00:00');
+      const pos = params.length;
+      monthStartExpr = `(to_timestamp($${pos}, 'YYYY-MM-DD HH24:MI:SS') AT TIME ZONE $${tzBindPos})`;
+    } else {
+      monthStartExpr = `date_trunc('month', (now() AT TIME ZONE $${tzBindPos}))`;
+    }
+    const sql = `
+      WITH span AS (SELECT ${monthStartExpr} AS mstart)
+      SELECT
+        to_char(date_trunc('week', o.created_at AT TIME ZONE $${tzBindPos}), 'MM/DD') AS label,
+        ${SUM_REVENUE_SQL}::int AS revenue,
+        ${COUNT_ORDERS_SQL}     AS orders,
+        MIN(date_trunc('week', o.created_at AT TIME ZONE $${tzBindPos})) AS w
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.id
+      CROSS JOIN span
+      WHERE ${where.join(' AND ')}
+        AND (o.created_at AT TIME ZONE $${tzBindPos}) >= span.mstart
+        AND (o.created_at AT TIME ZONE $${tzBindPos}) <  span.mstart + interval '1 month'
       GROUP BY label
       ORDER BY w ASC
     `;
-    params.push(JST_TZ);
-  } else { // 'year' ＝ 月単位（通期でもOK）
-    sql = `
-      SELECT
-        to_char(date_trunc('month', o.created_at AT TIME ZONE $${params.length+1}), 'YYYY-MM') AS label,
-        ${SUM_REVENUE_SQL}::int AS revenue,
-        ${COUNT_ORDERS_SQL}     AS orders
-      FROM orders o
-      JOIN order_items oi ON oi.order_id = o.id
-      WHERE ${where.join(' AND ')}
-      GROUP BY label
-      ORDER BY MIN(date_trunc('month', o.created_at AT TIME ZONE $${params.length+1})) ASC
-    `;
-    params.push(JST_TZ);
-  }
-
-  const rows = await dbQuery(sql, params);
-
-  // 週単位だけ「第n週」表示に差し替え
-  if (period === 'month') {
+    const rows = await dbQuery(sql, params);
     return rows.map((r, i) => ({ label: `第${i+1}週`, revenue: r.revenue, orders: r.orders }));
   }
-  return rows.map(r => ({ label: r.label, revenue: r.revenue, orders: r.orders }));
+
+  // year
+  {
+    // 指定年（未指定なら今年）
+    let yearStartExpr;
+    if (year && /^\d{4}$/.test(year)) {
+      params.push(year + '-01-01 00:00:00');
+      const pos = params.length;
+      yearStartExpr = `(to_timestamp($${pos}, 'YYYY-MM-DD HH24:MI:SS') AT TIME ZONE $${tzBindPos})`;
+    } else {
+      yearStartExpr = `date_trunc('year', (now() AT TIME ZONE $${tzBindPos}))`;
+    }
+
+    const sql = `
+      WITH span AS (SELECT ${yearStartExpr} AS ystart)
+      SELECT
+        to_char(date_trunc('month', o.created_at AT TIME ZONE $${tzBindPos}), 'YYYY-MM') AS label,
+        ${SUM_REVENUE_SQL}::int AS revenue,
+        ${COUNT_ORDERS_SQL}     AS orders,
+        MIN(date_trunc('month', o.created_at AT TIME ZONE $${tzBindPos})) AS m
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.id
+      CROSS JOIN span
+      WHERE ${where.join(' AND ')}
+        AND (o.created_at AT TIME ZONE $${tzBindPos}) >= span.ystart
+        AND (o.created_at AT TIME ZONE $${tzBindPos}) <  span.ystart + interval '1 year'
+      GROUP BY label
+      ORDER BY m ASC
+    `;
+    const rows = await dbQuery(sql, params);
+    return rows.map(r => ({ label: r.label, revenue: r.revenue, orders: r.orders }));
+  }
 }
 
 /* =========================================================
@@ -2074,11 +2167,14 @@ app.get('/dashboard/seller', requireAuth, requireRole('seller'), async (req, res
           COALESCE(o.order_number, o.id::text) AS order_no,
           o.status AS order_status,
           o.created_at,
-          SUM(oi.price * oi.quantity)::int AS amount
+          o.buyer_id,
+          SUM(oi.price * oi.quantity)::int AS amount,
+          bu.name AS buyer_name
         FROM orders o
         JOIN order_items oi ON oi.order_id = o.id
+        LEFT JOIN users bu ON bu.id = o.buyer_id
        WHERE oi.seller_id = $1
-       GROUP BY o.id
+       GROUP BY o.id, bu.name
        ORDER BY o.created_at DESC
        LIMIT 6
       `, [uid]),
@@ -2106,6 +2202,7 @@ app.get('/dashboard/seller', requireAuth, requireRole('seller'), async (req, res
 
     const tradesCard = tradesRecent.map(t => ({
       id: t.id,
+      buyer_name: t.buyer_name,
       date: new Date(t.created_at).toLocaleDateString('ja-JP'),
       amount: t.amount,
       status: jaLabel('order_status', t.order_status)
@@ -2453,37 +2550,35 @@ app.post('/seller/trades/bulk', requireAuth, requireRole('seller'), async (req, 
 app.get('/seller/analytics', requireAuth, requireRole('seller'), async (req, res, next) => {
   try {
     const uid = req.session.user.id;
-    const {
-      q = '',
-      period = 'month',   // 'week' | 'month' | 'year'
-      category = '',
-      payment = ''
-    } = req.query;
+    const { g, dateFrom, dateTo, week, ym, year } = parseRangeFromQuery(req.query);
+    const q        = req.query.q || '';
+    const category = req.query.category || '';
+    const payment  = req.query.payment || '';
 
-    // プルダウン用マスタ
     const [categories, paymentMethods] = await Promise.all([
       dbQuery(`SELECT id, name FROM categories ORDER BY sort_order NULLS LAST, name ASC`),
-      dbQuery(`SELECT value, label_ja FROM option_labels WHERE category = 'payment_method' AND active = true ORDER BY sort ASC, label_ja ASC`)
+      dbQuery(`SELECT value, label_ja FROM option_labels WHERE category='payment_method' AND active=true ORDER BY sort ASC, label_ja ASC`)
     ]);
 
-    // 集計
-    const analyticsData = await getAnalyticsBuckets(dbQuery, uid, {
-      period: (['week','month','year'].includes(period) ? period : 'month'),
-      q: q || '',
-      categoryId: category || '',
-      paymentMethod: payment || ''
+    const analyticsData = await getAnalyticsBucketsV2(dbQuery, uid, {
+      g, q, categoryId: category, paymentMethod: payment,
+      dateFrom, dateTo, week, ym, year
     });
 
-    // サマリ
     const summary = analyticsData.reduce((acc, b) => {
       acc.revenue += (b.revenue || 0);
-      acc.orders  += (b.orders  || 0);
+      acc.orders  = Number(acc.orders) + (Number(b.orders) || 0);
       return acc;
     }, { revenue: 0, orders: 0 });
 
     res.render('seller/analytics', {
       title: '売上ダッシュボード詳細',
-      q, period, category, payment,
+      // フィルタ表示用
+      q, category, payment,
+      // 新パラメータ
+      granularity: g, dateFrom, dateTo, week, ym, year,
+      // 旧UI互換のために period も残す（不要なら削除OK）
+      period: (g === 'day' ? 'week' : g), // 表示文言で使っていれば合わせる
       categories, paymentMethods,
       analyticsData, summary
     });
@@ -4335,6 +4430,17 @@ app.post('/uploads/confirm', requireAuth /* 任意: requireRole('seller') */, as
     // 単なるアップロードだけ（商品紐付けは後で）という運用のとき
     return res.json({ ok:true, url, key, bytes, mime });
   } catch (e) { next(e); }
+});
+
+// 開発支援：CSRFエラーの見やすい応答
+app.use((err, req, res, next) => {
+  if (err && err.code === 'EBADCSRFTOKEN') {
+    return res.status(403).render('errors/403', {
+      title: 'セキュリティエラー',
+      message: 'トークンが無効です。フォームを開き直して再度お試しください。'
+    });
+  }
+  next(err);
 });
 
 /* =========================================================

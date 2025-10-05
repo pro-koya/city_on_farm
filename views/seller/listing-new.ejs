@@ -1,7 +1,7 @@
 <%- include('../partials/header', { title: '新規出品', extraCSS: '/styles/listing-new.css' }) %>
 
 <main class="listing">
-  <form id="listing-form" class="listing__form" method="POST" action="/seller/listing-new" enctype="multipart/form-data" novalidate>
+  <form id="listing-form" class="listing__form" method="POST" action="/seller/listing-new">
     <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <% } %>

@@ -7,12 +7,12 @@
     <% if (trades && trades.length) { %>
       <% trades.forEach(function(t){ %>
         <li class="row">
-          <span class="mono">#<%= t.id %></span>
-          <span><%= t.date %></span>
+          <span class="mono">注文者：<%= t.buyer_name %></span>
+          <span>注文日：<%= t.date %></span>
           <span class="<%= /完了|配達完了|支払い済み/.test(t.status)?'ok' : /キャンセル|返金済み/.test(t.status)?'ng' : 'pending' %>">
-            <%= t.status %>
+            状況：<%= t.status %>
           </span>
-          <span>¥<%= Number(t.amount||0).toLocaleString() %></span>
+          <span>小計：¥<%= Number(t.amount||0).toLocaleString() %></span>
         </li>
       <% }) %>
     <% } else { %>

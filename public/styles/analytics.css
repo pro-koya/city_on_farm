@@ -1,3 +1,16 @@
+:root {
+  --bg: #F9F9F6;
+  --text: #2B2B2B;
+  --main: #4C6B5C;
+  --accent: #A3C9A8;
+  --hi: #D6EADF;
+  --white: #fff;
+  --muted: #6b7280;
+  --danger: #e11d48;
+  --shadow: 0 8px 24px rgba(0, 0, 0, .08);
+  --radius: 14px;
+}
+
 /* --- 売上ダッシュボード共通 --- */
 .rev-tabs {
     display: flex;
@@ -81,6 +94,12 @@
     background: #fff;
 }
 
+.g-day span {
+    padding: .8rem .25rem;
+    font-size: 12px;
+    color: var(--muted);
+}
+
 /* 詳細チャート領域 */
 .ana-card {
     background: #fff;
@@ -138,6 +157,20 @@
     border-radius: 999px;
     background: #f3f4f6;
     font-size: .8rem
+}
+
+.btn {
+  background-color: var(--white);
+  border: 1px solid var(--accent);
+  color: var(--main);
+  padding: .5rem 1rem;
+  border-radius: 1.5rem;
+  cursor: pointer;
+}
+
+.btn-danger {
+    color: var(--muted);
+    border: 1px solid var(--muted);
 }
 
 /* モバイル：テーブルをカード風 */

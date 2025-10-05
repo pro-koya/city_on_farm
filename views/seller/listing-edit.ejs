@@ -1,8 +1,8 @@
 <%- include('../partials/header', { title: '出品を編集', extraCSS: '/styles/listing-edit.css' }) %>
 
 <main class="listing">
-  <form id="edit-form" class="listing__form" method="POST" action="/seller/listing-edit/<%= product.id %>" enctype="multipart/form-data" novalidate>
-    <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+  <form id="edit-form" class="listing__form" method="POST" action="/seller/listing-edit/<%= product.id %>">
+    <% if (typeof csrfToken !=='undefined' && csrfToken) { %>
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <% } %>
 

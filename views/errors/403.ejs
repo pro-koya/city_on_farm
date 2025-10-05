@@ -7,7 +7,7 @@
       <%= (typeof message !== 'undefined' && message) ? message : 'このページにアクセスする権限がありません。' %>
     </p>
 
-    <% if (currentUser) { %>
+    <% if (typeof currentUser !== 'undefined' && currentUser) { %>
       <p style="color:#666; margin:0 0 24px;">
         現在 <strong><%= currentUser.name %></strong> さんでログイン中です。
         ほかのロールでのアクセスが必要な場合は一度ログアウトして別のアカウントでログインしてください。

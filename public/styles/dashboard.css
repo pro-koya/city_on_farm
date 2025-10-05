@@ -92,7 +92,7 @@ section {
 
 .row {
   display: grid;
-  grid-template-columns: 1fr auto auto auto auto;
+  grid-template-columns: .3fr .3fr .3fr .3fr;
   gap: .6rem;
   align-items: center;
   padding: .55rem 0;
@@ -243,6 +243,10 @@ section {
   .chart-wrap {
     height: 220px;
   }
+
+  .row {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 /* canvas はラッパーにフィットさせる（Chart.js の resize と相性◎） */
@@ -250,4 +254,18 @@ section {
   display: block;
   width: 100% !important;
   height: 100% !important;
+}
+
+.btn {
+  background-color: var(--white);
+  border: 1px solid var(--accent);
+  color: var(--main);
+  padding: .5rem 1rem;
+  border-radius: 1.5rem;
+  cursor: pointer;
+}
+.btn.is-active {
+  background-color: var(--main);
+  color: var(--white);
+  transition: all .4s ease-in-out;
 }

@@ -21,7 +21,7 @@
 
       <!-- 右：PCもモバイルもトグル＋（PCのみ）ログインピル -->
       <div class="navbar-right">
-        <% if (currentUser) { %>
+        <% if (typeof currentUser !== 'undefined' && currentUser) { %>
           <!-- PC専用のログインピル（モバイルでは非表示） -->
           <span class="nav-loginstatus__pill nav-loginstatus--desktop" aria-live="polite">
             <strong>
@@ -57,7 +57,7 @@
       <li role="none"><a role="menuitem" href="/contact">お問い合わせ</a></li>
       <li role="none"><a role="menuitem" href="/cart">カート（<%= (typeof cartCount!=='undefined' ? cartCount : 0) %>）</a>
       </li>
-      <% if (currentUser) { %>
+      <% if (typeof currentUser !== 'undefined' && currentUser) { %>
         <li role="none"><a role="menuitem"
             href="/dashboard/<%= (currentUser.roles?.includes('seller') ? 'seller' : 'buyer') %>">ダッシュボード</a></li>
         <li class="nav-logout" role="none">
