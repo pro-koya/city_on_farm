@@ -3,19 +3,21 @@
     <h2>売上ダッシュボード</h2>
     <a class="link" href="/seller/analytics">詳細 →</a>
   </div>
-  <div class="kpis">
-    <div class="kpi">
-      <span class="kpi__label">本日</span>
-      <strong>¥<%= (revenue && revenue.today) ? revenue.today.toLocaleString() : 0 %></strong>
-    </div>
-    <div class="kpi">
-      <span class="kpi__label">今月</span>
-      <strong>¥<%= (revenue && revenue.month) ? revenue.month.toLocaleString() : 0 %></strong>
-    </div>
+
+  <script>
+    // server.js で res.render の値: { revenueCardData }
+    window.__REV_CARD__ = <%- JSON.stringify(revenueCardData || { month: [], week: [], all: [] }) %>;
+  </script>
+
+  <!-- タブ（今月/今週/全期間） -->
+  <div class="kpis tabs">
+    <button class="tab" data-range="week">今週</button>
+    <button class="tab is-active" data-range="month">今月</button>
+    <button class="tab" data-range="all">全期間</button>
   </div>
 
-  <!-- 素のCanvasで軽量スパークライン -->
-  <canvas class="spark" id="revSpark" height="64"
-          data-points="<%= JSON.stringify((revenue && revenue.chart) || []) %>"
-          aria-label="売上推移ミニチャート"></canvas>
+  <!-- コンボチャート：売上=Bar / 注文数=Line -->
+  <div class="chart-wrap">
+    <canvas id="revCombo" aria-label="売上/件数チャート"></canvas>
+  </div>
 </section>

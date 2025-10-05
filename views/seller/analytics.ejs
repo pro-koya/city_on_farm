@@ -1,0 +1,97 @@
+<%- include('../partials/header', {
+  title: '売上ダッシュボード詳細',
+  extraCSS: '/styles/analytics.css'
+}) %>
+
+<main class="listing" style="max-width:1100px;margin:80px auto 40px;padding:0 16px">
+  <header>
+    <h1 style="margin:0 0 .5rem 0;font-size:1.2rem">売上ダッシュボード詳細</h1>
+    <!-- フィルタバー -->
+    <form class="ana-bar" method="get" action="/seller/analytics">
+      <div class="search">
+        <input type="search" name="q" value="<%= q || '' %>" placeholder="商品名・出品者などで検索">
+      </div>
+
+      <div class="filters">
+        <select class="select" name="period">
+            <option value="week"  <%= period==='week' ?'selected':'' %>>週</option>
+            <option value="month" <%= period==='month'?'selected':'' %>>月</option>
+            <option value="year"  <%= period==='year' ?'selected':'' %>>年</option>
+        </select>
+
+        <select class="select" name="category">
+          <option value="">すべてのカテゴリ</option>
+          <% (categories || []).forEach(c => { %>
+            <option value="<%= c.id %>" <%= String(category||'')===String(c.id)?'selected':'' %>><%= c.name %></option>
+          <% }) %>
+        </select>
+
+        <select class="select" name="payment">
+          <option value="">すべての支払い方法</option>
+          <% (paymentMethods || []).forEach(pm => { %>
+            <option value="<%= pm.value %>" <%= (payment||'')===pm.value?'selected':'' %>><%= pm.label_ja %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <!-- 期間の範囲（任意で日付コントロールも拡張可） -->
+      <div style="justify-self:end;display:flex;gap:.4rem;flex-wrap:wrap">
+        <button class="btn" type="submit">適用</button>
+        <a class="btn btn--ghost" href="/seller/analytics">リセット</a>
+      </div>
+    </form>
+  </header>
+
+  <section class="ana-card">
+    <div class="ana-head">
+      <!-- <h2 class="ana-title">
+        期間: <%= (period==='week'?'今週（1日単位）': (period==='month'?'今月（週単位）':'全期間（1ヶ月単位）')) %>
+      </h2> -->
+      <div>
+        <span class="badge">売上: ¥<%= (summary && summary.revenue ? summary.revenue.toLocaleString() : 0) %></span>
+        <span class="badge">注文数: <%= (summary && summary.orders ? summary.orders.toLocaleString() : 0) %></span>
+      </div>
+    </div>
+
+    <script>
+        // server.js 側で { analyticsData, summary, period } を渡している想定
+        window.__ANALYTICS__ = {
+            period: "<%= period %>",
+            buckets: <%- JSON.stringify(analyticsData || []) %>,
+            summary: <%- JSON.stringify(summary || {revenue:0,orders:0}) %>
+        };
+    </script>
+
+    <section class="card">
+        <h2>売上チャート</h2>
+        <div class="chart-wrap">
+            <canvas id="analyticsCombo" aria-label="売上/件数チャート"></canvas>
+        </div>
+    </section>
+
+    <!-- 下部にバケットの表を簡易表示 -->
+    <table class="ana-table">
+      <thead>
+        <tr>
+          <th>区分</th><th>売上</th><th>注文数</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% (analyticsData || []).forEach(b => { %>
+          <tr>
+            <td data-label="区分"><%= b.label %></td>
+            <td data-label="売上">¥<%= (b.revenue||0).toLocaleString() %></td>
+            <td data-label="注文数"><%= (b.orders||0).toLocaleString() %></td>
+          </tr>
+        <% }) %>
+        <% if (!(analyticsData || []).length) { %>
+          <tr><td colspan="3" style="text-align:center;color:#6b7280">該当データがありません。</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+<script src="/js/analytics-charts.js"></script>
+<%- include('../partials/footer') %>

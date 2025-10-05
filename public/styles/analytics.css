@@ -1,0 +1,209 @@
+/* --- 売上ダッシュボード共通 --- */
+.rev-tabs {
+    display: flex;
+    gap: .4rem;
+    margin: .25rem 0 .5rem;
+    flex-wrap: wrap;
+}
+
+.rev-tab {
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    border-radius: 999px;
+    padding: .35rem .8rem;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.rev-tab.is-active {
+    background: #4C6B5C;
+    color: #fff;
+    border-color: #4C6B5C;
+}
+
+.rev-kpis {
+    margin: .25rem 0 .5rem;
+}
+
+#revMixed {
+    width: 100%;
+}
+
+/* 詳細画面フィルタバー */
+.ana-bar {
+    display: grid;
+    gap: .6rem;
+    grid-template-columns: 1fr auto auto auto;
+    align-items: center;
+    margin: .75rem 0 1rem;
+}
+
+@media(max-width:900px) {
+    .ana-bar {
+        grid-template-columns: 1fr;
+    }
+}
+
+.ana-bar .search {
+    position: relative;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    padding: .5rem .8rem .5rem 2rem;
+    background: #fff;
+}
+
+.ana-bar .search::before {
+    content: '🔍';
+    position: absolute;
+    left: .6rem;
+    top: .45rem;
+    opacity: .6;
+}
+
+.ana-bar .search input {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+}
+
+.ana-bar .filters {
+    display: flex;
+    gap: .4rem;
+    flex-wrap: wrap;
+}
+
+.select {
+    min-height: 40px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 0 .6rem;
+    background: #fff;
+}
+
+/* 詳細チャート領域 */
+.ana-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: .8rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .05);
+}
+
+.ana-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .4rem;
+    margin-bottom: .4rem;
+}
+
+.ana-title {
+    margin: 0;
+    font-size: 1.05rem;
+}
+
+/* パネル下のテーブル */
+.ana-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: .6rem;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.ana-table th,
+.ana-table td {
+    padding: .7rem .8rem;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+}
+
+.ana-table th {
+    background: #fbfbfb;
+    color: #374151;
+    font-size: .9rem
+}
+
+.ana-table tr:last-child td {
+    border-bottom: none
+}
+
+.badge {
+    display: inline-block;
+    padding: .15rem .5rem;
+    border-radius: 999px;
+    background: #f3f4f6;
+    font-size: .8rem
+}
+
+/* モバイル：テーブルをカード風 */
+@media (max-width: 720px) {
+    .ana-table {
+        border: none;
+        background: transparent;
+    }
+
+    .ana-table thead {
+        display: none;
+    }
+
+    .ana-table tr {
+        display: block;
+        margin-bottom: 12px;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, .04);
+    }
+
+    .ana-table td {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        border-bottom: 1px dashed #e5e7eb;
+    }
+
+    .ana-table td:last-child {
+        border-bottom: none;
+    }
+
+    .ana-table td::before {
+        content: attr(data-label);
+        flex: 0 0 45%;
+        color: #6b7280;
+    }
+
+    /* チャートの標準ラッパー */
+    .chart-wrap {
+        position: relative;
+        /* Chart.js が絶対配置を使うため相性が良い */
+        height: (280px, 40vh, 420px);
+        /* 基本の高さ（お好みで） */
+        min-height: 180px;
+        /* つぶれ防止 */
+        max-height: 60vh;
+        /* 画面を占有しすぎない */
+        width: 100%;
+        overflow: hidden;
+        /* 見切れを防ぐ */
+    }
+
+    /* モバイルは少し低めに */
+    @media (max-width: 768px) {
+        .chart-wrap {
+            height: 220px;
+        }
+    }
+
+    /* canvas はラッパーにフィットさせる（Chart.js の resize と相性◎） */
+    .chart-wrap canvas {
+        display: block;
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+}

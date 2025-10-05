@@ -1813,6 +1813,204 @@ app.get('/orders/recent', requireAuth, async (req, res, next) => {
   }
 });
 
+// タイムゾーン（売上集計を日本時間で統一）
+const JST_TZ = 'Asia/Tokyo';
+
+// 売上集計のWHERE句の共通フィルタを作る
+function buildSellerFilters({ sellerId, q, categoryId, paymentMethod, paidOnly = true }) {
+  const where = [
+    `EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $1)`
+  ];
+  const params = [sellerId];
+
+  if (paidOnly) {
+    where.push(`o.Payment_status IN ('paid','refunded')`);
+  }
+
+  if (q) {
+    params.push(`%${q}%`);
+    const like = `$${params.length}`;
+    where.push(`(
+      COALESCE(o.order_number, o.id::text) ILIKE ${like}
+      OR EXISTS (
+        SELECT 1 FROM order_items oi
+        JOIN products p ON p.id = oi.product_id
+        LEFT JOIN users su ON su.id = p.seller_id
+        WHERE oi.order_id = o.id
+          AND (p.title ILIKE ${like} OR COALESCE(su.name,'') ILIKE ${like})
+      )
+    )`);
+  }
+
+  if (categoryId) {
+    params.push(categoryId);
+    where.push(`EXISTS (
+      SELECT 1 FROM order_items oi
+      JOIN products p ON p.id = oi.product_id
+      WHERE oi.order_id = o.id AND p.category_id = $${params.length}
+    )`);
+  }
+
+  if (paymentMethod) {
+    params.push(paymentMethod);
+    where.push(`o.payment_method = $${params.length}`);
+  }
+
+  return { where, params };
+}
+
+// 「1注文＝1カウント」にしたいので order_items を重複カウントしないよう DISTINCT でカウント
+const COUNT_ORDERS_SQL = `COUNT(DISTINCT o.id)`;
+const SUM_REVENUE_SQL  = `COALESCE(SUM(oi.price * oi.quantity),0)`;
+
+/**
+ * カード用：今月=週単位、今週=日単位、全期間=月単位
+ * 返却: { month: Bucket[], week: Bucket[], all: Bucket[] }
+ * Bucket = { label, revenue, orders }
+ */
+async function getRevenueCardData(dbQuery, sellerId) {
+  // 今週（日単位：当週の月曜〜日曜）
+  const weekRows = await dbQuery(`
+    WITH span AS (
+      SELECT date_trunc('week', (now() AT TIME ZONE $1)) AS wstart
+    )
+    SELECT
+      to_char(date_trunc('day', o.created_at AT TIME ZONE $1), 'MM/DD') AS label,
+      ${SUM_REVENUE_SQL}::int AS revenue,
+      ${COUNT_ORDERS_SQL}     AS orders
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    CROSS JOIN span
+    WHERE oi.seller_id = $2
+      AND o.payment_status IN ('paid','refunded')
+      AND (o.created_at AT TIME ZONE $1) >= span.wstart
+      AND (o.created_at AT TIME ZONE $1) <  span.wstart + interval '7 days'
+    GROUP BY label
+    ORDER BY MIN(date_trunc('day', o.created_at AT TIME ZONE $1)) ASC
+  `, [JST_TZ, sellerId]);
+
+  // 今月（週単位：週の開始日でバケット）
+  const monthRows = await dbQuery(`
+    WITH span AS (
+      SELECT date_trunc('month', (now() AT TIME ZONE $1)) AS mstart
+    )
+    SELECT
+      to_char(date_trunc('week', o.created_at AT TIME ZONE $1), 'MM/DD') AS label,
+      ${SUM_REVENUE_SQL}::int AS revenue,
+      ${COUNT_ORDERS_SQL}     AS orders,
+      MIN(date_trunc('week', o.created_at AT TIME ZONE $1)) AS w
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    CROSS JOIN span
+    WHERE oi.seller_id = $2
+      AND o.payment_status IN ('paid','refunded')
+      AND (o.created_at AT TIME ZONE $1) >= span.mstart
+      AND (o.created_at AT TIME ZONE $1) <  span.mstart + interval '1 month'
+    GROUP BY label
+    ORDER BY w ASC
+  `, [JST_TZ, sellerId]);
+
+  // 全期間（月単位）
+  const allRows = await dbQuery(`
+    SELECT
+      to_char(date_trunc('month', o.created_at AT TIME ZONE $1), 'YYYY-MM') AS label,
+      ${SUM_REVENUE_SQL}::int AS revenue,
+      ${COUNT_ORDERS_SQL}     AS orders
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    WHERE oi.seller_id = $2
+      AND o.payment_status IN ('paid','refunded')
+    GROUP BY label
+    ORDER BY MIN(date_trunc('month', o.created_at AT TIME ZONE $1)) ASC
+  `, [JST_TZ, sellerId]);
+
+  // 今月のラベルを「第n週」表示にしたい場合はここで置換（UIはMM/DDでもOK）
+  const month = monthRows.map((r, i) => ({ label: `第${i+1}週`, revenue: r.revenue, orders: r.orders }));
+  const week  = weekRows.map(r => ({ label: r.label, revenue: r.revenue, orders: r.orders }));
+  const all   = allRows.map(r => ({ label: r.label, revenue: r.revenue, orders: r.orders }));
+
+  return { month, week, all };
+}
+
+/**
+ * 詳細画面：period = 'week'|'month'|'year'
+ *  - week: 日単位
+ *  - month: 週単位
+ *  - year: 月単位（全期間でもこの粒度でOK）
+ */
+async function getAnalyticsBuckets(dbQuery, sellerId, { period, q, categoryId, paymentMethod }) {
+  const { where, params } = buildSellerFilters({
+    sellerId,
+    q,
+    categoryId,
+    paymentMethod,
+    paidOnly: true
+  });
+
+  let sql;
+  if (period === 'week') {
+    sql = `
+      WITH span AS (
+        SELECT date_trunc('week', (now() AT TIME ZONE $${params.length+1})) AS wstart
+      )
+      SELECT
+        to_char(date_trunc('day', o.created_at AT TIME ZONE $${params.length+1}), 'MM/DD') AS label,
+        ${SUM_REVENUE_SQL}::int AS revenue,
+        ${COUNT_ORDERS_SQL}     AS orders
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.id
+      CROSS JOIN span
+      WHERE ${where.join(' AND ')}
+        AND (o.created_at AT TIME ZONE $${params.length+1}) >= span.wstart
+        AND (o.created_at AT TIME ZONE $${params.length+1}) <  span.wstart + interval '7 days'
+      GROUP BY label
+      ORDER BY MIN(date_trunc('day', o.created_at AT TIME ZONE $${params.length+1})) ASC
+    `;
+    params.push(JST_TZ);
+  } else if (period === 'month') {
+    sql = `
+      WITH span AS (
+        SELECT date_trunc('month', (now() AT TIME ZONE $${params.length+1})) AS mstart
+      )
+      SELECT
+        to_char(date_trunc('week', o.created_at AT TIME ZONE $${params.length+1}), 'MM/DD') AS label,
+        ${SUM_REVENUE_SQL}::int AS revenue,
+        ${COUNT_ORDERS_SQL}     AS orders,
+        MIN(date_trunc('week', o.created_at AT TIME ZONE $${params.length+1})) AS w
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.id
+      CROSS JOIN span
+      WHERE ${where.join(' AND ')}
+        AND (o.created_at AT TIME ZONE $${params.length+1}) >= span.mstart
+        AND (o.created_at AT TIME ZONE $${params.length+1}) <  span.mstart + interval '1 month'
+      GROUP BY label
+      ORDER BY w ASC
+    `;
+    params.push(JST_TZ);
+  } else { // 'year' ＝ 月単位（通期でもOK）
+    sql = `
+      SELECT
+        to_char(date_trunc('month', o.created_at AT TIME ZONE $${params.length+1}), 'YYYY-MM') AS label,
+        ${SUM_REVENUE_SQL}::int AS revenue,
+        ${COUNT_ORDERS_SQL}     AS orders
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.id
+      WHERE ${where.join(' AND ')}
+      GROUP BY label
+      ORDER BY MIN(date_trunc('month', o.created_at AT TIME ZONE $${params.length+1})) ASC
+    `;
+    params.push(JST_TZ);
+  }
+
+  const rows = await dbQuery(sql, params);
+
+  // 週単位だけ「第n週」表示に差し替え
+  if (period === 'month') {
+    return rows.map((r, i) => ({ label: `第${i+1}週`, revenue: r.revenue, orders: r.orders }));
+  }
+  return rows.map(r => ({ label: r.label, revenue: r.revenue, orders: r.orders }));
+}
+
 /* =========================================================
  *  ダッシュボード
  * =======================================================*/
@@ -1858,7 +2056,8 @@ app.get('/dashboard/buyer', requireAuth, async (req, res, next) => {
 app.get('/dashboard/seller', requireAuth, requireRole('seller'), async (req, res, next) => {
   try {
     const uid = req.session.user.id;
-    const [listings, tradesRecent, tradesCount, revenue] = await Promise.all([
+
+    const [listings, tradesRecent, tradesCount, revenueSum, revenueCardData] = await Promise.all([
       dbQuery(`
         SELECT p.slug, p.title, p.price, p.stock, p.id,
                (SELECT url FROM product_images WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
@@ -1868,7 +2067,7 @@ app.get('/dashboard/seller', requireAuth, requireRole('seller'), async (req, res
          LIMIT 12
       `, [uid]),
 
-      /* 直近6件の「自分が関与する注文」 */
+      // 直近6件
       dbQuery(`
         SELECT
           o.id,
@@ -1884,7 +2083,7 @@ app.get('/dashboard/seller', requireAuth, requireRole('seller'), async (req, res
        LIMIT 6
       `, [uid]),
 
-      /* 総件数 */
+      // 総件数
       dbQuery(`
         SELECT COUNT(DISTINCT o.id)::int AS cnt
           FROM orders o
@@ -1892,31 +2091,35 @@ app.get('/dashboard/seller', requireAuth, requireRole('seller'), async (req, res
          WHERE oi.seller_id = $1
       `, [uid]),
 
-      /* 売上合計（支払い済のみカウントする場合は必要に応じて WHERE を追加）*/
+      // 売上合計（入金確定ベース）
       dbQuery(`
         SELECT COALESCE(SUM(oi.price * oi.quantity),0)::int AS total
           FROM order_items oi
           JOIN orders o ON o.id = oi.order_id
          WHERE oi.seller_id = $1
-           AND o.payment_status IN ('paid','refunded') -- 例）入金確定ベース
-      `, [uid])
+           AND o.payment_status IN ('paid','refunded')
+      `, [uid]),
+
+      // カード用：今月/今週/全期間のバケット
+      getRevenueCardData(dbQuery, uid)
     ]);
 
-    // カード用「取引履歴」の日本語ラベル化
     const tradesCard = tradesRecent.map(t => ({
       id: t.id,
       date: new Date(t.created_at).toLocaleDateString('ja-JP'),
       amount: t.amount,
-      status: jaLabel('order_status', t.order_status) // ← JA
+      status: jaLabel('order_status', t.order_status)
     }));
 
     res.render('dashboard/seller', {
       title: 'ダッシュボード（出品者）',
       currentUser: req.session.user,
       listings,
-      trades: tradesCard,                       // ← カードに渡す
-      totalTrades: tradesCount[0]?.cnt || 0,    // ← 使うなら表示
-      revenue: revenue[0]?.total || 0
+      trades: tradesCard,
+      totalTrades: tradesCount[0]?.cnt || 0,
+      revenue: revenueSum[0]?.total || 0,
+      // ← 新カード用データ
+      revenueCardData
     });
   } catch (e) { next(e); }
 });
@@ -2243,6 +2446,47 @@ app.post('/seller/trades/bulk', requireAuth, requireRole('seller'), async (req, 
     );
 
     return res.redirect('/seller/trades');
+  } catch (e) { next(e); }
+});
+
+// 売上ダッシュボード詳細
+app.get('/seller/analytics', requireAuth, requireRole('seller'), async (req, res, next) => {
+  try {
+    const uid = req.session.user.id;
+    const {
+      q = '',
+      period = 'month',   // 'week' | 'month' | 'year'
+      category = '',
+      payment = ''
+    } = req.query;
+
+    // プルダウン用マスタ
+    const [categories, paymentMethods] = await Promise.all([
+      dbQuery(`SELECT id, name FROM categories ORDER BY sort_order NULLS LAST, name ASC`),
+      dbQuery(`SELECT value, label_ja FROM option_labels WHERE category = 'payment_method' AND active = true ORDER BY sort ASC, label_ja ASC`)
+    ]);
+
+    // 集計
+    const analyticsData = await getAnalyticsBuckets(dbQuery, uid, {
+      period: (['week','month','year'].includes(period) ? period : 'month'),
+      q: q || '',
+      categoryId: category || '',
+      paymentMethod: payment || ''
+    });
+
+    // サマリ
+    const summary = analyticsData.reduce((acc, b) => {
+      acc.revenue += (b.revenue || 0);
+      acc.orders  += (b.orders  || 0);
+      return acc;
+    }, { revenue: 0, orders: 0 });
+
+    res.render('seller/analytics', {
+      title: '売上ダッシュボード詳細',
+      q, period, category, payment,
+      categories, paymentMethods,
+      analyticsData, summary
+    });
   } catch (e) { next(e); }
 });
 

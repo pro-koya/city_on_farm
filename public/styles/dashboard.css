@@ -1,65 +1,253 @@
-:root{
-  --bg:#F9F9F6; --text:#2B2B2B; --main:#4C6B5C; --accent:#A3C9A8; --hi:#D6EADF;
-  --white:#fff; --muted:#6b7280; --shadow:0 8px 24px rgba(0,0,0,.08); --radius:14px;
+:root {
+  --bg: #F9F9F6;
+  --text: #2B2B2B;
+  --main: #4C6B5C;
+  --accent: #A3C9A8;
+  --hi: #D6EADF;
+  --white: #fff;
+  --muted: #6b7280;
+  --shadow: 0 8px 24px rgba(0, 0, 0, .08);
+  --radius: 14px;
 }
 
-main.db{padding-top:72px; max-width:1100px; margin:0 auto; padding:0 1rem; margin-top:80px;}
-.db__head{margin:1rem 0.3rem 1.8rem}
-.db__head h1{margin:0; font-size:1.4rem}
-.db__tabs .tab{display:inline-block; padding:.45rem .8rem; border-radius:999px; background:var(--white); border:1px solid #e5e7eb; color:#111; text-decoration:none;}
-.db__tabs .tab.is-active{background:var(--hi); color:var(--main); border-color:var(--accent); font-weight:800}
+main.db {
+  padding-top: 72px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  margin-top: 80px;
+}
 
-section{padding: 0;}
-.db__grid{
-  display:flex; gap:.9rem;
+.db__head {
+  margin: 1rem 0.3rem 1.8rem
+}
+
+.db__head h1 {
+  margin: 0;
+  font-size: 1.4rem
+}
+
+.db__tabs .tab {
+  display: inline-block;
+  padding: .45rem .8rem;
+  border-radius: 999px;
+  background: var(--white);
+  border: 1px solid #e5e7eb;
+  color: #111;
+  text-decoration: none;
+}
+
+.db__tabs .tab.is-active {
+  background: var(--hi);
+  color: var(--main);
+  border-color: var(--accent);
+  font-weight: 800
+}
+
+section {
+  padding: 0;
+}
+
+.db__grid {
+  display: flex;
+  gap: .9rem;
   flex-direction: column;
 }
 
 /* カード共通 */
-.card{
+.card {
   width: 100%;
-  background:var(--white); border-radius:var(--radius);
-  box-shadow:var(--shadow); padding:1rem;
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem;
 }
-.card__head{display:flex; justify-content:space-between; align-items:center; margin-bottom:.6rem}
-.card__head h2{margin:0; font-size:1.1rem}
-.link{color:var(--main); text-decoration:none}
-.link:hover{text-decoration:underline}
-.list{list-style:none; margin:0; padding:0}
-.row{display:grid; grid-template-columns:1fr auto auto auto auto; gap:.6rem; align-items:center; padding:.55rem 0; border-bottom:1px solid #f1f5f9}
-.row:last-child{border-bottom:none}
-.empty{color:var(--muted); padding:.4rem 0}
-.mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+
+.card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: .6rem
+}
+
+.card__head h2 {
+  margin: 0;
+  font-size: 1.1rem
+}
+
+.link {
+  color: var(--main);
+  text-decoration: none
+}
+
+.link:hover {
+  text-decoration: underline
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto auto;
+  gap: .6rem;
+  align-items: center;
+  padding: .55rem 0;
+  border-bottom: 1px solid #f1f5f9
+}
+
+.row:last-child {
+  border-bottom: none
+}
+
+.empty {
+  color: var(--muted);
+  padding: .4rem 0
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace
+}
 
 /* ステータス色 */
-.ok{color:#16a34a;font-weight:700}
-.ng{color:#dc2626;font-weight:700}
-.pending{color:#ca8a04;font-weight:700}
+.ok {
+  color: #16a34a;
+  font-weight: 700
+}
+
+.ng {
+  color: #dc2626;
+  font-weight: 700
+}
+
+.pending {
+  color: #ca8a04;
+  font-weight: 700
+}
 
 /* KPI */
-.kpis{display:flex; gap:1rem; margin:.4rem 0 .6rem}
-.kpi{background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px; padding:.6rem .8rem}
-.kpi__label{display:block; font-size:.8rem; color:var(--muted)}
+.kpis {
+  display: flex;
+  gap: 1rem;
+  margin: .4rem 0 .6rem
+}
+
+.kpi {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: .6rem .8rem
+}
+
+.kpi__label {
+  display: block;
+  font-size: .8rem;
+  color: var(--muted)
+}
 
 /* ミニカード（最近見た） */
-.rail__track{display:flex; gap:.75rem; overflow-x:auto; padding:.2rem 0 .4rem; scroll-snap-type:x mandatory}
-.rail__track--tight{gap:.6rem}
-.card-mini{
-  flex:0 0 auto; width:160px; border-radius:12px; overflow:hidden;
-  background:var(--white); text-decoration:none; color:inherit;
-  box-shadow:var(--shadow); scroll-snap-align:start;
-  transition:transform .15s ease, box-shadow .15s ease;
+.rail__track {
+  display: flex;
+  gap: .75rem;
+  overflow-x: auto;
+  padding: .2rem 0 .4rem;
+  scroll-snap-type: x mandatory
 }
-.card-mini:hover{transform:translateY(-2px); box-shadow:0 12px 32px rgba(0,0,0,.12)}
-.card-mini img{width:100%; height:110px; object-fit:cover; display:block}
-.card-mini__cap{padding:.55rem .6rem}
-.card-mini__cap strong{display:block; font-size:.95rem; line-height:1.2}
-.muted{color:var(--muted); font-size:.9rem}
+
+.rail__track--tight {
+  gap: .6rem
+}
+
+.card-mini {
+  flex: 0 0 auto;
+  width: 160px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--white);
+  text-decoration: none;
+  color: inherit;
+  box-shadow: var(--shadow);
+  scroll-snap-align: start;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.card-mini:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .12)
+}
+
+.card-mini img {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  display: block
+}
+
+.card-mini__cap {
+  padding: .55rem .6rem
+}
+
+.card-mini__cap strong {
+  display: block;
+  font-size: .95rem;
+  line-height: 1.2
+}
+
+.muted {
+  color: var(--muted);
+  font-size: .9rem
+}
 
 /* メディア行（出品） */
-.list.media .media__row{grid-template-columns:auto 1fr auto auto}
-.list.media .thumb{width:56px; height:56px; object-fit:cover; border-radius:10px}
-.list.media .media__meta{display:flex; flex-direction:column}
+.list.media .media__row {
+  grid-template-columns: auto 1fr auto auto
+}
+
+.list.media .thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 10px
+}
+
+.list.media .media__meta {
+  display: flex;
+  flex-direction: column
+}
 
 /* スパークライン */
-.spark{width:100%}
+.spark {
+  width: 100%
+}
+
+/* チャートの標準ラッパー */
+.chart-wrap {
+  position: relative;
+  /* Chart.js が絶対配置を使うため相性が良い */
+  height: 260px;
+  /* 基本の高さ（お好みで） */
+  min-height: 180px;
+  /* つぶれ防止 */
+  max-height: 50vh;
+  /* 画面を占有しすぎない */
+  width: 100%;
+  overflow: hidden;
+  /* 見切れを防ぐ */
+}
+
+/* モバイルは少し低めに */
+@media (max-width: 768px) {
+  .chart-wrap {
+    height: 220px;
+  }
+}
+
+/* canvas はラッパーにフィットさせる（Chart.js の resize と相性◎） */
+.chart-wrap canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}

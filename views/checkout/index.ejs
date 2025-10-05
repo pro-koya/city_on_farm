@@ -150,7 +150,8 @@
               <img src="<%= it.image_url || '/images/placeholder.png' %>" alt="" loading="lazy">
               <div class="mini-main">
                 <div class="mini-title"><%= it.title %></div>
-                <div class="mini-meta"><%= it.quantity %><%= it.unit || '点' %> × ¥<%= Number(it.price).toLocaleString() %></div>
+                <div class="mini-meta">数量 × 単価：<%= it.quantity %> × ¥<%= Number(it.price).toLocaleString() %></div>
+                <div class="mini-meta">数量1あたり：<%= it.unit || '点' %></div>
               </div>
               <div class="mini-sub">¥<%= Number(it.price*it.quantity).toLocaleString() %></div>
             </li>
