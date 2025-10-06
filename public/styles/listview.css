@@ -84,6 +84,7 @@
     border-radius: 12px;
     padding: 0 12px;
     background: #fff;
+    min-width: 180px;
 }
 
 /* 右端ボタン群 */

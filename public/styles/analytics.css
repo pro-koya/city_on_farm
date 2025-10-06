@@ -92,6 +92,7 @@
     border-radius: 12px;
     padding: 0 .6rem;
     background: #fff;
+    min-width: 180px;
 }
 
 .g-day span {

@@ -10,7 +10,6 @@
     <div class="toolbar__right">
       <div class="search">
         <input type="search" name="q" value="<%= q || '' %>" placeholder="商品名・説明で検索" aria-label="検索">
-        <button class="icon-btn" type="submit" aria-label="検索">🔍</button>
       </div>
 
       <select name="status" aria-label="公開状態">
@@ -26,6 +25,10 @@
         <option value="priceAsc"  <%= sort==='priceAsc'?'selected':'' %>>価格の安い順</option>
         <option value="priceDesc" <%= sort==='priceDesc'?'selected':'' %>>価格の高い順</option>
       </select>
+
+      <div class="search">
+        <button class="btn" type="submit" aria-label="検索">検索</button>
+      </div>
 
       <a class="btn btn--ghost" href="/seller/listing-new">＋ 新規出品</a>
     </div>

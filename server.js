@@ -22,11 +22,11 @@ const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
 app.set('trust proxy', 1);
 // ローカル用のデフォルト値（自分の環境に合わせて）
-const LOCAL_DB_URL = 'postgresql://city_on_firm_user:ruHjBG6tdZIgpWWxDNGmrxNmVkgbfaIP@dpg-d2u1oph5pdvs73a1ick0-a.oregon-postgres.render.com/city_on_firm';
+const LOCAL_DB_URL = 'postgresql://city_on_firm_d95k_user:eKQB9mqVvBdcEyHaX5StMevF6elgh89R@dpg-d3hs8es9c44c73cau4ig-a.oregon-postgres.render.com/city_on_firm_d95k';
 
 /* ========== DB ========== */
 const { Pool } = require('pg');
-const externalDB = 'postgresql://city_on_firm_user:ruHjBG6tdZIgpWWxDNGmrxNmVkgbfaIP@dpg-d2u1oph5pdvs73a1ick0-a.oregon-postgres.render.com/city_on_firm';
+const externalDB = 'postgresql://city_on_firm_d95k_user:eKQB9mqVvBdcEyHaX5StMevF6elgh89R@dpg-d3hs8es9c44c73cau4ig-a.oregon-postgres.render.com/city_on_firm_d95k';
 
 // Renderの接続文字列（環境変数に置くのが推奨）
 const dbUrl = process.env.External_Database_URL || LOCAL_DB_URL;
@@ -501,6 +501,203 @@ app.post(
         globalError: 'サインアップ処理でエラーが発生しました。時間をおいて再度お試しください。'
       });
     }
+  }
+);
+
+// 絶対URLを作る（.env の BASE_URL があればそれを採用）
+function absoluteUrl(req, path) {
+  const base = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+  return base.replace(/\/$/, '') + path;
+}
+
+/** セキュアなランダムトークンを発行（保存はハッシュで） */
+function createResetToken() {
+  const crypto = require('crypto');
+  const buf = crypto.randomBytes(32); // 256bit
+  const token = buf.toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  return { token, tokenHash };
+}
+
+/** リクエスト：メールアドレスを受けてリセットメールを送る */
+app.get('/password/forgot', csrfProtect, (req, res) => {
+  res.render('auth/password-forgot', {
+    title: 'パスワード再設定',
+    csrfToken: req.csrfToken(),
+    values: { email: '' },
+    fieldErrors: {},
+    globalError: ''
+  });
+});
+
+app.post(
+  '/password/forgot',
+  csrfProtect,
+  [ body('email').trim().isEmail().withMessage('有効なメールアドレスを入力してください。').normalizeEmail() ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    const email = String(req.body.email || '').trim().toLowerCase();
+
+    if (!errors.isEmpty()) {
+      const fieldErrors = {};
+      for (const e of errors.array()) if (!fieldErrors[e.path]) fieldErrors[e.path] = e.msg;
+      return res.status(422).render('auth/password-forgot', {
+        title: 'パスワード再設定',
+        csrfToken: req.csrfToken(),
+        values: { email },
+        fieldErrors,
+        globalError: ''
+      });
+    }
+
+    // ユーザー検索（存在しない場合も「送信しました」固定レスで情報漏えい防止）
+    const rows = await dbQuery(`SELECT id, name, email FROM users WHERE email = $1 LIMIT 1`, [email]);
+    const user = rows[0];
+
+    // 常に同じ結果を返す（存在有無を外部に悟らせない）
+    const renderDone = () => res.render('auth/password-forgot-done', { title: 'メールを送信しました' });
+
+    if (!user) return renderDone();
+
+    // 1時間有効のトークンを発行。旧トークンは（任意）期限切れ or used にしてもよい
+    const { token, tokenHash } = createResetToken();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 60min
+
+    await dbQuery(
+      `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, used)
+       VALUES ($1, $2, $3, false)`,
+      [user.id, tokenHash, expiresAt]
+    );
+
+    const url = absoluteUrl(req, `/password/reset?token=${encodeURIComponent(token)}&u=${encodeURIComponent(user.id)}`);
+    const text = `${user.name || 'ユーザー'} 様
+
+パスワード再設定のご依頼を受け付けました。
+以下のリンクから1時間以内に新しいパスワードを設定してください。
+
+${url}
+
+※心当たりがない場合は、このメールは破棄してください。`;
+
+    try {
+      await mailer.sendMail({
+        to: user.email,
+        from: process.env.CONTACT_FROM || process.env.SMTP_USER || 'noreply@example.com',
+        subject: '【新・今日の食卓】パスワード再設定のご案内',
+        text
+      });
+    } catch (e) {
+      console.warn('reset mail send error:', e.message);
+      // メール失敗でも同文言（アタック対策）
+    }
+
+    return renderDone();
+  }
+);
+
+/** リセット画面表示：token & user id を検証（使用前チェック） */
+app.get('/password/reset', csrfProtect, async (req, res) => {
+  const token = String(req.query.token || '').trim();
+  const userId = String(req.query.u || '').trim();
+  let valid = false;
+
+  if (token && isUuid(userId)) {
+    const crypto = require('crypto');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const rows = await dbQuery(
+      `SELECT id, expires_at, used
+         FROM password_reset_tokens
+        WHERE user_id = $1::uuid AND token_hash = $2
+        ORDER BY created_at DESC
+        LIMIT 1`,
+      [userId, tokenHash]
+    );
+    const row = rows[0];
+    if (row && !row.used && new Date(row.expires_at) > new Date()) valid = true;
+  }
+
+  if (!valid) {
+    return res.status(400).render('auth/password-reset-invalid', {
+      title: 'リンクの有効期限切れ',
+    });
+  }
+
+  res.render('auth/password-reset', {
+    title: '新しいパスワードを設定',
+    csrfToken: req.csrfToken(),
+    token, userId,
+    fieldErrors: {},
+    values: { password: '', passwordConfirm: '' }
+  });
+});
+
+/** リセット送信：パスワード上書き＆トークン失効 */
+app.post(
+  '/password/reset',
+  csrfProtect,
+  [
+    body('token').notEmpty(),
+    body('userId').custom(isUuid).withMessage('不正なリクエストです。'),
+    body('password')
+      .isLength({ min: 8 }).withMessage('8文字以上で入力してください。')
+      .matches(/[a-z]/).withMessage('英小文字を含めてください。')
+      .matches(/[A-Z]/).withMessage('英大文字を含めてください。')
+      .matches(/\d/).withMessage('数字を含めてください。')
+      .matches(/[^A-Za-z0-9]/).withMessage('記号を含めてください。'),
+    body('passwordConfirm')
+      .custom((v, { req }) => v === req.body.password)
+      .withMessage('確認用パスワードが一致しません。')
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    const { token, userId, password } = req.body;
+
+    if (!errors.isEmpty()) {
+      const fieldErrors = {};
+      for (const e of errors.array()) if (!fieldErrors[e.path]) fieldErrors[e.path] = e.msg;
+      return res.status(422).render('auth/password-reset', {
+        title: '新しいパスワードを設定',
+        csrfToken: req.csrfToken(),
+        token, userId,
+        fieldErrors,
+        values: { password: '', passwordConfirm: '' }
+      });
+    }
+
+    const crypto = require('crypto');
+    const tokenHash = crypto.createHash('sha256').update(String(token)).digest('hex');
+    const rows = await dbQuery(
+      `SELECT id, expires_at, used
+         FROM password_reset_tokens
+        WHERE user_id = $1::uuid AND token_hash = $2
+        ORDER BY created_at DESC
+        LIMIT 1`,
+      [userId, tokenHash]
+    );
+    const row = rows[0];
+    if (!row || row.used || new Date(row.expires_at) <= new Date()) {
+      return res.status(400).render('auth/password-reset-invalid', { title: 'リンクの有効期限切れ' });
+    }
+
+    // パスワード更新
+    const hash = await bcrypt.hash(password, 12);
+    await dbQuery(`UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2::uuid`, [hash, userId]);
+
+    // トークンを使用済みに
+    await dbQuery(`UPDATE password_reset_tokens SET used = true, expires_at = now() WHERE id = $1`, [row.id]);
+
+    // ついでに、そのユーザーの他の未使用トークンも無効化（任意）
+    await dbQuery(
+      `UPDATE password_reset_tokens
+          SET used = true, expires_at = now()
+        WHERE user_id = $1::uuid AND used = false`,
+      [userId]
+    );
+
+    // 完了画面へ
+    return res.render('auth/password-reset-done', {
+      title: 'パスワードを更新しました'
+    });
   }
 );
 
