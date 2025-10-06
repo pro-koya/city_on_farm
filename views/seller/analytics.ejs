@@ -19,30 +19,30 @@
             </select>
             <!-- 粒度別入力（JSでトグル） -->
             <div class="g-input g-day">
-                <input class="select" type="date" name="dateFrom" value="<%= dateFrom || '' %>">
-                <span>〜</span>
-                <input class="select" type="date" name="dateTo" value="<%= dateTo || '' %>">
+                <input id="dateRange" class="select" placeholder="🗓️" value="🗓️">
+                <input type="hidden" class="select" id="dateFrom" name="dateFrom">
+                <input type="hidden" class="select" id="dateTo"   name="dateTo">
             </div>
             <div class="g-input g-week">
-                <input class="select" type="week" name="week" value="<%= week || '' %>">
+                <input id="weekPick" class="select" name="week" placeholder="週（例: 2025-W39）">
             </div>
             <div class="g-input g-month">
-                <input class="select" type="month" name="ym" value="<%= ym || '' %>">
+                <input id="monthPick" class="select" name="ym" placeholder="年月（例: 2025-10）">
             </div>
             <div class="g-input g-year">
-                <input class="select" type="number" name="year" min="2000" max="2100" step="1" placeholder="YYYY" value="<%= year || '' %>">
+                <input id="yearPick" class="select" name="year" placeholder="年（例: 2025）">
             </div>
         </div>
 
         <div class="filters">
             <!-- 既存のカテゴリ/支払い -->
-            <select class="select" name="category">
+            <select class="select pulldown" name="category">
                 <option value="">すべてのカテゴリ</option>
                 <% (categories || []).forEach(c => { %>
                     <option value="<%= c.id %>" <%= String(category||'')===String(c.id)?'selected':'' %>><%= c.name %></option>
                 <% }) %>
             </select>
-            <select class="select" name="payment">
+            <select class="select pulldown" name="payment">
                 <option value="">すべての支払い方法</option>
                 <% (paymentMethods || []).forEach(pm => { %>
                     <option value="<%= pm.value %>" <%= (payment||'')===pm.value?'selected':'' %>><%= pm.label_ja %></option>

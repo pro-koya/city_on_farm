@@ -426,7 +426,7 @@ footer nav a:hover {
   margin-left: .2rem;
 }
 
-select{
+.pulldown{
   /* Reset */
   -webkit-appearance: none;
   appearance: none;
@@ -447,13 +447,13 @@ select{
   background-position: right .7rem center !important;
   background-size: 16px 16px !important;
 }
-select:hover{
+.pulldown:hover{
   border-color: #cfd3da;
 }
-select:focus{
+.pulldown:focus{
   border-color: var(--sel-focus);
 }
-select:disabled{
+.pulldown:disabled{
   opacity:.55; cursor: not-allowed;
 }
 

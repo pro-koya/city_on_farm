@@ -101,6 +101,14 @@
     color: var(--muted);
 }
 
+#gSel {
+    min-width: 80px;
+}
+
+.flatpickr-input {
+    min-width: 220px;
+}
+
 /* 詳細チャート領域 */
 .ana-card {
     background: #fff;

@@ -12,14 +12,14 @@
         <input type="search" name="q" value="<%= q || '' %>" placeholder="商品名・説明で検索" aria-label="検索">
       </div>
 
-      <select name="status" aria-label="公開状態">
+      <select name="status" class="pulldown" aria-label="公開状態">
         <option value="all"   <%= (status||'all')==='all'?'selected':'' %>>すべて</option>
         <option value="public"  <%= status==='public'?'selected':'' %>>公開</option>
         <option value="private" <%= status==='private'?'selected':'' %>>限定公開</option>
         <option value="draft"   <%= status==='draft'?'selected':'' %>>下書き</option>
       </select>
 
-      <select name="sort" aria-label="並び順">
+      <select name="sort" class="pulldown" aria-label="並び順">
         <option value="updated" <%= (sort||'updated')==='updated'?'selected':'' %>>更新が新しい</option>
         <option value="stockAsc"  <%= sort==='stockAsc'?'selected':'' %>>在庫が少ない順</option>
         <option value="priceAsc"  <%= sort==='priceAsc'?'selected':'' %>>価格の安い順</option>
@@ -55,7 +55,7 @@
             </label>
         </th>
 
-        <select name="bulkAction" id="bulkAction" aria-label="一括操作">
+        <select name="bulkAction" class="pulldown" id="bulkAction" aria-label="一括操作">
             <option value="">一括操作</option>
             <option value="publish">公開にする</option>
             <option value="privatize">限定公開にする</option>

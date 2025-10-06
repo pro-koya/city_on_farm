@@ -36,7 +36,7 @@
         <div class="field field--row">
           <div>
             <label for="categoryId">カテゴリ *</label>
-            <select id="categoryId" name="categoryId" required>
+            <select id="categoryId" class="pulldown" name="categoryId" required>
               <option value="">選択してください</option>
               <% categories.forEach(function(cat){ %>
                 <option value="<%= cat.id %>" <%= (product.category_id===cat.id)?'selected':'' %>><%= cat.name %></option>
@@ -139,7 +139,7 @@
           <h2 class="card__title">出荷・配送</h2>
           <div class="field">
             <label for="shipMethod">配送方法 *</label>
-            <select id="shipMethod" name="shipMethod" required>
+            <select id="shipMethod" class="pulldown" name="shipMethod" required>
               <option value="">選択してください</option>
               <option value="normal" <%= product.ship_method==='normal'?'selected':'' %>>常温便</option>
               <option value="cool"   <%= product.ship_method==='cool'?'selected':'' %>>クール便</option>
@@ -148,7 +148,7 @@
           </div>
           <div class="field">
             <label for="shipDays">発送目安 *</label>
-            <select id="shipDays" name="shipDays" required>
+            <select id="shipDays" class="pulldown" name="shipDays" required>
               <option value="">選択してください</option>
               <option value="1-2" <%= product.ship_days==='1-2'?'selected':'' %>>1〜2日</option>
               <option value="2-3" <%= product.ship_days==='2-3'?'selected':'' %>>2〜3日</option>
@@ -167,7 +167,7 @@
           <h2 class="card__title">公開設定</h2>
           <div class="field">
             <label for="status">ステータス *</label>
-            <select id="status" name="status" required>
+            <select id="status" class="pulldown" name="status" required>
               <option value="draft"   <%= product.status==='draft'?'selected':'' %>>下書き</option>
               <option value="private" <%= product.status==='private'?'selected':'' %>>限定公開</option>
               <option value="public"  <%= product.status==='public'?'selected':'' %>>公開</option>
@@ -175,7 +175,7 @@
             <p class="error" data-for="status"></p>
           </div>
           <div class="actions">
-            <button class="btn btn--ghost" type="button" id="sideSaveDraft">下書き保存</button>
+            <!-- <button class="btn btn--ghost" type="button" id="sideSaveDraft">下書き保存</button> -->
             <button class="btn" type="submit">保存する</button>
           </div>
         </section>
