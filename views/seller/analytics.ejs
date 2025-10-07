@@ -11,7 +11,7 @@
 
         <div class="filters">
             <!-- 粒度 -->
-            <select class="select" name="granularity" id="gSel">
+            <select class="select pulldown" name="granularity" id="gSel">
                 <option value="day"   <%= granularity==='day'   ? 'selected':'' %>>日</option>
                 <option value="week"  <%= granularity==='week'  ? 'selected':'' %>>週</option>
                 <option value="month" <%= granularity==='month' ? 'selected':'' %>>月</option>
@@ -19,7 +19,7 @@
             </select>
             <!-- 粒度別入力（JSでトグル） -->
             <div class="g-input g-day">
-                <input id="dateRange" class="select" placeholder="🗓️" value="🗓️">
+                <input id="dateRange" class="select" placeholder="期間指定">
                 <input type="hidden" class="select" id="dateFrom" name="dateFrom">
                 <input type="hidden" class="select" id="dateTo"   name="dateTo">
             </div>

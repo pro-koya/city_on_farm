@@ -83,7 +83,9 @@
 .ana-bar .filters {
     display: flex;
     gap: .4rem;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    position: relative;
+    scrollbar-width: thin;
 }
 
 .select {

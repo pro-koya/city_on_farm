@@ -457,6 +457,10 @@ footer nav a:hover {
   opacity:.55; cursor: not-allowed;
 }
 
+input {
+  font-size: 16px;
+}
+
 /* PCでのログインピル（右上） */
 @media (min-width: 769px) {
   .nav-loginstatus--desktop {

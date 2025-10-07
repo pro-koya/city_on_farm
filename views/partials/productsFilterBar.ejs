@@ -10,7 +10,7 @@
              placeholder="商品・生産者・カテゴリを検索"
              value="<%= q || '' %>" aria-label="検索" autocomplete="off">
 
-      <select name="sort" id="sort" aria-label="並び替え">
+      <select name="sort" id="sort" class="pulldown" aria-label="並び替え">
         <option value="new"        <%= sort === 'new'        ? 'selected' : '' %>>新着順</option>
         <option value="popular"    <%= sort === 'popular'    ? 'selected' : '' %>>人気順</option>
         <option value="price_asc"  <%= sort === 'price_asc'  ? 'selected' : '' %>>価格の安い順</option>
