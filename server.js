@@ -1537,7 +1537,6 @@ app.post(
 
       const fieldErrors = {};
       for (const e of errors.array()) if (!fieldErrors[e.path]) fieldErrors[e.path] = e.msg;
-      console.log('バリデーションエラーでエラーになっています。');
       return res.status(422).render('seller/listing-edit', {
         title: '出品を編集',
         product, categories, images, specs, tags,
@@ -1677,45 +1676,74 @@ app.post(
               height: Number.isFinite(Number(x.height)) ? Number(x.height) : null
             })).filter(x => x.url);
           }
-        } catch (e) {
-          // JSON不正時は無視
-        }
+        } catch { /* 無視 */ }
       }
 
       if (newImageMeta.length || newImageUrls.length) {
         // 現在の最大 position を取得
         const maxPosRes = await client.query(
           `SELECT COALESCE(MAX(position), -1) AS maxp
-             FROM product_images
+            FROM product_images
             WHERE product_id = $1::uuid`,
           [id]
         );
         let basePos = Number(maxPosRes.rows[0]?.maxp || -1);
 
-        if (newImageMeta.length) {
-          const values = newImageMeta.map((_, i) => {
-            const base = i * 7; // url, r2_key, mime, bytes, width, height
-            return `($1, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, ${basePos + i + 1})`;
-          }).join(',');
-          const params = [
-            id,
-            ...newImageMeta.flatMap(x => [x.url, x.r2_key, x.mime, x.bytes, x.width, x.height])
-          ];
-          await client.query(
-            `INSERT INTO product_images
-               (product_id, url, r2_key, mime, bytes, width, height, position)
-             VALUES ${values}`,
-            params
-          );
-          basePos += newImageMeta.length;
-        }
+        // === 既存URLを拾って同一商品の重複を除去 ===
+        const existUrlRows = await client.query(
+          `SELECT url FROM product_images WHERE product_id = $1::uuid`,
+          [id]
+        );
+        const existUrlSet = new Set(existUrlRows.rows.map(r => String(r.url)));
 
-        if (newImageUrls.length) {
-          const values = newImageUrls.map((_, i) => `($1, $${i+2}, ${basePos + i + 1})`).join(',');
-          await client.query(
-            `INSERT INTO product_images (product_id, url, position) VALUES ${values}`,
-            [id, ...newImageUrls]
-          );
+        // フロントから来たメタを「同一商品の既存URLを除外」して正規化
+        let metaToInsert = (newImageMeta || []).filter(m => !existUrlSet.has(m.url));
+
+        // URLのみの追加も同様に除外
+        const urlOnlyToInsert = (newImageUrls || []).filter(u => !existUrlSet.has(u));
+
+        // ここで何も無ければスキップ
+        if (!metaToInsert.length && !urlOnlyToInsert.length) {
+          // 何も挿入せず通過
+        } else {
+          // === r2_key のグローバル重複を判定 ===
+          const keys = metaToInsert.map(m => m.r2_key).filter(Boolean);
+          let usedKeySet = new Set();
+          if (keys.length) {
+            const usedRows = await client.query(
+              `SELECT r2_key FROM product_images WHERE r2_key = ANY($1)`,
+              [keys]
+            );
+            usedKeySet = new Set(usedRows.rows.map(r => String(r.r2_key)));
+          }
+
+          // === 1件ずつ安全にINSERT（r2_keyが既に使われている場合はNULLへ） ===
+          for (const m of metaToInsert) {
+            basePos += 1;
+            const r2KeyForInsert = (m.r2_key && !usedKeySet.has(m.r2_key)) ? m.r2_key : null;
+
+            await client.query(
+              `
+              INSERT INTO product_images
+                (product_id, url, r2_key, mime, bytes, width, height, position)
+              VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+              ON CONFLICT (r2_key) DO NOTHING
+              `,
+              [id, m.url, r2KeyForInsert, m.mime, m.bytes, m.width, m.height, basePos]
+            );
+          }
+
+          // === URLのみ挿入（r2_keyは持たない） ===
+          for (const u of urlOnlyToInsert) {
+            basePos += 1;
+            await client.query(
+              `
+              INSERT INTO product_images (product_id, url, position)
+              VALUES ($1,$2,$3)
+              `,
+              [id, u, basePos]
+            );
+          }
         }
       }
 
@@ -1808,7 +1836,6 @@ app.post(
       }
 
       await client.query('COMMIT');
-      console.log('ここまできました');
 
       // 保存後は商品詳細へ（slugは据え置き）
       const prod = await dbQuery(`SELECT slug FROM products WHERE id = $1::uuid LIMIT 1`, [id]);
@@ -4560,9 +4587,70 @@ app.get('/orders/:no/invoice.pdf', requireAuth, async (req, res, next) => {
   }
 });
 
+// ===== R2 helpers (URL & assets table) =====
+function r2PublicUrlFromKey(key) {
+  if (!key) return '';
+  if (typeof R2_PUBLIC_BASE_URL === 'string' && R2_PUBLIC_BASE_URL) {
+    return `${R2_PUBLIC_BASE_URL.replace(/\/$/, '')}/${key}`;
+  }
+  const base = (process.env.R2_ENDPOINT || '').replace(/^https?:\/\//, 'https://');
+  return `${base}/${R2_BUCKET}/${key}`;
+}
+
+async function ensureR2AssetsTable() {
+  // Keep it lightweight and idempotent
+  await dbQuery(`
+    CREATE TABLE IF NOT EXISTS r2_assets (
+      key         TEXT PRIMARY KEY,
+      sha256      TEXT,
+      mime        TEXT,
+      bytes       INTEGER,
+      width       INTEGER,
+      height      INTEGER,
+      seller_id   UUID,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS r2_assets_sha256_idx ON r2_assets(sha256);
+    CREATE INDEX IF NOT EXISTS r2_assets_seller_idx ON r2_assets(seller_id);
+  `);
+}
+
+async function findAssetByHash(sha256, { sellerId = null } = {}) {
+  if (!sha256) return null;
+  await ensureR2AssetsTable();
+  const rows = await dbQuery(
+    `SELECT key, sha256, mime, bytes, width, height, seller_id
+       FROM r2_assets
+      WHERE sha256 = $1
+        ${sellerId ? 'AND (seller_id IS NULL OR seller_id = $2::uuid)' : ''}
+      ORDER BY created_at DESC
+      LIMIT 1`,
+    sellerId ? [sha256, sellerId] : [sha256]
+  );
+  return rows[0] || null;
+}
+
+async function upsertAsset({ key, sha256=null, mime=null, bytes=null, width=null, height=null, sellerId=null }) {
+  await ensureR2AssetsTable();
+  const rows = await dbQuery(
+    `INSERT INTO r2_assets (key, sha256, mime, bytes, width, height, seller_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7::uuid)
+     ON CONFLICT (key) DO UPDATE SET
+       sha256 = COALESCE(EXCLUDED.sha256, r2_assets.sha256),
+       mime   = COALESCE(EXCLUDED.mime,   r2_assets.mime),
+       bytes  = COALESCE(EXCLUDED.bytes,  r2_assets.bytes),
+       width  = COALESCE(EXCLUDED.width,  r2_assets.width),
+       height = COALESCE(EXCLUDED.height, r2_assets.height),
+       seller_id = COALESCE(EXCLUDED.seller_id, r2_assets.seller_id)
+     RETURNING key, sha256, mime, bytes, width, height, seller_id`,
+    [key, sha256, mime, bytes, width, height, sellerId]
+  );
+  return rows[0];
+}
+
 app.post('/uploads/sign', requireAuth /* 任意: requireRole('seller') */, async (req, res, next) => {
   try {
-    const { mime, ext: extFromClient, productId } = req.body || {};
+    const { mime, ext: extFromClient, productId, sha256, bytes: rawBytes, width: rawW, height: rawH } = req.body || {};
     const m = String(mime || '').toLowerCase();
 
     if (!ALLOWED_IMAGE_MIME.has(m)) {
@@ -4570,28 +4658,58 @@ app.post('/uploads/sign', requireAuth /* 任意: requireRole('seller') */, async
     }
     const ext = EXT_BY_MIME[m] || String(extFromClient || '').replace(/^\./,'').toLowerCase() || 'jpg';
 
-    const sellerId = req.session?.user?.id || 'anon';
-    const key = buildR2Key({ scope: 'products', sellerId, productId, ext });
+    const sellerId = req.session?.user?.id || null;
+
+    // ---- 1) 既存アセットをハッシュで検索（重複回避） ----
+    if (sha256) {
+      try {
+        const hit = await findAssetByHash(String(sha256).toLowerCase(), { sellerId });
+        if (hit && hit.key) {
+          const url = r2PublicUrlFromKey(hit.key);
+          return res.json({
+            ok: true,
+            exists: true,
+            image: {
+              url,
+              r2_key: hit.key,
+              bytes: Number(hit.bytes || 0),
+              mime: hit.mime || m,
+              width: Number(hit.width || rawW || 0) || null,
+              height: Number(hit.height || rawH || 0) || null,
+            }
+          });
+        }
+      } catch (_) {
+        // テーブル未作成などは無視して通常フローへ
+      }
+    }
+
+    // ---- 2) 新規アップロード用の署名を発行 ----
+    const key = buildR2Key({ scope: 'products', sellerId: sellerId || 'anon', productId, ext });
 
     const cmd = new PutObjectCommand({
       Bucket: R2_BUCKET,
       Key: key,
       ContentType: m,
-      // R2はACL無視だが将来S3互換でGETする場合のため
-      //ACL: 'public-read'
     });
 
     const putUrl = await getSignedUrl(r2, cmd, { expiresIn: 60 * 5 }); // 5分
-    res.json({ ok:true, key, putUrl });
+    res.json({
+      ok: true,
+      key,
+      putUrl,
+      // クライアントはこの sha256 を confirm 時にも送ってくれるとサーバでも保存可能
+      sha256: sha256 ? String(sha256).toLowerCase() : null
+    });
   } catch (e) { next(e); }
 });
 
 app.post('/uploads/confirm', requireAuth /* 任意: requireRole('seller') */, async (req, res, next) => {
   try {
-    const { key, productId, alt } = req.body || {};
+    const { key, productId, alt, sha256, mime: mimeFromClient, bytes: bytesFromClient, width: wFromClient, height: hFromClient } = req.body || {};
     if (!key) return res.status(400).json({ ok:false, message:'key が必要です。' });
 
-    // R2に本当に存在するか軽く確認（HeadObject）
+    // R2に存在するか軽く確認（HeadObject）
     let head = null;
     try {
       head = await r2.send(new HeadObjectCommand({ Bucket: R2_BUCKET, Key: key }));
@@ -4599,33 +4717,165 @@ app.post('/uploads/confirm', requireAuth /* 任意: requireRole('seller') */, as
       return res.status(404).json({ ok:false, message:'R2にオブジェクトが見つかりません。' });
     }
 
-    const bytes = Number(head.ContentLength || 0);
-    const mime  = String(head.ContentType || '');
+    // メタ確定
+    const bytes = Number(bytesFromClient ?? head.ContentLength ?? 0) || null;
+    const mime  = String(mimeFromClient ?? head.ContentType ?? '') || null;
+    const width  = Number(wFromClient || 0) || null;
+    const height = Number(hFromClient || 0) || null;
+    const sellerId = req.session?.user?.id || null;
 
-    // 公開URLを組み立て（CFの公開ドメインを使う / なければ endpoint + key を使ってもOK）
-    const url = R2_PUBLIC_BASE_URL
-      ? `${R2_PUBLIC_BASE_URL.replace(/\/$/,'')}/${key}`
-      : `${process.env.R2_ENDPOINT.replace(/^https?:\/\//,'https://')}/${R2_BUCKET}/${key}`;
+    // 公開URL
+    const url = r2PublicUrlFromKey(key);
 
+    // r2_assets に登録（または更新）
+    try {
+      await upsertAsset({
+        key,
+        sha256: sha256 ? String(sha256).toLowerCase() : null,
+        mime, bytes, width, height,
+        sellerId
+      });
+    } catch (e) {
+      // 失敗してもアップロード自体は成功扱いにし、以降の処理を進める
+      console.warn('upsertAsset failed:', e.message);
+    }
+
+    // productId があれば product_images へリンク（重複行は作らない）
     if (productId) {
-      // product_imagesへ追記（positionは末尾）
+      // まず同一商品 × 同一URL or 同一r2_key の既存行をチェック
+      const existSame = await dbQuery(
+        `SELECT id, url, position, alt, r2_key
+           FROM product_images
+          WHERE product_id = $1::uuid
+            AND (url = $2 OR r2_key = $3)
+          LIMIT 1`,
+        [productId, url, key]
+      );
+      if (existSame.length) {
+        return res.json({ ok:true, image: existSame[0], existed: true });
+      }
+
+      // 他商品で使用されているかをチェック（r2_key はユニーク制約のため）
+      const existOther = await dbQuery(
+        `SELECT id, product_id, url, position, alt, r2_key
+           FROM product_images
+          WHERE r2_key = $1
+          LIMIT 1`,
+        [key]
+      );
+
+      // 末尾 position を取得
       const posRow = await dbQuery(
-        `SELECT COALESCE(MAX(position), -1) AS maxp FROM product_images WHERE product_id = $1::uuid`,
+        `SELECT COALESCE(MAX(position), -1) AS maxp
+           FROM product_images
+          WHERE product_id = $1::uuid`,
         [productId]
       );
       const pos = Number(posRow?.[0]?.maxp || -1) + 1;
 
+      if (existOther.length) {
+        // 既に別の商品で使われている場合：
+        // product_images.r2_key にユニーク制約があるため INSERT はできない。
+        // ここでは例外を出さずに 409 を返し、フロントで案内する。
+        return res.status(409).json({
+          ok: false,
+          code: 'R2_KEY_IN_USE',
+          message: 'この画像は他の商品で使用されています（重複登録は不可）。画像を共有したい場合はスキーマの一意制約を (product_id, r2_key) に変更するか、別キーでの保存をご検討ください。',
+          // 情報は返すので UI 側でプレビューは可能
+          image: {
+            url,
+            r2_key: key,
+            position: pos,
+            alt: alt || null
+          }
+        });
+      }
+
+      // ここまで来たら新規登録してもユニーク制約には抵触しない
+      // さらに DB レベルでも競合を抑止して安全にする（発生しても衝突時は既存行を返す）
       const ins = await dbQuery(
-        `INSERT INTO product_images (product_id, url, position, alt, r2_key, mime, bytes)
-         VALUES ($1::uuid, $2, $3, $4, $5, $6, $7)
-         RETURNING id, url, position, alt`,
-        [productId, url, pos, alt || null, key, mime || null, bytes || null]
+        `
+        INSERT INTO product_images (product_id, url, position, alt, r2_key, mime, bytes)
+        VALUES ($1::uuid, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT ON CONSTRAINT product_images_r2_key_key DO NOTHING
+        RETURNING id, url, position, alt, r2_key
+        `,
+        [productId, url, pos, (alt || null), key, (mime || null), (bytes || null)]
       );
-      return res.json({ ok:true, image: ins[0] });
+
+      if (ins.length) {
+        return res.json({ ok:true, image: ins[0] });
+      }
+
+      // 万一同時実行で先に入った場合は取り直す（この時点では同一商品に存在しているはず）
+      const after = await dbQuery(
+        `SELECT id, url, position, alt, r2_key
+           FROM product_images
+          WHERE product_id = $1::uuid AND r2_key = $2
+          LIMIT 1`,
+        [productId, key]
+      );
+      if (after.length) {
+        return res.json({ ok:true, image: after[0], existed: true });
+      }
+
+      // ここまでで取得できないのは想定外だが、安全に 409 を返す
+      return res.status(409).json({
+        ok: false,
+        code: 'RACE_CONDITION',
+        message: '画像の登録中に競合が発生しました。もう一度お試しください。'
+      });
     }
 
-    // 単なるアップロードだけ（商品紐付けは後で）という運用のとき
-    return res.json({ ok:true, url, key, bytes, mime });
+    // 単なるアップロードだけ（商品紐付けは後で）
+    return res.json({ ok:true, url, key, bytes, mime, width, height });
+  } catch (e) { next(e); }
+});
+
+// 画像ライブラリ（既存R2資産）: GET /uploads/library?q=&page=
+app.get('/uploads/library', requireAuth /* 任意: requireRole('seller') */, async (req, res, next) => {
+  try {
+    await ensureR2AssetsTable();
+
+    const sellerId = req.session?.user?.id || null;
+    if (!sellerId) return res.status(401).json({ ok:false, message:'unauthorized' });
+
+    const q = String(req.query.q || '').trim();
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const pageSize = Math.min(60, Math.max(1, parseInt(req.query.pageSize, 10) || 40));
+    const offset = (page - 1) * pageSize;
+
+    const where = ['seller_id = $1::uuid'];
+    const params = [sellerId];
+
+    if (q) {
+      params.push(`%${q}%`);
+      where.push(`(key ILIKE $${params.length} OR mime ILIKE $${params.length})`);
+    }
+
+    const sql = `
+      SELECT key, sha256, mime, bytes, width, height, created_at
+        FROM r2_assets
+       WHERE ${where.join(' AND ')}
+       ORDER BY created_at DESC
+       LIMIT ${pageSize} OFFSET ${offset}
+    `;
+    const rows = await dbQuery(sql, params);
+
+    const items = rows.map(r => ({
+      url: r2PublicUrlFromKey(r.key),
+      r2_key: r.key,
+      bytes: Number(r.bytes || 0),
+      mime: r.mime || null,
+      width: Number(r.width || 0) || null,
+      height: Number(r.height || 0) || null,
+      created_at: r.created_at
+    }));
+
+    // 次ページ有無を軽く推定（厳密に数え上げたい場合は COUNT(*) を別途）
+    const nextPage = items.length === pageSize ? (page + 1) : null;
+
+    return res.json({ ok:true, items, nextPage });
   } catch (e) { next(e); }
 });
 

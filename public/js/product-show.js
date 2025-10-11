@@ -83,48 +83,95 @@
     }
   });
 
-  // ===== ギャラリー（サムネクリックでメイン切替） =====
+  // ===== ギャラリー（サムネクリックでメイン切替 + 横スクロール対応）=====
   (function initGallery(){
     const main = document.getElementById('mainImage');
-    const thumbsWrap = document.querySelector('.thumbs');
-    if (!main || !thumbsWrap) return;
+    const wrap = document.querySelector('.thumbs-wrap');
+    if (!main || !wrap) return;
 
-    function activateThumb(btn){
+    const rail = wrap.querySelector('.thumbs');
+    const prev = wrap.querySelector('.thumbs__prev');
+    const next = wrap.querySelector('.thumbs__next');
+    if (!rail) return; // 安全策
+
+    function ensureVisible(btn, smooth = true){
+      const rRail = rail.getBoundingClientRect();
+      const rBtn  = btn.getBoundingClientRect();
+      const deltaLeft  = rBtn.left  - rRail.left;
+      const deltaRight = rBtn.right - rRail.right;
+
+      let dx = 0;
+      if (deltaLeft < 0) dx = deltaLeft;
+      else if (deltaRight > 0) dx = deltaRight;
+
+      if (dx !== 0) {
+        // scrollBy が無い環境は scrollLeft にフォールバック
+        if (typeof rail.scrollBy === 'function') {
+          rail.scrollBy({ left: dx, behavior: smooth ? 'smooth' : 'auto' });
+        } else {
+          rail.scrollLeft += dx;
+        }
+      }
+    }
+
+    function activateThumb(btn, {smoothScroll=true} = {}){
       if (!btn || !btn.dataset.src) return;
-      // 先にプリロードしてから差し替え（チラつき抑制）
+
       const img = new Image();
       img.onload = () => { main.src = btn.dataset.src; };
       img.src = btn.dataset.src;
 
-      thumbsWrap.querySelectorAll('.thumb').forEach(b => {
+      rail.querySelectorAll('.thumb').forEach(b => {
         b.classList.remove('is-active');
         b.setAttribute('aria-selected', 'false');
       });
       btn.classList.add('is-active');
       btn.setAttribute('aria-selected', 'true');
+
+      ensureVisible(btn, smoothScroll);
+      btn.focus?.({ preventScroll: true });
     }
 
-    thumbsWrap.addEventListener('click', (e) => {
+    rail.addEventListener('click', (e) => {
       const btn = e.target.closest('.thumb');
       if (btn) activateThumb(btn);
     });
 
-    thumbsWrap.addEventListener('keydown', (e) => {
-      const list = Array.from(thumbsWrap.querySelectorAll('.thumb'));
-      const curIdx = list.findIndex(b => b.classList.contains('is-active'));
+    rail.addEventListener('keydown', (e) => {
+      const list = Array.from(rail.querySelectorAll('.thumb'));
+      if (!list.length) return;
+      const curIdx = Math.max(0, list.findIndex(b => b.classList.contains('is-active')));
+
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         const btn = e.target.closest('.thumb');
         if (btn) activateThumb(btn);
-      } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-        e.preventDefault();
-        let next = curIdx;
-        if (e.key === 'ArrowRight') next = (curIdx + 1) % list.length;
-        if (e.key === 'ArrowLeft')  next = (curIdx - 1 + list.length) % list.length;
-        list[next]?.focus();
-        activateThumb(list[next]);
+        return;
       }
+
+      let nextIdx = curIdx;
+      if (e.key === 'ArrowRight') { e.preventDefault(); nextIdx = (curIdx + 1) % list.length; }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); nextIdx = (curIdx - 1 + list.length) % list.length; }
+      else if (e.key === 'Home') { e.preventDefault(); nextIdx = 0; }
+      else if (e.key === 'End')  { e.preventDefault(); nextIdx = list.length - 1; }
+      else return;
+
+      activateThumb(list[nextIdx]);
     });
+
+    const pageBy = () => Math.max(120, Math.round(rail.clientWidth * 0.8)); // 最低120px送る
+    prev?.addEventListener('click', () => {
+      if (typeof rail.scrollBy === 'function') rail.scrollBy({ left: -pageBy(), behavior: 'smooth' });
+      else rail.scrollLeft -= pageBy();
+    });
+    next?.addEventListener('click', () => {
+      if (typeof rail.scrollBy === 'function') rail.scrollBy({ left:  pageBy(), behavior: 'smooth' });
+      else rail.scrollLeft += pageBy();
+    });
+
+    // 初期選択を可視範囲に
+    const initActive = rail.querySelector('.thumb.is-active') || rail.querySelector('.thumb');
+    if (initActive) ensureVisible(initActive, false);
   })();
 
   // ===== タブ（要素が揃っているときだけ初期化） =====

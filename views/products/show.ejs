@@ -7,24 +7,29 @@
     <div class="gallery" aria-label="商品画像ギャラリー">
       <div class="gallery__main">
         <img id="mainImage"
-             src="<%= (Array.isArray(product.images) && product.images.length ? product.images[0] : (product.image_url || '/images/placeholder.png')) %>"
-             alt="<%= product.images?.[0]?.alt || (product.title + 'の画像') %>"
-             loading="eager"
-             itemprop="image">
+            src="<%= (Array.isArray(product.images) && product.images.length ? product.images[0] : (product.image_url || '/images/placeholder.png')) %>"
+            alt="<%= product.title + 'の画像' %>"
+            loading="eager"
+            itemprop="image">
       </div>
+
       <% if (Array.isArray(product.images) && product.images.length > 1) { %>
-      <div class="thumbs" role="listbox" aria-label="サムネイル">
-        <% product.images.forEach(function(img, i){ %>
-        <button class="thumb <%= i===0 ? 'is-active':'' %>"
-                data-src="<%= img %>"
-                aria-label="画像 <%= i+1 %> を表示"
-                role="option"
-                aria-selected="<%= i===0 ? 'true' : 'false' %>">
-          <img src="<%= img %>"
-               alt="<%= img.alt || (product.title + 'の画像 ' + (i+1)) %>"
-               loading="lazy">
-        </button>
-        <% }) %>
+      <div class="thumbs-wrap">
+        <button class="thumbs__nav thumbs__prev" type="button" aria-label="前へ" title="前へ">‹</button>
+        <div class="thumbs" role="listbox" aria-label="サムネイル">
+          <% product.images.forEach(function(img, i){ %>
+            <button class="thumb <%= i===0 ? 'is-active':'' %>"
+                    data-src="<%= img %>"
+                    aria-label="画像 <%= i+1 %> を表示"
+                    role="option"
+                    aria-selected="<%= i===0 ? 'true' : 'false' %>">
+              <img src="<%= img %>"
+                  alt="<%= product.title + 'の画像 ' + (i+1) %>"
+                  loading="lazy">
+            </button>
+          <% }) %>
+        </div>
+        <button class="thumbs__nav thumbs__next" type="button" aria-label="次へ" title="次へ">›</button>
       </div>
       <% } %>
     </div>
