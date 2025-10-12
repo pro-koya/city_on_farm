@@ -1278,73 +1278,73 @@ app.post(
       ]);
       const productId = pr[0].id;
 
-      // 画像（URLのみ or メタ付きJSONの両対応）
+      // 画像（メタ付きJSON＋URLのみ）
       const imageJsonRaw = (req.body.imageJson || '').trim();
-      let imageMetaRows = [];
+      let metaFromJson = [];
       if (imageJsonRaw) {
         try {
           const arr = JSON.parse(imageJsonRaw);
           if (Array.isArray(arr)) {
-            imageMetaRows = arr
-              .map((x, idx) => ({
-                url:  String(x.url || '').trim(),
-                r2_key: String(x.r2_key || x.key || '').trim() || null,
-                mime: String(x.mime || '').trim() || null,
-                bytes: Number.isFinite(Number(x.bytes)) ? Number(x.bytes) : null,
-                width: Number.isFinite(Number(x.width)) ? Number(x.width) : null,
-                height: Number.isFinite(Number(x.height)) ? Number(x.height) : null,
-                position: idx
-              }))
-              .filter(x => x.url);
+            metaFromJson = arr.map((x, idx) => ({
+              url:    String(x.url || '').trim(),
+              r2_key: String(x.r2_key || x.key || '').trim() || null,
+              mime:   String(x.mime || '').trim() || null,
+              bytes:  Number.isFinite(Number(x.bytes)) ? Number(x.bytes) : null,
+              width:  Number.isFinite(Number(x.width)) ? Number(x.width) : null,
+              height: Number.isFinite(Number(x.height)) ? Number(x.height) : null
+            })).filter(x => x.url);
           }
-        } catch (e) {
-          // JSON不正時は無視して従来の imageUrls を使う
-        }
+        } catch { /* JSON不正は無視してURLのみを使う */ }
       }
 
-      if (imageMetaRows.length) {
-        const values = imageMetaRows.map((_, i) => {
-        const base = i * 7;
-        return `(
-          $1,                       -- product_id（全行共通）
-          $${base + 2},            -- url
-          $${base + 3},            -- r2_key
-          $${base + 4},            -- mime
-          $${base + 5},            -- bytes
-          $${base + 6},            -- width
-          $${base + 7},            -- height
-          $${base + 8}             -- position
-        )`;
-        }).join(',');
-        const params = [
-          productId,
-          ...imageMetaRows.flatMap(x => [
-            x.url,
-            x.r2_key,
-            x.mime,
-            x.bytes,
-            x.width,
-            x.height,
-            x.position
-          ])
-        ];
-        await client.query(
-          `INSERT INTO product_images
-            (product_id, url, r2_key, mime, bytes, width, height, position)
-          VALUES ${values}`,
-          params
-        );
-      } else if (imageUrls.length) {
-        const rowsSql = imageUrls.map((_, i) => `($${i*2+2}, $${i*2+3})`).join(',');
-        const params = [productId, ...imageUrls.flatMap((url, i) => [url, i])];
+      // URLのみ（テキストエリア）
+      const urlOnly = (req.body.imageUrls || '')
+        .split('\n').map(s => s.trim()).filter(Boolean);
 
+      // ===== 重複除去（同一商品内 & r2_keyグローバル） =====
+      // 1) 同一商品内：payload内のURL重複を除外
+      const seenUrl = new Set();
+      metaFromJson = metaFromJson.filter(m => {
+        if (seenUrl.has(m.url)) return false;
+        seenUrl.add(m.url); return true;
+      });
+      const urlOnlyDedup = urlOnly.filter(u => !seenUrl.has(u) && seenUrl.add(u));
+
+      // 2) r2_keyグローバル重複チェック（既にどこかで使われていたら null に落とす）
+      const keys = metaFromJson.map(m => m.r2_key).filter(Boolean);
+      let usedKeySet = new Set();
+      if (keys.length) {
+        const usedRows = await client.query(
+          `SELECT r2_key FROM product_images WHERE r2_key = ANY($1)`,
+          [keys]
+        );
+        usedKeySet = new Set(usedRows.rows.map(r => String(r.r2_key)));
+      }
+
+      // ===== 挿入（position は 0..N-1 で採番） =====
+      let pos = -1;
+
+      // メタあり（r2_key の衝突は NULL へ落としてから INSERT; 念のため ON CONFLICT DO NOTHING）
+      for (const m of metaFromJson) {
+        pos += 1;
+        const r2KeyForInsert = (m.r2_key && !usedKeySet.has(m.r2_key)) ? m.r2_key : null;
         await client.query(
           `
-          INSERT INTO product_images (product_id, url, position)
-          SELECT $1, v.url, v.pos
-            FROM (VALUES ${rowsSql}) AS v(url, pos)
+          INSERT INTO product_images
+            (product_id, url, r2_key, mime, bytes, width, height, position)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+          ON CONFLICT (r2_key) DO NOTHING
           `,
-          params
+          [productId, m.url, r2KeyForInsert, m.mime, m.bytes, m.width, m.height, pos]
+        );
+      }
+
+      // URLのみ（r2_keyは持たない）
+      for (const u of urlOnlyDedup) {
+        pos += 1;
+        await client.query(
+          `INSERT INTO product_images (product_id, url, position) VALUES ($1,$2,$3)`,
+          [productId, u, pos]
         );
       }
 
@@ -2645,6 +2645,7 @@ app.get('/seller/trades/:id', requireAuth, requireRole('seller'), async (req, re
       buyer: { name: o.buyer_name, email: o.buyer_email },
       shipping, billing,
       payment, shipment,
+      image_url: o.image_url,
       items: items.map(it => ({
         ...it,
         subtotal: (it.price || 0) * (it.quantity || 0)

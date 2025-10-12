@@ -15,7 +15,7 @@
 
       <% if (Array.isArray(product.images) && product.images.length > 1) { %>
       <div class="thumbs-wrap">
-        <button class="thumbs__nav thumbs__prev" type="button" aria-label="前へ" title="前へ">‹</button>
+        <!-- <button class="thumbs__nav thumbs__prev" type="button" aria-label="前へ" title="前へ">‹</button> -->
         <div class="thumbs" role="listbox" aria-label="サムネイル">
           <% product.images.forEach(function(img, i){ %>
             <button class="thumb <%= i===0 ? 'is-active':'' %>"
@@ -29,7 +29,7 @@
             </button>
           <% }) %>
         </div>
-        <button class="thumbs__nav thumbs__next" type="button" aria-label="次へ" title="次へ">›</button>
+        <!-- <button class="thumbs__nav thumbs__next" type="button" aria-label="次へ" title="次へ">›</button> -->
       </div>
       <% } %>
     </div>
@@ -61,7 +61,7 @@
         <span class="ship"><%= product.shippingNote || '2〜3日以内に発送' %></span>
       </div>
 
-      <form class="buy" id="buyForm" action="/cart/add" method="POST" novalidate>
+      <form class="buy" id="buyForm" action="/cart/add" method="POST" data-stock="<%= product.stock %>" novalidate>
         <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <% } %>
@@ -70,7 +70,7 @@
           数量
           <div class="stepper" role="group" aria-label="数量の増減">
             <button type="button" class="stepper__btn" data-step="-1" aria-label="数量を減らす">−</button>
-            <input id="qty" name="qty" type="number" min="1" value="1" inputmode="numeric" pattern="[0-9]*">
+            <input id="qty" name="qty" type="number" min="1" value="1" data-max="<%= product.stock %>" max="<%= product.stock %>" inputmode="numeric" pattern="[0-9]*">
             <button type="button" class="stepper__btn" data-step="1" aria-label="数量を増やす">＋</button>
           </div>
         </label>
@@ -182,7 +182,7 @@
   <section class="rail">
     <div class="rail__head">
       <h2>関連商品</h2>
-      <a class="link" href="/products/list?category=<%= encodeURIComponent(product.category||'') %>">同カテゴリをもっと見る →</a>
+      <a class="link" href="/products/list?category=<%= encodeURIComponent(product.category_name||'') %>">同カテゴリをもっと見る →</a>
     </div>
     <div class="rail__track">
       <% related.forEach(function(p){ %>

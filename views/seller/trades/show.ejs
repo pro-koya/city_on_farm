@@ -40,7 +40,7 @@
       <h2 class="td-card__title">お届け先</h2>
       <div class="addr">
         <div class="addr__name">氏名：<%= order.shipping.full_name %></div>
-        <div class="addr__row">〒<%= order.shipping.postal_code %></div>
+        <div class="addr__row">〒<%= order.shipping.postal_code.substring(0,3) %>-<%= order.shipping.postal_code.slice(-4) %></div>
         <div class="addr__row"><%= order.shipping.prefecture %><%= order.shipping.city %><%= order.shipping.address_line1 %> <%= order.shipping.address_line2 %></div>
         <div class="addr__muted">TEL：<%= order.shipping.phone %></div>
       </div>
@@ -59,16 +59,15 @@
           <tr>
             <td>
               <div class="td-item__prod">
-                <img class="td-item__img" src="<%= it.image %>" alt="">
+                <img class="td-item__img" src="<%= it.image_url %>" alt="">
                 <div>
                   <p class="td-item__title"><%= it.title %></p>
-                  <div class="td-item__meta"><%= it.producer %> / <%= it.unit %></div>
+                  <div class="td-item__meta">出品者：<%= it.producer %> / 単位：<%= it.unit %></div>
                 </div>
               </div>
             </td>
-            <td><%= it.quantity %></td>
-            <td class="price">¥<%= it.price.toLocaleString() %></td>
-            <td class="price">¥<%= (it.price * it.quantity).toLocaleString() %></td>
+            <td class="price">数量：<%= it.quantity %> / 単価：¥<%= it.price.toLocaleString() %></td>
+            <td class="price">小計：¥<%= (it.price * it.quantity).toLocaleString() %></td>
           </tr>
         <% }) %>
       </tbody>
@@ -103,7 +102,7 @@
       <div class="td-status-grid">
         <label class="td-status-field">
           <span class="td-status-label">注文ステータス</span>
-          <select name="order_status" id="orderStatus">
+          <select class="pulldown" name="order_status" id="orderStatus">
             <option value="pending"   <%= order.status === 'pending'   ? 'selected' : '' %>>受付中</option>
             <option value="confirmed" <%= order.status === 'confirmed' ? 'selected' : '' %>>確定</option>
             <option value="paid"      <%= order.status === 'paid'      ? 'selected' : '' %>>支払い済み</option>
@@ -114,7 +113,7 @@
         </label>
         <label class="td-status-field">
           <span class="td-status-label">支払いステータス</span>
-          <select name="payment_status" id="paymentStatus">
+          <select class="pulldown" name="payment_status" id="paymentStatus">
             <option value="unpaid"   <%= order.payment_status === 'unpaid'   ? 'selected' : '' %>>未入金</option>
             <option value="paid"     <%= order.payment_status === 'paid'     ? 'selected' : '' %>>入金完了</option>
             <option value="canceled" <%= order.payment_status === 'canceled' ? 'selected' : '' %>>キャンセル</option>
@@ -123,7 +122,7 @@
         </label>
         <label class="td-status-field">
           <span class="td-status-label">配送ステータス</span>
-          <select name="shipment_status" id="shipmentStatus">
+          <select class="pulldown" name="shipment_status" id="shipmentStatus">
             <option value="preparing"  <%= order.shipment_status === 'preparing'  ? 'selected' : '' %>>出荷準備中</option>
             <option value="in_transit" <%= order.shipment_status === 'in_transit' ? 'selected' : '' %>>お届け中</option>
             <option value="delivered"  <%= order.shipment_status === 'delivered'  ? 'selected' : '' %>>配達完了</option>

@@ -8,9 +8,9 @@
       <% orders.slice(0,5).forEach(function(o){ %>
         <li class="row">
           <span class="mono">注文日：<%= new Date(o.created_at).toLocaleDateString('ja-JP') %></span>
-          <span><%= o.date %></span>
-          <span>¥<%= o.total.toLocaleString() %></span>
-          <span><%= o.status_ja %></span>
+          <!-- <span><%= o.date %></span> -->
+          <span>小計：¥<%= o.total.toLocaleString() %></span>
+          <span>状況：<%= o.status_ja %></span>
           <a class="btn btn--sm" href="/orders/<%= o.id %>">詳細</a>
         </li>
       <% }) %>

@@ -97,7 +97,7 @@ async function fetchProductsWithCount(dbQuery, {
     const dataSql = `
         SELECT
         p.id, p.slug, p.title, p.price, p.unit, p.stock,
-        p.is_organic, p.is_seasonal, p.published_at,
+        p.is_organic, p.is_seasonal, p.published_at, p.created_at,
         c.name AS category_name,
         (SELECT url
             FROM product_images i

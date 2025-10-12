@@ -8,23 +8,35 @@
   const submitBtn = form.querySelector('.btn--buy');
   const badge = document.querySelector('.cart-badge');
 
-  // 数量ステッパー
-  stepBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const step = parseInt(btn.dataset.step, 10) || 0;
-      const cur = Math.max(1, parseInt(qtyInput.value, 10) || 1);
-      const next = Math.max(1, cur + step);
-      qtyInput.value = next;
-    });
-  });
+  // 在庫（フォームの data-stock または input[data-max]/max から）
+  const maxStock =
+    Number(form.dataset.stock) ||
+    Number(qtyInput.dataset.max) ||
+    Number(qtyInput.max) ||
+    Infinity;
 
-  // 数量の直接入力も下限1でクランプ
-  qtyInput.addEventListener('input', () => {
-    const n = Math.max(1, parseInt(qtyInput.value, 10) || 1);
-    if (String(n) !== qtyInput.value) qtyInput.value = n;
-  });
+  // 在庫0なら購入不可
+  if (!Number.isFinite(maxStock) || maxStock <= 0) {
+    qtyInput.value = 0;
+    qtyInput.disabled = true;
+    submitBtn.disabled = true;
+  }
 
-  // 簡易トースト
+  function clampQty(n) {
+    const min = 1;
+    const max = Math.max(1, maxStock); // 0在庫は上で処理済み
+    return Math.min(max, Math.max(min, n));
+  }
+
+  function updateButtons() {
+    const v = parseInt(qtyInput.value, 10) || 1;
+    const minusBtn = document.querySelector('.stepper__btn[data-step="-1"]');
+    const plusBtn  = document.querySelector('.stepper__btn[data-step="+1"], .stepper__btn[data-step="1"]');
+
+    if (minusBtn) minusBtn.disabled = (v <= 1);
+    if (plusBtn)  plusBtn.disabled  = (v >= maxStock);
+  }
+
   function toast(msg, ok=true){
     const t = document.createElement('div');
     t.className = 'toast ' + (ok ? 'ok' : 'ng');
@@ -38,9 +50,40 @@
     setTimeout(()=>{ t.remove(); }, 1800);
   }
 
+  // 数量ステッパー
+  stepBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (submitBtn.disabled) return; // 在庫0など
+      const step = parseInt(btn.dataset.step, 10) || 0;
+      const cur  = parseInt(qtyInput.value, 10) || 1;
+      const next = clampQty(cur + step);
+      if (next !== cur + step && step > 0) {
+        toast(`在庫は最大 ${maxStock} までです`, false);
+      }
+      qtyInput.value = next;
+      updateButtons();
+    });
+  });
+
+  // 直接入力もクランプ（1〜在庫）
+  qtyInput.addEventListener('input', () => {
+    const raw = parseInt(qtyInput.value, 10);
+    const n = clampQty(Number.isFinite(raw) ? raw : 1);
+    if (String(n) !== qtyInput.value) qtyInput.value = n;
+    updateButtons();
+  });
+
+  // 初期ボタン状態
+  updateButtons();
+
+  // 送信時にも最終チェック（改竄や競合に備える）
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (submitBtn.disabled) return;
+
+    // 最終クランプ
+    qtyInput.value = clampQty(parseInt(qtyInput.value, 10) || 1);
+    updateButtons();
 
     try {
       submitBtn.disabled = true;
@@ -51,10 +94,7 @@
       const resp = await fetch(form.action, {
         method: 'POST',
         body: fd,
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-          'CSRF-Token': token
-        },
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'CSRF-Token': token },
         credentials: 'same-origin'
       });
 
@@ -79,7 +119,7 @@
     } catch {
       toast('通信に失敗しました。', false);
     } finally {
-      submitBtn.disabled = false;
+      submitBtn.disabled = (maxStock <= 0) ? true : false;
     }
   });
 

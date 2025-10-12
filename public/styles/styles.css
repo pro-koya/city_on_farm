@@ -89,19 +89,18 @@ a { color: var(--color-main); text-decoration: none;}
 /* --- BUTTONS --- */
 .button {
   display: inline-block;
-  background-color: var(--color-accent);
-  color: var(--color-white);
+  background: var(--main);
+  color: var(--white);
   text-decoration: none;
   padding: 0.6rem 1.2rem;
   margin: 0.3rem;
-  border-radius: 6px;
+  border-radius: 8px;
   font-weight: bold;
-  transition: background-color var(--transition-speed) ease;
+  transition: all var(--transition-speed) ease-in-out;
 }
 
 .button:hover {
-  background-color: var(--color-main);
-  color: var(--color-white);
+  opacity: .7;
 }
 
 .button.secondary {

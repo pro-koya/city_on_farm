@@ -7,7 +7,7 @@
     <% } %>
 
     <!-- ===== ヘッダー（アクションバー） ===== -->
-    <div class="bar">
+    <!-- <div class="bar">
       <div class="bar__left">
         <h1>新規出品</h1>
         <span class="hint">* は必須</span>
@@ -16,7 +16,7 @@
         <button class="btn btn--ghost" type="button" id="saveDraft">下書き保存</button>
         <button class="btn" type="submit" id="publishBtn">公開する</button>
       </div>
-    </div>
+    </div> -->
 
     <!-- ===== 2カラム ===== -->
     <div class="grid">
@@ -96,21 +96,24 @@
           <h2 class="card__title">商品画像 *</h2>
           <p class="help">1枚以上、最大8枚まで。最初の画像がサムネイルになります。</p>
 
+          <!-- 編集と同じ hidden を先頭に -->
+          <input type="hidden" id="imageJson" name="imageJson" value="[]">
+
+          <!-- 現在の画像（ここに並ぶ） -->
           <ul class="uploader__list sortable" id="currentImages" aria-live="polite"></ul>
 
-          <!-- R2 直アップローダ -->
-          <div class="uploader" id="r2Uploader" data-max="8">
-            <input id="uploaderInput" type="file" accept="image/*" multiple hidden>
-            <button type="button" class="uploader__drop" id="openPicker">画像を選択</button>
+          <!-- 共通のR2ローダDOM（IDを編集と揃える） -->
+          <div class="uploader" id="uploader" data-max="8">
+            <input id="images" type="file" accept="image/*" multiple hidden>
+            <button type="button" class="uploader__drop" id="openPicker">画像を追加</button>
             <button type="button" class="uploader__drop btn--ghost" id="openLibrary">ライブラリから選ぶ</button>
-            <ul class="uploader__list" id="previewList" aria-live="polite"></ul>
-            <p id="uploaderMsg" class="muted small"></p>
-
+            <p id="uploaderMsg" class="help"></p>
             <ul class="uploader__list" id="previewList" aria-live="polite" hidden></ul>
-            <textarea id="imageUrls" name="imageUrls" hidden></textarea>
           </div>
 
-          <input type="hidden" id="imageJson" name="imageJson" value="[]">
+          <!-- サーバー互換用（編集と同じ名前でOK） -->
+          <textarea id="imageUrls" name="imageUrls" hidden></textarea>
+
           <p class="error" data-for="images"></p>
         </section>
 

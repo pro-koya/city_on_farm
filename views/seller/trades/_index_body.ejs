@@ -3,7 +3,7 @@
 
     <form method="GET" class="field--row" style="grid-template-columns:2fr 1fr 1fr auto">
         <input type="text" name="q" value="<%= q || '' %>" placeholder="注文番号/商品名">
-        <select name="status">
+        <select class="pulldown" name="status">
             <option value="all" <%=status==='all' ?'selected':'' %> >すべて</option>
             <option value="pending" <%=status==='pending' ?'selected':'' %> >受付中</option>
             <option value="confirmed" <%=status==='confirmed' ?'selected':'' %>>確定</option>
@@ -12,7 +12,7 @@
             <option value="cancelled" <%=status==='cancelled' ?'selected':'' %>>キャンセル</option>
             <option value="refunded" <%=status==='refunded' ?'selected':'' %> >返金済み</option>
         </select>
-        <select name="range">
+        <select class="pulldown" name="range">
             <option value="all" <%=range==='all' ?'selected':'' %> >期間指定なし</option>
             <option value="7d" <%=range==='7d' ?'selected':'' %> >直近7日</option>
             <option value="30d" <%=range==='30d' ?'selected':'' %> >直近30日</option>

@@ -15,7 +15,7 @@
 }
 
 /* Head */
-.order-head{ display:flex; justify-content:space-between; gap:16px; margin-bottom:16px; }
+.order-head{ display:flex; justify-content:space-between; gap:16px; }
 .order-head h1{ margin:0 0 6px; font-size:1.6rem; }
 .order-meta{ color:#555; }
 .meta-row{ display:flex; gap:8px; align-items:baseline; margin:2px 0; }
@@ -57,7 +57,7 @@
 .progress li.is-done .progress__dot{ background:var(--c-green); }
 
 /* Layout */
-.grid{ display:grid; grid-template-columns: 1fr 320px; gap:20px; }
+.grid{ display:grid; grid-template-columns: 1fr 320px; gap:20px; padding-top: 5px;}
 .grid__right .sticky{ position:sticky; top:80px; }
 @media (max-width: 900px){ .grid{ grid-template-columns:1fr; } .grid__right .sticky{ position:static; } }
 

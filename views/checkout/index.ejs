@@ -80,7 +80,7 @@
         <div class="field field--row">
           <div>
             <label for="shipMethod">配送方法</label>
-            <select name="shipMethod" id="shipMethod" required>
+            <select class="pulldown" name="shipMethod" id="shipMethod" required>
               <option value="normal" <%= form.shipMethod === 'normal' ? 'selected' : '' %>>常温便</option>
               <option value="cool"<%= form.shipMethod === 'cool'   ? 'selected' : '' %>>クール便</option>
             </select>
@@ -91,7 +91,7 @@
           </div>
           <div>
             <label for="shipTime">お届け時間帯（任意）</label>
-            <select id="shipTime" name="shipTime">
+            <select class="pulldown" id="shipTime" name="shipTime">
               <option value="">指定なし</option>
               <option value="am" <%= form.shipTime === 'am' ? 'selected' : '' %>>午前中</option>
               <option value="14-16" <%= form.shipTime === '14-16' ? 'selected' : '' %>>14-16時</option>

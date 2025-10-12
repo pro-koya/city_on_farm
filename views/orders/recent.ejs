@@ -57,13 +57,13 @@
       <% items.forEach(function(o){ %>
         <article class="order">
           <header class="order__head">
-            <div class="order__meta">
+            <!-- <div class="order__meta">
               <div class="order__id">注文番号：<strong><%= o.orderNo %></strong></div>
-            </div>
+            </div> -->
             <div class="order__status">
-              <div class="order__date"><%= o.created_at %></div>
+              <div class="order__date">注文日：<%= o.created_at %></div>
               <span class="status status--<%= o.status %>">
-                <%= o.status_ja || o.status %>
+                状況：<%= o.status_ja || o.status %>
               </span>
             </div>
           </header>
@@ -75,7 +75,8 @@
                   <img src="<%= it.image %>" alt="<%= it.name %>" loading="lazy">
                   <div class="order-item__info">
                     <div class="order-item__name"><%= it.name %></div>
-                    <div class="order-item__sub"><%= it.producer %>・<%= it.qty %><%= it.unit || '点' %></div>
+                    <div class="order-item__sub">出品者：<%= it.producer %></div>
+                    <div class="order-item__sub">数量：<%= it.qty %> / 単位：<%= it.unit || '点' %></div>
                   </div>
                 </a>
               <% }) %>

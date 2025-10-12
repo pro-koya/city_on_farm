@@ -136,7 +136,6 @@ body {
 
 /* ナビボタン（任意、必要なら表示） */
 .thumbs__nav {
-  position: absolute;
   border: none;
   background: #fff;
   opacity: .8;

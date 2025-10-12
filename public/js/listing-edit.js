@@ -236,7 +236,7 @@
   // const pickerBtn   = $('#openPicker');
   // const fileInput   = $('#images');
   const imageJsonEl = document.getElementById('imageJson');
-  const maxImages   = (window.__EDIT_DATA__ && window.__EDIT_DATA__.maxImages) || 8;
+  const maxImages = parseInt(document.getElementById('uploader')?.dataset.max || '8', 10);
 
   function appendImageToCurrentList({ url }) {
     const idx = curList.querySelectorAll('.uploader__item').length;
@@ -446,9 +446,9 @@
         appendImageToCurrentList({ url: u });
         appendToImageJson(meta);
       });
-      renumberImages();
-      setDirty();
       modal.remove();
+      renumberImages();
+      if (typeof setDirty === 'function') setDirty();
     });
   }
 

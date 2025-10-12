@@ -1,4 +1,4 @@
-<%- include('partials/header', {title: 'ホーム', extraCSS: '' }) %>
+<%- include('partials/header', {title: 'ホーム', extraCSS: '/styles/products.css' }) %>
 
     <main>
         <!-- Hero Section -->
@@ -32,7 +32,7 @@
             </p>
             <div class="next-actions">
                 <a href="/products" class="button">商品を見る</a>
-                <a href="/signup" class="button secondary">生産者になる</a>
+                <!-- <a href="/signup" class="button secondary">生産者になる</a> -->
             </div>
         </section>
 
@@ -68,11 +68,7 @@
             <h2>おすすめ商品</h2>
             <div class="product-cards">
                 <% products.forEach(function(product) { %>
-                <div class="product-card">
-                    <img src="<%= product.image_url %>" alt="<%= product.title %>">
-                    <h3><%= product.title %></h3>
-                    <p><%= product.description_html %></p>
-                </div>
+                <%- include('./partials/productCard', { p: product }) %>
                 <% }); %>
             </div>
             <a href="/products" class="button">もっと見る</a>
@@ -116,4 +112,5 @@
             </div>
         </section>
 
+<script src="/js/products.js"></script>
 <%- include('partials/footer') %>

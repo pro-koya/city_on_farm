@@ -15,7 +15,7 @@
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <div class="field--row">
                     <label>出荷状況</label>
-                    <select name="shipment_status">
+                    <select class="pulldown" name="shipment_status">
                         <option value="">—変更しない—</option>
                         <option value="preparing">出荷準備中</option>
                         <option value="in_transit">お届け中</option>
@@ -24,7 +24,7 @@
                     </select>
 
                     <label>取引状況</label>
-                    <select name="order_status">
+                    <select class="pulldown" name="order_status">
                         <option value="">—変更しない—</option>
                         <option value="confirmed">確定</option>
                         <option value="paid">支払い済み</option>
