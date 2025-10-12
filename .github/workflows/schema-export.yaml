@@ -1,0 +1,50 @@
+# .github/workflows/schema-export.yml
+name: Export DB Schema
+
+on:
+  workflow_dispatch:   # ← 手動実行を有効化
+    inputs:
+      branch:
+        description: "Run on branch"
+        required: false
+        default: "main"
+
+jobs:
+  export-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || 'main' }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install PostgreSQL client (psql)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Export CSVs with psql
+        env:
+          PGURL: ${{ secrets.PGURL }}   # ← リポジトリSecretsに登録しておく
+        run: npm run schema:csv
+
+      - name: Generate SCHEMA.md
+        env:
+          PGURL: ${{ secrets.PGURL }}
+        run: npm run schema:md
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: table-schema
+          path: |
+            table-info/*.csv
+            table-info/SCHEMA.md

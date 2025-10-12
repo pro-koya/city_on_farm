@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon server.js"
+    "start": "nodemon server.js",
+    "schema:csv": "psql \"$PGURL\" -v ON_ERROR_STOP=1 -f table-info/export-tableSchema.sql",
+    "schema:md": "node table-info/generate_schema_md.mjs",
+    "schema:all": "npm run schema:csv && npm run schema:md"
   },
   "keywords": [],
   "author": "",

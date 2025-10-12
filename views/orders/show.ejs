@@ -30,18 +30,31 @@
 
     <div class="order-head__right">
       <div class="order-actions">
-        <% if (order.status !== 'canceled') { %>
+        <!-- <% if (order.status !== 'canceled') { %>
           <form method="POST" action="/orders/<%= order.orderNumber || order.id %>/reorder" class="inline">
             <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <% } %>
             <button type="submit" class="btn btn--primary">同じ内容で再注文</button>
           </form>
-        <% } %>
+        <% } %> -->
         <a class="btn btn--ghost" href="/orders/recent">注文一覧へ戻る</a>
       </div>
     </div>
   </header>
+
+  <section class="card">
+    <% if (order.paymentMethod === '銀行振込') { %>
+      <% if (order.paymentStatus === '未入金') { %>
+        <p class="danger-alert">支払い方法が未入金の場合、振込後商品が発送されます。</p>
+      <% } else { %>
+        <p class="safe-alert">商品が準備でき次第配達いたしますので、到着まで少々お待ちください。</p>
+      <% } %>
+    <% } %>
+    <% if (order.paymentMethod === '代金引換') { %>
+      <p class="danger-alert">支払い方法は現金のみです。カードやバーコード決済は受け付けておりませんのでご注意ください。</p>
+    <% } %>
+  </section>
 
   <!-- パス式ステップ（Salesforce Path風） -->
   <!-- <section class="order-progress">
@@ -102,7 +115,7 @@
           <div class="row"><dt>小計</dt><dd>¥<%= Number(totals.subtotal||0).toLocaleString() %></dd></div>
           <div class="row"><dt>割引</dt><dd>-¥<%= Number(totals.discount||0).toLocaleString() %></dd></div>
           <div class="row"><dt>送料</dt><dd>¥<%= Number(totals.shipping||0).toLocaleString() %></dd></div>
-          <% if (totals.tax !== undefined) { %>
+          <% if (totals.tax !== undefined && totals.tax) { %>
             <div class="row"><dt>税</dt><dd>¥<%= Number(totals.tax||0).toLocaleString() %></dd></div>
           <% } %>
           <div class="row grand"><dt>合計</dt><dd>¥<%= Number(totals.total||0).toLocaleString() %></dd></div>

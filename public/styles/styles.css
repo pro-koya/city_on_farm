@@ -460,6 +460,16 @@ input {
   font-size: 16px;
 }
 
+.danger-alert {
+  margin: 0;
+  color: var(--color-error);
+}
+
+.safe-alert {
+  margin: 0;
+  color: var(--color-accent);
+}
+
 /* PCでのログインピル（右上） */
 @media (min-width: 769px) {
   .nav-loginstatus--desktop {
