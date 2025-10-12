@@ -19,7 +19,7 @@
   WHERE a.attnum > 0 AND NOT a.attisdropped
     AND n.nspname NOT IN ('pg_catalog','information_schema')
   ORDER BY n.nspname, c.relname, a.attnum
-) TO 'table-info/columns.csv' WITH CSV HEADER;
+) TO 'table-info/columns.csv' WITH CSV HEADER
 
 -- Primary Keys
 \copy (
@@ -37,7 +37,7 @@
     AND n.nspname NOT IN ('pg_catalog','information_schema')
   GROUP BY n.nspname, c.relname, con.conname
   ORDER BY n.nspname, c.relname
-) TO 'table-info/pks.csv' WITH CSV HEADER;
+) TO 'table-info/pks.csv' WITH CSV HEADER
 
 -- Unique Constraints
 \copy (
@@ -55,7 +55,7 @@
     AND n.nspname NOT IN ('pg_catalog','information_schema')
   GROUP BY n.nspname, c.relname, con.conname
   ORDER BY n.nspname, c.relname
-) TO 'table-info/uniques.csv' WITH CSV HEADER;
+) TO 'table-info/uniques.csv' WITH CSV HEADER
 
 -- Foreign Keys
 \copy (
@@ -85,7 +85,7 @@
   GROUP BY sn.nspname, sc.relname, con.conname,
            tn.nspname, tc.relname, con.confupdtype, con.confdeltype
   ORDER BY src_schema, src_table, constraint_name
-) TO 'table-info/fks.csv' WITH CSV HEADER;
+) TO 'table-info/fks.csv' WITH CSV HEADER
 
 -- Indexes
 \copy (
@@ -116,7 +116,7 @@
   WHERE con.contype = 'c'
     AND n.nspname NOT IN ('pg_catalog','information_schema')
   ORDER BY n.nspname, c.relname
-) TO 'table-info/checks.csv' WITH CSV HEADER;
+) TO 'table-info/checks.csv' WITH CSV HEADER
 
 -- Table Comments
 \copy (
@@ -130,6 +130,6 @@
   WHERE c.relkind = 'r'
     AND n.nspname NOT IN ('pg_catalog','information_schema')
   ORDER BY n.nspname, c.relname
-) TO 'table-info/table_comments.csv' WITH CSV HEADER;
+) TO 'table-info/table_comments.csv' WITH CSV HEADER
 
 \echo Done.
