@@ -3,7 +3,7 @@
 
 -- 出力先ディレクトリ（相対）
 \set csv_dir '/home/runner/work/city_on_farm/city_on_farm/table-info'
-\copy (SELECT 1 AS a) TO :/home/runner/work/city_on_farm/city_on_farm/table-info/hello.csv WITH (FORMAT csv, HEADER true)
+\copy (SELECT 1 AS a) TO :table-info/hello.csv WITH (FORMAT csv, HEADER true)
 \echo Exporting schema info CSVs...
 
 \copy (
