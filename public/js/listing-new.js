@@ -266,9 +266,8 @@
     wrap.innerHTML = `
       <div class="lib__backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:saturate(1.1) blur(2px);"></div>
       <div class="lib__panel" role="dialog" aria-modal="true"
-           style="position:fixed;inset:75px 0 0 0;max-width:980px;margin:1vh auto;background:#fff;border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.18);overflow:hidden">
+           style="position:fixed;top:75px;left:0;right:0;margin:0 auto;max-width:980px;background:#fff;border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.18);overflow:hidden">
         <header style="display:flex;gap:.5rem;align-items:center;padding:.6rem .8rem;border-bottom:1px solid #e5e7eb">
-          <strong style="flex:1">画像ライブラリ</strong>
           <form id="imgLibSearchForm" style="display:flex;gap:.4rem;align-items:center">
             <input id="imgLibQ" type="search" placeholder="検索" style="min-width:200px;border:1px solid #e5e7eb;border-radius:10px;padding:.4rem .6rem">
             <button type="submit" class="btn" style="padding:.4rem .8rem;border-radius:10px;border:1px solid #4C6B5C;background:#4C6B5C;color:#fff">検索</button>
