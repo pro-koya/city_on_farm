@@ -102,6 +102,7 @@
 
 .bulk__left {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px
 }
@@ -289,14 +290,17 @@
 }
 
 .card {
-  display: grid;
-  grid-template-columns: 96px 1fr;
-  gap: .8rem;
   padding: .8rem;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: #fff;
   box-shadow: var(--shadow)
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: .8rem;
 }
 
 .card__check {
@@ -336,7 +340,8 @@
 .card .actions {
   display: flex;
   gap: 8px;
-  margin-top: 6px
+  justify-content: flex-end;
+  margin-top: 6px;
 }
 
 .btn.danger {

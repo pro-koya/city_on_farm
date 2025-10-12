@@ -20,12 +20,12 @@
   // 選択数表示
   const countEl = document.createElement('span');
   countEl.className = 'count';
-  const bulkLeft = $('.bulk__left');
-  if (bulkLeft && !$('.bulk__left .count')) {
-    const sep = document.createTextNode(' / ');
-    bulkLeft.appendChild(sep);
+  const bulkLeft = $('.count-block');
+  // if (bulkLeft && !$('.bulk__left .count')) {
+  //   const sep = document.createTextNode(' / ');
+  //   bulkLeft.appendChild(sep);
     bulkLeft.appendChild(countEl);
-  }
+  // }
 
   // ---- 選択状態
   const selected = new Set();
@@ -51,7 +51,7 @@
     }
 
     // 選択数表示
-    if (countEl) countEl.textContent = `選択 ${selCount} 件`;
+    if (countEl) countEl.textContent = `${selCount} 件選択中`;
 
     // バルク適用ボタン活性
     if (bulkBtn) bulkBtn.disabled = selCount === 0 || (bulkSelect && !bulkSelect.value);
