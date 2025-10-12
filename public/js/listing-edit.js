@@ -309,7 +309,7 @@
     wrap.innerHTML = `
       <div class="lib__backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:saturate(1.1) blur(2px);"></div>
       <div class="lib__panel" role="dialog" aria-modal="true"
-           style="position:fixed;inset:auto 0 0 0;max-width:980px;margin:5vh auto;background:#fff;border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.18);overflow:hidden">
+           style="position:fixed;inset:75px 0 0 0;max-width:980px;margin:1vh auto;background:#fff;border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.18);overflow:hidden">
         <header style="display:flex;gap:.5rem;align-items:center;padding:.6rem .8rem;border-bottom:1px solid #e5e7eb">
           <strong style="flex:1">画像ライブラリ</strong>
           <form id="imgLibSearchForm" style="display:flex;gap:.4rem;align-items:center">
