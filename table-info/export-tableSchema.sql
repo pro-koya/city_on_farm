@@ -22,7 +22,7 @@
   FROM information_schema.columns c
   WHERE c.table_schema NOT IN ('pg_catalog','information_schema')
   ORDER BY c.table_schema, c.table_name, c.ordinal_position
-) TO :'csv_dir'/columns.csv WITH (FORMAT csv, HEADER true)
+) TO /home/runner/work/city_on_farm/city_on_farm/table-info/columns.csv WITH (FORMAT csv, HEADER true)
 
 \echo first sql is pass...
 
@@ -39,7 +39,7 @@
     AND t.table_schema NOT IN ('pg_catalog','information_schema')
   GROUP BY t.table_schema, t.table_name
   ORDER BY t.table_schema, t.table_name
-) TO :'csv_dir'/tables.csv WITH (FORMAT csv, HEADER true)
+) TO /home/runner/work/city_on_farm/city_on_farm/table-info/tables.csv WITH (FORMAT csv, HEADER true)
 
 \echo secound sql is pass...
 
@@ -52,7 +52,7 @@
   FROM information_schema.table_constraints tc
   WHERE tc.table_schema NOT IN ('pg_catalog','information_schema')
   ORDER BY 1,2,3
-) TO :'csv_dir'/constraints.csv WITH (FORMAT csv, HEADER true)
+) TO /home/runner/work/city_on_farm/city_on_farm/table-info/constraints.csv WITH (FORMAT csv, HEADER true)
 
 \echo thrid sql is pass...
 
@@ -71,6 +71,6 @@
   WHERE n.nspname NOT IN ('pg_catalog','information_schema')
     AND t.relkind = 'r'
   ORDER BY 1,2,3
-) TO :'csv_dir'/indexes.csv WITH (FORMAT csv, HEADER true)
+) TO /home/runner/work/city_on_farm/city_on_farm/table-info/indexes.csv WITH (FORMAT csv, HEADER true)
 
 \echo Done.
