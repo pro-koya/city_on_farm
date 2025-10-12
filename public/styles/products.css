@@ -281,6 +281,7 @@ main.page {
   background: var(--white);
   border-radius: 12px;
   box-shadow: var(--shadow);
+  max-width: 220px;
   overflow: hidden;
   scroll-snap-align: start;
   text-decoration: none;
@@ -290,7 +291,7 @@ main.page {
 
 .card img {
   width: 100%;
-  height: 120px;
+  height: 180px;
   object-fit: cover;
   display: block
 }
