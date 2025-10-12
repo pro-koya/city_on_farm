@@ -1,6 +1,10 @@
--- table-info/export-tableSchema.sql
 \set ON_ERROR_STOP on
-\echo 'Exporting schema info CSVs...'
+\pset pager off
+
+-- 出力先ディレクトリ（相対）
+\set csv_dir 'table-info'
+
+\echo Exporting schema info CSVs...
 
 \copy (
   SELECT
@@ -18,7 +22,7 @@
   FROM information_schema.columns c
   WHERE c.table_schema NOT IN ('pg_catalog','information_schema')
   ORDER BY c.table_schema, c.table_name, c.ordinal_position
-) TO 'table-info/columns.csv' CSV HEADER
+) TO :'csv_dir'/columns.csv WITH (FORMAT csv, HEADER true)
 
 \copy (
   SELECT
@@ -33,7 +37,7 @@
     AND t.table_schema NOT IN ('pg_catalog','information_schema')
   GROUP BY t.table_schema, t.table_name
   ORDER BY t.table_schema, t.table_name
-) TO 'table-info/tables.csv' CSV HEADER
+) TO :'csv_dir'/tables.csv WITH (FORMAT csv, HEADER true)
 
 \copy (
   SELECT
@@ -44,7 +48,7 @@
   FROM information_schema.table_constraints tc
   WHERE tc.table_schema NOT IN ('pg_catalog','information_schema')
   ORDER BY 1,2,3
-) TO 'table-info/constraints.csv' CSV HEADER
+) TO :'csv_dir'/constraints.csv WITH (FORMAT csv, HEADER true)
 
 \copy (
   SELECT
@@ -61,4 +65,6 @@
   WHERE n.nspname NOT IN ('pg_catalog','information_schema')
     AND t.relkind = 'r'
   ORDER BY 1,2,3
-) TO 'table-info/indexes.csv' CSV HEADER
+) TO :'csv_dir'/indexes.csv WITH (FORMAT csv, HEADER true)
+
+\echo Done.

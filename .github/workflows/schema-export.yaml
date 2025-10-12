@@ -26,15 +26,19 @@ jobs:
       - name: Install PostgreSQL client (psql)
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          sudo apt-get install -y postgresql-client dos2unix
 
-      - name: Install deps
-        run: npm ci
+      - name: Prep output dir & normalize SQL newlines
+        run: |
+          mkdir -p table-info
+          dos2unix table-info/export-tableSchema.sql
 
       - name: Export CSVs with psql
         env:
-          PGURL: ${{ secrets.PGURL }}   # ← リポジトリSecretsに登録しておく
-        run: npm run schema:csv
+          PGURL: ${{ secrets.PGURL }}
+        run: |
+          # 冗長ログで実行（行エコー & 詳細エラー）
+          psql "$PGURL" -v ON_ERROR_STOP=1 -v VERBOSITY=verbose -a -f table-info/export-tableSchema.sql
 
       - name: Generate SCHEMA.md
         env:
