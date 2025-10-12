@@ -24,6 +24,8 @@
   ORDER BY c.table_schema, c.table_name, c.ordinal_position
 ) TO :'csv_dir'/columns.csv WITH (FORMAT csv, HEADER true)
 
+\echo first sql is pass...
+
 \copy (
   SELECT
     t.table_schema,
@@ -39,6 +41,8 @@
   ORDER BY t.table_schema, t.table_name
 ) TO :'csv_dir'/tables.csv WITH (FORMAT csv, HEADER true)
 
+\echo secound sql is pass...
+
 \copy (
   SELECT
     tc.table_schema,
@@ -49,6 +53,8 @@
   WHERE tc.table_schema NOT IN ('pg_catalog','information_schema')
   ORDER BY 1,2,3
 ) TO :'csv_dir'/constraints.csv WITH (FORMAT csv, HEADER true)
+
+\echo thrid sql is pass...
 
 \copy (
   SELECT
