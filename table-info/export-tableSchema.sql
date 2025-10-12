@@ -20,6 +20,6 @@
 \copy (SELECT n.nspname AS table_schema, t.relname AS table_name, i.relname AS index_name, pg_get_indexdef(ix.indexrelid) AS index_def, ix.indisunique AS is_unique, ix.indisprimary AS is_primary FROM pg_class t JOIN pg_index ix ON t.oid = ix.indrelid JOIN pg_class i ON i.oid = ix.indexrelid JOIN pg_namespace n ON n.oid = t.relnamespace WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND t.relkind = 'r' ORDER BY 1,2,3) TO /home/runner/work/city_on_farm/city_on_farm/table-info/indexes.csv WITH (FORMAT csv, HEADER true)
 
 \echo Exporting enums...
-\copy (SELECT n.nspname AS schema_name, t.typname AS enum_type, e.enumlabel AS enum_value, e.enumsortorder AS sort_order FROM pg_type t JOIN pg_enum e ON t.oid = e.enumtypid JOIN pg_namespace n ON n.oid = t.typnamespace WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') ORDER BY n.nspname, t.typname, e.enumsortorder) TO :outdir '/enums.csv' WITH (FORMAT csv, HEADER true)
+\copy (SELECT n.nspname AS schema_name, t.typname AS enum_type, e.enumlabel AS enum_value, e.enumsortorder AS sort_order FROM pg_type t JOIN pg_enum e ON t.oid = e.enumtypid JOIN pg_namespace n ON n.oid = t.typnamespace WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') ORDER BY n.nspname, t.typname, e.enumsortorder) TO /home/runner/work/city_on_farm/city_on_farm/table-info/enums.csv WITH (FORMAT csv, HEADER true)
 
 \echo Done.
