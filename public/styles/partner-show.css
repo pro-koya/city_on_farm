@@ -74,6 +74,10 @@
 .muted{ color:var(--muted); }
 .small{ font-size:12px; }
 
+.table-grid {
+    display: none;
+}
+
 .link{ color:#2563eb; text-decoration: none; }
 .link:hover{ text-decoration: underline; }
 
@@ -88,4 +92,38 @@
 @keyframes fadeDown{
   from{ opacity:0; transform: translate(-50%, -8px); }
   to  { opacity:1; transform: translate(-50%, 0); }
+}
+
+@media (max-width: 768px) {
+    .ps {
+        padding: 0;
+    }
+
+    .ps__head {
+        padding: 0 12px;
+    }
+
+    .kv {
+        grid-template-columns: 100px 1fr;
+        gap: 8px;
+    }
+
+    .table-wrap {
+        display: none;
+    }
+
+    .table-grid {
+        display: block;
+    }
+
+    .table-row {
+        border-bottom: 1px solid var(--muted);
+        padding: 12px 0;
+    }
+
+    .table-info {
+        display: grid;
+        grid-template-columns: 1fr;
+        color: var(--text);
+    }
 }

@@ -5229,7 +5229,7 @@ app.post(
   '/admin/partners/:id/status',
   requireAuth,
   requireRole('admin'),
-  csrfProtect, // 使っているなら
+  csrfProtect,
   async (req, res, next) => {
     const id = String(req.params.id || '').trim();
     if (!isUuid(id)) return res.status(400).json({ ok:false, message: 'invalid id' });
@@ -5248,8 +5248,35 @@ app.post(
           RETURNING id, status`,
         [nextStatus, id]
       );
+      
+      const partners = await dbQuery(
+        `SELECT
+           id, name, kana, type, status, email, phone, website,
+           billing_email, billing_terms, tax_id,
+           postal_code, prefecture, city, address1, address2,
+           note, created_at, updated_at
+         FROM partners
+         WHERE id = $1::uuid
+         LIMIT 1`,
+        [id]
+      );
+      const partner = partners[0];
+
+      const users = await dbQuery(
+        `SELECT id, name, email, roles, created_at, updated_at
+           FROM users
+          WHERE partner_id = $1::uuid
+          ORDER BY created_at DESC`,
+        [id]
+      );
+
       if (!r.length) return res.status(404).json({ ok:false, message:'not found' });
-      return res.json({ ok: true, status: r[0].status });
+      // res.json({ ok: true, status: r[0].status });
+      res.render('admin/partners/show', {
+        title: `取引先詳細 | ${partner.name}`,
+        partner, users,
+        csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
+      });
     } catch (e) {
       next(e);
     }

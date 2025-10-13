@@ -1,26 +1,26 @@
-(() => {
-  const form = document.getElementById('statusForm');
+// public/js/partner-show.js
+document.addEventListener('DOMContentLoaded', () => {
+  const form  = document.getElementById('statusForm');
   if (!form) return;
 
   const btn   = document.getElementById('toggleBtn');
-  const input = document.getElementById('statusInput');
+  const input = document.getElementById('statusInput'); // name="status"
   const badge = document.getElementById('statusBadge');
-
-  function toast(msg, ok=true){
-    const t = document.createElement('div');
-    t.className = 'toast ' + (ok ? 'ok' : 'ng');
-    t.textContent = msg;
-    document.body.appendChild(t);
-    setTimeout(()=> t.remove(), 1800);
-  }
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!btn || !input) return;
 
-    const nextStatus = input.value; // active / inactive
+    // 送る値をここで最終確認（空なら弾く）
+    console.log(input?.value);
+    const val = (input?.value || '').trim().toLowerCase();
+    if (!['active','inactive'].includes(val)) {
+      alert('内部エラー: 送信するステータスが不正です。');
+      return;
+    }
+
     const fd = new FormData(form);
-    fd.set('status', nextStatus);
+    // 念のため status を確実に上書き
+    fd.set('status', input?.value);
 
     btn.disabled = true;
     try {
@@ -29,37 +29,33 @@
         body: fd,
         headers: {
           'X-Requested-With': 'XMLHttpRequest',
-          'CSRF-Token': form.querySelector('input[name="_csrf"]')?.value || ''
+          'CSRF-Token': form.querySelector('input[name="_csrf"]')?.value || '',
+          'Accept': 'application/json'
         },
         credentials: 'same-origin'
       });
-      if (!resp.ok) {
-        let msg = '更新に失敗しました。';
-        try { const j = await resp.json(); msg = j.message || msg; } catch {}
-        toast(msg, false);
-        return;
-      }
-      const data = await resp.json();
-      if (data.ok) {
-        // バッジ反映
-        if (badge) {
-          badge.textContent = data.status === 'active' ? '有効' : '無効';
-          badge.classList.remove('ps__badge--active','ps__badge--inactive');
-          badge.classList.add('ps__badge--' + data.status);
-        }
-        // ボタンとhidden切替
-        const next = (data.status === 'active') ? 'inactive' : 'active';
-        input.value = next;
-        btn.textContent = (data.status === 'active') ? '無効にする' : '有効にする';
 
-        toast('ステータスを更新しました。', true);
-      } else {
-        toast(data.message || '更新に失敗しました。', false);
+      const data = await resp.json().catch(()=>null);
+      if (!resp.ok || !data?.ok) {
+        throw new Error(data?.message || '更新に失敗しました。');
       }
-    } catch {
-      toast('通信に失敗しました。', false);
+
+      // 現在ステータスを data.status で反映
+      if (badge) {
+        badge.textContent = data.status === 'active' ? '有効' : '無効';
+        badge.classList.toggle('ps__badge--active',   data.status === 'active');
+        badge.classList.toggle('ps__badge--inactive', data.status === 'inactive');
+      }
+      // 次回送信用の hidden を反転
+      input.value = (data.status === 'active') ? 'inactive' : 'active';
+      // ボタン文言も反転
+      btn.textContent = (data.status === 'active') ? '無効にする' : '有効にする';
+
+    } catch (err) {
+      console.error(err);
+      alert(err.message || '更新に失敗しました。');
     } finally {
       btn.disabled = false;
     }
   });
-})();
+});

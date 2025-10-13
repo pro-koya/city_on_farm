@@ -1,7 +1,6 @@
 <%- include('../../partials/header', {
   title,
-  extraCSS: '/styles/partner-show.css',
-  extraJS: '/js/partner-show.js'
+  extraCSS: '/styles/partner-show.css'
 }) %>
 
 <main class="ps">
@@ -32,7 +31,7 @@
   <section class="ps__grid">
     <!-- 基本情報 -->
     <article class="card">
-      <h2 class="card__title">取引先情報</h2>
+      <h2 class="card__title">店舗情報</h2>
       <dl class="kv">
         <div><dt>名称</dt><dd><%= partner.name %></dd></div>
         <% if (partner.kana) { %><div><dt>カナ</dt><dd><%= partner.kana %></dd></div><% } %>
@@ -86,16 +85,30 @@
                   <td><%= (u.roles||[]).join(', ') %></td>
                   <td><%= new Date(u.created_at).toLocaleDateString('ja-JP') %></td>
                   <td class="ta-right">
-                    <a class="link" href="/admin/users/<%= u.id %>">詳細</a>
+                    <a class="btn" href="/admin/users/<%= u.id %>">詳細</a>
                   </td>
                 </tr>
               <% }) %>
             </tbody>
           </table>
         </div>
+        <div class="table-grid">
+            <% users.forEach(u => { %>
+                <div class="table-row">
+                    <a class="table-info" href="/admin/users/<%= u.id %>">
+                        <span>氏名　 ： <%= u.name %></span>
+                        <span>ロール ： <%= (u.roles||[]).join(', ') %></span>
+                        <span>メール ： <%= u.email %></span>
+                        <span>登録日 ： <%= new Date(u.created_at).toLocaleDateString('ja-JP') %></span>
+                    </a>
+                  </td>
+                </div>
+            <% }) %>
+        </div>
       <% } %>
     </article>
   </section>
 </main>
 
+<!-- <script src="/js/partner-show.js"></script> -->
 <%- include('../../partials/footer') %>
