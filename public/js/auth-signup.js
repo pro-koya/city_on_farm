@@ -214,4 +214,54 @@
 
   // 初期状態（非活性を維持）
   updateSubmitState();
+
+    // === 取引先 UI 切替 ===
+  const selExisting  = document.getElementById('partnerId');
+  const inpName      = document.getElementById('partnerName');
+
+  // フィールド用のエラーメッセージ表示（衝突回避のため別名）
+  function showFieldError(id, msg){
+    const p = form.querySelector(`.error[data-for="${id}"]`);
+    if (!p) return;
+    p.textContent = msg || '';
+    if (msg) p.classList.add('is-visible');
+    else p.classList.remove('is-visible');
+  }
+
+  // 郵便番号の整形は、要素があるときだけ設定（なければ return しない！）
+  (function setupPostal(){
+    const postal = document.getElementById('partnerPostal');
+    if (!postal) return;
+    const toHankaku = (s) => s.replace(/[！-～]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+    function normalize() {
+      let v = toHankaku(postal.value || '');
+      v = v.replace(/[^\d]/g, '');
+      if (v.length > 7) v = v.slice(0,7);
+      if (v.length >= 4) v = v.slice(0,3) + '-' + v.slice(3);
+      postal.value = v;
+    }
+    postal.addEventListener('blur', normalize);
+    postal.addEventListener('input', () => { postal.value = toHankaku(postal.value || ''); });
+  })();
+
+  // 送信直前の軽いチェック（postal が無くても効くように、この位置で必ず登録）
+  form.addEventListener('submit', (e) => {
+    const v = form.querySelector('input[name="partnerChoice"]:checked')?.value || 'none';
+    let ok = true;
+
+    if (v === 'existing') {
+      if (!selExisting?.value) { showFieldError('partnerId', '既存の取引先を選択してください。'); ok = false; }
+      else { showFieldError('partnerId', ''); }
+    } else if (v === 'new') {
+      const name = inpName?.value?.trim();
+      if (!name) { showFieldError('partnerName', '取引先名を入力してください。'); ok = false; }
+      else { showFieldError('partnerName', ''); }
+    }
+
+    if (!ok) {
+      e.preventDefault();
+      const firstErr = form.querySelector('.error.is-visible');
+      firstErr?.scrollIntoView({ behavior:'smooth', block:'center' });
+    }
+  });
 })();

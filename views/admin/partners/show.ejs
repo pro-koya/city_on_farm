@@ -1,0 +1,101 @@
+<%- include('../../partials/header', {
+  title,
+  extraCSS: '/styles/partner-show.css',
+  extraJS: '/js/partner-show.js'
+}) %>
+
+<main class="ps">
+  <header class="ps__head">
+    <div class="ps__title-wrap">
+      <h1 class="ps__title"><%= partner.name %></h1>
+      <span class="ps__badge ps__badge--<%= partner.status %>" id="statusBadge">
+        <%= partner.status === 'active' ? '有効' : '無効' %>
+      </span>
+    </div>
+    <div class="ps__meta">
+      <span>作成: <%= new Date(partner.created_at).toLocaleString('ja-JP') %></span>
+      <span>更新: <%= new Date(partner.updated_at).toLocaleString('ja-JP') %></span>
+    </div>
+
+    <div class="ps__actions">
+      <form id="statusForm" action="/admin/partners/<%= partner.id %>/status" method="POST" class="inline">
+        <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
+        <input type="hidden" name="status" id="statusInput" value="<%= partner.status === 'active' ? 'inactive':'active' %>">
+        <button type="submit" class="btn btn--toggle" id="toggleBtn">
+          <%= partner.status === 'active' ? '無効にする' : '有効にする' %>
+        </button>
+      </form>
+      <a class="btn btn--ghost" href="/admin/partners">一覧へ戻る</a>
+    </div>
+  </header>
+
+  <section class="ps__grid">
+    <!-- 基本情報 -->
+    <article class="card">
+      <h2 class="card__title">取引先情報</h2>
+      <dl class="kv">
+        <div><dt>名称</dt><dd><%= partner.name %></dd></div>
+        <% if (partner.kana) { %><div><dt>カナ</dt><dd><%= partner.kana %></dd></div><% } %>
+        <div><dt>種別</dt><dd><%= partner.type %></dd></div>
+        <div><dt>メール</dt><dd><%= partner.email || '—' %></dd></div>
+        <div><dt>電話</dt><dd><%= partner.phone || '—' %></dd></div>
+        <div><dt>Web</dt><dd>
+          <% if (partner.website) { %>
+            <a href="<%= partner.website %>" target="_blank" rel="noopener"><%= partner.website %></a>
+          <% } else { %>—<% } %>
+        </dd></div>
+        <div><dt>請求メール</dt><dd><%= partner.billing_email || '—' %></dd></div>
+        <div><dt>請求条件</dt><dd><%= partner.billing_terms || '—' %></dd></div>
+        <div><dt>税ID</dt><dd><%= partner.tax_id || '—' %></dd></div>
+        <div><dt>住所</dt><dd>
+          <div class="addr">
+            <div>〒 <%= partner.postal_code || '—' %></div>
+            <div><%= [partner.prefecture, partner.city, partner.address1, partner.address2].filter(Boolean).join(' ') || '—' %></div>
+          </div>
+        </dd></div>
+        <div class="kv--full"><dt>メモ</dt><dd><%= partner.note || '—' %></dd></div>
+      </dl>
+    </article>
+
+    <!-- ユーザー一覧 -->
+    <article class="card">
+      <div class="card__head">
+        <h2 class="card__title">所属ユーザー</h2>
+        <span class="muted small"><%= users.length %>名</span>
+      </div>
+
+      <% if (!users.length) { %>
+        <p class="muted">この取引先に紐づくユーザーはいません。</p>
+      <% } else { %>
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>ユーザー</th>
+                <th>メール</th>
+                <th>ロール</th>
+                <th>登録日</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% users.forEach(u => { %>
+                <tr>
+                  <td><strong><%= u.name %></strong></td>
+                  <td><%= u.email %></td>
+                  <td><%= (u.roles||[]).join(', ') %></td>
+                  <td><%= new Date(u.created_at).toLocaleDateString('ja-JP') %></td>
+                  <td class="ta-right">
+                    <a class="link" href="/admin/users/<%= u.id %>">詳細</a>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </article>
+  </section>
+</main>
+
+<%- include('../../partials/footer') %>

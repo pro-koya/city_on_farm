@@ -1,0 +1,41 @@
+<%
+  // ---- 安全な既定値（同名を避けて別名に格納） ----
+  const _pageTitle = (typeof pageTitle !== 'undefined') ? pageTitle : '取引先一覧';
+  const _title     = (typeof title     !== 'undefined') ? title     : '取引先';
+  const _q         = (typeof q         !== 'undefined') ? q         : (request?.query?.q || '');
+  const _searchAction = '/admin/partners';
+
+  const typeVal   = (typeof type   !== 'undefined') ? type   : (request?.query?.type   || '');
+  const statusVal = (typeof status !== 'undefined') ? status : (request?.query?.status || '');
+  const sortVal   = (typeof sort   !== 'undefined') ? sort   : (request?.query?.sort   || 'recent');
+
+  const items       = Array.isArray(partners) ? partners : [];
+  const page        = Number(typeof locals?.page    !== 'undefined' ? locals.page    : (request?.query?.page || 1));
+  const perPage     = Number(typeof locals?.perPage !== 'undefined' ? locals.perPage : (items?.perPage || 20));
+  const total       = Number(typeof locals?.total   !== 'undefined' ? locals.total   : (items?.total   || items.length));
+  const totalPages  = Math.max(1, Number(typeof locals?.totalPages !== 'undefined' ? locals.totalPages : Math.ceil(total / Math.max(1, perPage))));
+
+  const queryNoPage = (() => {
+    const u = new URL(_searchAction, 'http://dummy'); // ベースはダミーでOK
+    Object.entries(request?.query || {}).forEach(([k,v]) => { if (k !== 'page') u.searchParams.set(k, v); });
+    return u.search ? u.search : '';
+  })();
+%>
+
+<%- include('../../layouts/list', {
+  title: _title,
+  pageTitle: _pageTitle,
+  searchAction: _searchAction,
+  q: _q,
+
+  filtersHTML: include('./_filters', { typeVal, statusVal, sortVal }),
+
+  extraActionsHTML: 
+    `<a class="btn btn--ghost" href="/admin/partners/new">＋ 新規取引先</a>`
+  ,
+
+  body: include('./_table', {
+    items,
+    page, perPage, total, totalPages, searchAction: _searchAction, queryNoPage
+  })
+}) %>

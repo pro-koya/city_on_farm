@@ -3,12 +3,15 @@
   <header class="db__head">
     <h1><%= (currentUser && currentUser.name) ? (currentUser.name + ' さん') : 'ダッシュボード' %></h1>
     <nav class="db__tabs" aria-label="ロール切り替え">
-      <% const role = (currentUser && currentUser.role) || []; %>
-      <% if (role === 'buyer') { %>
+      <% const role = (currentUser && currentUser.roles) || []; %>
+      <% if (role === 'buyer' || role.includes('buyer')) { %>
         <a href="/dashboard/buyer"  class="tab <%= active==='buyer' ? 'is-active' : '' %>">購入者</a>
       <% } %>
-      <% if (role === 'seller') { %>
+      <% if (role === 'seller' || role.includes('seller')) { %>
         <a href="/dashboard/seller" class="tab <%= active==='seller' ? 'is-active' : '' %>">出品者</a>
+      <% } %>
+      <% if (role === 'admin' || role.includes('admin')) { %>
+        <a href="/dashboard/admin" class="tab <%= active==='admin' ? 'is-active' : '' %>">管理者</a>
       <% } %>
     </nav>
   </header>

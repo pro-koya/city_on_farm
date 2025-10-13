@@ -1,0 +1,12 @@
+<%-
+  include('layout', {
+    title,
+    active: 'admin',
+    body: `
+      ${include('./_cards/listings', { listings })}
+      ${include('./_cards/trades',   { trades })}
+      ${include('./_cards/revenue',  { revenue })}
+      ${include('./_cards/admin-actions.ejs',  { })}
+    `
+  })
+%>

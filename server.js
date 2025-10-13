@@ -391,106 +391,263 @@ app.post('/logout', csrfProtect, (req, res) => {
   });
 });
 
-// GET /signup（トークン発行＆フォーム描画）
-app.get('/signup', (req, res) => {
-  res.set('Cache-Control', 'no-store');
-  res.render('auth/signup', {
-    title: 'アカウント作成',
-    values: { name: '', email: '' },
-    fieldErrors: {},
-    globalError: ''
-  });
+const JP_PREFS = [
+  '北海道','青森県','岩手県','宮城県','秋田県','山形県','福島県',
+  '茨城県','栃木県','群馬県','埼玉県','千葉県','東京都','神奈川県',
+  '新潟県','富山県','石川県','福井県','山梨県','長野県',
+  '岐阜県','静岡県','愛知県','三重県',
+  '滋賀県','京都府','大阪府','兵庫県','奈良県','和歌山県',
+  '鳥取県','島根県','岡山県','広島県','山口県',
+  '徳島県','香川県','愛媛県','高知県',
+  '福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県'
+];
+
+// 既存の validators に以下を追記
+const partnerValidators = [
+  body('partnerChoice')
+    .optional({ checkFalsy:true })
+    .isIn(['none','existing','new']).withMessage('取引先の選択が不正です。'),
+
+  // existing 選択時
+  body('partnerId')
+    .if((value, { req }) => req.body.partnerChoice === 'existing')
+    .isUUID().withMessage('取引先の選択が正しくありません。'),
+
+  // new 選択時（必須/任意）
+  body('partnerName')
+    .if((value, { req }) => req.body.partnerChoice === 'new')
+    .trim().notEmpty().withMessage('取引先名を入力してください。')
+    .isLength({ max: 120 }).withMessage('取引先名は120文字以内で入力してください。'),
+
+  body('partnerType')
+    .if((value, { req }) => req.body.partnerChoice === 'new')
+    .optional({ checkFalsy:true })
+    .isIn(['restaurant','retailer','wholesale','other','']).withMessage('種別が不正です。'),
+
+  body('partnerPhone')
+    .if((value, { req }) => req.body.partnerChoice === 'new')
+    .optional({ checkFalsy:true })
+    .isLength({ max: 30 }).withMessage('電話番号は30文字以内で入力してください。'),
+
+  // ★ 住所分割
+  body('partnerPostal')
+    .if((value, { req }) => req.body.partnerChoice === 'new')
+    .optional({ checkFalsy:true })
+    .customSanitizer(v => String(v||'').replace(/[^\d]/g,''))
+    .isLength({ min: 7, max: 7 }).withMessage('郵便番号は7桁で入力してください。'),
+
+  body('partnerPrefecture')
+    .if((value, { req }) => req.body.partnerChoice === 'new')
+    .optional({ checkFalsy:true })
+    .isIn(['', ...JP_PREFS]).withMessage('都道府県が不正です。'),
+
+  body('partnerCity')
+    .if((value, { req }) => req.body.partnerChoice === 'new')
+    .optional({ checkFalsy:true })
+    .isLength({ max: 120 }).withMessage('市区町村は120文字以内で入力してください。'),
+
+  body('partnerAddress1')
+    .if((value, { req }) => req.body.partnerChoice === 'new')
+    .optional({ checkFalsy:true })
+    .isLength({ max: 160 }).withMessage('番地は160文字以内で入力してください。'),
+
+  body('partnerAddress2')
+    .if((value, { req }) => req.body.partnerChoice === 'new')
+    .optional({ checkFalsy:true })
+    .isLength({ max: 160 }).withMessage('建物名・部屋番号は160文字以内で入力してください。'),
+];
+
+// GET /signup
+app.get('/signup', async (req, res, next) => {
+  try {
+    const partners = await dbQuery(`SELECT id, name FROM partners ORDER BY name ASC`);
+    res.set('Cache-Control', 'no-store');
+    res.render('auth/signup', {
+      title: 'アカウント作成',
+      partners,                         // ★ 追加
+      values: { name: '', email: '', partnerChoice: 'new' },
+      fieldErrors: {},
+      globalError: ''
+    });
+  } catch (e) { next(e); }
 });
 
 // POST /signup（最終ガードのみ＝強制検証）
+// 追加: 正規化ヘルパ
+const normalizeDigits = (s) => String(s || '').replace(/[^\d]/g, '');
+const normalizeNameKey = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
+
+// POST /signup
 app.post(
   '/signup',
   csrfProtect,
   [
-    body('name')
-      .trim()
-      .notEmpty().withMessage('お名前を入力してください。')
+    // 既存のユーザー項目バリデーション...
+    body('name').trim().notEmpty().withMessage('お名前を入力してください。')
       .isLength({ max: 60 }).withMessage('お名前は60文字以内で入力してください。'),
-    body('email')
-      .trim()
-      .isEmail().withMessage('正しいメールアドレスの形式で入力してください。')
-      .normalizeEmail(),
+    body('email').trim().isEmail().withMessage('正しいメールアドレスの形式で入力してください。').normalizeEmail(),
     body('password')
       .isLength({ min: 8 }).withMessage('8文字以上で入力してください。').bail()
       .matches(/[a-z]/).withMessage('英小文字を含めてください。').bail()
       .matches(/[A-Z]/).withMessage('英大文字を含めてください。').bail()
       .matches(/\d/).withMessage('数字を含めてください。').bail()
       .matches(/[^A-Za-z0-9]/).withMessage('記号を含めてください。'),
-    body('passwordConfirm')
-      .custom((v, { req }) => v === req.body.password)
+    body('passwordConfirm').custom((v, { req }) => v === req.body.password)
       .withMessage('確認用パスワードが一致しません。'),
     body('agree')
       .customSanitizer(v => (v === '1' || v === 'on' || v === true || v === 'true' || v === 1) ? '1' : '0')
       .isIn(['1']).withMessage('利用規約・プライバシーポリシーに同意してください。'),
+
+    // ★ 取引先（選択UIは廃止）→ 入力してもらう
+    body('partnerName').trim().notEmpty().withMessage('取引先名を入力してください。')
+      .isLength({ max: 120 }).withMessage('取引先名は120文字以内で入力してください。'),
+    body('partnerPostal').optional({ checkFalsy: true }).isString().isLength({ max: 16 }),
+    body('partnerPhone').optional({ checkFalsy: true }).isString().isLength({ max: 40 }),
+    body('partnerPrefecture').optional({ checkFalsy: true }).isString().isLength({ max: 40 }),
+    body('partnerCity').optional({ checkFalsy: true }).isString().isLength({ max: 80 }),
+    body('partnerAddress1').optional({ checkFalsy: true }).isString().isLength({ max: 120 }),
+    body('partnerAddress2').optional({ checkFalsy: true }).isString().isLength({ max: 120 }),
+
+    // 郵便 or 電話のいずれか必須（キー強度確保のため強めに推奨）
+    body().custom(reqBody => {
+      const hasPostal = normalizeDigits(reqBody.partnerPostal || '').length > 0;
+      const hasPhone  = normalizeDigits(reqBody.partnerPhone  || '').length > 0;
+      if (!hasPostal && !hasPhone) {
+        throw new Error('「郵便番号」または「電話番号」のいずれかは入力してください。');
+      }
+      return true;
+    }),
   ],
   async (req, res) => {
     const errors = validationResult(req);
+
     const values = {
-      name: req.body.name || '',
+      name: (req.body.name || '').trim(),
       email: (req.body.email || '').trim(),
+
+      // 取引先入力（再描画用）
+      partnerName: (req.body.partnerName || '').trim(),
+      partnerPhone: (req.body.partnerPhone || '').trim(),
+      partnerPostal: (req.body.partnerPostal || '').trim(),
+      partnerPrefecture: (req.body.partnerPrefecture || '').trim(),
+      partnerCity: (req.body.partnerCity || '').trim(),
+      partnerAddress1: (req.body.partnerAddress1 || '').trim(),
+      partnerAddress2: (req.body.partnerAddress2 || '').trim(),
     };
 
     if (!errors.isEmpty()) {
       const list = errors.array({ onlyFirstError: true });
       const fieldErrors = {};
-      for (const err of list) {
-        const key = err.path || err.param;
-        const msg = (typeof err.msg === 'string') ? err.msg : JSON.stringify(err.msg);
-        if (!fieldErrors[key]) fieldErrors[key] = msg;
-      }
+      for (const err of list) fieldErrors[err.path || err.param] = String(err.msg);
       return res.status(422).render('auth/signup', {
         title: 'アカウント作成',
-        csrfToken: req.csrfToken(), // 再発行
+        csrfToken: req.csrfToken(),
+        values, fieldErrors, globalError: ''
+      });
+    }
+
+    // メール重複
+    const dup = await dbQuery(`SELECT 1 FROM users WHERE email=$1 LIMIT 1`, [values.email]);
+    if (dup.length) {
+      return res.status(409).render('auth/signup', {
+        title: 'アカウント作成',
+        csrfToken: req.csrfToken(),
         values,
-        fieldErrors,
+        fieldErrors: { email: 'このメールアドレスは既に登録されています。' },
         globalError: ''
       });
     }
 
+    // 正規化キー作成（サーバ側でも必ず実施）
+    const nameKey = normalizeNameKey(values.partnerName);
+    const postalN = normalizeDigits(values.partnerPostal);
+    const phoneN  = normalizeDigits(values.partnerPhone);
+    const partnerKey = `${nameKey}|${postalN}|${phoneN}`;
+
+    let client;
     try {
-      // 既存メール重複チェック
-      const existing = await dbQuery(`SELECT id FROM users WHERE email = $1 LIMIT 1`, [values.email]);
-      if (existing.length) {
-        return res.status(409).render('auth/signup', {
-          title: 'アカウント作成',
-          csrfToken: req.csrfToken(),
-          values,
-          fieldErrors: { email: 'このメールアドレスは既に登録されています。' },
-          globalError: ''
-        });
+      client = await pool.connect();
+      await client.query('BEGIN');
+
+      // 1) まず厳格に既存検索（生成列を利用）
+      //    郵便・電話の入力状況に応じた条件
+      let match;
+      if (postalN && phoneN) {
+        match = await client.query(
+          `SELECT id FROM partners WHERE name_key=$1 AND postal_norm=$2 AND phone_norm=$3 LIMIT 1`,
+          [nameKey, postalN, phoneN]
+        );
+      } else if (postalN) {
+        match = await client.query(
+          `SELECT id FROM partners WHERE name_key=$1 AND postal_norm=$2 LIMIT 1`,
+          [nameKey, postalN]
+        );
+      } else { // phoneN must exist by validator
+        match = await client.query(
+          `SELECT id FROM partners WHERE name_key=$1 AND phone_norm=$2 LIMIT 1`,
+          [nameKey, phoneN]
+        );
       }
 
-      // ハッシュ化
+      let partnerId;
+
+      if (match.rowCount) {
+        partnerId = match.rows[0].id;
+      } else {
+        // 2) なければUPSERT（部分一意indexに乗るケースでレースを防げる）
+        const ins = await client.query(
+          `INSERT INTO partners
+             (name, phone, postal_code, prefecture, city, address1, address2)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)
+           ON CONFLICT ON CONSTRAINT ux_partners_partner_key
+          DO UPDATE SET updated_at = now()
+           RETURNING id`,
+          [
+            values.partnerName,
+            values.partnerPhone || null,
+            values.partnerPostal || null,
+            values.partnerPrefecture || null,
+            values.partnerCity || null,
+            values.partnerAddress1 || null,
+            values.partnerAddress2 || null
+          ]
+        );
+        partnerId = ins.rows[0].id;
+      }
+
+      // 3) ユーザーINSERT（FK整合）
       const passwordHash = await bcrypt.hash(req.body.password, 12);
-
-      // 作成（デフォルトは buyer ロール）
-      const inserted = await dbQuery(
-        `INSERT INTO users (name, email, password_hash, roles)
-         VALUES ($1, $2, $3, ARRAY['buyer'])
+      const u = await client.query(
+        `INSERT INTO users (name, email, password_hash, roles, partner_id)
+         VALUES ($1,$2,$3,ARRAY['buyer'],$4)
          RETURNING id, name, email, roles`,
-        [values.name, values.email, passwordHash]
+        [values.name, values.email, passwordHash, partnerId]
       );
-      const user = inserted[0];
 
-      // セッション発行してダッシュボードへ
+      await client.query('COMMIT');
+
+      const user = u.rows[0];
       req.session.user = { id: user.id, name: user.name, email: user.email, roles: user.roles };
-      return res.redirect('/dashboard');
+      res.redirect('/dashboard');
 
     } catch (err) {
-      // 一意制約（万一の競合）
-      if (err && err.code === '23505') {
-        return res.status(409).render('auth/signup', {
-          title: 'アカウント作成',
-          csrfToken: req.csrfToken(),
-          values,
-          fieldErrors: { email: 'このメールアドレスは既に登録されています。' },
-          globalError: ''
-        });
+      try { if (client) await client.query('ROLLBACK'); } catch {}
+      if (err?.code === '23505') {
+        // まれに partner_key が部分一意に引っかかって競合した時も、もう一度 SELECT で拾えばOK
+        try {
+          const r = await dbQuery(`SELECT id FROM partners WHERE partner_key = $1 LIMIT 1`, [partnerKey]);
+          if (r.length) {
+            const passwordHash = await bcrypt.hash(req.body.password, 12);
+            const u = await dbQuery(
+              `INSERT INTO users (name, email, password_hash, roles, partner_id)
+               VALUES ($1,$2,$3,ARRAY['buyer'],$4)
+               RETURNING id, name, email, roles`,
+              [values.name, values.email, passwordHash, r[0].id]
+            );
+            req.session.user = { id: u[0].id, name: u[0].name, email: u[0].email, roles: u[0].roles };
+            return res.redirect('/dashboard');
+          }
+        } catch {}
       }
       console.error('signup error:', err);
       return res.status(500).render('auth/signup', {
@@ -500,6 +657,8 @@ app.post(
         fieldErrors: {},
         globalError: 'サインアップ処理でエラーが発生しました。時間をおいて再度お試しください。'
       });
+    } finally {
+      if (client) client.release();
     }
   }
 );
@@ -794,7 +953,7 @@ app.post(
 
       // 管理者向けメール
       const adminTo = process.env.CONTACT_TO || process.env.SMTP_USER || 'kouya114@outlook.jp';
-      const from    = process.env.CONTACT_FROM || `kouya114@outlook.jp'}`;
+      const from    = process.env.CONTACT_FROM || `kouya114@outlook.jp'`;
       const subject = `[お問い合わせ] ${type.toUpperCase()} - ${name}`;
       const adminText =
 `新規お問い合わせが届きました。
@@ -2445,6 +2604,77 @@ app.get('/dashboard/seller', requireAuth, requireRole('seller'), async (req, res
   } catch (e) { next(e); }
 });
 
+app.get('/dashboard/admin', requireAuth, requireRole('admin'), async (req, res, next) => {
+  try {
+    const uid = req.session.user.id;
+
+    const [listings, tradesRecent, tradesCount, revenueSum, revenueCardData] = await Promise.all([
+      dbQuery(`
+        SELECT p.slug, p.title, p.price, p.stock, p.id,
+               (SELECT url FROM product_images WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
+          FROM products p
+         ORDER BY p.updated_at DESC
+         LIMIT 12
+      `),
+
+      // 直近6件
+      dbQuery(`
+        SELECT
+          o.id,
+          COALESCE(o.order_number, o.id::text) AS order_no,
+          o.status AS order_status,
+          o.created_at,
+          o.buyer_id,
+          SUM(oi.price * oi.quantity)::int AS amount,
+          bu.name AS buyer_name
+        FROM orders o
+        JOIN order_items oi ON oi.order_id = o.id
+        LEFT JOIN users bu ON bu.id = o.buyer_id
+       GROUP BY o.id, bu.name
+       ORDER BY o.created_at DESC
+       LIMIT 6`
+      ),
+
+      // 総件数
+      dbQuery(`
+        SELECT COUNT(DISTINCT o.id)::int AS cnt
+          FROM orders o
+          JOIN order_items oi ON oi.order_id = o.id
+      `),
+
+      // 売上合計（入金確定ベース）
+      dbQuery(`
+        SELECT COALESCE(SUM(oi.price * oi.quantity),0)::int AS total
+          FROM order_items oi
+          JOIN orders o ON o.id = oi.order_id
+         WHERE o.payment_status IN ('paid','refunded')
+      `),
+
+      // カード用：今月/今週/全期間のバケット
+      getRevenueCardData(dbQuery, uid)
+    ]);
+
+    const tradesCard = tradesRecent.map(t => ({
+      id: t.id,
+      buyer_name: t.buyer_name,
+      date: new Date(t.created_at).toLocaleDateString('ja-JP'),
+      amount: t.amount,
+      status: jaLabel('order_status', t.order_status)
+    }));
+
+    res.render('dashboard/admin', {
+      title: 'ダッシュボード（管理者）',
+      currentUser: req.session.user,
+      listings,
+      trades: tradesCard,
+      totalTrades: tradesCount[0]?.cnt || 0,
+      revenue: revenueSum[0]?.total || 0,
+      // ← 新カード用データ
+      revenueCardData
+    });
+  } catch (e) { next(e); }
+});
+
 // 出品者の取引一覧
 app.get('/seller/trades', requireAuth, requireRole('seller'), async (req, res, next) => {
   try {
@@ -3362,131 +3592,6 @@ app.post('/seller/listings/:id/delete',
 
       if (wantsJSON(req)) return res.json({ ok:true });
       return res.redirect(`/seller/listings`);
-    } catch (e) { next(e); }
-  }
-);
-
-/* =========================================================
- * 管理：お問い合わせ一覧
- * GET /admin/contacts?q&status=&type=&page=
- * =======================================================*/
-app.get('/admin/contacts',
-  requireAuth,
-  requireRole('admin'),
-  async (req, res, next) => {
-    try {
-      const { q = '', status = 'all', type = 'all', page = 1 } = req.query;
-      const pageNum = Math.max(1, toInt(page, 1));
-      const pageSize = 20;
-      const offset = (pageNum - 1) * pageSize;
-
-      const where = ['1=1'];
-      const params = [];
-      if (q) {
-        params.push(`%${q}%`);
-        where.push(`(name ILIKE $${params.length} OR email ILIKE $${params.length} OR message ILIKE $${params.length})`);
-      }
-      if (status !== 'all') {
-        params.push(status);
-        where.push(`status = $${params.length}`);
-      }
-      if (type !== 'all') {
-        params.push(type);
-        where.push(`type = $${params.length}`);
-      }
-
-      const total = (await dbQuery(
-        `SELECT COUNT(*)::int AS cnt FROM contacts WHERE ${where.join(' AND ')}`,
-        params
-      ))[0]?.cnt || 0;
-
-      const list = await dbQuery(
-        `
-        SELECT id, name, email, type, status, created_at, handled_by, handled_at
-          FROM contacts
-         WHERE ${where.join(' AND ')}
-         ORDER BY created_at DESC
-         LIMIT ${pageSize} OFFSET ${offset}
-        `,
-        params
-      );
-
-      const pagination = { page: pageNum, pageCount: Math.max(1, Math.ceil(total / pageSize)) };
-      const buildQuery = buildQueryPath('/admin/contacts', { q, status, type });
-
-      res.render('admin/contacts/index', {
-        title: 'お問い合わせ一覧',
-        items: list,
-        total, q, status, type,
-        pagination, buildQuery,
-      });
-    } catch (e) { next(e); }
-  }
-);
-
-/* =========================================================
- * 管理：お問い合わせ詳細
- * GET /admin/contacts/:id
- * =======================================================*/
-app.get('/admin/contacts/:id',
-  requireAuth, requireRole('admin'),
-  async (req, res, next) => {
-    try {
-      const id = String(req.params.id || '').trim();
-      const rows = await dbQuery(`SELECT * FROM contacts WHERE id = $1::uuid LIMIT 1`, [id]);
-      const c = rows[0];
-      if (!c) return res.status(404).render('errors/404', { title: '見つかりません' });
-
-      // 担当者名の表示（任意）
-      let handler = null;
-      if (c.handled_by) {
-        const u = await dbQuery(`SELECT id, name, email FROM users WHERE id = $1`, [c.handled_by]);
-        handler = u[0] || null;
-      }
-
-      res.render('admin/contacts/show', {
-        title: `お問い合わせ詳細`,
-        item: c,
-        handler,
-      });
-    } catch (e) { next(e); }
-  }
-);
-
-/* =========================================================
- * 管理：状態更新（対応開始/完了など）
- * POST /admin/contacts/:id/status  {status: open|in_progress|closed}
- * =======================================================*/
-app.post('/admin/contacts/:id/status',
-  requireAuth, requireRole('admin'),
-  async (req, res, next) => {
-    try {
-      const id = String(req.params.id || '').trim();
-      const next = String(req.body.status || '');
-      if (!['open','in_progress','closed'].includes(next)) {
-        return res.status(400).json({ ok:false, message:'不正な状態です。' });
-      }
-
-      // 対応者・対応日時の扱い
-      let handledBy = null;
-      let handledAt = null;
-      if (next === 'in_progress' || next === 'closed') {
-        handledBy = req.session.user.id;
-        handledAt = new Date();
-      }
-
-      await dbQuery(
-        `UPDATE contacts
-            SET status = $1,
-                handled_by = $2,
-                handled_at = $3,
-                updated_at = now()
-          WHERE id = $4::uuid`,
-        [next, handledBy, handledAt, id]
-      );
-
-      if (wantsJSON(req)) return res.json({ ok:true });
-      res.redirect(`/admin/contacts/${id}`);
     } catch (e) { next(e); }
   }
 );
@@ -4879,6 +4984,277 @@ app.get('/uploads/library', requireAuth /* 任意: requireRole('seller') */, asy
     return res.json({ ok:true, items, nextPage });
   } catch (e) { next(e); }
 });
+
+// admin用ページ群
+/* =========================================================
+ * 管理：お問い合わせ一覧
+ * GET /admin/contacts?q&status=&type=&page=
+ * =======================================================*/
+app.get('/admin/contacts',
+  requireAuth,
+  requireRole('admin'),
+  async (req, res, next) => {
+    try {
+      const { q = '', status = 'all', type = 'all', page = 1 } = req.query;
+      const pageNum = Math.max(1, toInt(page, 1));
+      const pageSize = 20;
+      const offset = (pageNum - 1) * pageSize;
+
+      const where = ['1=1'];
+      const params = [];
+      if (q) {
+        params.push(`%${q}%`);
+        where.push(`(name ILIKE $${params.length} OR email ILIKE $${params.length} OR message ILIKE $${params.length})`);
+      }
+      if (status !== 'all') {
+        params.push(status);
+        where.push(`status = $${params.length}`);
+      }
+      if (type !== 'all') {
+        params.push(type);
+        where.push(`type = $${params.length}`);
+      }
+
+      const total = (await dbQuery(
+        `SELECT COUNT(*)::int AS cnt FROM contacts WHERE ${where.join(' AND ')}`,
+        params
+      ))[0]?.cnt || 0;
+
+      const list = await dbQuery(
+        `
+        SELECT id, name, email, type, status, created_at, handled_by, handled_at
+          FROM contacts
+         WHERE ${where.join(' AND ')}
+         ORDER BY created_at DESC
+         LIMIT ${pageSize} OFFSET ${offset}
+        `,
+        params
+      );
+
+      const pagination = { page: pageNum, pageCount: Math.max(1, Math.ceil(total / pageSize)) };
+      const buildQuery = buildQueryPath('/admin/contacts', { q, status, type });
+
+      res.render('admin/contacts/index', {
+        title: 'お問い合わせ一覧',
+        items: list,
+        total, q, status, type,
+        pagination, buildQuery,
+      });
+    } catch (e) { next(e); }
+  }
+);
+
+/* =========================================================
+ * 管理：お問い合わせ詳細
+ * GET /admin/contacts/:id
+ * =======================================================*/
+app.get('/admin/contacts/:id',
+  requireAuth, requireRole('admin'),
+  async (req, res, next) => {
+    try {
+      const id = String(req.params.id || '').trim();
+      const rows = await dbQuery(`SELECT * FROM contacts WHERE id = $1::uuid LIMIT 1`, [id]);
+      const c = rows[0];
+      if (!c) return res.status(404).render('errors/404', { title: '見つかりません' });
+
+      // 担当者名の表示（任意）
+      let handler = null;
+      if (c.handled_by) {
+        const u = await dbQuery(`SELECT id, name, email FROM users WHERE id = $1`, [c.handled_by]);
+        handler = u[0] || null;
+      }
+
+      res.render('admin/contacts/show', {
+        title: `お問い合わせ詳細`,
+        item: c,
+        handler,
+      });
+    } catch (e) { next(e); }
+  }
+);
+
+/* =========================================================
+ * 管理：状態更新（対応開始/完了など）
+ * POST /admin/contacts/:id/status  {status: open|in_progress|closed}
+ * =======================================================*/
+app.post('/admin/contacts/:id/status',
+  requireAuth, requireRole('admin'),
+  async (req, res, next) => {
+    try {
+      const id = String(req.params.id || '').trim();
+      const next = String(req.body.status || '');
+      if (!['open','in_progress','closed'].includes(next)) {
+        return res.status(400).json({ ok:false, message:'不正な状態です。' });
+      }
+
+      // 対応者・対応日時の扱い
+      let handledBy = null;
+      let handledAt = null;
+      if (next === 'in_progress' || next === 'closed') {
+        handledBy = req.session.user.id;
+        handledAt = new Date();
+      }
+
+      await dbQuery(
+        `UPDATE contacts
+            SET status = $1,
+                handled_by = $2,
+                handled_at = $3,
+                updated_at = now()
+          WHERE id = $4::uuid`,
+        [next, handledBy, handledAt, id]
+      );
+
+      if (wantsJSON(req)) return res.json({ ok:true });
+      res.redirect(`/admin/contacts/${id}`);
+    } catch (e) { next(e); }
+  }
+);
+
+// 取引先一覧
+// GET /admin/partners
+app.get('/admin/partners', requireAuth, requireRole('admin'), async (req, res, next) => {
+  try {
+    const q        = (req.query.q || '').trim();
+    const type     = (req.query.type || '').trim();
+    const status   = (req.query.status || '').trim();
+    const sort     = (req.query.sort || 'recent').trim();
+
+    const page     = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const perPage  = 20;
+    const offset   = (page - 1) * perPage;
+
+    // WHERE
+    const conds = [`1=1`];
+    const params = [];
+    let p = 1;
+
+    if (q) {
+      conds.push(`(p.name ILIKE $${p} OR p.kana ILIKE $${p} OR p.email ILIKE $${p})`);
+      params.push(`%${q}%`); p++;
+    }
+    if (type)   { conds.push(`p.type = $${p++}`);   params.push(type); }
+    if (status) { conds.push(`p.status = $${p++}`); params.push(status); }
+
+    // ORDER
+    const order = ({
+      recent:     `p.created_at DESC`,
+      updated:    `p.updated_at DESC`,
+      name_asc:   `p.name ASC`,
+      name_desc:  `p.name DESC`,
+    })[sort] || `p.created_at DESC`;
+
+    // COUNT
+    const totalRows = await dbQuery(
+      `SELECT COUNT(*)::int AS n FROM partners p WHERE ${conds.join(' AND ')}`,
+      params
+    );
+    const total = totalRows[0].n;
+
+    // DATA（ユーザー数をJOIN集計）
+    const data = await dbQuery(
+      `
+      SELECT p.*,
+             COALESCE(u.cnt,0) AS user_count
+        FROM partners p
+        LEFT JOIN (
+          SELECT partner_id, COUNT(*)::int AS cnt
+            FROM users
+           WHERE partner_id IS NOT NULL
+           GROUP BY partner_id
+        ) u ON u.partner_id = p.id
+       WHERE ${conds.join(' AND ')}
+       ORDER BY ${order}
+       LIMIT ${perPage} OFFSET ${offset}
+      `,
+      params
+    );
+
+    res.render('admin/partners/index', {
+      title: '取引先',
+      pageTitle: '取引先一覧',
+      q, type, status, sort,
+      partners: data,
+      page, perPage, total, totalPages: Math.max(1, Math.ceil(total/perPage)),
+      request: req, // レイアウト内のクリアリンク等で参照
+    });
+  } catch (e) { next(e); }
+});
+
+// 取引先詳細
+app.get(
+  '/admin/partners/:id',
+  requireAuth,
+  requireRole('admin'),
+  async (req, res, next) => {
+    try {
+      const id = String(req.params.id || '').trim();
+      if (!isUuid(id)) return res.status(400).render('errors/404', { title: '不正なID' });
+
+      // 取引先
+      const partners = await dbQuery(
+        `SELECT
+           id, name, kana, type, status, email, phone, website,
+           billing_email, billing_terms, tax_id,
+           postal_code, prefecture, city, address1, address2,
+           note, created_at, updated_at
+         FROM partners
+         WHERE id = $1::uuid
+         LIMIT 1`,
+        [id]
+      );
+      const partner = partners[0];
+      if (!partner) return res.status(404).render('errors/404', { title: '取引先が見つかりません' });
+
+      // 紐づくユーザー
+      const users = await dbQuery(
+        `SELECT id, name, email, roles, created_at, updated_at
+           FROM users
+          WHERE partner_id = $1::uuid
+          ORDER BY created_at DESC`,
+        [id]
+      );
+
+      res.render('admin/partners/show', {
+        title: `取引先詳細 | ${partner.name}`,
+        partner, users,
+        csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
+      });
+    } catch (e) { next(e); }
+  }
+);
+
+// 有効/無効トグル
+app.post(
+  '/admin/partners/:id/status',
+  requireAuth,
+  requireRole('admin'),
+  csrfProtect, // 使っているなら
+  async (req, res, next) => {
+    const id = String(req.params.id || '').trim();
+    if (!isUuid(id)) return res.status(400).json({ ok:false, message: 'invalid id' });
+
+    // 受領値（active/inactive の2値に限定）
+    const nextStatus = (req.body?.status || '').trim();
+    if (!['active','inactive'].includes(nextStatus)) {
+      return res.status(422).json({ ok:false, message: 'invalid status' });
+    }
+
+    try {
+      const r = await dbQuery(
+        `UPDATE partners
+            SET status = $1, updated_at = now()
+          WHERE id = $2::uuid
+          RETURNING id, status`,
+        [nextStatus, id]
+      );
+      if (!r.length) return res.status(404).json({ ok:false, message:'not found' });
+      return res.json({ ok: true, status: r[0].status });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
 
 // 開発支援：CSRFエラーの見やすい応答
 app.use((err, req, res, next) => {

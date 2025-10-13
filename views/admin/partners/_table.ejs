@@ -1,0 +1,70 @@
+<% if (!items || !items.length) { %>
+  <p class="muted">取引先が見つかりませんでした。</p>
+<% } else { %>
+  <div class="table-wrap">
+    <div class="table">
+
+        <table class="lv-table">
+          <thead>
+            <tr>
+              <th style="width:30%">名称</th>
+              <th>種別</th>
+              <th>状態</th>
+              <th>連絡先</th>
+              <th>住所</th>
+              <th>ユーザー数</th>
+              <th>登録日</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% items.forEach((p) => { %>
+              <tr>
+                <td>
+                  <a class="lv__link" href="/admin/partners/<%= p.id %>"><%= p.name %></a>
+                  <% if (p.kana) { %><div class="muted small"><%= p.kana %></div><% } %>
+                </td>
+                <td><span class="badge"><%= p.type %></span></td>
+                <td>
+                  <span class="badge <%= p.status==='active'?'is-ok': (p.status==='prospect'?'is-warn':'is-off') %>">
+                    <%= p.status %>
+                  </span>
+                </td>
+                <td>
+                  <% if (p.email) { %><div><a href="mailto:<%= p.email %>"><%= p.email %></a></div><% } %>
+                  <% if (p.phone) { %><div><%= p.phone %></div><% } %>
+                  <% if (p.website) { %><div class="small"><a href="<%= p.website %>" target="_blank" rel="noopener">サイト</a></div><% } %>
+                </td>
+                <td>
+                  <div class="small">
+                    <%= [p.prefecture, p.city, p.address1, p.address2].filter(Boolean).join(' ') %>
+                    <% if (p.postal_code) { %><div class="muted">〒 <%= p.postal_code %></div><% } %>
+                  </div>
+                </td>
+                <td class="ta-right"><%= (typeof p.user_count!=='undefined') ? p.user_count : (p.userCount || 0) %></td>
+                <td class="nowrap"><%= (p.created_at || p.createdAt || '').toISOString ? p.created_at.toISOString().slice(0,10) : (p.created_at || p.createdAt || '') %></td>
+                <td class="ta-right">
+                  <a class="btn btn--sm" href="/admin/partners/<%= p.id %>">詳細</a>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+    </div>
+  </div>
+
+  <!-- ページャ -->
+  <nav class="pager" aria-label="ページャ">
+    <div class="lv__pager-left">
+      <span class="muted small">全 <%= total %> 件</span>
+    </div>
+    <div class="lv__pager-right">
+      <% const base = searchAction + (queryNoPage || ''); %>
+      <% const mk = (n)=> base + (base.includes('?') ? '&' : '?') + 'page=' + n; %>
+
+      <a class="pager__btn <%= page<=1?'is-disabled':'' %>" href="<%= page<=1 ? '#' : mk(page-1) %>" aria-disabled="<%= page<=1?'true':'false' %>">前へ</a>
+      <span class="pager__info">Page <%= page %> / <%= totalPages %></span>
+      <a class="pager__btn <%= page>=totalPages?'is-disabled':'' %>" href="<%= page>=totalPages ? '#' : mk(page+1) %>" aria-disabled="<%= page>=totalPages?'true':'false' %>">次へ</a>
+    </div>
+  </nav>
+<% } %>
