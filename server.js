@@ -2369,6 +2369,67 @@ async function getRevenueCardData(dbQuery, sellerId) {
   return { month, week, all };
 }
 
+async function getRevenueCardDataAdmin(dbQuery) {
+  // 今週（日単位：当週の月曜〜日曜）
+  const weekRows = await dbQuery(`
+    WITH span AS (
+      SELECT date_trunc('week', (now() AT TIME ZONE $1)) AS wstart
+    )
+    SELECT
+      to_char(date_trunc('day', o.created_at AT TIME ZONE $1), 'MM/DD') AS label,
+      ${SUM_REVENUE_SQL}::int AS revenue,
+      ${COUNT_ORDERS_SQL}     AS orders
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    CROSS JOIN span
+    WHERE o.payment_status IN ('paid','refunded')
+      AND (o.created_at AT TIME ZONE $1) >= span.wstart
+      AND (o.created_at AT TIME ZONE $1) <  span.wstart + interval '7 days'
+    GROUP BY label
+    ORDER BY MIN(date_trunc('day', o.created_at AT TIME ZONE $1)) ASC
+  `, [JST_TZ]);
+
+  // 今月（週単位：週の開始日でバケット）
+  const monthRows = await dbQuery(`
+    WITH span AS (
+      SELECT date_trunc('month', (now() AT TIME ZONE $1)) AS mstart
+    )
+    SELECT
+      to_char(date_trunc('week', o.created_at AT TIME ZONE $1), 'MM/DD') AS label,
+      ${SUM_REVENUE_SQL}::int AS revenue,
+      ${COUNT_ORDERS_SQL}     AS orders,
+      MIN(date_trunc('week', o.created_at AT TIME ZONE $1)) AS w
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    CROSS JOIN span
+    WHERE o.payment_status IN ('paid','refunded')
+      AND (o.created_at AT TIME ZONE $1) >= span.mstart
+      AND (o.created_at AT TIME ZONE $1) <  span.mstart + interval '1 month'
+    GROUP BY label
+    ORDER BY w ASC
+  `, [JST_TZ]);
+
+  // 全期間（月単位）
+  const allRows = await dbQuery(`
+    SELECT
+      to_char(date_trunc('month', o.created_at AT TIME ZONE $1), 'YYYY-MM') AS label,
+      ${SUM_REVENUE_SQL}::int AS revenue,
+      ${COUNT_ORDERS_SQL}     AS orders
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    WHERE o.payment_status IN ('paid','refunded')
+    GROUP BY label
+    ORDER BY MIN(date_trunc('month', o.created_at AT TIME ZONE $1)) ASC
+  `, [JST_TZ]);
+
+  // 今月のラベルを「第n週」表示にしたい場合はここで置換（UIはMM/DDでもOK）
+  const month = monthRows.map((r, i) => ({ label: `第${i+1}週`, revenue: r.revenue, orders: r.orders }));
+  const week  = weekRows.map(r => ({ label: r.label, revenue: r.revenue, orders: r.orders }));
+  const all   = allRows.map(r => ({ label: r.label, revenue: r.revenue, orders: r.orders }));
+
+  return { month, week, all };
+}
+
 // yyyy-mm, yyyy-ww, yyyy などを安全にパースする小ヘルパ
 function parseRangeFromQuery(q) {
   const {
@@ -2539,6 +2600,7 @@ async function getAnalyticsBucketsV2(dbQuery, sellerId, currentRoles, { g, q, ca
  * =======================================================*/
 app.get('/dashboard', requireAuth, (req, res) => {
   const roles = (req.session.user.roles || []);
+  if (roles.includes('admin')) return res.redirect('/dashboard/admin');
   if (roles.includes('seller')) return res.redirect('/dashboard/seller');
   return res.redirect('/dashboard/buyer');
 });
@@ -2698,7 +2760,7 @@ app.get('/dashboard/admin', requireAuth, requireRole(['admin']), async (req, res
       `),
 
       // カード用：今月/今週/全期間のバケット
-      getRevenueCardData(dbQuery, uid)
+      getRevenueCardDataAdmin(dbQuery)
     ]);
 
     const tradesCard = tradesRecent.map(t => ({
@@ -2726,10 +2788,17 @@ app.get('/dashboard/admin', requireAuth, requireRole(['admin']), async (req, res
 app.get('/seller/trades', requireAuth, requireRole(['seller']), async (req, res, next) => {
   try {
     const uid = req.session.user.id;
+    const currentRoles = req.session.user.roles;
     const { q = '', status = 'all', payment = 'all', ship = 'all', page = 1 } = req.query;
 
-    const where = ['EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $1)'];
-    const params = [uid];
+    let where = [];
+    let params = [];
+    if (!currentRoles.includes('admin')) {
+      where = ['EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $1)'];
+      params = [uid];
+    } else {
+      where = ['EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id)'];
+    }
 
     if (q) {
       params.push(`%${q}%`);
@@ -3101,7 +3170,7 @@ app.post('/seller/trades/bulk', requireAuth, requireRole(['seller', 'admin']), a
 app.get('/seller/analytics', requireAuth, requireRole(['seller', 'admin']), async (req, res, next) => {
   try {
     const uid = req.session.user.id;
-    const currentRoles = req.session.user.id;
+    const currentRoles = req.session.user.roles;
     const { g, dateFrom, dateTo, week, ym, year } = parseRangeFromQuery(req.query);
     const q        = req.query.q || '';
     const category = req.query.category || '';
@@ -3508,10 +3577,11 @@ app.post('/cart/selection', (req, res) => {
  *  GET /seller/listings?q&status=all|public|private|draft&sort&page=
  * =======================================================*/
 app.get('/seller/listings',
-  requireAuth, requireRole(['seller']),
+  requireAuth, requireRole(['seller', 'admin']),
   async (req, res, next) => {
     try {
       const sellerId = req.session.user.id;
+      const currentRoles = req.session.user.roles;
       const { q = '', status = 'all', sort = 'updated', page = 1 } = req.query;
       const pageNum  = Math.max(1, toInt(page, 1));
       const pageSize = 20;
@@ -3523,23 +3593,47 @@ app.get('/seller/listings',
       if (sort === 'priceDesc') orderBy = 'p.price DESC, p.updated_at DESC';
       if (sort === 'stockAsc')  orderBy = 'p.stock ASC, p.updated_at DESC';
 
-      // WHERE
-      const where = ['p.seller_id = $1'];
-      const params = [sellerId];
+      // WHEREの構築
+      let where = [];
+      let params = [];
+
+      if (!currentRoles.includes('admin')) {
+        where.push('p.seller_id = $1');
+        params.push(sellerId);
+      }
       if (q) {
         params.push(`%${q}%`);
-        where.push(`(p.title ILIKE $${params.length} OR p.description_html ILIKE $${params.length})`);
+        // 同じプレースホルダを2回使うのはOK
+        const idx = params.length;
+        where.push(`(p.title ILIKE $${idx} OR p.description_html ILIKE $${idx})`);
       }
-      if (status !== 'all') {
+      if (status && status !== 'all') {
         params.push(status);
         where.push(`p.status = $${params.length}`);
       }
 
+      // ← ここがポイント：0件なら WHERE を付けない
+      const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+      // ORDER BY はホワイトリストで安全に
+      const orderMap = {
+        'updated_desc':  'p.updated_at DESC',
+        'updated_asc':   'p.updated_at ASC',
+        'price_asc':     'p.price ASC',
+        'price_desc':    'p.price DESC',
+        'stock_desc':    'p.stock DESC',
+        'stock_asc':     'p.stock ASC',
+        'title_asc':     'p.title ASC',
+        'title_desc':    'p.title DESC',
+      };
+      const orderBySql = orderMap[orderBy] || 'p.updated_at DESC';
+
       // 件数
-      const cnt = await dbQuery(
-        `SELECT COUNT(*)::int AS cnt FROM products p WHERE ${where.join(' AND ')}`, params
+      const cntRows = await dbQuery(
+        `SELECT COUNT(*)::int AS cnt FROM products p ${whereSql}`,
+        params
       );
-      const total = cnt[0]?.cnt || 0;
+      const total = cntRows[0]?.cnt ?? 0;
 
       // 一覧
       const rows = await dbQuery(
@@ -3547,13 +3641,19 @@ app.get('/seller/listings',
         SELECT
           p.id, p.slug, p.title, p.price, p.stock, p.status,
           p.is_organic, p.is_seasonal, p.updated_at,
-          (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
+          (
+            SELECT url
+            FROM product_images i
+            WHERE i.product_id = p.id
+            ORDER BY position ASC
+            LIMIT 1
+          ) AS image_url
         FROM products p
-        WHERE ${where.join(' AND ')}
-        ORDER BY ${orderBy}
-        LIMIT ${pageSize} OFFSET ${offset}
+        ${whereSql}
+        ORDER BY ${orderBySql}
+        LIMIT $${params.length + 1} OFFSET $${params.length + 2}
         `,
-        params
+        [...params, pageSize, offset]
       );
 
       const pagination = { page: pageNum, pageCount: Math.max(1, Math.ceil(total / pageSize)) };

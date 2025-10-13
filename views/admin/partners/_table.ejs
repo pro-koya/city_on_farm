@@ -20,29 +20,29 @@
           <tbody>
             <% items.forEach((p) => { %>
               <tr>
-                <td>
+                <td data-label="店舗名">
                   <a class="lv__link" href="/admin/partners/<%= p.id %>"><%= p.name %></a>
                   <% if (p.kana) { %><div class="muted small"><%= p.kana %></div><% } %>
                 </td>
-                <td><span class="badge"><%= p.type %></span></td>
-                <td>
+                <td data-label="種別"><span class="badge"><%= p.type %></span></td>
+                <td data-label="ステータス">
                   <span class="badge <%= p.status==='active'?'is-ok': (p.status==='prospect'?'is-warn':'is-off') %>">
                     <%= p.status %>
                   </span>
                 </td>
-                <td>
+                <td data-label="店舗情報">
                   <% if (p.email) { %><div><a href="mailto:<%= p.email %>"><%= p.email %></a></div><% } %>
                   <% if (p.phone) { %><div><%= p.phone %></div><% } %>
                   <% if (p.website) { %><div class="small"><a href="<%= p.website %>" target="_blank" rel="noopener">サイト</a></div><% } %>
                 </td>
-                <td>
+                <td data-label="住所">
                   <div class="small">
                     <%= [p.prefecture, p.city, p.address1, p.address2].filter(Boolean).join(' ') %>
                     <% if (p.postal_code) { %><div class="muted">〒 <%= p.postal_code %></div><% } %>
                   </div>
                 </td>
-                <td class="ta-right"><%= (typeof p.user_count!=='undefined') ? p.user_count : (p.userCount || 0) %></td>
-                <td class="nowrap"><%= (p.created_at || p.createdAt || '').toISOString ? p.created_at.toISOString().slice(0,10) : (p.created_at || p.createdAt || '') %></td>
+                <td data-label="所属ユーザー数" class="ta-right"><%= (typeof p.user_count!=='undefined') ? p.user_count : (p.userCount || 0) %></td>
+                <td data-label="登録日" class="nowrap"><%= (p.created_at || p.createdAt || '').toISOString ? p.created_at.toISOString().slice(0,10) : (p.created_at || p.createdAt || '') %></td>
                 <td class="ta-right">
                   <a class="btn btn--sm" href="/admin/partners/<%= p.id %>">詳細</a>
                 </td>
