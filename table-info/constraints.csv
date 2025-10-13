@@ -129,6 +129,14 @@ public,orders,orders_buyer_id_fkey,FOREIGN KEY
 public,orders,orders_order_number_key,UNIQUE
 public,orders,orders_pkey,PRIMARY KEY
 public,orders,uq_orders_order_number,UNIQUE
+public,partners,2200_17101_18_not_null,CHECK
+public,partners,2200_17101_19_not_null,CHECK
+public,partners,2200_17101_1_not_null,CHECK
+public,partners,2200_17101_2_not_null,CHECK
+public,partners,2200_17101_4_not_null,CHECK
+public,partners,2200_17101_5_not_null,CHECK
+public,partners,partners_pkey,PRIMARY KEY
+public,partners,ux_partners_partner_key,UNIQUE
 public,payments,2200_16747_1_not_null,CHECK
 public,payments,2200_16747_2_not_null,CHECK
 public,payments,2200_16747_3_not_null,CHECK
@@ -216,4 +224,5 @@ public,users,2200_16813_5_not_null,CHECK
 public,users,2200_16813_6_not_null,CHECK
 public,users,2200_16813_7_not_null,CHECK
 public,users,users_email_key,UNIQUE
+public,users,users_partner_id_fkey,FOREIGN KEY
 public,users,users_pkey,PRIMARY KEY

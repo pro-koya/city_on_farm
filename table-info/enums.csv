@@ -11,6 +11,16 @@ public,order_status,delivered,7
 public,order_status,canceled,8
 public,order_status,refunded,9
 public,order_status,fulfilled,10
+public,partner_status,active,1
+public,partner_status,inactive,2
+public,partner_status,prospect,3
+public,partner_status,suspended,4
+public,partner_type,restaurant,1
+public,partner_type,retailer,2
+public,partner_type,wholesale,3
+public,partner_type,corporate,4
+public,partner_type,individual,5
+public,partner_type,other,6
 public,payment_method,card,1
 public,payment_method,bank_transfer,2
 public,payment_method,convenience_store,3

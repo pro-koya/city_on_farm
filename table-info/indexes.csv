@@ -42,6 +42,12 @@ public,orders,idx_orders_status_updated_at,"CREATE INDEX idx_orders_status_updat
 public,orders,orders_order_number_key,CREATE UNIQUE INDEX orders_order_number_key ON public.orders USING btree (order_number),t,f
 public,orders,orders_pkey,CREATE UNIQUE INDEX orders_pkey ON public.orders USING btree (id),t,t
 public,orders,uq_orders_order_number,CREATE UNIQUE INDEX uq_orders_order_number ON public.orders USING btree (order_number),t,f
+public,partners,idx_partners_name,CREATE INDEX idx_partners_name ON public.partners USING btree (name),f,f
+public,partners,idx_partners_status,CREATE INDEX idx_partners_status ON public.partners USING btree (status),f,f
+public,partners,idx_partners_status_type,"CREATE INDEX idx_partners_status_type ON public.partners USING btree (status, type)",f,f
+public,partners,idx_partners_type,CREATE INDEX idx_partners_type ON public.partners USING btree (type),f,f
+public,partners,partners_pkey,CREATE UNIQUE INDEX partners_pkey ON public.partners USING btree (id),t,t
+public,partners,ux_partners_partner_key,CREATE UNIQUE INDEX ux_partners_partner_key ON public.partners USING btree (partner_key),t,f
 public,payments,idx_payments_created,CREATE INDEX idx_payments_created ON public.payments USING btree (created_at DESC),f,f
 public,payments,idx_payments_order,CREATE INDEX idx_payments_order ON public.payments USING btree (order_id),f,f
 public,payments,idx_payments_status,CREATE INDEX idx_payments_status ON public.payments USING btree (status),f,f
@@ -82,5 +88,6 @@ public,tags,tags_pkey,CREATE UNIQUE INDEX tags_pkey ON public.tags USING btree (
 public,tags,tags_slug_key,CREATE UNIQUE INDEX tags_slug_key ON public.tags USING btree (slug),t,f
 public,user_recent_products,idx_user_recent_products_user_time,"CREATE INDEX idx_user_recent_products_user_time ON public.user_recent_products USING btree (user_id, viewed_at DESC)",f,f
 public,user_recent_products,user_recent_products_pkey,"CREATE UNIQUE INDEX user_recent_products_pkey ON public.user_recent_products USING btree (user_id, product_id)",t,t
+public,users,idx_users_partner,CREATE INDEX idx_users_partner ON public.users USING btree (partner_id),f,f
 public,users,users_email_key,CREATE UNIQUE INDEX users_email_key ON public.users USING btree (email),t,f
 public,users,users_pkey,CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id),t,t

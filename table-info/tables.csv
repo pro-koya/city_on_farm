@@ -9,6 +9,7 @@ public,option_labels,,8
 public,order_addresses,,14
 public,order_items,,8
 public,orders,,24
+public,partners,取引先（主に飲食店などの法人・団体・個人事業主）,23
 public,payments,,8
 public,product_images,,12
 public,product_specs,,6
@@ -18,4 +19,4 @@ public,r2_assets,,8
 public,shipments,,9
 public,tags,,5
 public,user_recent_products,,3
-public,users,,7
+public,users,,8

@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-10-12T20:44:43.301Z
+> Generated at: 2025-10-13T18:31:37.389Z
 
 ---
 
@@ -588,6 +588,82 @@ _No indexes_
 
 ---
 
+### `public.partners`
+
+取引先（主に飲食店などの法人・団体・個人事業主）
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `name` | `text` | NO |  |  |
+| 3 | `kana` | `text` | YES |  |  |
+| 4 | `type` | `partner_type` *(enum)* | NO | 'restaurant'::partner_type | 取引先の区分（restaurant 等） |
+| 5 | `status` | `partner_status` *(enum)* | NO | 'active'::partner_status | 稼働状態（active/inactive/prospect/suspended） |
+| 6 | `email` | `text` | YES |  |  |
+| 7 | `phone` | `text` | YES |  |  |
+| 8 | `website` | `text` | YES |  |  |
+| 9 | `billing_email` | `text` | YES |  |  |
+| 10 | `billing_terms` | `text` | YES |  |  |
+| 11 | `tax_id` | `text` | YES |  |  |
+| 12 | `postal_code` | `text` | YES |  |  |
+| 13 | `prefecture` | `text` | YES |  |  |
+| 14 | `city` | `text` | YES |  |  |
+| 15 | `address1` | `text` | YES |  |  |
+| 16 | `address2` | `text` | YES |  |  |
+| 17 | `note` | `text` | YES |  |  |
+| 18 | `created_at` | `timestamp with time zone` | NO | now() |  |
+| 19 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+| 20 | `name_key` | `text` | YES |  |  |
+| 21 | `postal_norm` | `text` | YES |  |  |
+| 22 | `phone_norm` | `text` | YES |  |  |
+| 24 | `partner_key` | `text` | YES |  |  |
+
+> **Enum `partner_type` values**: `restaurant`, `retailer`, `wholesale`, `corporate`, `individual`, `other`
+> **Enum `partner_status` values**: `active`, `inactive`, `prospect`, `suspended`
+
+**Constraints**
+
+- **CHECK**: `2200_17101_18_not_null`, `2200_17101_19_not_null`, `2200_17101_1_not_null`, `2200_17101_2_not_null`, `2200_17101_4_not_null`, `2200_17101_5_not_null`
+- **PRIMARY KEY**: `partners_pkey`
+- **UNIQUE**: `ux_partners_partner_key`
+
+**Indexes**
+
+- `idx_partners_name`
+  
+  ```sql
+  CREATE INDEX idx_partners_name ON public.partners USING btree (name)
+  ```
+- `idx_partners_status`
+  
+  ```sql
+  CREATE INDEX idx_partners_status ON public.partners USING btree (status)
+  ```
+- `idx_partners_status_type`
+  
+  ```sql
+  CREATE INDEX idx_partners_status_type ON public.partners USING btree (status, type)
+  ```
+- `idx_partners_type`
+  
+  ```sql
+  CREATE INDEX idx_partners_type ON public.partners USING btree (type)
+  ```
+- `partners_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX partners_pkey ON public.partners USING btree (id)
+  ```
+- `ux_partners_partner_key`
+  
+  ```sql
+  CREATE UNIQUE INDEX ux_partners_partner_key ON public.partners USING btree (partner_key)
+  ```
+
+---
+
 ### `public.payments`
 
 **Columns**
@@ -1044,15 +1120,22 @@ _No indexes_
 | 5 | `roles` | `ARRAY` | NO | ARRAY['buyer'::text] |  |
 | 6 | `created_at` | `timestamp with time zone` | NO | now() |  |
 | 7 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+| 8 | `partner_id` | `uuid` | YES |  | 所属取引先への外部キー（partners.id） |
 
 **Constraints**
 
 - **CHECK**: `2200_16813_1_not_null`, `2200_16813_2_not_null`, `2200_16813_3_not_null`, `2200_16813_4_not_null`, `2200_16813_5_not_null`, `2200_16813_6_not_null`, `2200_16813_7_not_null`
+- **FOREIGN KEY**: `users_partner_id_fkey`
 - **PRIMARY KEY**: `users_pkey`
 - **UNIQUE**: `users_email_key`
 
 **Indexes**
 
+- `idx_users_partner`
+  
+  ```sql
+  CREATE INDEX idx_users_partner ON public.users USING btree (partner_id)
+  ```
 - `users_email_key`
   
   ```sql
@@ -1070,6 +1153,8 @@ _No indexes_
 
 - `public.order_address_type`: `shipping`, `billing`
 - `public.order_status`: `pending`, `paid`, `shipped`, `cancelled`, `confirmed`, `processing`, `delivered`, `canceled`, `refunded`, `fulfilled`
+- `public.partner_status`: `active`, `inactive`, `prospect`, `suspended`
+- `public.partner_type`: `restaurant`, `retailer`, `wholesale`, `corporate`, `individual`, `other`
 - `public.payment_method`: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`
 - `public.payment_status`: `pending`, `completed`, `failed`, `authorized`, `paid`, `canceled`, `refunded`, `unpaid`, `cancelled`
 - `public.product_status`: `draft`, `private`, `public`
