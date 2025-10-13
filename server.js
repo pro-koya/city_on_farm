@@ -147,10 +147,19 @@ function requireAuth(req, res, next) {
   if (!req.session.user) return res.redirect('/login');
   next();
 }
-function requireRole(role) {
+function requireRole(roles) {
   return (req, res, next) => {
-    const roles = (req.session.user && req.session.user.roles) || [];
-    if (!roles.includes(role)) return res.status(403).render('errors/403', { title: '権限がありません' });
+    const currentRoles = req.session.user.roles || [];
+    let allow = false;
+    for (const role of roles) {
+      console.log(role + ' : ' + currentRoles);
+      if (currentRoles.includes(role)) {
+        allow = true;
+        console.log(allow);
+        break;
+      }
+    }
+    if (!allow) return res.status(403).render('errors/403', { title: '権限がありません' });
     next();
   };
 }
@@ -1308,7 +1317,7 @@ app.get('/products/:slug', async (req, res, next) => {
 app.get(
   '/seller/listing-new',
   requireAuth,
-  requireRole('seller'),
+  requireRole(['seller', 'admin']),
   async (req, res, next) => {
     try {
       const [categories, tags] = await Promise.all([
@@ -1327,7 +1336,7 @@ app.get(
 app.post(
   '/seller/listing-new',
   requireAuth,
-  requireRole('seller'),
+  requireRole(['seller']),
   upload.array('images', 8),
   [
     body('title').trim().isLength({ min: 1, max: 80 }).withMessage('商品名を入力してください（80文字以内）。'),
@@ -1609,22 +1618,33 @@ app.post(
 app.get(
   '/seller/listing-edit/:id',
   requireAuth,
-  requireRole('seller'),
+  requireRole(['seller', 'admin']),
   async (req, res, next) => {
     try {
       const id = String(req.params.id || '').trim();
       if (!isUuid(id)) return res.status(400).render('errors/404', { title: '不正なID' });
 
       const sellerId = req.session.user.id;
+      const currentRoles = req.session.user.roles;
 
-      // 本体（所有者チェック）
-      const productRows = await dbQuery(
-        `SELECT *
-           FROM products
-          WHERE id = $1::uuid AND seller_id = $2::uuid
-          LIMIT 1`,
-        [id, sellerId]
-      );
+      let productRows;
+      if (currentRoles.includes('admin')) {
+        productRows = await dbQuery(
+          `SELECT *
+            FROM products
+            WHERE id = $1::uuid
+            LIMIT 1`,
+          [id]
+        );
+      } else {
+        productRows = await dbQuery(
+          `SELECT *
+            FROM products
+            WHERE id = $1::uuid AND seller_id = $2::uuid
+            LIMIT 1`,
+          [id, sellerId]
+        );
+      }
       const product = productRows[0];
       if (!product) return res.status(404).render('errors/404', { title: '商品が見つかりません' });
 
@@ -1655,7 +1675,7 @@ app.get(
 app.post(
   '/seller/listing-edit/:id',
   requireAuth,
-  requireRole('seller'),
+  requireRole(['seller', 'admin']),
   upload.fields([{ name: 'images', maxCount: 8 }]),
   [
     body('title').trim().isLength({ min: 1, max: 80 }).withMessage('商品名を入力してください（80文字以内）。'),
@@ -1673,13 +1693,23 @@ app.post(
     if (!isUuid(id)) return res.status(400).render('errors/404', { title: '不正なID' });
 
     const sellerId = req.session.user.id;
+    const currentRoles = req.session.user.roles;
 
     // バリデーション
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       // 再描画用データ
-      const [productRows, categories, images, specs, tags] = await Promise.all([
-        dbQuery(`SELECT * FROM products WHERE id = $1::uuid AND seller_id = $2::uuid LIMIT 1`, [id, sellerId]),
+      let productRows;
+      if (currentRoles.includes('admin')) {
+        productRows = await Promise.all([
+          dbQuery(`SELECT * FROM products WHERE id = $1::uuid LIMIT 1`, [id]),
+        ]);
+      } else {
+        productRows = await Promise.all([
+          dbQuery(`SELECT * FROM products WHERE id = $1::uuid AND seller_id = $2::uuid LIMIT 1`, [id, sellerId]),
+        ]);
+      }
+      const [categories, images, specs, tags] = await Promise.all([
         dbQuery(`SELECT id, name FROM categories ORDER BY sort_order NULLS LAST, name ASC`),
         dbQuery(`SELECT id, url, alt, position FROM product_images WHERE product_id = $1::uuid ORDER BY position ASC`, [id]),
         dbQuery(`SELECT id, label, value, position FROM product_specs  WHERE product_id = $1::uuid ORDER BY position ASC`, [id]),
@@ -1759,10 +1789,18 @@ app.post(
       await client.query('BEGIN');
 
       // 所有者チェック
-      const own = await client.query(
-        `SELECT 1 FROM products WHERE id = $1::uuid AND seller_id = $2::uuid`,
-        [id, sellerId]
-      );
+      let own;
+      if (currentRoles.includes('admin')) {
+        own = await client.query(
+          `SELECT 1 FROM products WHERE id = $1::uuid`,
+          [id]
+        );
+      } else {
+        own = await client.query(
+          `SELECT 1 FROM products WHERE id = $1::uuid AND seller_id = $2::uuid`,
+          [id, sellerId]
+        );
+      }
       if (!own.rowCount) {
         await client.query('ROLLBACK');
         return res.status(404).render('errors/404', { title: '商品が見つかりません' });
@@ -2208,11 +2246,19 @@ app.get('/orders/recent', requireAuth, async (req, res, next) => {
 const JST_TZ = 'Asia/Tokyo';
 
 // 売上集計のWHERE句の共通フィルタを作る
-function buildSellerFilters({ sellerId, q, categoryId, paymentMethod, paidOnly = true }) {
-  const where = [
-    `EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $1)`
-  ];
-  const params = [sellerId];
+function buildSellerFilters({ sellerId, q, categoryId, paymentMethod, paidOnly = true, currentRoles }) {
+  let where;
+  let params = [];
+  if (currentRoles.includes('admin')) {
+    where = [
+      `EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id)`
+    ];
+  } else {
+    where = [
+      `EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $1)`
+    ];
+    params = [sellerId];
+  }
 
   if (paidOnly) {
     where.push(`o.Payment_status IN ('paid','refunded')`);
@@ -2344,13 +2390,14 @@ function parseRangeFromQuery(q) {
 }
 
 // 汎用フィルタ（既存の buildSellerFilters をそのまま活用）
-async function getAnalyticsBucketsV2(dbQuery, sellerId, { g, q, categoryId, paymentMethod, dateFrom, dateTo, week, ym, year }) {
+async function getAnalyticsBucketsV2(dbQuery, sellerId, currentRoles, { g, q, categoryId, paymentMethod, dateFrom, dateTo, week, ym, year }) {
   const { where, params } = buildSellerFilters({
     sellerId,
     q,
     categoryId,
     paymentMethod,
-    paidOnly: true
+    paidOnly: true,
+    currentRoles
   });
 
   // 開始・終了日時（JSTベース）を決定
@@ -2529,7 +2576,7 @@ app.get('/dashboard/buyer', requireAuth, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-app.get('/dashboard/seller', requireAuth, requireRole('seller'), async (req, res, next) => {
+app.get('/dashboard/seller', requireAuth, requireRole(['seller']), async (req, res, next) => {
   try {
     const uid = req.session.user.id;
 
@@ -2604,7 +2651,7 @@ app.get('/dashboard/seller', requireAuth, requireRole('seller'), async (req, res
   } catch (e) { next(e); }
 });
 
-app.get('/dashboard/admin', requireAuth, requireRole('admin'), async (req, res, next) => {
+app.get('/dashboard/admin', requireAuth, requireRole(['admin']), async (req, res, next) => {
   try {
     const uid = req.session.user.id;
 
@@ -2676,7 +2723,7 @@ app.get('/dashboard/admin', requireAuth, requireRole('admin'), async (req, res, 
 });
 
 // 出品者の取引一覧
-app.get('/seller/trades', requireAuth, requireRole('seller'), async (req, res, next) => {
+app.get('/seller/trades', requireAuth, requireRole(['seller']), async (req, res, next) => {
   try {
     const uid = req.session.user.id;
     const { q = '', status = 'all', payment = 'all', ship = 'all', page = 1 } = req.query;
@@ -2789,19 +2836,31 @@ app.get('/seller/trades', requireAuth, requireRole('seller'), async (req, res, n
 });
 
 // 詳細
-app.get('/seller/trades/:id', requireAuth, requireRole('seller'), async (req, res, next) => {
+app.get('/seller/trades/:id', requireAuth, requireRole(['seller', 'admin']), async (req, res, next) => {
   try {
     const uid = req.session.user.id;
     const id = String(req.params.id || '').trim();
+    const currentRoles = req.session.user.roles;
 
     // 所有チェック（この注文に出品者自身の明細があるか）
-    const own = await dbQuery(
-      `SELECT 1
-         FROM order_items oi
-        WHERE oi.order_id = $1::uuid AND oi.seller_id = $2::uuid
-        LIMIT 1`,
-      [id, uid]
-    );
+    let own;
+    if (currentRoles.includes('admin')) {
+      own = await dbQuery(
+        `SELECT 1
+          FROM order_items oi
+          WHERE oi.order_id = $1::uuid
+          LIMIT 1`,
+        [id]
+      );  
+    } else {
+      own = await dbQuery(
+        `SELECT 1
+          FROM order_items oi
+          WHERE oi.order_id = $1::uuid AND oi.seller_id = $2::uuid
+          LIMIT 1`,
+        [id, uid]
+      );
+    }
     if (!own.length) return res.status(404).render('errors/404', { title: '見つかりません' });
 
     // 注文本体
@@ -2891,22 +2950,37 @@ app.get('/seller/trades/:id', requireAuth, requireRole('seller'), async (req, re
 
 // ステータス更新（簡易）
 app.post('/seller/trades/:id/status',
-  requireAuth, requireRole('seller'),
+  requireAuth, requireRole(['seller', 'admin']),
   async (req, res, next) => {
     try {
       const id = String(req.params.id).trim();
       const { order_status, payment_status, shipment_status } = req.body || {};
+      const sellerId = req.session.user.id;
+      const currentRoles = req.session.user.roles;
 
       // 所有者チェック：この注文が本人（出品者）の受注に含まれるか（必要であれば厳格化）
-      const own = await dbQuery(`
-        SELECT 1
-          FROM orders o
-         WHERE o.id = $1
-           AND EXISTS (
-             SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $2
-           )
-         LIMIT 1
-      `, [id, req.session.user.id]);
+      let own;
+      if (currentRoles.includes('admin')) {
+        own = await dbQuery(`
+          SELECT 1
+            FROM orders o
+          WHERE o.id = $1
+            AND EXISTS (
+              SELECT 1 FROM order_items oi WHERE oi.order_id = o.id
+            )
+          LIMIT 1
+        `, [id]);
+      } else {
+        own = await dbQuery(`
+          SELECT 1
+            FROM orders o
+          WHERE o.id = $1
+            AND EXISTS (
+              SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $2
+            )
+          LIMIT 1
+        `, [id, sellerId]);
+      }
       if (!own.length) return res.status(404).json({ ok:false, message:'not found' });
 
       // 値のバリデーション（ENUMに合わせて）
@@ -2945,20 +3019,29 @@ app.post('/seller/trades/:id/status',
 );
 
 // server.js（任意）: 出荷ステータス更新（出品者は自分の明細がある注文のみ可）
-app.post('/seller/trades/:id/shipment-status', requireAuth, requireRole('seller'), async (req, res, next) => {
+app.post('/seller/trades/:id/shipment-status', requireAuth, requireRole(['seller', 'admin']), async (req, res, next) => {
   try {
     const uid = req.session.user.id;
     const id = String(req.params.id || '').trim();
     const next = String(req.body.status || '');
+    const currentRoles = req.session.user.roles;
 
     if (!['preparing','in_transit','delivered','returned'].includes(next)) {
       return res.status(400).json({ ok:false, message:'不正な状態です。' });
     }
 
-    const own = await dbQuery(
-      `SELECT 1 FROM order_items oi WHERE oi.order_id = $1::uuid AND oi.seller_id = $2::uuid LIMIT 1`,
-      [id, uid]
-    );
+    let own;
+    if (currentRoles.includes('admin')) {
+      own = await dbQuery(
+        `SELECT 1 FROM order_items oi WHERE oi.order_id = $1::uuid LIMIT 1`,
+        [id]
+      );
+    } else {
+      own = await dbQuery(
+        `SELECT 1 FROM order_items oi WHERE oi.order_id = $1::uuid AND oi.seller_id = $2::uuid LIMIT 1`,
+        [id, uid]
+      );
+    }
     if (!own.length) return res.status(404).json({ ok:false });
 
     await dbQuery(`UPDATE orders SET shipment_status = $1, updated_at = now() WHERE id = $2::uuid`, [next, id]);
@@ -2967,9 +3050,10 @@ app.post('/seller/trades/:id/shipment-status', requireAuth, requireRole('seller'
 });
 
 // 一括更新（任意）
-app.post('/seller/trades/bulk', requireAuth, requireRole('seller'), async (req, res, next) => {
+app.post('/seller/trades/bulk', requireAuth, requireRole(['seller', 'admin']), async (req, res, next) => {
   try {
     const uid = req.session.user.id;
+    const currentRoles = req.session.user.roles;
     const ids = []
       .concat(req.body.ids || [])
       .map(String).map(s => s.trim())
@@ -2987,24 +3071,37 @@ app.post('/seller/trades/bulk', requireAuth, requireRole('seller'), async (req, 
     if (!ids.length || !nextStatus) return res.redirect('/seller/trades');
 
     // この出品者の行に限定して更新
-    await dbQuery(
-      `
-      UPDATE orders o
-         SET status = $1, updated_at = now()
-       WHERE o.id = ANY($2::uuid[])
-         AND EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $3)
-      `,
-      [nextStatus, ids, uid]
-    );
+    if (currentRoles.includes('admin')) {
+      await dbQuery(
+        `
+        UPDATE orders o
+          SET status = $1, updated_at = now()
+        WHERE o.id = ANY($2::uuid[])
+          AND EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id)
+        `,
+        [nextStatus, ids]
+      );
+    } else {
+      await dbQuery(
+        `
+        UPDATE orders o
+          SET status = $1, updated_at = now()
+        WHERE o.id = ANY($2::uuid[])
+          AND EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $3)
+        `,
+        [nextStatus, ids, uid]
+      );
+    }
 
     return res.redirect('/seller/trades');
   } catch (e) { next(e); }
 });
 
 // 売上ダッシュボード詳細
-app.get('/seller/analytics', requireAuth, requireRole('seller'), async (req, res, next) => {
+app.get('/seller/analytics', requireAuth, requireRole(['seller', 'admin']), async (req, res, next) => {
   try {
     const uid = req.session.user.id;
+    const currentRoles = req.session.user.id;
     const { g, dateFrom, dateTo, week, ym, year } = parseRangeFromQuery(req.query);
     const q        = req.query.q || '';
     const category = req.query.category || '';
@@ -3015,7 +3112,7 @@ app.get('/seller/analytics', requireAuth, requireRole('seller'), async (req, res
       dbQuery(`SELECT value, label_ja FROM option_labels WHERE category='payment_method' AND active=true ORDER BY sort ASC, label_ja ASC`)
     ]);
 
-    const analyticsData = await getAnalyticsBucketsV2(dbQuery, uid, {
+    const analyticsData = await getAnalyticsBucketsV2(dbQuery, uid, currentRoles, {
       g, q, categoryId: category, paymentMethod: payment,
       dateFrom, dateTo, week, ym, year
     });
@@ -3411,7 +3508,7 @@ app.post('/cart/selection', (req, res) => {
  *  GET /seller/listings?q&status=all|public|private|draft&sort&page=
  * =======================================================*/
 app.get('/seller/listings',
-  requireAuth, requireRole('seller'),
+  requireAuth, requireRole(['seller']),
   async (req, res, next) => {
     try {
       const sellerId = req.session.user.id;
@@ -3478,7 +3575,7 @@ app.get('/seller/listings',
  * POST /seller/listings/bulk  (ids, bulkAction)
  * =======================================================*/
 app.post('/seller/listings/bulk',
-  requireAuth, requireRole('seller'),
+  requireAuth, requireRole(['seller']),
   async (req, res, next) => {
     try {
       const sellerId = req.session.user.id;
@@ -3535,7 +3632,7 @@ app.post('/seller/listings/bulk',
  * POST /seller/listings/:id/status {status}
  * =======================================================*/
 app.post('/seller/listings/:id/status',
-  requireAuth, requireRole('seller'),
+  requireAuth, requireRole(['seller']),
   async (req, res, next) => {
     try {
       const sellerId = req.session.user.id;
@@ -3562,7 +3659,7 @@ app.post('/seller/listings/:id/status',
  * POST /seller/listings/:id/delete
  * =======================================================*/
 app.post('/seller/listings/:id/delete',
-  requireAuth, requireRole('seller'),
+  requireAuth, requireRole(['seller']),
   async (req, res, next) => {
     try {
       const sellerId = req.session.user.id;
@@ -4992,7 +5089,7 @@ app.get('/uploads/library', requireAuth /* 任意: requireRole('seller') */, asy
  * =======================================================*/
 app.get('/admin/contacts',
   requireAuth,
-  requireRole('admin'),
+  requireRole(['admin']),
   async (req, res, next) => {
     try {
       const { q = '', status = 'all', type = 'all', page = 1 } = req.query;
@@ -5049,7 +5146,7 @@ app.get('/admin/contacts',
  * GET /admin/contacts/:id
  * =======================================================*/
 app.get('/admin/contacts/:id',
-  requireAuth, requireRole('admin'),
+  requireAuth, requireRole(['admin']),
   async (req, res, next) => {
     try {
       const id = String(req.params.id || '').trim();
@@ -5078,7 +5175,7 @@ app.get('/admin/contacts/:id',
  * POST /admin/contacts/:id/status  {status: open|in_progress|closed}
  * =======================================================*/
 app.post('/admin/contacts/:id/status',
-  requireAuth, requireRole('admin'),
+  requireAuth, requireRole(['admin']),
   async (req, res, next) => {
     try {
       const id = String(req.params.id || '').trim();
@@ -5113,7 +5210,7 @@ app.post('/admin/contacts/:id/status',
 
 // 取引先一覧
 // GET /admin/partners
-app.get('/admin/partners', requireAuth, requireRole('admin'), async (req, res, next) => {
+app.get('/admin/partners', requireAuth, requireRole(['admin']), async (req, res, next) => {
   try {
     const q        = (req.query.q || '').trim();
     const type     = (req.query.type || '').trim();
@@ -5185,7 +5282,7 @@ app.get('/admin/partners', requireAuth, requireRole('admin'), async (req, res, n
 app.get(
   '/admin/partners/:id',
   requireAuth,
-  requireRole('admin'),
+  requireRole(['admin']),
   async (req, res, next) => {
     try {
       const id = String(req.params.id || '').trim();
@@ -5228,7 +5325,7 @@ app.get(
 app.post(
   '/admin/partners/:id/status',
   requireAuth,
-  requireRole('admin'),
+  requireRole(['admin']),
   csrfProtect,
   async (req, res, next) => {
     const id = String(req.params.id || '').trim();
@@ -5248,7 +5345,7 @@ app.post(
           RETURNING id, status`,
         [nextStatus, id]
       );
-      
+
       const partners = await dbQuery(
         `SELECT
            id, name, kana, type, status, email, phone, website,
