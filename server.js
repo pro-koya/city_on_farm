@@ -3582,7 +3582,9 @@ app.get('/seller/listings',
     try {
       const sellerId = req.session.user.id;
       const currentRoles = req.session.user.roles;
-      const { q = '', status = 'all', sort = 'updated', page = 1 } = req.query;
+      const previousUrl = req.headers.referer;
+      console.log(previousUrl);
+      const { q = '', status = 'all', sort = 'updated', owner = 'owner', page = 1 } = req.query;
       const pageNum  = Math.max(1, toInt(page, 1));
       const pageSize = 20;
       const offset   = (pageNum - 1) * pageSize;
@@ -3597,10 +3599,16 @@ app.get('/seller/listings',
       let where = [];
       let params = [];
 
-      if (!currentRoles.includes('admin')) {
+      let setOwner;
+
+      if ((previousUrl && !previousUrl.includes('admin') && !owner) || owner === 'owner_own' || (!previousUrl && owner !== 'owner_all')) {
         where.push('p.seller_id = $1');
         params.push(sellerId);
+        setOwner = 'owner_own';
+      } else if (previousUrl && previousUrl.includes('admin') && !owner || owner === 'owner_all') {
+        setOwner = 'owner_all';
       }
+
       if (q) {
         params.push(`%${q}%`);
         // 同じプレースホルダを2回使うのはOK
@@ -3614,19 +3622,6 @@ app.get('/seller/listings',
 
       // ← ここがポイント：0件なら WHERE を付けない
       const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-
-      // ORDER BY はホワイトリストで安全に
-      const orderMap = {
-        'updated_desc':  'p.updated_at DESC',
-        'updated_asc':   'p.updated_at ASC',
-        'price_asc':     'p.price ASC',
-        'price_desc':    'p.price DESC',
-        'stock_desc':    'p.stock DESC',
-        'stock_asc':     'p.stock ASC',
-        'title_asc':     'p.title ASC',
-        'title_desc':    'p.title DESC',
-      };
-      const orderBySql = orderMap[orderBy] || 'p.updated_at DESC';
 
       // 件数
       const cntRows = await dbQuery(
@@ -3650,7 +3645,7 @@ app.get('/seller/listings',
           ) AS image_url
         FROM products p
         ${whereSql}
-        ORDER BY ${orderBySql}
+        ORDER BY ${orderBy}
         LIMIT $${params.length + 1} OFFSET $${params.length + 2}
         `,
         [...params, pageSize, offset]
@@ -3662,9 +3657,9 @@ app.get('/seller/listings',
       res.render('seller/listings', {
         title: '出品管理',
         listings: rows,
-        total, q, status, sort,
-        pagination,
-        buildQuery,
+        total, q, status, sort, setOwner,
+        pagination, currentRoles,
+        buildQuery
       });
     } catch (e) { next(e); }
   }
