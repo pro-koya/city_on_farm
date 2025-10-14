@@ -28,7 +28,7 @@
           <option value="priceDesc" <%=sort==='priceDesc' ?'selected':'' %>>価格の高い順</option>
         </select>
 
-        <% if (currentRoles || currentRoles.includes('admin')) { %>
+        <% if (currentRoles && currentRoles.includes('admin')) { %>
           <select name="owner" class="pulldown" aria-label="所有者">
             <option value="owner_own" <%=(setOwner||'owner_own')==='owner_own' ?'selected':'' %>>自分の商品</option>
             <option value="owner_all" <%=setOwner==='owner_all' ?'selected':'' %>>すべての商品</option>

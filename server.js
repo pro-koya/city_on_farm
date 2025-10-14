@@ -2246,18 +2246,18 @@ app.get('/orders/recent', requireAuth, async (req, res, next) => {
 const JST_TZ = 'Asia/Tokyo';
 
 // 売上集計のWHERE句の共通フィルタを作る
-function buildSellerFilters({ sellerId, q, categoryId, paymentMethod, paidOnly = true, currentRoles }) {
+function buildSellerFilters({ sellerId, q, categoryId, paymentMethod, paidOnly = true, owner }) {
   let where;
   let params = [];
-  if (currentRoles.includes('admin')) {
-    where = [
-      `EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id)`
-    ];
-  } else {
+  if (!owner || owner !== 'owner_all') {
     where = [
       `EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $1)`
     ];
     params = [sellerId];
+  } else {
+    where = [
+      `EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id)`
+    ];
   }
 
   if (paidOnly) {
@@ -2451,14 +2451,14 @@ function parseRangeFromQuery(q) {
 }
 
 // 汎用フィルタ（既存の buildSellerFilters をそのまま活用）
-async function getAnalyticsBucketsV2(dbQuery, sellerId, currentRoles, { g, q, categoryId, paymentMethod, dateFrom, dateTo, week, ym, year }) {
+async function getAnalyticsBucketsV2(dbQuery, sellerId, owner, { g, q, categoryId, paymentMethod, dateFrom, dateTo, week, ym, year }) {
   const { where, params } = buildSellerFilters({
     sellerId,
     q,
     categoryId,
     paymentMethod,
     paidOnly: true,
-    currentRoles
+    owner
   });
 
   // 開始・終了日時（JSTベース）を決定
@@ -2887,8 +2887,8 @@ app.get('/seller/trades', requireAuth, requireRole(['seller', 'admin']), async (
       ` + (
         (currentRoles && currentRoles.includes('admin')) ? `
           <select name="owner" class="pulldown" aria-label="所有者">
-            <option value="owner_own" ${ (owner||'owner_own')==='owner_own' ?'selected':'' }>自分の商品</option>
-            <option value="owner_all" ${ owner==='owner_all' ?'selected':'' }>すべての商品</option>
+            <option value="owner_own" ${ (owner||'owner_own')==='owner_own' ?'selected':'' }>自分の取引</option>
+            <option value="owner_all" ${ owner==='owner_all' ?'selected':'' }>すべての取引</option>
           </select>
         ` : '')
     ;
@@ -3185,13 +3185,14 @@ app.get('/seller/analytics', requireAuth, requireRole(['seller', 'admin']), asyn
     const q        = req.query.q || '';
     const category = req.query.category || '';
     const payment  = req.query.payment || '';
+    const owner  = req.query.owner || '';
 
     const [categories, paymentMethods] = await Promise.all([
       dbQuery(`SELECT id, name FROM categories ORDER BY sort_order NULLS LAST, name ASC`),
       dbQuery(`SELECT value, label_ja FROM option_labels WHERE category='payment_method' AND active=true ORDER BY sort ASC, label_ja ASC`)
     ]);
 
-    const analyticsData = await getAnalyticsBucketsV2(dbQuery, uid, currentRoles, {
+    const analyticsData = await getAnalyticsBucketsV2(dbQuery, uid, owner, {
       g, q, categoryId: category, paymentMethod: payment,
       dateFrom, dateTo, week, ym, year
     });
@@ -3205,13 +3206,13 @@ app.get('/seller/analytics', requireAuth, requireRole(['seller', 'admin']), asyn
     res.render('seller/analytics', {
       title: '売上ダッシュボード詳細',
       // フィルタ表示用
-      q, category, payment,
+      q, category, payment, owner,
       // 新パラメータ
       granularity: g, dateFrom, dateTo, week, ym, year,
       // 旧UI互換のために period も残す（不要なら削除OK）
       period: (g === 'day' ? 'week' : g), // 表示文言で使っていれば合わせる
       categories, paymentMethods,
-      analyticsData, summary
+      analyticsData, summary, currentRoles
     });
   } catch (e) { next(e); }
 });

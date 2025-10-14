@@ -5,9 +5,9 @@
     <h1 style="margin:0 0 .5rem 0;font-size:1.2rem">売上ダッシュボード詳細</h1>
 
     <form class="ana-bar" method="get" action="/seller/analytics" id="anaForm">
-        <div class="search">
+        <!-- <div class="search">
             <input type="search" name="q" value="<%= q || '' %>" placeholder="商品名・出品者などで検索">
-        </div>
+        </div> -->
 
         <div class="filters">
             <!-- 粒度 -->
@@ -50,6 +50,12 @@
                     <option value="<%= pm.value %>" <%= (payment||'')===pm.value?'selected':'' %>><%= pm.label_ja %></option>
                 <% }) %>
             </select>
+            <% if (currentRoles && currentRoles.includes('admin')) { %>
+              <select name="owner" class="pulldown" aria-label="所有者">
+                <option value="owner_own" <%=(owner||'owner_own')==='owner_own' ?'selected':'' %>>自分の売上</option>
+                <option value="owner_all" <%=owner==='owner_all' ?'selected':'' %>>すべての売上</option>
+              </select>
+            <% } %>
         </div>
 
         <div style="justify-self:end;display:flex;gap:.4rem;flex-wrap:wrap">
