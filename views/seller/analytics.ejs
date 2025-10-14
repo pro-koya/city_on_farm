@@ -13,24 +13,26 @@
             <!-- 粒度 -->
             <select class="select pulldown" name="granularity" id="gSel">
                 <option value="day"   <%= granularity==='day'   ? 'selected':'' %>>日</option>
-                <option value="week"  <%= granularity==='week'  ? 'selected':'' %>>週</option>
+                <!-- <option value="week"  <%= granularity==='week'  ? 'selected':'' %>>週</option> -->
                 <option value="month" <%= granularity==='month' ? 'selected':'' %>>月</option>
                 <option value="year"  <%= granularity==='year'  ? 'selected':'' %>>年</option>
             </select>
             <!-- 粒度別入力（JSでトグル） -->
             <div class="g-input g-day">
-                <input id="dateRange" class="select" placeholder="期間指定">
-                <input type="hidden" class="select" id="dateFrom" name="dateFrom">
-                <input type="hidden" class="select" id="dateTo"   name="dateTo">
+                <input id="dateRange" class="select" placeholder="期間指定" value="<%=
+                  dateFrom && dateTo ? dateFrom + ' から ' + dateTo : ''
+                %>">
+                <input type="hidden" class="select" id="dateFrom" name="dateFrom" value="<%= dateFrom || '' %>">
+                <input type="hidden" class="select" id="dateTo"   name="dateTo" value="<%= dateTo || '' %>">
             </div>
-            <div class="g-input g-week">
-                <input id="weekPick" class="select" name="week" placeholder="週（例: 2025-W39）">
-            </div>
+            <!-- <div class="g-input g-week">
+                <input id="weekPick" class="select" name="week" placeholder="週（例: 2025-W39）" value="<%= week || '' %>">
+            </div> -->
             <div class="g-input g-month">
-                <input id="monthPick" class="select" name="ym" placeholder="年月（例: 2025-10）">
+                <input id="monthPick" class="select" name="ym" placeholder="年月（例: 2025-10）" value="<%= ym || '' %>">
             </div>
             <div class="g-input g-year">
-                <input id="yearPick" class="select" name="year" placeholder="年（例: 2025）">
+                <input id="yearPick" class="select" name="year" placeholder="年（例: 2025）" value="<%= year || '' %>">
             </div>
         </div>
 

@@ -2785,20 +2785,23 @@ app.get('/dashboard/admin', requireAuth, requireRole(['admin']), async (req, res
 });
 
 // 出品者の取引一覧
-app.get('/seller/trades', requireAuth, requireRole(['seller']), async (req, res, next) => {
+app.get('/seller/trades', requireAuth, requireRole(['seller', 'admin']), async (req, res, next) => {
   try {
     const uid = req.session.user.id;
     const currentRoles = req.session.user.roles;
-    const { q = '', status = 'all', payment = 'all', ship = 'all', page = 1 } = req.query;
+    const { q = '', status = 'all', payment = 'all', ship = 'all', owner, page = 1 } = req.query;
 
     let where = [];
     let params = [];
-    if (!currentRoles.includes('admin')) {
+    console.log(owner);
+    if (!owner || owner !== 'owner_all') {
       where = ['EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $1)'];
       params = [uid];
-    } else {
+    } else if (owner === 'owner_all') {
       where = ['EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id)'];
     }
+    console.log(where);
+    console.log(params);
 
     if (q) {
       params.push(`%${q}%`);
@@ -2854,7 +2857,7 @@ app.get('/seller/trades', requireAuth, requireRole(['seller']), async (req, res,
 
     // フィルタHTML（プルダウンをモダン化）
     const filtersHTML = `
-      <select name="status" class="select">
+      <select name="status" class="select pulldown">
         <option value="all"${status==='all'?' selected':''}>すべての注文状況</option>
         <option value="pending"${status==='pending'?' selected':''}>受付中</option>
         <option value="confirmed"${status==='confirmed'?' selected':''}>確定</option>
@@ -2866,14 +2869,14 @@ app.get('/seller/trades', requireAuth, requireRole(['seller']), async (req, res,
         <option value="canceled"${status==='canceled'?' selected':''}>キャンセル</option>
         <option value="refunded"${status==='refunded'?' selected':''}>返金済み</option>
       </select>
-      <select name="payment" class="select">
+      <select name="payment" class="select pulldown">
         <option value="all"${payment==='all'?' selected':''}>すべての支払い状況</option>
         <option value="unpaid"${payment==='unpaid'?' selected':''}>未入金</option>
         <option value="paid"${payment==='paid'?' selected':''}>入金完了</option>
         <option value="canceled"${payment==='canceled'?' selected':''}>キャンセル</option>
         <option value="refunded"${payment==='refunded'?' selected':''}>返金済み</option>
       </select>
-      <select name="ship" class="select">
+      <select name="ship" class="select pulldown">
         <option value="all"${ship==='all'?' selected':''}>すべての出荷状況</option>
         <option value="preparing"${ship==='preparing'?' selected':''}>出荷準備中</option>
         <option value="in_transit"${ship==='in_transit'?' selected':''}>お届け中</option>
@@ -2881,7 +2884,14 @@ app.get('/seller/trades', requireAuth, requireRole(['seller']), async (req, res,
         <option value="lost"${ship==='lost'?' selected':''}>紛失</option>
         <option value="returned"${ship==='returned'?' selected':''}>返品</option>
       </select>
-    `;
+      ` + (
+        (currentRoles && currentRoles.includes('admin')) ? `
+          <select name="owner" class="pulldown" aria-label="所有者">
+            <option value="owner_own" ${ (owner||'owner_own')==='owner_own' ?'selected':'' }>自分の商品</option>
+            <option value="owner_all" ${ owner==='owner_all' ?'selected':'' }>すべての商品</option>
+          </select>
+        ` : '')
+    ;
 
     const pagination = { page: pageNum, pageCount: Math.max(1, Math.ceil(total / pageSize)) };
     const buildQuery = (p={}) => {
@@ -2895,7 +2905,7 @@ app.get('/seller/trades', requireAuth, requireRole(['seller']), async (req, res,
       title: '取引一覧',
       pageTitle: '取引一覧',
       request: req, // list.ejs の action で使う
-      q, status, payment, ship,
+      q, status, payment, ship, owner,
       items, total, pagination, buildQuery,
       // レイアウト用差し込み
       searchAction: '/seller/trades',
