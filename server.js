@@ -2833,8 +2833,11 @@ app.get('/seller/trades', requireAuth, requireRole(['seller', 'admin']), async (
       SELECT
         o.id, COALESCE(o.order_number, o.id::text) AS order_no,
         o.status, o.payment_status, o.shipment_status,
-        o.total, o.created_at
+        o.total, o.created_at,
+        p.name AS partner_name
       FROM orders o
+        JOIN users u ON u.id = o.buyer_id
+        LEFT JOIN partners p ON p.id = u.partner_id
       WHERE ${where.join(' AND ')}
       ORDER BY o.created_at DESC
       LIMIT ${pageSize} OFFSET ${offset}
@@ -2852,6 +2855,7 @@ app.get('/seller/trades', requireAuth, requireRole(['seller', 'admin']), async (
       shipment_status: r.shipment_status,
       shipment_status_ja: jaLabel('shipment_status', r.shipment_status),
       total: r.total,
+      partner_name: r.partner_name,
       created_at: new Date(r.created_at).toLocaleString('ja-JP')
     }));
 
@@ -2946,9 +2950,11 @@ app.get('/seller/trades/:id', requireAuth, requireRole(['seller', 'admin']), asy
     const orderRows = await dbQuery(
       `SELECT o.*,
               COALESCE(o.order_number, o.id::text) AS order_no,
-              u.name AS buyer_name, u.email AS buyer_email
+              u.name AS buyer_name, u.email AS buyer_email,
+              p.name AS partner_name
          FROM orders o
          JOIN users u ON u.id = o.buyer_id
+         LEFT JOIN partners p ON p.id = u.partner_id
         WHERE o.id = $1::uuid
         LIMIT 1`,
       [id]
@@ -3011,6 +3017,7 @@ app.get('/seller/trades/:id', requireAuth, requireRole(['seller', 'admin']), asy
       eta: o.eta_at ? new Date(o.eta_at).toLocaleDateString('ja-JP') : null,
       subtotal: o.subtotal, discount: o.discount, shipping_fee: o.shipping_fee, tax: o.tax, total: o.total,
       buyer: { name: o.buyer_name, email: o.buyer_email },
+      partner: {name: o.partner_name},
       shipping, billing,
       payment, shipment,
       image_url: o.image_url,

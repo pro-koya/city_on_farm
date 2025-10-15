@@ -39,6 +39,7 @@
     <aside class="td-card">
       <h2 class="td-card__title">お届け先</h2>
       <div class="addr">
+        <div class="addr__name">店舗名：<%= order.partner.name %></div>
         <div class="addr__name">氏名：<%= order.shipping.full_name %></div>
         <div class="addr__row">〒<%= order.shipping.postal_code.substring(0,3) %>-<%= order.shipping.postal_code.slice(-4) %></div>
         <div class="addr__row"><%= order.shipping.prefecture %><%= order.shipping.city %><%= order.shipping.address_line1 %> <%= order.shipping.address_line2 %></div>

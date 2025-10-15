@@ -240,6 +240,10 @@
     color: #8A1C1C
 }
 
+.sub-table {
+    display: none;
+}
+
 /* モバイル：表 → カード風 */
 @media (max-width: 821px) {
     .lv-table {
@@ -275,5 +279,24 @@
     .lv-table td::before {
         content: attr(data-label);
         color: var(--muted);
+    }
+
+    .pc__status {
+        display: none !important;
+    }
+
+    .sub-table {
+        display: block;
+    }
+
+    .sub-table::before {
+        display: none;
+    }
+
+    .sub__status {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
     }
 }
