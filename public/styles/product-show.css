@@ -630,6 +630,7 @@ body {
   color: var(--text);
   transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
   will-change: transform;
+  position: relative;
 }
 
 .rail .card:hover {
@@ -666,6 +667,18 @@ body {
 .rail .card p {
   font-size: .9rem;
   color: #555;
+}
+
+.badge--low {
+  position: absolute;
+  top: .5rem;
+  right: .5rem;
+  background: #f59e0b;
+  color: #fff;
+  font-weight: 700;
+  font-size: .75rem;
+  padding: .15rem .4rem;
+  border-radius: 6px
 }
 
 /* モバイル最適化：カード幅を少し広めにしてスワイプを心地よく */

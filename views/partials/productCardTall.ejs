@@ -1,15 +1,30 @@
-<a class="card--tall" href="/products/<%= p.slug || p.id %>" data-product-id="<%= p.id %>" aria-label="<%= p.name %>の詳細">
-  <img src="<%= p.image_url %>" alt="<%= p.title %>">
-  <div class="body">
-    <h3 class="name"><%= p.title %></h3>
-    <% if (p.producer) { %><p class="producer"><%= p.producer %></p><% } %>
-    <div class="price-row">
-      <span class="price">¥<%= p.price %></span>
-      <span class="unit"><%= p.unit || '' %></span>
+<div class="card">
+  <a href="/products/<%= p.slug || p.id %>" data-product-id="<%= p.id %>" aria-label="<%= p.name %>の詳細">
+    <%
+      const created = new Date(p.created_at);
+      const today = new Date();
+  
+      created.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
+  
+      const diffDays = (today - created) / (1000 * 60 * 60 * 24);
+    %>
+    <% if (diffDays <= 3 && diffDays >= 0) { %>
+      <span class="badge--new">NEW</span>
+    <% } %>
+    
+    <% if (p.stock === 0) { %>
+      <span class="badge--low">在庫切れ</span>
+    <% } else if (p.stock < 5) { %>
+      <span class="badge--low">残り<%= p.stock %>点</span>
+    <% } %>
+    <img src="<%= p.image_url %>" alt="<%= p.title %>">
+    <div class="card__body">
+      <h3 class="card__name"><%= p.title %></h3>
+      <div class="card__meta">
+        <span>¥<%= p.price %></span>
+        <span><%= p.unit || '' %>　在庫数：<%= p.stock || '0' %></span>
+      </div>
     </div>
-    <!-- <div class="foot">
-      <button class="fav" aria-label="お気に入りに追加">♡</button>
-      <button class="add" aria-label="カートに入れる">カートへ</button>
-    </div> -->
-  </div>
-</a>
+  </a>
+</div>

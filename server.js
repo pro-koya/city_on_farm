@@ -1347,7 +1347,7 @@ app.get('/products/:slug', async (req, res, next) => {
 
     // 関連（同カテゴリの新着）
     const related = await dbQuery(`
-      SELECT p.slug, p.title, p.price,
+      SELECT p.slug, p.title, p.price, p.stock,
              (SELECT url FROM product_images pi WHERE pi.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
         FROM products p
        WHERE p.status = 'public' AND p.category_id = $1 AND p.id <> $2

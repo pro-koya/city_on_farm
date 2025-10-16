@@ -8,7 +8,7 @@ html,body{background:var(--bg);color:var(--text)}
 *{box-sizing:border-box}
 a{text-decoration:none;color:inherit}
 
-.nm{max-width:1040px;margin:48px auto;padding:0 16px}
+.nm{max-width:1040px;margin:80px auto;padding:0 16px}
 .nm__hero{margin-bottom:18px}
 .nm__hero h1{font-size:clamp(1.6rem,2.8vw,2rem); margin:0 0 6px}
 .nm__lead{color:var(--muted);margin:0}
