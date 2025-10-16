@@ -1,65 +1,49 @@
-<%- include('../partials/header', { title: 'ブログ一覧', extraCSS: '/styles/blog.css' }) %>
+<%- include('../partials/header', {
+  title: title || 'ブログ',
+  extraCSS: ((typeof extraCSS!=='undefined' && extraCSS) ? extraCSS : ''),
+  extraJS:  ((typeof extraJS!=='undefined' && extraJS) ? extraJS : '')
+}) %>
 
-<section class="blog-list-head">
+<main class="nm">
+  <header class="nm__hero">
     <h1>ブログ</h1>
-    <div class="controls">
-        <div class="control">
-            <label for="category">カテゴリ</label>
-            <select id="category">
-                <option value="all">すべて</option>
-                <% categories.forEach(function(cat){ %>
-                <option value="<%= cat %>"><%= cat %></option>
-                <% }) %>
-            </select>
+    <p class="nm__lead">note の投稿を集約して表示しています。</p>
+  </header>
+
+  <section class="nm__grid">
+    <% posts.forEach(function(post){ %>
+      <article class="nm-card">
+        <a class="nm-card__thumb" href="/blog/<%= post.slug %>">
+          <img src="<%= post.thumbnail || '/images/placeholder.jpg' %>" alt="<%= post.title %>">
+        </a>
+        <div class="nm-card__body">
+          <h2 class="nm-card__title">
+            <a href="/blog/<%= post.slug %>"><%= post.title %></a>
+          </h2>
+          <div class="nm-card__meta">
+            <span class="nm-badge"><%= post.category %></span>
+            <% if (post.publishedAt) { %>
+              <time datetime="<%= post.publishedAt.toISOString() %>">
+                <%= post.publishedAt.toLocaleDateString('ja-JP') %>
+              </time>
+            <% } %>
+          </div>
+          <% if (post.excerpt) { %>
+            <p class="nm-card__excerpt"><%= post.excerpt %></p>
+          <% } %>
         </div>
-
-        <div class="control">
-            <label for="sort">並び替え</label>
-            <select id="sort">
-                <option value="newest">新着順</option>
-                <option value="oldest">古い順</option>
-                <option value="popular">人気順</option>
-            </select>
-        </div>
-    </div>
-</section>
-
-<section class="blog-list" id="blog-list">
-    <% blogPosts.forEach(function(post){ %>
-        <article class="post-card"
-        data-date="<%= new Date(post.publishedAt).toISOString() %>"
-        data-popularity="<%= post.popularity || 0 %>"
-        data-category="<%= post.category %>">
-
-        <!-- 1) タイトル -->
-            <h2 class="title"><a href="/blog/<%= post.slug %>"><%= post.title %></a></h2>
-
-            <!-- 2) カテゴリ・日付・人気 -->
-            <div class="meta">
-                <span class="badge"><%= post.category %></span>
-                <time datetime="<%= new Date(post.publishedAt).toISOString() %>">
-                    <%= new Date(post.publishedAt).toLocaleDateString('ja-JP') %>
-                </time>
-                <span class="pop">★ <%= post.popularity || 0 %></span>
-            </div>
-
-            <!-- 3) サムネイル（フル幅） -->
-            <a class="thumb" href="/blog/<%= post.slug %>">
-                <img src="<%= post.thumbnail || '/images/placeholder.jpg' %>" alt="<%= post.title %> のサムネイル">
-            </a>
-
-            <!-- 4) 紹介文 -->
-            <p class="excerpt"><%= post.excerpt %></p>
-
-            <!-- 5) 続きを読む -->
-            <a class="readmore" href="/blog/<%= post.slug %>">続きを読む →</a>
-        </article>
+      </article>
     <% }) %>
-</section>
+  </section>
 
-<nav class="blog-bottom">
-    <a class="back-home" href="/">← ホームへ</a>
-</nav>
+  <% if (pagination && pagination.pageCount > 1) { %>
+  <nav class="nm__pager" aria-label="ページャ">
+    <% for (let p=1; p<=pagination.pageCount; p++){ %>
+      <a class="nm-page <%= p===pagination.page?'is-active':'' %>"
+         href="?<%= new URLSearchParams({ page: p }).toString() %>"><%= p %></a>
+    <% } %>
+  </nav>
+  <% } %>
+</main>
 
-<script src="/js/blog.js"></script>
 <%- include('../partials/footer') %>

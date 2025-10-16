@@ -1,0 +1,40 @@
+:root{
+  --bg:#fafafa; --text:#222; --muted:#6b7280;
+  --surface:#fff; --accent:#111; --soft:#f1f5f9;
+  --radius:16px; --shadow:0 10px 30px rgba(0,0,0,.06);
+}
+
+html,body{background:var(--bg);color:var(--text)}
+*{box-sizing:border-box}
+a{text-decoration:none;color:inherit}
+
+.nm{max-width:1040px;margin:48px auto;padding:0 16px}
+.nm__hero{margin-bottom:18px}
+.nm__hero h1{font-size:clamp(1.6rem,2.8vw,2rem); margin:0 0 6px}
+.nm__lead{color:var(--muted);margin:0}
+
+.nm__grid{
+  display:grid;gap:16px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.nm-card{
+  background:var(--surface); border-radius:var(--radius);
+  overflow:hidden; box-shadow:var(--shadow);
+  display:flex;flex-direction:column; transition:transform .2s ease, box-shadow .2s ease;
+}
+.nm-card:hover{transform:translateY(-2px); box-shadow:0 16px 40px rgba(0,0,0,.10)}
+
+.nm-card__thumb img{display:block; width:100%; height:180px; object-fit:cover}
+.nm-card__body{padding:14px 14px 16px}
+.nm-card__title{font-size:1.05rem; line-height:1.35; margin:0 0 8px}
+.nm-card__title a{color:#111}
+.nm-card__meta{display:flex; gap:10px; align-items:center; color:var(--muted); font-size:.9rem; margin-bottom:8px}
+.nm-badge{background:#eef2ff; color:#1f2937; padding:.12rem .5rem; border-radius:999px; font-weight:700}
+.nm-card__excerpt{color:#374151; margin:0}
+
+.nm__pager{display:flex; gap:8px; justify-content:center; margin:24px 0 8px}
+.nm-page{
+  padding:.45rem .75rem; border-radius:10px; border:1px solid #e5e7eb; background:var(--surface);
+}
+.nm-page.is-active{background:#111; color:#fff; border-color:#111}

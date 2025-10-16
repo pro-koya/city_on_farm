@@ -1,96 +1,45 @@
-<%- include('../partials/header', { title: post.title, extraCSS: '/styles/blog-post.css' }) %>
+<%- include('../partials/header', {
+  title: post.title,
+  extraCSS: ((typeof extraCSS!=='undefined' && extraCSS) ? extraCSS : ''),
+  extraJS:  ((typeof extraJS!=='undefined' && extraJS) ? extraJS : '')
+}) %>
 
-<article class="post">
-  <!-- ヒーロー -->
-  <header class="post-hero">
-    <h1 class="post-title"><%= post.title %></h1>
-    <div class="post-meta">
-      <span class="badge"><%= post.category %></span>
-      <time datetime="<%= new Date(post.publishedAt).toISOString() %>">
-        <%= new Date(post.publishedAt).toLocaleDateString('ja-JP') %>
-      </time>
-      <% if (post.readTime) { %><span class="dot">•</span><span><%= post.readTime %>分で読めます</span><% } %>
-      <% if (post.popularity != null) { %><span class="dot">•</span><span>★ <%= post.popularity %></span><% } %>
-    </div>
-
-    <% if (post.cover) { %>
-      <figure class="cover">
-        <img src="<%= post.cover %>" alt="<%= post.title %> のカバー画像">
-      </figure>
-    <% } %>
-
-    <div class="tool-row">
-      <button class="btn share" id="btn-share" type="button">共有</button>
-      <button class="btn link" id="btn-copy"  type="button">リンクをコピー</button>
+<main class="np">
+  <header class="np__hero">
+    <h1 class="np__title"><%= post.title %></h1>
+    <div class="np__meta">
+      <span class="nm-badge"><%= post.category %></span>
+      <% if (post.readTime) { %><span>• <%= post.readTime %>分</span><% } %>
     </div>
   </header>
 
-  <!-- 目次（任意：サーバ側で post.toc を用意すれば表示） -->
-  <% if (post.toc && post.toc.length) { %>
-    <details class="toc" open>
-      <summary>目次</summary>
-      <ol>
-        <% post.toc.forEach(function(item){ %>
-          <li><a href="#<%= item.id %>"><%= item.text %></a></li>
-        <% }) %>
-      </ol>
-    </details>
-  <% } %>
-
-  <!-- 本文（contentHtml はサニタイズ済み想定） -->
-  <section class="post-body">
-    <%- post.contentHtml %>
-  </section>
-
-  <!-- タグ -->
-  <% if (post.tags && post.tags.length) { %>
-    <section class="tags">
-      <% post.tags.forEach(function(tag){ %>
-        <a class="tag" href="/blog/tag/<%= encodeURIComponent(tag) %>"># <%= tag %></a>
-      <% }) %>
+  <article class="np__body">
+    <!-- note本文（サニタイズ済み） -->
+    <section class="np__content">
+      <%- post.contentHtml %>
     </section>
-  <% } %>
+  </article>
 
-  <!-- 著者情報 -->
-  <% if (post.author) { %>
-    <section class="author">
-      <img class="avatar" src="<%= post.author.avatar || '/images/avatar-default.png' %>" alt="<%= post.author.name %> のアイコン">
-      <div>
-        <h3><%= post.author.name %></h3>
-        <p><%= post.author.bio || '' %></p>
-      </div>
-    </section>
-  <% } %>
-
-  <!-- 前後ナビ -->
-  <nav class="post-nav">
-    <% if (prevPost) { %>
-      <a class="prev" href="/blog/<%= prevPost.slug %>">← <%= prevPost.title %></a>
-    <% } else { %><span></span><% } %>
-    <% if (nextPost) { %>
-      <a class="next" href="/blog/<%= nextPost.slug %>"><%= nextPost.title %> →</a>
-    <% } %>
-  </nav>
-
-  <!-- 関連記事 -->
   <% if (related && related.length) { %>
-    <section class="related">
-      <h2>関連記事</h2>
-      <div class="related-list">
+    <section class="np__related">
+      <h2>他の記事</h2>
+      <div class="np__related-list">
         <% related.forEach(function(r){ %>
-          <a class="related-card" href="/blog/<%= r.slug %>">
-            <img src="<%= r.thumbnail || '/images/placeholder.jpg' %>" alt="<%= r.title %>">
-            <div class="rc-title"><%= r.title %></div>
+          <a class="np-rel" href="/blog/<%= r.slug %>">
+            <img src="<%= r.thumbnail || '/images/placeholder.jpg' %>" alt="">
+            <div class="np-rel__title"><%= r.title.length > 10 ? r.title.substring(0, 10) + '...' : r.title %></div>
+            <% if (r.excerpt) { %>
+              <p class="nm-card__excerpt"><%= r.excerpt.length > 18 ? r.excerpt.substring(0, 18) + '...続きを読む' : r.excerpt %></p>
+            <% } %>
           </a>
         <% }) %>
       </div>
     </section>
   <% } %>
 
-  <div class="back">
-    <a href="/blog">← 記事一覧へ戻る</a>
-  </div>
-</article>
+  <nav class="np__back">
+    <a href="/blog">← 記事一覧へ</a>
+  </nav>
+</main>
 
-<script src="/js/blog-post.js"></script>
 <%- include('../partials/footer') %>

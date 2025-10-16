@@ -1036,6 +1036,63 @@ app.get('/contact/thanks', (req, res) => {
   });
 });
 
+// --- 先頭の依存などの下あたりに追記 ---
+const noteService = require('./services/noteService');
+
+// 一覧
+app.get('/blog', async (req, res, next) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const { posts, total } = await noteService.getList(page, noteService.perPage);
+
+    const pageCount = Math.max(1, Math.ceil(total / noteService.perPage));
+
+    res.render('blog/index', {
+      title: 'ブログ',
+      posts,
+      pagination: { page, pageCount, total },
+      q: '', // 将来的に検索UIを入れるなら
+      extraCSS: '/styles/blog-modern.css',
+      extraJS: '/js/blog-modern.js'
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// 詳細
+app.get('/blog/:id', async (req, res, next) => {
+  try {
+    const id = (req.params.id || '').trim();
+    if (!id) return res.status(404).render('errors/404', { title: '記事が見つかりません' });
+
+    const detail = await noteService.getDetail(id).catch(e => {
+      // 取得失敗時は note の記事URLに誘導
+      const c = process.env.NOTE_CREATOR || '';
+      const c1 = c.startsWith('@') ? c.slice(1) : c;
+      const noteUrl = `https://note.com/${encodeURIComponent(c1)}/n/${id}`;
+      return { id, title: 'note で記事を表示', contentHtml: `<p>本文を取得できませんでした。<a href="${noteUrl}" target="_blank" rel="noopener">noteで開く</a></p>`, sourceUrl: noteUrl };
+    });
+
+    const { posts } = await noteService.getList(1, 6);
+    res.render('blog/show', {
+      title: detail.title,
+      post: {
+        ...detail,
+        author: { name: process.env.NOTE_CREATOR, avatar: null, bio: '' },
+        category: 'note',
+        readTime: null,
+        tags: []
+      },
+      related: posts.filter(p => p.id !== id).slice(0, 4),
+      extraCSS: '/styles/blog-post-modern.css',
+      extraJS: '/js/blog-post-modern.js'
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
 /* ===== 最近参照: 記録（ログイン時はDB、未ログインはセッション） ===== */
 function ensureRecentSession(req) {
   if (!req.session.recent) req.session.recent = []; // [{productId, viewedAtISO}]
