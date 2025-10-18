@@ -104,6 +104,7 @@ async function fetchNotesJsonPage(page = 1, perPage = NOTE_PER_PAGE) {
       excerpt: (x?.excerpt || x?.bodySummary || x?.body).replace(/\s+/g, ' ').slice(0, 50) || '',
       publishedAt: createdAt ? new Date(createdAt) : null,
       thumbnail: cover,
+      popularity: x?.likeCount || 0,
       category: (x?.categories?.[0]?.name) || (x?.category?.name) || '記事',
       author: {
         name: x?.user?.name || x?.author?.name || NOTE_CREATOR,
