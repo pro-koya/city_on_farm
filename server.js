@@ -869,6 +869,9 @@ app.post(
   }
 );
 
+// --- 先頭の依存などの下あたりに追記 ---
+const noteService = require('./services/noteService');
+
 /* =========================================================
  *  ホーム
  * =======================================================*/
@@ -884,7 +887,16 @@ app.get('/', async (req, res, next) => {
        ORDER BY p.published_at DESC NULLS LAST, p.created_at DESC
        LIMIT 8
     `);
-    res.render('index', { title: '新・今日の食卓', products, blogPosts: [] }); // blogは未実装のため空配列
+
+    const page = 1;
+    const q = (req.query.q || '').trim();
+    const category = (req.query.category || 'all').trim();
+    const sort = (req.query.sort || 'published_desc').trim(); // 'published_desc' | 'published_asc' | 'updated_desc' | 'updated_asc' | 'popular_desc' | 'popular_asc'
+
+    const perPage = 12; // 表示用
+    const { posts, total, pageCount, categories } =
+      await noteService.getListFiltered({ q, category, sort, page, perPage });
+    res.render('index', { title: '新・今日の食卓', products, blogPosts: posts });
   } catch (e) { next(e); }
 });
 
@@ -1036,22 +1048,23 @@ app.get('/contact/thanks', (req, res) => {
   });
 });
 
-// --- 先頭の依存などの下あたりに追記 ---
-const noteService = require('./services/noteService');
-
-// 一覧
+// 一覧（フィルタ＋ページング）
 app.get('/blog', async (req, res, next) => {
   try {
     const page = Math.max(1, parseInt(req.query.page || '1', 10));
-    const { posts, total } = await noteService.getList(page, noteService.perPage);
+    const q = (req.query.q || '').trim();
+    const category = (req.query.category || 'all').trim();
+    const sort = (req.query.sort || 'published_desc').trim(); // 'published_desc' | 'published_asc' | 'updated_desc' | 'updated_asc' | 'popular_desc' | 'popular_asc'
 
-    const pageCount = Math.max(1, Math.ceil(total / noteService.perPage));
+    const perPage = 12; // 表示用
+    const { posts, total, pageCount, categories } =
+      await noteService.getListFiltered({ q, category, sort, page, perPage });
 
     res.render('blog/index', {
       title: 'ブログ',
       posts,
       pagination: { page, pageCount, total },
-      q: '', // 将来的に検索UIを入れるなら
+      q, category, sort, categories,
       extraCSS: '/styles/blog-modern.css',
       extraJS: '/js/blog-modern.js'
     });
@@ -1074,7 +1087,14 @@ app.get('/blog/:id', async (req, res, next) => {
       return { id, title: 'note で記事を表示', contentHtml: `<p>本文を取得できませんでした。<a href="${noteUrl}" target="_blank" rel="noopener">noteで開く</a></p>`, sourceUrl: noteUrl };
     });
 
-    const { posts } = await noteService.getList(1, 6);
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const q = (req.query.q || '').trim();
+    const category = (req.query.category || 'all').trim();
+    const sort = (req.query.sort || 'published_desc').trim();
+
+    const perPage = 6; // 表示用
+    const { posts, total, pageCount, categories } =
+      await noteService.getListFiltered({ q, category, sort, page, perPage });
     res.render('blog/show', {
       title: detail.title,
       post: {

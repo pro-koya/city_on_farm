@@ -79,11 +79,27 @@
             <h2>読みもの</h2>
             <div class="blog-posts">
                 <% blogPosts.forEach(function(post) { %>
-                <div class="blog-post">
-                    <h3><a href="/blog/<%= post.slug %>"><%= post.title %></a></h3>
-                    <p><%= post.excerpt %></p>
-                    <a class="read-more" href="/blog/<%= post.slug %>">続きを読む →</a>
-                </div>
+                    <article class="nm-card">
+                        <a class="nm-card__thumb" href="/blog/<%= post.slug %>">
+                        <img src="<%= post.thumbnail || '/images/placeholder.jpg' %>" alt="<%= post.title %>">
+                        </a>
+                        <div class="nm-card__body">
+                        <h2 class="nm-card__title">
+                            <a href="/blog/<%= post.slug %>"><%= post.title %></a>
+                        </h2>
+                        <div class="nm-card__meta">
+                            <span class="nm-badge"><%= post.category %></span>
+                            <% if (post.publishedAt) { %>
+                            <time datetime="<%= post.publishedAt.toISOString() %>">
+                                <%= post.publishedAt.toLocaleDateString('ja-JP') %>
+                            </time>
+                            <% } %>
+                        </div>
+                        <% if (post.excerpt) { %>
+                            <p class="nm-card__excerpt"><%= post.excerpt %></p>
+                        <% } %>
+                        </div>
+                    </article>
                 <% }); %>
             </div>
             <a href="/blog" class="button">もっと見る</a>

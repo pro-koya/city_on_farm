@@ -8,6 +8,38 @@
   <header class="nm__hero">
     <h1>ブログ</h1>
     <p class="nm__lead">note の投稿を集約して表示しています。</p>
+
+    <!-- フィルタツールバー（GET） -->
+    <form class="nm__toolbar" method="get" action="/blog">
+      <div class="nm__toolbar-row">
+        <div class="nm__search">
+          <input class="nm__input" type="search" name="q" value="<%= q || '' %>" placeholder="記事を検索">
+        </div>
+
+        <select class="nm__select pulldown" name="category">
+          <option value="all" <%= (category==='all')?'selected':'' %>>すべてのカテゴリ</option>
+          <% (categories||[]).forEach(function(c){ %>
+            <option value="<%= c.name %>" <%= (category===c.name)?'selected':'' %>>
+              <%= c.name %> (<%= c.count %>)
+            </option>
+          <% }) %>
+        </select>
+
+        <select class="nm__select pulldown" name="sort">
+          <option value="published_desc" <%= sort==='published_desc'?'selected':'' %>>新着順</option>
+          <option value="published_asc"  <%= sort==='published_asc'?'selected':'' %>>古い順</option>
+          <option value="updated_desc"   <%= sort==='updated_desc'?'selected':'' %>>更新が新しい順</option>
+          <option value="updated_asc"    <%= sort==='updated_asc'?'selected':'' %>>更新が古い順</option>
+          <option value="popular_desc"   <%= sort==='popular_desc'?'selected':'' %>>人気順（高）</option>
+          <option value="popular_asc"    <%= sort==='popular_asc'?'selected':'' %>>人気順（低）</option>
+        </select>
+
+        <button class="btn" type="submit">適用</button>
+        <% if (q || (category && category!=='all') || (sort && sort!=='published_desc')) { %>
+          <a class="btn btn--ghost" href="/blog">クリア</a>
+        <% } %>
+      </div>
+    </form>
   </header>
 
   <section class="nm__grid">
@@ -27,6 +59,9 @@
                 <%= post.publishedAt.toLocaleDateString('ja-JP') %>
               </time>
             <% } %>
+            <% if (typeof post.popularity === 'number') { %>
+              <span class="nm-like">★ <%= post.popularity %></span>
+            <% } %>
           </div>
           <% if (post.excerpt) { %>
             <p class="nm-card__excerpt"><%= post.excerpt %></p>
@@ -36,14 +71,31 @@
     <% }) %>
   </section>
 
-  <% if (pagination && pagination.pageCount > 1) { %>
-  <nav class="nm__pager" aria-label="ページャ">
+  <% if (pagination && pagination.pageCount > 1) { 
+       const params = new URLSearchParams({ q: q||'', category: category||'all', sort: sort||'published_desc' });
+  %>
+  <nav class="pagination" aria-label="ページャ">
+    <% // 前へ %>
+    <% if (pagination.page > 1) { %>
+      <a class="page" href="?<%= (new URLSearchParams({...Object.fromEntries(params), page: pagination.page-1})).toString() %>">‹</a>
+    <% } else { %>
+      <span class="page is-disabled">‹</span>
+    <% } %>
+
     <% for (let p=1; p<=pagination.pageCount; p++){ %>
-      <a class="nm-page <%= p===pagination.page?'is-active':'' %>"
-         href="?<%= new URLSearchParams({ page: p }).toString() %>"><%= p %></a>
+      <a class="page <%= p===pagination.page?'is-active':'' %>"
+         href="?<%= (new URLSearchParams({...Object.fromEntries(params), page: p})).toString() %>"><%= p %></a>
+    <% } %>
+
+    <% // 次へ %>
+    <% if (pagination.page < pagination.pageCount) { %>
+      <a class="page" href="?<%= (new URLSearchParams({...Object.fromEntries(params), page: pagination.page+1})).toString() %>">›</a>
+    <% } else { %>
+      <span class="page is-disabled">›</span>
     <% } %>
   </nav>
   <% } %>
 </main>
 
+<!-- <script src="/js/blog-modern.js"></script> -->
 <%- include('../partials/footer') %>

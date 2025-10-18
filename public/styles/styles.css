@@ -142,7 +142,7 @@ section {
 }
 
 /* --- PRODUCTS --- */
-.product-cards {
+.product-cards, .blog-posts {
   display: flex;
   overflow-x: auto;
   gap: 1rem;
@@ -177,60 +177,6 @@ section {
   font-size: 0.9rem;
   padding: 0 0.5rem 1rem;
   color: #555;
-}
-
-/* --- BLOG --- */
-.blog-posts {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-evenly;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.blog-post {
-  background: var(--color-white);
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-  padding: 1rem;
-  width: 90%;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.blog-post:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-}
-
-.blog-post h3 {
-  margin: 0;
-  font-size: 1rem;
-  color: var(--color-text);
-}
-
-.blog-post h3 a {
-  color: var(--color-text);
-  text-decoration: none;
-}
-
-.blog-post p {
-  margin-top: 0.5rem;
-  font-size: 0.95rem;
-  color: #555;
-}
-
-.blog-post a.read-more {
-  display: inline-block;
-  margin-top: 0.8rem;
-  font-size: 0.9rem;
-  color: var(--color-link);
-  text-decoration: none;
-  font-weight: bold;
-}
-
-.blog-post a.read-more:hover {
-  text-decoration: underline;
 }
 
 /* --- FAQ --- */
@@ -469,6 +415,26 @@ input {
   margin: 0;
   color: var(--color-accent);
 }
+
+/* カード（横スクロール用・コンパクト） */
+.products-preview > .product-cards > .card {
+  width: 220px;
+}
+
+.nm-card{
+  background:var(--color-background); border-radius:var(--radius);
+  overflow:hidden; box-shadow:var(--shadow); max-width: 380px; min-width:300px; scroll-snap-align: start;
+  display:flex;flex-direction:column; transition:transform .2s ease, box-shadow .2s ease;
+}
+.nm-card:hover{transform:translateY(-2px); box-shadow:0 16px 40px rgba(0,0,0,.10)}
+
+.nm-card__thumb img{display:block; width:100%; height:180px; object-fit:cover}
+.nm-card__body{padding:14px 14px 16px}
+.nm-card__title{font-size:1.05rem; line-height:1.35; margin:0 0 8px}
+.nm-card__title a{color:#111}
+.nm-card__meta{display:flex; gap:10px; align-items:center; color:var(--muted); font-size:.9rem; margin-bottom:8px}
+.nm-badge{background:#eef2ff; color:#1f2937; padding:.12rem .5rem; border-radius:999px; font-weight:700}
+.nm-card__excerpt{color:#374151; margin:0}
 
 /* PCでのログインピル（右上） */
 @media (min-width: 769px) {

@@ -281,12 +281,16 @@ main.page {
   background: var(--white);
   border-radius: 12px;
   box-shadow: var(--shadow);
-  max-width: 220px;
+  max-width: 280px;
   overflow: hidden;
   scroll-snap-align: start;
   text-decoration: none;
   color: inherit;
   position: relative;
+}
+
+.rail__track > .card {
+  width: 220px;
 }
 
 .card img {

@@ -2,6 +2,7 @@
   --bg:#fafafa; --text:#222; --muted:#6b7280;
   --surface:#fff; --accent:#111; --soft:#f1f5f9;
   --radius:16px; --shadow:0 10px 30px rgba(0,0,0,.06);
+  --main: #4C6B5C;
 }
 
 html,body{background:var(--bg);color:var(--text)}
@@ -38,3 +39,35 @@ a{text-decoration:none;color:inherit}
   padding:.45rem .75rem; border-radius:10px; border:1px solid #e5e7eb; background:var(--surface);
 }
 .nm-page.is-active{background:#111; color:#fff; border-color:#111}
+
+/* toolbar */
+.nm__toolbar{margin:10px 0 16px}
+.nm__toolbar-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.nm__search{min-width:220px;flex:1}
+.nm__input{
+  width:100%; border:1px solid #e5e7eb; border-radius:12px;
+  padding:.6rem .9rem; background:#fff; outline:none;
+}
+.nm__input:focus{border-color: var(--accent); box-shadow:0 0 0 3px rgba(17,17,17,.08)}
+.nm__select{
+  appearance:none; border:1px solid #e5e7eb; border-radius:12px; padding:.55rem .9rem; background:#fff; min-width: 170px;;
+}
+.btn{border:none;cursor:pointer;border-radius:12px;padding:.6rem 1rem;background: var(--main);color: var(--surface)}
+.btn--ghost{background:#fff;color:#111;border:1px solid #e5e7eb}
+
+/* pagination (ご指定の見た目) */
+.pagination{display:flex;gap:8px;justify-content:center;margin:24px 0 8px}
+.pagination .page{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:40px;height:40px;border-radius:10px;text-decoration:none;
+  color:#111827;background:var(--white);border:1px solid #e5e7eb;
+}
+.pagination .page:hover{border-color: var(--accent)}
+.pagination .page.is-active{
+  background: var(--hi, #D6EADF);
+  color: var(--main, #4C6B5C);
+  border-color: var(--accent, #A3C9A8);
+  font-weight:800;
+}
+.pagination .page.is-disabled{opacity:.45;pointer-events:none}
+.nm-like{color:#f59e0b}
