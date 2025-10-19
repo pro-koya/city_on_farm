@@ -24,6 +24,7 @@ body {
 }
 
 .auth {
+  height: calc(100vh - 220px);
   display: grid;
   place-items: center;
   padding: clamp(12px, 4vw, 32px) 12px;

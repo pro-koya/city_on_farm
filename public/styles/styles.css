@@ -214,7 +214,8 @@ section {
 /* --- FOOTER --- */
 footer {
   background-color: var(--color-highlight);
-  padding: 1.5rem;
+  padding: 2rem;
+  height: 160px;
   text-align: center;
   font-size: 0.9rem;
   color: #777;
