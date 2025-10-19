@@ -1,0 +1,198 @@
+<%- include('../partials/header', {
+  title: 'アカウント設定',
+  extraCSS: '/styles/account.css',
+  extraJS:  '/js/account.js'
+}) %>
+
+<main class="acc">
+  <!-- ヒーロー -->
+  <header class="acc__hero">
+    <h1>アカウント設定</h1>
+    <p class="lead">プロフィールと住所情報を確認・更新できます。</p>
+  </header>
+
+  <!-- グローバルメッセージ（必要ならサーバ側で埋め込む） -->
+  <% if (typeof flash !== 'undefined' && flash) { %>
+    <div class="acc__flash"><%= flash %></div>
+  <% } %>
+
+  <section class="acc__grid">
+    <!-- プロフィール -->
+    <article class="card">
+      <div class="card__head">
+        <h2>プロフィール</h2>
+      </div>
+      <form id="formProfile" class="card__body" method="post" action="/account?_method=PATCH" novalidate>
+        <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <% } %>
+
+        <div class="field">
+          <label for="name">お名前 *</label>
+          <input id="name" name="name" type="text" maxlength="60" required
+                 value="<%= user?.name || '' %>" placeholder="例）山田 太郎">
+          <p class="error" data-for="name"></p>
+        </div>
+
+        <div class="field">
+          <label for="email">メールアドレス *</label>
+          <input id="email" name="email" type="email" required
+                 value="<%= user?.email || '' %>" placeholder="you@example.com">
+          <p class="error" data-for="email"></p>
+        </div>
+
+        <div class="split">
+          <div class="field">
+            <label for="phone">電話番号（任意）</label>
+            <input id="phone" name="phone" type="tel"
+                   value="<%= user?.phone || '' %>" placeholder="例）03-1234-5678">
+            <p class="error" data-for="phone"></p>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn" type="submit" id="btnSaveProfile">保存</button>
+        </div>
+      </form>
+
+      <details class="card__sub">
+        <summary>パスワードを変更</summary>
+        <form id="formPassword" class="stack" method="post" action="/account/password?_method=PATCH" novalidate>
+          <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <% } %>
+          <div class="field">
+            <label for="currentPassword">現在のパスワード *</label>
+            <input id="currentPassword" name="currentPassword" type="password" required>
+            <p class="error" data-for="currentPassword"></p>
+          </div>
+          <div class="field">
+            <label for="newPassword">新しいパスワード *</label>
+            <input id="newPassword" name="newPassword" type="password" required placeholder="8文字以上・英大小/数字/記号を推奨">
+            <p class="error" data-for="newPassword"></p>
+          </div>
+          <div class="field">
+            <label for="newPasswordConfirm">新しいパスワード（確認） *</label>
+            <input id="newPasswordConfirm" name="newPasswordConfirm" type="password" required>
+            <p class="error" data-for="newPasswordConfirm"></p>
+          </div>
+          <div class="actions">
+            <button class="btn ghost" type="button" id="btnPwCancel">キャンセル</button>
+            <button class="btn" type="submit" id="btnPwSave">変更する</button>
+          </div>
+        </form>
+      </details>
+    </article>
+
+    <!-- 住所一覧 -->
+    <article class="card">
+      <div class="card__head">
+        <h2>住所</h2>
+        <button class="btn small" id="btnAddAddress" type="button">＋ 新しい住所</button>
+      </div>
+
+      <!-- カードの一覧 -->
+      <div id="addrList" class="addr-list">
+        <% (addresses || []).forEach(function(a){ %>
+          <section class="addr-card" data-id="<%= a.id %>" data-default="<%= a.is_default ? '1' : '0' %>">
+            <div class="addr-main">
+              <div class="addr-title">
+                <strong><%= a.label || '住所' %></strong>
+                <% if (a.is_default) { %><span class="badge">既定</span><% } %>
+              </div>
+              <div class="addr-body">
+                <% if (a.postal_code) { %><div>〒<%= a.postal_code %></div><% } %>
+                <div><%= [a.prefecture, a.city, a.address1, a.address2].filter(Boolean).join(' ') %></div>
+                <% if (a.phone) { %><div>☎ <%= a.phone %></div><% } %>
+                <% if (a.note)  { %><div class="muted"><%= a.note %></div><% } %>
+              </div>
+            </div>
+            <div class="addr-actions">
+              <button class="btn ghost tiny js-addr-edit" type="button">編集</button>
+              <button class="btn ghost tiny js-addr-default <%= a.is_default?'is-on':'' %>" type="button"
+                      title="既定の住所にする">既定にする</button>
+              <button class="btn danger tiny js-addr-del" type="button">削除</button>
+            </div>
+          </section>
+        <% }) %>
+        <% if (!addresses || !addresses.length) { %>
+          <p class="muted">登録された住所はありません。「＋ 新しい住所」から追加してください。</p>
+        <% } %>
+      </div>
+    </article>
+  </section>
+</main>
+
+<!-- 住所編集モーダル -->
+<dialog id="addrModal" class="modal">
+  <form id="addrForm" method="dialog" class="modal__content" novalidate>
+    <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% } %>
+    <input type="hidden" name="id" id="addrId">
+    <div class="modal__head">
+      <h3 id="addrTitle">住所を追加</h3>
+    </div>
+    <div class="modal__body grid2">
+      <div class="field">
+        <label for="addrLabel">宛名/ラベル（任意）</label>
+        <input id="addrLabel" name="label" type="text" maxlength="60" placeholder="自宅 / 会社 など">
+        <p class="error" data-for="label"></p>
+      </div>
+
+      <div class="field">
+        <label for="addrPhone">電話番号（任意）</label>
+        <input id="addrPhone" name="phone" type="tel" placeholder="03-1234-5678">
+        <p class="error" data-for="phone"></p>
+      </div>
+
+      <div class="field">
+        <label for="addrPostal">郵便番号 *</label>
+        <input id="addrPostal" name="postal_code" inputmode="numeric" placeholder="例）100-0001" required>
+        <p class="error" data-for="postal_code"></p>
+      </div>
+
+      <div class="field">
+        <label for="addrPref">都道府県 *</label>
+        <input id="addrPref" name="prefecture" type="text" required placeholder="東京都">
+        <p class="error" data-for="prefecture"></p>
+      </div>
+
+      <div class="field col-span-2">
+        <label for="addrCity">市区町村 *</label>
+        <input id="addrCity" name="city" type="text" required placeholder="千代田区…">
+        <p class="error" data-for="city"></p>
+      </div>
+
+      <div class="field col-span-2">
+        <label for="addrA1">以降の住所 *</label>
+        <input id="addrA1" name="address1" type="text" required placeholder="丸の内1-1-1">
+        <p class="error" data-for="address1"></p>
+      </div>
+
+      <div class="field col-span-2">
+        <label for="addrA2">建物・部屋番号（任意）</label>
+        <input id="addrA2" name="address2" type="text" placeholder="◯◯ビル 10F 101号室など">
+        <p class="error" data-for="address2"></p>
+      </div>
+
+      <div class="field col-span-2">
+        <label for="addrNote">備考（任意）</label>
+        <textarea id="addrNote" name="note" rows="2" placeholder="配送時の注意事項など"></textarea>
+        <p class="error" data-for="note"></p>
+      </div>
+
+      <label class="check col-span-2">
+        <input type="checkbox" name="is_default" id="addrDefault" value="1">
+        既定の住所にする
+      </label>
+    </div>
+
+    <div class="modal__foot">
+      <button class="btn ghost" value="cancel" type="reset">閉じる</button>
+      <button class="btn" value="submit" id="addrSubmit" type="submit">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<%- include('../partials/footer') %>

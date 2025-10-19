@@ -1,0 +1,49 @@
+<div class="modal" id="partnerModal" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="modal__content" role="document">
+    <div class="modal__head">
+      <h3>所属取引先を変更</h3>
+      <button type="button" class="icon-btn" id="closePartnerModal" aria-label="閉じる">✕</button>
+    </div>
+
+    <form id="partnerForm" class="form" novalidate>
+      <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
+
+      <div class="tabs">
+        <button type="button" class="tab is-active" data-tab="search">既存から選ぶ</button>
+        <button type="button" class="tab" data-tab="create">新規作成</button>
+      </div>
+
+      <!-- 既存検索 -->
+      <div class="tabpane" data-pane="search">
+        <div class="field">
+          <label for="par_q">検索</label>
+          <input id="par_q" type="search" placeholder="名称・電話・郵便番号で検索">
+        </div>
+        <ul id="par_results" class="result-list"></ul>
+      </div>
+
+      <!-- 新規作成 -->
+      <div class="tabpane" data-pane="create" hidden>
+        <div class="field">
+          <label for="pn_name">名称 *</label>
+          <input id="pn_name" name="name" required>
+        </div>
+        <div class="grid3">
+          <div class="field"><label for="pn_postal">郵便番号</label><input id="pn_postal" name="postal_code"></div>
+          <div class="field"><label for="pn_pref">都道府県</label><input id="pn_pref" name="prefecture"></div>
+          <div class="field"><label for="pn_city">市区町村</label><input id="pn_city" name="city"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label for="pn_line1">番地</label><input id="pn_line1" name="address1"></div>
+          <div class="field"><label for="pn_line2">建物名・部屋</label><input id="pn_line2" name="address2"></div>
+        </div>
+        <div class="field"><label for="pn_phone">電話</label><input id="pn_phone" name="phone"></div>
+        <div class="row-right">
+          <button type="button" class="btn btn--primary" id="btnCreatePartner">作成して紐付け</button>
+        </div>
+      </div>
+
+      <p class="error" id="partnerErr" aria-live="polite"></p>
+    </form>
+  </div>
+</div>

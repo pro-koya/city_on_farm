@@ -5570,6 +5570,157 @@ app.post(
   }
 );
 
+// GET: ユーザー詳細（本人 or 管理者）
+app.get('/admin/users/:id', requireAuth, async (req,res,next)=>{
+  try{
+    const uid = req.params.id === 'me' ? req.session.user.id : req.params.id;
+    const isSelf = uid === req.session.user.id;
+
+    const user = (await dbQuery(`SELECT id,name,email,roles,created_at,updated_at FROM users WHERE id=$1`, [uid]))[0];
+    if (!user) return res.status(404).send('not found');
+
+    const partner = (await dbQuery(`SELECT id,name,type,status,phone,billing_email,postal_code,prefecture,city,address1,address2 FROM partners WHERE id=(SELECT partner_id FROM users WHERE id=$1)`, [uid]))[0] || null;
+
+    const addresses = await dbQuery(
+      `SELECT id,full_name,phone,postal_code,prefecture,city,address_line1,address_line2,address_type,is_default
+         FROM addresses WHERE user_id=$1 ORDER BY is_default DESC, created_at DESC LIMIT 30`, [uid]
+    );
+
+    res.render('admin/users/show', {
+      title: isSelf ? 'アカウント設定' : `ユーザー: ${user.name}`,
+      user, partner, addresses,
+      isSelf,
+      currentRoles: req.session.user.roles || [],
+      csrfToken: req.csrfToken()
+    });
+  }catch(e){ next(e); }
+});
+
+// ユーザー更新（基本情報）
+app.post('/admin/users/:id', requireAuth, csrfProtect, async (req,res,next)=>{
+  try{
+    const uid = req.params.id;
+    const isSelf = uid === req.session.user.id;
+    // roles は本人変更禁止（adminのみ）
+    const roles = (req.body.roles||'').split(',').map(s=>s.trim()).filter(Boolean);
+    if (!req.session.user.roles.includes('admin')) delete req.body.roles;
+
+    await dbQuery(
+      `UPDATE users SET name=$2, email=$3 ${req.body.roles?`, roles=$4`:''}, updated_at=now()
+       WHERE id=$1`,
+      req.body.roles
+        ? [uid, req.body.name, req.body.email || null, roles]
+        : [uid, req.body.name, req.body.email || null]
+    );
+    res.redirect('/admin/users/' + uid);
+  }catch(e){ next(e); }
+});
+
+// パスワード変更（本人のみ）
+app.post('/admin/users/:id/password', requireAuth, csrfProtect, async (req,res)=>{
+  const uid = req.params.id;
+  if (uid !== req.session.user.id) return res.status(403).json({ok:false, message:'forbidden'});
+  const { current, password, passwordConfirm } = req.body || {};
+  if (!password || password !== passwordConfirm) return res.status(400).json({ok:false, message:'確認が一致しません'});
+  try{
+    const row = (await dbQuery(`SELECT password_hash FROM users WHERE id=$1`, [uid]))[0];
+    const ok = await bcrypt.compare(current || '', row.password_hash || '');
+    if (!ok) return res.status(400).json({ok:false, message:'現在のパスワードが違います'});
+    const hash = await bcrypt.hash(password, 12);
+    await dbQuery(`UPDATE users SET password_hash=$2, updated_at=now() WHERE id=$1`, [uid, hash]);
+    res.json({ok:true});
+  }catch(e){ res.status(500).json({ok:false, message:'変更に失敗しました'}); }
+});
+
+// 住所 CRUD（一覧）
+app.get('/admin/users/:id/addresses', requireAuth, async (req,res)=>{
+  const uid = req.params.id;
+  // 権限：本人 or admin
+  if (uid !== req.session.user.id && !req.session.user.roles.includes('admin')) return res.status(403).json({ok:false});
+  const rows = await dbQuery(`SELECT id,full_name,phone,postal_code,prefecture,city,address_line1,address_line2,address_type,is_default FROM addresses WHERE user_id=$1 ORDER BY is_default DESC, created_at DESC`, [uid]);
+  res.json({ok:true, addresses: rows});
+});
+// 1件
+app.get('/admin/users/:id/addresses/:aid', requireAuth, async (req,res)=>{
+  const {id:uid, aid} = req.params;
+  if (uid !== req.session.user.id && !req.session.user.roles.includes('admin')) return res.status(403).json({ok:false});
+  const a = (await dbQuery(`SELECT id,full_name,phone,postal_code,prefecture,city,address_line1,address_line2,address_type,is_default FROM addresses WHERE id=$1 AND user_id=$2`, [aid, uid]))[0];
+  if (!a) return res.status(404).json({ok:false});
+  res.json({ok:true, address:a});
+});
+// 作成
+app.post('/admin/users/:id/addresses', requireAuth, csrfProtect, async (req,res)=>{
+  const uid = req.params.id;
+  if (uid !== req.session.user.id && !req.session.user.roles.includes('admin')) return res.status(403).json({ok:false});
+  const b = req.body || {};
+  if (b.is_default) await dbQuery(`UPDATE addresses SET is_default=false WHERE user_id=$1 AND is_default=true`, [uid]);
+  const created = await dbQuery(
+    `INSERT INTO addresses (user_id, full_name, phone, postal_code, prefecture, city, address_line1, address_line2, address_type, is_default, scope)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+    [uid, b.full_name, b.phone, b.postal_code, b.prefecture, b.city, b.address_line1, b.address_line2 || null, b.address_type || 'shipping', !!b.is_default, 'user']
+  );
+  res.json({ok:true, id: created[0].id});
+});
+// 更新
+app.patch('/admin/users/:id/addresses/:aid', requireAuth, csrfProtect, async (req,res)=>{
+  const {id:uid, aid} = req.params;
+  if (uid !== req.session.user.id && !req.session.user.roles.includes('admin')) return res.status(403).json({ok:false});
+  const b = req.body || {};
+  if (b.is_default) await dbQuery(`UPDATE addresses SET is_default=false WHERE user_id=$1 AND id<>$2 AND is_default=true`, [uid, aid]);
+  await dbQuery(
+    `UPDATE addresses SET full_name=$3, phone=$4, postal_code=$5, prefecture=$6, city=$7, address_line1=$8, address_line2=$9, address_type=$10, is_default=$11, updated_at=now()
+     WHERE id=$2 AND user_id=$1`,
+    [uid, aid, b.full_name, b.phone, b.postal_code, b.prefecture, b.city, b.address_line1, b.address_line2 || null, b.address_type || 'shipping', !!b.is_default]
+  );
+  res.json({ok:true});
+});
+// 削除
+app.delete('/admin/users/:id/addresses/:aid', requireAuth, async (req,res)=>{
+  const {id:uid, aid} = req.params;
+  if (uid !== req.session.user.id && !req.session.user.roles.includes('admin')) return res.status(403).json({ok:false});
+  await dbQuery(`DELETE FROM addresses WHERE id=$1 AND user_id=$2`, [aid, uid]);
+  res.json({ok:true});
+});
+
+// 取引先検索（既存）
+app.get('/admin/partners/search', requireAuth, async (req,res)=>{
+  const q = (req.query.q||'').trim();
+  if (!q) return res.json({ok:true, partners:[]});
+  const rows = await dbQuery(
+    `SELECT id,name,postal_code,prefecture,city,address1 FROM partners
+     WHERE (name ILIKE $1 OR phone ILIKE $1 OR postal_code ILIKE $1)
+     ORDER BY updated_at DESC LIMIT 20`,
+     [`%${q}%`]
+  );
+  res.json({ok:true, partners: rows});
+});
+
+// 取引先 紐付け
+app.post('/admin/users/:id/partner', requireAuth, csrfProtect, async (req,res)=>{
+  const uid = req.params.id;
+  if (uid !== req.session.user.id && !req.session.user.roles.includes('admin')) return res.status(403).json({ok:false});
+  const pid = (req.body.partner_id||'').trim();
+  const exists = await dbQuery(`SELECT 1 FROM partners WHERE id=$1`, [pid]);
+  if (!exists.length) return res.status(400).json({ok:false, message:'取引先が見つかりません'});
+  await dbQuery(`UPDATE users SET partner_id=$2, updated_at=now() WHERE id=$1`, [uid, pid]);
+  res.json({ok:true});
+});
+
+// 取引先 新規作成して紐付け
+app.post('/admin/users/:id/partner/create', requireAuth, csrfProtect, async (req,res)=>{
+  const uid = req.params.id;
+  if (uid !== req.session.user.id && !req.session.user.roles.includes('admin')) return res.status(403).json({ok:false});
+  const b = req.body || {};
+  if (!b.name) return res.status(400).json({ok:false, message:'名称は必須です'});
+  const ins = await dbQuery(
+    `INSERT INTO partners (name, postal_code, prefecture, city, address1, address2, phone)
+     VALUES ($1,$2,$3,$4,$5,$6,$7, $8) RETURNING id`,
+     [b.name, b.postal_code||null, b.prefecture||null, b.city||null, b.address1||null, b.address2||null, b.phone||null]
+  );
+  await dbQuery(`UPDATE users SET partner_id=$2, updated_at=now() WHERE id=$1`, [uid, ins[0].id]);
+  res.json({ok:true, partner_id: ins[0].id});
+});
+
 // 開発支援：CSRFエラーの見やすい応答
 app.use((err, req, res, next) => {
   if (err && err.code === 'EBADCSRFTOKEN') {

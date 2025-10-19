@@ -1,0 +1,188 @@
+<%- include('../../partials/header', {
+  title: (isSelf ? 'アカウント設定' : `ユーザー: ${user.name}`),
+  extraCSS: '/styles/user-show.css',
+  extraJS: '/js/user-show.js'
+}) %>
+
+<main class="us">
+  <!-- ページヘッダ -->
+  <header class="us__head">
+    <div class="us__title">
+      <h1><%= user.name %></h1>
+      <div class="us__meta">
+        <span>登録: <%= new Date(user.created_at).toLocaleDateString('ja-JP') %></span>
+      </div>
+      <div class="us__meta">
+        <span>更新: <%= new Date(user.updated_at).toLocaleDateString('ja-JP') %></span>
+      </div>
+    </div>
+    <div class="us__actions">
+      <button type="button" id="btnEdit" class="btn btn--primary">編集</button>
+      <button type="button" id="btnCancel" class="btn btn--ghost" hidden>キャンセル</button>
+      <button type="submit" form="profileForm" id="btnSave" class="btn btn--primary" hidden>保存</button>
+    </div>
+  </header>
+
+  <section class="us__grid">
+    <!-- ユーザー基本情報（表示→編集切替） -->
+    <article class="card">
+      <div class="card__head">
+        <h2>ユーザー情報</h2>
+      </div>
+
+      <!-- 表示モード -->
+      <dl class="kv" id="viewProfile">
+        <div><dt>氏名</dt><dd><%= user.name %></dd></div>
+        <div><dt>メール</dt><dd><%= user.email %></dd></div>
+        <% if (currentRoles.includes('admin')) { %>
+        <div><dt>ロール</dt><dd><%= (user.roles||[]).join(', ') %></dd></div>
+        <% } %>
+        <!-- <% if (user.phone) { %><div><dt>電話</dt><dd><%= user.phone %></dd></div><% } %> -->
+      </dl>
+
+      <!-- 編集モード -->
+      <form id="profileForm" class="form" action="/admin/users/<%= user.id %>" method="POST" hidden>
+        <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
+        <div class="grid2">
+          <div class="field">
+            <label for="name">氏名 *</label>
+            <input id="name" name="name" type="text" required maxlength="60" value="<%= user.name %>">
+          </div>
+          <div class="field">
+            <label for="email">メール *</label>
+            <input id="email" name="email" type="email" required value="<%= user.email %>">
+          </div>
+        </div>
+        <div class="grid2">
+          <!-- <div class="field">
+            <label for="phone">電話（任意）</label>
+            <input id="phone" name="phone" type="tel" value="<%= user.phone || '' %>">
+          </div> -->
+          <% if (currentRoles.includes('admin')) { %>
+          <div class="field">
+            <label for="roles">ロール（管理用）</label>
+            <input id="roles" name="roles" type="text" value="<%= (user.roles||[]).join(',') %>" <%= isSelf && !currentRoles.includes('admin') ? 'readonly' : '' %>>
+            <p class="hint">カンマ区切り（例: buyer,seller）。本人は変更不可。</p>
+          </div>
+          <% } %>
+        </div>
+      </form>
+    </article>
+
+    <!-- パスワード変更（本人のみ / コンパクト） -->
+    <% if (isSelf) { %>
+    <article class="card card--tight">
+      <div class="card__head">
+        <h2>パスワード</h2>
+      </div>
+      <form id="pwForm" class="form-inline" action="/admin/users/<%= user.id %>/password" method="POST" novalidate>
+        <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
+        <div class="field">
+          <label for="curPw">現在のパスワード</label>
+          <input id="curPw" name="current" type="password" required>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label for="newPw">新しいパスワード</label>
+            <input id="newPw" name="password" type="password" required minlength="8">
+          </div>
+          <div class="field">
+            <label for="newPw2">確認</label>
+            <input id="newPw2" name="passwordConfirm" type="password" required minlength="8">
+          </div>
+        </div>
+        <div class="row-right">
+          <button class="btn btn--primary" type="submit">変更</button>
+        </div>
+        <p class="error" id="pwErr" aria-live="polite"></p>
+      </form>
+    </article>
+    <% } %>
+
+    <!-- 所属取引先（コンパクト＆視認性UP） -->
+    <article class="card">
+      <div class="card__head">
+        <h2>所属取引先</h2>
+      </div>
+
+      <% if (!partner) { %>
+        <p class="muted">未所属</p>
+      <% } else { %>
+        <div class="partner">
+          <div class="partner__main">
+            <div class="partner__name">
+              <span class="partner__badge partner__badge--<%= partner.status %>">
+                <%= partner.status==='active'?'有効':'無効' %>
+              </span>
+              <strong><%= partner.name %></strong>
+              <span class="partner__type"><%= partner.type %></span>
+            </div>
+            <div class="partner__addr">
+              〒<%= partner.postal_code || '—' %>　
+              <%= [partner.prefecture, partner.city, partner.address1, partner.address2].filter(Boolean).join(' ') || '—' %>
+            </div>
+            <div class="partner__sub">
+              <span>電話: <%= partner.phone || '—' %></span>
+              <span class="sep">•</span>
+              <span>請求: <%= partner.billing_email || '—' %></span>
+            </div>
+          </div>
+          <div class="partner__action">
+            <% if (currentRoles.includes('admin')) { %>
+              <a class="btn btn--ghost" href="/admin/partners/<%= partner.id %>">取引先詳細へ</a>
+            <% } %>
+            <!-- <button type="button" class="btn btn--primary" id="btnChangePartner">変更</button> -->
+          </div>
+        </div>
+
+        <!-- 取引先変更モーダル（検索→選択 or 新規作成）  -->
+        <%- include('./_partner-modal', { csrfToken }) %>
+      <% } %>
+    </article>
+
+    <!-- 住所（複数） -->
+    <article class="card">
+      <div class="card__head">
+        <h2>住所</h2>
+        <div class="row-gap">
+          <button type="button" class="btn btn--primary" id="btnAddAddr">新しい住所</button>
+          <button type="button" class="btn btn--ghost" id="btnAllAddr">すべての住所を見る</button>
+        </div>
+      </div>
+
+      <% if (!addresses.length) { %>
+        <p class="muted">住所はまだ登録されていません。</p>
+      <% } else { %>
+        <ul class="addr-list">
+          <% addresses.slice(0,3).forEach(a => { %>
+            <li class="addr">
+              <div class="addr__head">
+                <strong><%= a.full_name %></strong>
+                <% if (a.is_default) { %><span class="pill">既定</span><% } %>
+                <span class="muted"><%= a.address_type || 'shipping' %></span>
+              </div>
+              <div class="addr__body">
+                〒<%= a.postal_code %>　
+                <%= [a.prefecture, a.city, a.address_line1, a.address_line2].filter(Boolean).join(' ') %>　
+                <span class="muted">TEL: <%= a.phone || '—' %></span>
+              </div>
+              <div class="addr__foot">
+                <button class="link-btn" data-edit-addr="<%= a.id %>">編集</button>
+                <button class="link-btn danger" data-del-addr="<%= a.id %>">削除</button>
+              </div>
+            </li>
+          <% }) %>
+        </ul>
+        <% if (addresses.length > 3) { %>
+          <p class="muted small">…他 <%= addresses.length - 3 %> 件</p>
+        <% } %>
+      <% } %>
+    </article>
+  </section>
+</main>
+
+<!-- 住所モーダル（新規/編集 共用） -->
+<%- include('./_address-modal', { csrfToken }) %>
+
+<script src="/js/user-show.js"></script>
+<%- include('../../partials/footer') %>

@@ -63,6 +63,7 @@
       <% if (typeof currentUser !== 'undefined' && currentUser) { %>
         <li role="none"><a role="menuitem"
             href="/dashboard/<%= (currentUser.roles?.includes('seller') ? 'seller' : 'buyer') %>">ダッシュボード</a></li>
+        <li><a href="/admin/users/<%= currentUser.id %>">アカウント情報</a></li>
         <li class="nav-logout" role="none">
           <form method="POST" action="/logout">
             <% if (typeof csrfToken !=='undefined' && csrfToken) { %>
