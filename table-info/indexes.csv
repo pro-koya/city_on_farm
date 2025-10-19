@@ -14,15 +14,19 @@ public,categories,categories_name_key,CREATE UNIQUE INDEX categories_name_key ON
 public,categories,categories_pkey,CREATE UNIQUE INDEX categories_pkey ON public.categories USING btree (id),t,t
 public,categories,categories_slug_key,CREATE UNIQUE INDEX categories_slug_key ON public.categories USING btree (slug),t,f
 public,contacts,contacts_pkey,CREATE UNIQUE INDEX contacts_pkey ON public.contacts USING btree (id),t,t
+public,contacts,idx_contacts_category,CREATE INDEX idx_contacts_category ON public.contacts USING btree (category),f,f
 public,contacts,idx_contacts_created_at,CREATE INDEX idx_contacts_created_at ON public.contacts USING btree (created_at DESC),f,f
 public,contacts,idx_contacts_email,CREATE INDEX idx_contacts_email ON public.contacts USING btree (email),f,f
 public,contacts,idx_contacts_status,CREATE INDEX idx_contacts_status ON public.contacts USING btree (status),f,f
+public,contacts,idx_contacts_subject_body_trgm,"CREATE INDEX idx_contacts_subject_body_trgm ON public.contacts USING gin ((((COALESCE(subject, ''::text) || ' '::text) || COALESCE(message, ''::text))) gin_trgm_ops)",f,f
+public,contacts,idx_contacts_subject_trgm,CREATE INDEX idx_contacts_subject_trgm ON public.contacts USING gin (subject gin_trgm_ops),f,f
 public,contacts,idx_contacts_type,CREATE INDEX idx_contacts_type ON public.contacts USING btree (type),f,f
 public,coupons,coupons_code_key,CREATE UNIQUE INDEX coupons_code_key ON public.coupons USING btree (code),t,f
 public,coupons,coupons_pkey,CREATE UNIQUE INDEX coupons_pkey ON public.coupons USING btree (id),t,t
 public,coupons,ix_coupons_active_window,"CREATE INDEX ix_coupons_active_window ON public.coupons USING btree (is_active, starts_at, ends_at, code)",f,f
 public,option_labels,option_labels_pkey,"CREATE UNIQUE INDEX option_labels_pkey ON public.option_labels USING btree (category, value)",t,t
 public,option_labels,option_labels_unique,"CREATE UNIQUE INDEX option_labels_unique ON public.option_labels USING btree (category, value)",t,f
+public,option_labels,ux_option_labels_category_value,"CREATE UNIQUE INDEX ux_option_labels_category_value ON public.option_labels USING btree (category, value)",t,f
 public,order_addresses,idx_order_addresses_order,CREATE INDEX idx_order_addresses_order ON public.order_addresses USING btree (order_id),f,f
 public,order_addresses,idx_order_addresses_type,CREATE INDEX idx_order_addresses_type ON public.order_addresses USING btree (address_type),f,f
 public,order_addresses,ix_order_addresses_order_id,CREATE INDEX ix_order_addresses_order_id ON public.order_addresses USING btree (order_id),f,f

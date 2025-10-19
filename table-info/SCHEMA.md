@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-10-18T18:29:02.888Z
+> Generated at: 2025-10-19T18:29:34.159Z
 
 ---
 
@@ -203,6 +203,10 @@
 | 8 | `handled_at` | `timestamp with time zone` | YES |  |  |
 | 9 | `created_at` | `timestamp with time zone` | NO | now() |  |
 | 10 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+| 11 | `subject` | `text` | YES |  |  |
+| 12 | `category` | `contact_category_enum` *(enum)* | YES | 'other'::contact_category_enum |  |
+
+> **Enum `contact_category_enum` values**: `listing_registration`, `ordering_trading`, `site_bug`, `site_request`, `press_partnership`, `other`
 
 **Constraints**
 
@@ -216,6 +220,11 @@
   
   ```sql
   CREATE UNIQUE INDEX contacts_pkey ON public.contacts USING btree (id)
+  ```
+- `idx_contacts_category`
+  
+  ```sql
+  CREATE INDEX idx_contacts_category ON public.contacts USING btree (category)
   ```
 - `idx_contacts_created_at`
   
@@ -231,6 +240,16 @@
   
   ```sql
   CREATE INDEX idx_contacts_status ON public.contacts USING btree (status)
+  ```
+- `idx_contacts_subject_body_trgm`
+  
+  ```sql
+  CREATE INDEX idx_contacts_subject_body_trgm ON public.contacts USING gin ((((COALESCE(subject, ''::text) || ' '::text) || COALESCE(message, ''::text))) gin_trgm_ops)
+  ```
+- `idx_contacts_subject_trgm`
+  
+  ```sql
+  CREATE INDEX idx_contacts_subject_trgm ON public.contacts USING gin (subject gin_trgm_ops)
   ```
 - `idx_contacts_type`
   
@@ -322,6 +341,11 @@
   
   ```sql
   CREATE UNIQUE INDEX option_labels_unique ON public.option_labels USING btree (category, value)
+  ```
+- `ux_option_labels_category_value`
+  
+  ```sql
+  CREATE UNIQUE INDEX ux_option_labels_category_value ON public.option_labels USING btree (category, value)
   ```
 
 ---
@@ -1151,6 +1175,7 @@ _No indexes_
 
 ## ENUM Types (global)
 
+- `public.contact_category_enum`: `listing_registration`, `ordering_trading`, `site_bug`, `site_request`, `press_partnership`, `other`
 - `public.order_address_type`: `shipping`, `billing`
 - `public.order_status`: `pending`, `paid`, `shipped`, `cancelled`, `confirmed`, `processing`, `delivered`, `canceled`, `refunded`, `fulfilled`
 - `public.partner_status`: `active`, `inactive`, `prospect`, `suspended`

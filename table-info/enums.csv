@@ -1,4 +1,10 @@
 schema_name,enum_type,enum_value,sort_order
+public,contact_category_enum,listing_registration,1
+public,contact_category_enum,ordering_trading,2
+public,contact_category_enum,site_bug,3
+public,contact_category_enum,site_request,4
+public,contact_category_enum,press_partnership,5
+public,contact_category_enum,other,6
 public,order_address_type,shipping,1
 public,order_address_type,billing,2
 public,order_status,pending,1
