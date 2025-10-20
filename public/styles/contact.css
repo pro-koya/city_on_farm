@@ -147,10 +147,10 @@ form button:hover {
   background-color: var(--color-accent);
 }
 
-.error-message {
+.error {
   color: var(--color-error);
   font-size: 0.9rem;
-  margin-top: -0.5rem;
+  margin: 0;
 }
 
 @keyframes fadeIn {

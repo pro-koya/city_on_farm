@@ -2,31 +2,39 @@
 
     <div class="contact-container">
         <h2>お問い合わせ</h2>
-        <form id="contact-form" action="/contact" method="POST">
-            <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
-                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <% } %>
+        <form id="contact-form" action="/contact" method="POST" novalidate>
+            <p class="error"><%= !globalError ? '' : globalError%></p>
+            <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
+
             <label for="name">お名前</label>
-            <input type="text" id="name" name="name" required />
+            <input type="text" id="name" name="name" value="<%= form?.name || '' %>" required>
+            <p class="error"><%= fieldErrors?.name || '' %></p>
 
             <label for="email">メールアドレス</label>
-            <input type="email" id="email" name="email" required />
+            <input type="email" id="email" name="email" value="<%= form?.email || '' %>" required>
+            <p class="error"><%= fieldErrors?.email || '' %></p>
 
-            <label for="type">お問い合わせ種別</label>
+            <label for="category">お問い合わせ種別</label>
             <div class="select-wrap">
-                <select id="type" name="type" required>
-                    <option value="" disabled <%= !form || !form.type ? 'selected' : '' %>>選択してください</option>
-                    <option value="general"     <%= form && form.type === 'general' ? 'selected' : '' %>>一般のお問合せ</option>
-                    <option value="seller"      <%= form && form.type === 'seller' ? 'selected' : '' %>>出品・登録について</option>
-                    <option value="order"       <%= form && form.type === 'order' ? 'selected' : '' %>>発注・取引について</option>
-                    <option value="technical"   <%= form && form.type === 'technical' ? 'selected' : '' %>>技術的な不具合</option>
-                    <option value="partnership" <%= form && form.type === 'partnership' ? 'selected' : '' %>>取材・パートナーシップ</option>
-                    <option value="other"       <%= form && form.type === 'other' ? 'selected' : '' %>>その他</option>
+                <select id="category" name="category" required>
+                <option value="" disabled <%= !form?.category ? 'selected' : '' %>>選択してください</option>
+                <option value="listing_registration"      <%= form?.category==='listing_registration'?'selected':'' %>>出品・登録について</option>
+                <option value="ordering_trading"          <%= form?.category==='ordering_trading'?'selected':'' %>>発注・取引について</option>
+                <option value="site_request"              <%= form?.category==='site_request'?'selected':'' %>>サイトへの要望</option>
+                <option value="site_bug"                  <%= form?.category==='site_bug'?'selected':'' %>>サイトの不具合</option>
+                <option value="press_partnership"         <%= form?.category==='press_partnership'?'selected':'' %>>取材・パートナーシップ</option>
+                <option value="other"                     <%= form?.category==='other'?'selected':'' %>>その他</option>
                 </select>
             </div>
+            <p class="error"><%= fieldErrors?.category || '' %></p>
+
+            <label for="subject">件名</label>
+            <input type="text" id="subject" name="subject" value="<%= form?.subject || '' %>" required>
+            <p class="error"><%= fieldErrors?.subject || '' %></p>
 
             <label for="message">お問い合わせ内容</label>
-            <textarea id="message" name="message" rows="7" required></textarea>
+            <textarea id="message" name="message" rows="7" required><%= form?.message || '' %></textarea>
+            <p class="error"><%= fieldErrors?.message || '' %></p>
 
             <button type="submit">送信する</button>
         </form>

@@ -24,6 +24,7 @@ html,body{background:var(--bg);color:var(--text)}
 }
 
 .icon{font-size:52px; line-height:1; margin-bottom:8px}
+.icon img {width: 20vw;}
 h1{margin:.2rem 0 8px; font-size:clamp(1.4rem,3.5vw,1.8rem)}
 .lead{color:#374151; margin:0 0 14px; line-height:1.8}
 

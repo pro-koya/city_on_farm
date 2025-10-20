@@ -1,32 +1,45 @@
-<%- include('../../partials/header', { title, extraCSS: '/styles/admin-contacts.css' }) %>
+<%- include('../../partials/header', {
+  title,
+  extraCSS: '/styles/admin-contacts.css'
+}) %>
 
 <main class="contacts">
+  <!-- ツールバー（SPは2段・固定） -->
   <form class="toolbar" method="GET" action="/admin/contacts">
-    <div class="toolbar__left">
+    <div class="toolbar__row">
       <h1>お問い合わせ一覧</h1>
-      <p class="muted"><%= total || 0 %> 件</p>
+      <p class="muted total"><%= total || 0 %> 件</p>
     </div>
-    <div class="toolbar__right">
+
+    <div class="toolbar__row toolbar__filters">
       <div class="search">
-        <input type="search" name="q" value="<%= q||'' %>" placeholder="氏名・メール・本文で検索">
-        <button class="icon-btn" type="submit">🔍</button>
+        <input type="search" name="q" value="<%= q||'' %>" placeholder="氏名・メール・本文で検索" aria-label="検索">
+        <button class="icon-btn" type="submit" aria-label="検索">🔍</button>
+        <% if (q) { %><a class="clear" href="<%= (buildQuery ? buildQuery({q:''}) : '?') %>" aria-label="条件クリア">×</a><% } %>
       </div>
-      <select name="status">
-        <option value="all"        <%= (status||'all')==='all'?'selected':'' %>>すべて</option>
-        <option value="open"       <%= status==='open'?'selected':'' %>>未対応</option>
-        <option value="in_progress"<%= status==='in_progress'?'selected':'' %>>対応中</option>
-        <option value="closed"     <%= status==='closed'?'selected':'' %>>完了</option>
-      </select>
-      <select name="type">
-        <option value="all"         <%= (type||'all')==='all'?'selected':'' %>>すべて</option>
-        <option value="general"     <%= type==='general'?'selected':'' %>>一般</option>
-        <option value="seller"      <%= type==='seller'?'selected':'' %>>出品</option>
-        <option value="order"       <%= type==='order'?'selected':'' %>>発注</option>
-        <option value="technical"   <%= type==='technical'?'selected':'' %>>技術</option>
-        <option value="partnership" <%= type==='partnership'?'selected':'' %>>取材/提携</option>
-        <option value="other"       <%= type==='other'?'selected':'' %>>その他</option>
-      </select>
-      <a class="btn btn--ghost" href="/contact" target="_blank" rel="noopener">フォームを開く</a>
+
+      <div class="selects">
+        <label class="sr-only" for="sStatus">状態</label>
+        <select id="sStatus" name="status" class="pulldown">
+          <option value="all"         <%= (status||'all')==='all'?'selected':'' %>>状態: すべて</option>
+          <option value="open"        <%= status==='open'?'selected':'' %>>未対応</option>
+          <option value="in_progress" <%= status==='in_progress'?'selected':'' %>>対応中</option>
+          <option value="closed"      <%= status==='closed'?'selected':'' %>>完了</option>
+        </select>
+
+        <label class="sr-only" for="sType">種別</label>
+        <select id="sType" name="type" class="pulldown">
+          <option value="all"          <%= (type||'all')==='all'?'selected':'' %>>種別: すべて</option>
+          <option value="general"      <%= type==='general'?'selected':'' %>>一般</option>
+          <option value="seller"       <%= type==='seller'?'selected':'' %>>出品</option>
+          <option value="order"        <%= type==='order'?'selected':'' %>>発注</option>
+          <option value="technical"    <%= type==='technical'?'selected':'' %>>技術</option>
+          <option value="partnership"  <%= type==='partnership'?'selected':'' %>>取材/提携</option>
+          <option value="other"        <%= type==='other'?'selected':'' %>>その他</option>
+        </select>
+
+        <button class="btn btn only-pc" type="submit">絞り込む</button>
+      </div>
     </div>
   </form>
 
@@ -36,23 +49,25 @@
       <h2>該当データがありません</h2>
     </section>
   <% } else { %>
-    <div class="table-wrap">
+
+    <!-- PC: テーブル -->
+    <div class="table-wrap only-pc">
       <table class="table">
         <thead>
           <tr>
-            <th>日時</th><th>種別</th><th>氏名</th><th>メール</th><th>状態</th><th></th>
+            <th>日時</th><th>カテゴリ</th><th>氏名</th><th>メール</th><th>状態 / 担当</th><th></th>
           </tr>
         </thead>
         <tbody>
         <% items.forEach(function(it){ %>
           <tr>
-            <td><%= new Date(it.created_at).toLocaleString('ja-JP') %></td>
-            <td><span class="pill"><%= it.type %></span></td>
+            <td><time datetime="<%= new Date(it.created_at).toISOString() %>"><%= new Date(it.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }) %></time></td>
+            <td><span class="pill"><%= it.category_ja %></span></td>
             <td><%= it.name %></td>
-            <td><a href="mailto:<%= it.email %>"><%= it.email %></a></td>
+            <td class="break"><a href="mailto:<%= it.email %>"><%= it.email %></a></td>
             <td>
               <span class="status status--<%= it.status %>"><%= it.status %></span>
-              <% if (it.handled_by) { %><span class="muted">/ 担当: <%= it.handled_by %></span><% } %>
+              <% if (it.handled_name) { %><span class="muted"> / <%= it.handled_name %></span><% } %>
             </td>
             <td><a class="link" href="/admin/contacts/<%= it.id %>">詳細 →</a></td>
           </tr>
@@ -61,15 +76,45 @@
       </table>
     </div>
 
+    <!-- SP: カード -->
+    <section class="cards only-sp" id="cards">
+      <% items.forEach(function(it){ %>
+        <article class="card" data-status="<%= it.status %>">
+          <header class="card__head">
+            <span class="status status--<%= it.status %>"><%= it.status %></span>
+            <span class="pill"><%= it.category_ja %></span>
+            <time datetime="<%= new Date(it.created_at).toISOString() %>"><%= new Date(it.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }) %></time>
+          </header>
+          <div class="card__body">
+            <div class="row">
+              <div class="kv"><span>氏名</span><strong><%= it.name %></strong></div>
+              <div class="kv"><span>メール</span><a class="email" href="mailto:<%= it.email %>"><%= it.email %></a></div>
+            </div>
+            <% if (it.message) { %>
+              <p class="excerpt"><%= String(it.message).replace(/\s+/g,' ').slice(0, 120) %><%=
+                String(it.message).length > 120 ? '…' : '' %></p>
+            <% } %>
+          </div>
+          <footer class="card__foot">
+            <span class="muted">担当: <%= !it.handled_name ? '未割当' : it.handled_name %></span>
+            <a class="btn btn--primary" href="/admin/contacts/<%= it.id %>">詳細を見る</a>
+          </footer>
+        </article>
+      <% }) %>
+    </section>
+
+    <!-- ページャ（PC/SP共通） -->
     <% if (pagination) { %>
-      <nav class="pager">
+      <nav class="pager" aria-label="ページャ">
         <% for (let p=1; p<=pagination.pageCount; p++){ %>
-          <a class="pager__link <%= p===pagination.page?'is-active':'' %>"
+          <a class="page <%= p===pagination.page?'is-active':'' %>"
              href="<%= buildQuery ? buildQuery({page:p}) : ('?page='+p) %>"><%= p %></a>
         <% } %>
       </nav>
     <% } %>
+
   <% } %>
 </main>
 
+<script src="/js/admin-contacts.js"></script>
 <%- include('../../partials/footer') %>

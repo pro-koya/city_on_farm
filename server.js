@@ -907,7 +907,9 @@ app.get('/', async (req, res, next) => {
 app.get('/contact', (req, res) => {
   res.render('contact', {
     title: 'お問い合わせ',
-    form: {}
+    form: {},
+    fieldErrors: {},
+    globalError: null
   });
 });
 
@@ -940,48 +942,50 @@ if (hasSmtp) {
  * =======================================================*/
 app.post(
   '/contact',
-  csrfProtect,
   [
     body('name').trim().notEmpty().withMessage('お名前を入力してください'),
     body('email').isEmail().withMessage('有効なメールアドレスを入力してください'),
-    body('type').isIn(['general','seller','order','technical','partnership','other']).withMessage('お問い合わせ種別を選択してください'),
+    body('category').isIn(['listing_registration','ordering_trading','site_request','site_bug','press_partnership','other']).withMessage('お問い合わせ種別を選択してください'),
+    body('subject').trim().notEmpty().withMessage('件名を入力してください'),
     body('message').trim().isLength({ min: 1 }).withMessage('お問い合わせ内容を入力してください'),
   ],
   async (req, res, next) => {
     const errors = validationResult(req);
-    const { name, email, type, message } = req.body;
+    const { name, email, category, subject, message } = req.body;
 
     if (!errors.isEmpty()) {
       const fieldErrors = {};
       for (const e of errors.array()) if (!fieldErrors[e.path]) fieldErrors[e.path] = e.msg;
+      console.log('error');
       return res.status(422).render('contact', {
         title: 'お問い合わせ',
         csrfToken: req.csrfToken(),
-        form: { name, email, type, message },
-        fieldErrors
+        form: { name, email, category, subject, message },
+        fieldErrors,
+        globalError: null
       });
     }
 
     try {
       // DB保存
       const rows = await dbQuery(
-        `INSERT INTO contacts (name, email, type, message)
-         VALUES ($1, $2, $3, $4)
+        `INSERT INTO contacts (name, email, category, subject, message, type)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id, created_at`,
-        [String(name).trim(), String(email).trim().toLowerCase(), type, String(message).trim()]
+        [String(name).trim(), String(email).trim().toLowerCase(), category, subject, String(message).trim(), category + ' : ' + subject]
       );
       const contact = rows[0];
 
       // 管理者向けメール
       const adminTo = process.env.CONTACT_TO || process.env.SMTP_USER || 'kouya114@outlook.jp';
       const from    = process.env.CONTACT_FROM || `kouya114@outlook.jp'`;
-      const subject = `[お問い合わせ] ${type.toUpperCase()} - ${name}`;
+      const mailSubject = `[お問い合わせ] ${subject} : ${category.toUpperCase()} - ${name}`;
       const adminText =
 `新規お問い合わせが届きました。
 
 ■ID: ${contact.id}
 ■日時: ${new Date(contact.created_at).toLocaleString('ja-JP')}
-■種別: ${type}
+■種別: ${category}
 ■お名前: ${name}
 ■メール: ${email}
 
@@ -992,7 +996,7 @@ ${message}
       await mailer.sendMail({
         from,
         to: adminTo,
-        subject,
+        subject: mailSubject,
         text: adminText
       });
 
@@ -1009,7 +1013,7 @@ ${message}
 担当者が内容を確認のうえ、通常1〜2営業日以内にご返信いたします。
 
 --- お問い合わせ控え ---
-お問い合わせ種別: ${type}
+お問い合わせ種別: ${category}
 お名前: ${name}
 メール: ${email}
 
@@ -1023,13 +1027,14 @@ ${message}
         console.warn('auto-reply failed (skip):', e.message);
       }
 
+      console.log('contact safe');
       return res.redirect(`/contact/thanks?no=${contact.id}`);;
     } catch (e) {
       console.error('contact insert error:', e);
       return res.status(500).render('contact', {
         title: 'お問い合わせ',
         csrfToken: req.csrfToken(),
-        form: { name, email, type, message },
+        form: { name, email, category, subject, message },
         fieldErrors: {},
         globalError: '送信に失敗しました。時間をおいて再度お試しください。'
       });
@@ -5307,15 +5312,38 @@ app.get('/admin/contacts',
         params
       ))[0]?.cnt || 0;
 
+      const whereSql = (where && where.length) ? where.join(' AND ') : 'TRUE';
+
+      // 末尾に LIMIT / OFFSET をパラメータで追加
+      const paramsWithPage = [...params, pageSize, offset];
+
       const list = await dbQuery(
         `
-        SELECT id, name, email, type, status, created_at, handled_by, handled_at
-          FROM contacts
-         WHERE ${where.join(' AND ')}
-         ORDER BY created_at DESC
-         LIMIT ${pageSize} OFFSET ${offset}
+        SELECT
+          c.id,
+          c.name,
+          c.email,
+          c.type,
+          c.status,
+          c.category,
+          c.subject,
+          c.created_at,
+          c.handled_by,
+          c.handled_at,
+          COALESCE(ol.label_ja, c.category::text) AS category_ja,
+          u.name AS handled_name
+        FROM contacts AS c
+        LEFT JOIN users AS u
+          ON u.id = c.handled_by
+        LEFT JOIN option_labels AS ol
+          ON ol.category = 'contact_category'
+        AND ol.value = c.category::text
+        AND ol.active = TRUE
+        WHERE ${whereSql}
+        ORDER BY c.created_at DESC
+        LIMIT $${paramsWithPage.length - 1} OFFSET $${paramsWithPage.length}
         `,
-        params
+        paramsWithPage
       );
 
       const pagination = { page: pageNum, pageCount: Math.max(1, Math.ceil(total / pageSize)) };
@@ -5343,6 +5371,7 @@ app.get('/admin/contacts/:id',
       const rows = await dbQuery(`SELECT * FROM contacts WHERE id = $1::uuid LIMIT 1`, [id]);
       const c = rows[0];
       if (!c) return res.status(404).render('errors/404', { title: '見つかりません' });
+      const category_ja = jaLabel('contact_category', c.category) || null;
 
       // 担当者名の表示（任意）
       let handler = null;
@@ -5355,6 +5384,7 @@ app.get('/admin/contacts/:id',
         title: `お問い合わせ詳細`,
         item: c,
         handler,
+        category_ja,
       });
     } catch (e) { next(e); }
   }

@@ -6,17 +6,18 @@
   <section class="card">
     <h1>お問い合わせ詳細</h1>
     <dl class="kv">
-      <div><dt>ID</dt><dd><code><%= item.id %></code></dd></div>
-      <div><dt>日時</dt><dd><%= new Date(item.created_at).toLocaleString('ja-JP') %></dd></div>
-      <div><dt>種別</dt><dd><span class="pill"><%= item.type %></span></dd></div>
-      <div><dt>氏名</dt><dd><%= item.name %></dd></div>
-      <div><dt>メール</dt><dd><a href="mailto:<%= item.email %>"><%= item.email %></a></dd></div>
-      <div><dt>状態</dt><dd><span class="status status--<%= item.status %>"><%= item.status %></span></dd></div>
+      <div class="kv-row"><dt>ID：</dt><dd><code><%= item.id %></code></dd></div>
+      <div class="kv-row"><dt>日時：</dt><dd><%= new Date(item.created_at).toLocaleString('ja-JP') %></dd></div>
+      <div class="kv-row"><dt>件名：</dt><dd><%= item.subject %></dd></div>
+      <div class="kv-row"><dt>カテゴリ：</dt><dd><span class="pill"><%= category_ja || item.category %></span></dd></div>
+      <div class="kv-row"><dt>氏名：</dt><dd><%= item.name %></dd></div>
+      <div class="kv-row"><dt>メール：</dt><dd><a href="mailto:<%= item.email %>"><%= item.email %></a></dd></div>
+      <div class="kv-row"><dt>状態：</dt><dd><span class="status status--<%= item.status %>"><%= item.status %></span></dd></div>
       <% if (handler) { %>
-        <div><dt>担当</dt><dd><%= handler.name %>（<a href="mailto:<%= handler.email %>"><%= handler.email %></a>）</dd></div>
+        <div class="kv-row"><dt>担当：</dt><dd><%= handler.name %>（<a href="mailto:<%= handler.email %>"><%= handler.email %></a>）</dd></div>
       <% } %>
       <% if (item.handled_at) { %>
-        <div><dt>対応日時</dt><dd><%= new Date(item.handled_at).toLocaleString('ja-JP') %></dd></div>
+        <div class="kv-row"><dt>対応日時：</dt><dd><%= new Date(item.handled_at).toLocaleString('ja-JP') %></dd></div>
       <% } %>
     </dl>
 
@@ -26,7 +27,7 @@
     <form id="statusForm" class="actions" method="POST" action="/admin/contacts/<%= item.id %>/status">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <label class="select-wrap">
-        <select name="status" id="status">
+        <select name="status" id="status" class="pulldown">
           <option value="open"        <%= item.status==='open'?'selected':'' %>>未対応</option>
           <option value="in_progress" <%= item.status==='in_progress'?'selected':'' %>>対応中</option>
           <option value="closed"      <%= item.status==='closed'?'selected':'' %>>完了</option>
