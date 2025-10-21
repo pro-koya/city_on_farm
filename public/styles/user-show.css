@@ -219,7 +219,8 @@ input[type="checkbox"]:checked::after{
 }
 
 .form-inline .grid2 {
-    margin-top: 6px
+    margin-top: 6px;
+    grid-template-columns: 1fr;
 }
 
 .row-right {

@@ -455,28 +455,40 @@ body {
 .spec-table {
   width: 100%;
   border-collapse: separate;
-  border-spacing: 0;
+  border-spacing: 5px;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   overflow: hidden
+}
+table th,table td{
+  border-radius: 5px;
+  text-align: center;
+  padding: 10px 0;
 }
 
 .spec-table th,
 .spec-table td {
   padding: .7rem .9rem;
-  border-bottom: 1px solid #e5e7eb
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 8px;
 }
 
 .spec-table th {
   width: 35%;
+  background-color: var(--main);
+  color: var(--white);
+  border:solid 1px var(--main);
 }
 
 .spec-table td {
   width: 65%;
+  background-color: var(--white);
+  border: 1px solid var(--white);
 }
 
-.spec-table tr:nth-child(even) {
-  background: var(--hi)
+.spec-table tr:nth-child(even) > td {
+  background: var(--hi);
+  border: 1px solid var(--hi);
 }
 
 .criteria h4 {

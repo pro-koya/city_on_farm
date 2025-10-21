@@ -1,6 +1,7 @@
 <%- include('../partials/header', { title: product.title, extraCSS: '/styles/product-show.css' }) %>
 
 <main class="product-page" itemscope itemtype="https://schema.org/Product">
+  <a href="/products">←商品一覧へ</a>
   <!-- ===== ファーストビュー ===== -->
   <section class="top">
     <!-- PC: 左＝ギャラリー / 右＝情報、SP: 1カラム -->
@@ -82,10 +83,11 @@
       </form>
 
       <ul class="assurance">
-        <li>🚚 週2回出荷</li>
-        <li>❄️ 冷蔵・常温選択可</li>
-        <li>🔍 トレーサビリティ</li>
-        <li>↩︎ 返品可（条件あり）</li>
+        <% if (Array.isArray(tags) && tags.length) { %>
+          <% tags.forEach(function(tag){ %>
+            <li>#<%= tag.name %></li>
+          <% }); %>
+        <% } %>
       </ul>
     </div>
   </section>
