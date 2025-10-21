@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-10-20T18:34:31.860Z
+> Generated at: 2025-10-21T18:33:22.187Z
 
 ---
 
@@ -210,7 +210,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16668_10_not_null`, `2200_16668_1_not_null`, `2200_16668_2_not_null`, `2200_16668_3_not_null`, `2200_16668_4_not_null`, `2200_16668_5_not_null`, `2200_16668_6_not_null`, `2200_16668_9_not_null`, `contacts_status_check`, `contacts_type_check`
+- **CHECK**: `2200_16668_10_not_null`, `2200_16668_1_not_null`, `2200_16668_2_not_null`, `2200_16668_3_not_null`, `2200_16668_4_not_null`, `2200_16668_5_not_null`, `2200_16668_6_not_null`, `2200_16668_9_not_null`, `contacts_status_check`
 - **FOREIGN KEY**: `contacts_handled_by_fkey`
 - **PRIMARY KEY**: `contacts_pkey`
 

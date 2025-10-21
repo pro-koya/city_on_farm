@@ -57,7 +57,6 @@ public,contacts,2200_16668_9_not_null,CHECK
 public,contacts,contacts_handled_by_fkey,FOREIGN KEY
 public,contacts,contacts_pkey,PRIMARY KEY
 public,contacts,contacts_status_check,CHECK
-public,contacts,contacts_type_check,CHECK
 public,coupons,2200_16679_14_not_null,CHECK
 public,coupons,2200_16679_16_not_null,CHECK
 public,coupons,2200_16679_17_not_null,CHECK
