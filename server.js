@@ -1344,9 +1344,12 @@ app.get('/products/:slug', async (req, res, next) => {
   try {
     const slug = req.params.slug;
     const rows = await dbQuery(`
-      SELECT p.*, c.name AS category_name, u.name AS seller_name
+      SELECT p.*, c.name AS category_name, u.name AS seller_name,
+             prs.rating_avg  AS rating,
+             prs.review_count
         FROM products p
         LEFT JOIN categories c ON c.id = p.category_id
+        LEFT JOIN product_rating_stats prs ON prs.product_id = p.id
         JOIN users u ON u.id = p.seller_id
        WHERE p.slug = $1
        LIMIT 1
@@ -1370,6 +1373,31 @@ app.get('/products/:slug', async (req, res, next) => {
       [product.id]
     );
 
+    // レビュー（公開のみ・新しい順・最大 20 件）
+    const reviews = await dbQuery(`
+      SELECT r.id, r.rating AS stars, r.title, r.body AS text, r.created_at,
+             u.name AS author
+        FROM product_reviews r
+        JOIN users u ON u.id = r.user_id
+       WHERE r.product_id = $1 AND r.status = 'published'
+       ORDER BY r.created_at DESC
+       LIMIT 20
+    `, [product.id]);
+
+    // ログインユーザーが既に投稿済みか（編集に使う）
+    let myReview = null;
+    if (req.session?.user) {
+      const mine = await dbQuery(`
+        SELECT id, rating, title, body, status
+          FROM product_reviews
+         WHERE product_id = $1 AND user_id = $2
+         LIMIT 1
+      `, [product.id, req.session.user.id]);
+      myReview = mine[0] || null;
+    }
+
+    const currentUser = req.session?.user || null;
+
     // 関連（同カテゴリの新着）
     const related = await dbQuery(`
       SELECT p.slug, p.title, p.price, p.stock,
@@ -1386,11 +1414,66 @@ app.get('/products/:slug', async (req, res, next) => {
     res.set('Cache-Control', 'no-store');
     res.render('products/show', {
       title: product.title,
-      product, specs, tags, related,
-      recentlyViewed
+      product, specs, tags, related, reviews, myReview,
+      recentlyViewed, currentUser
     });
   } catch (e) { next(e); }
 });
+
+app.post(
+  '/products/:productId/reviews',
+  csrfProtect,
+  requireAuth,
+  [
+    body('rating').isInt({min:1,max:5}).withMessage('評価は1〜5を指定してください'),
+    body('body').trim().isLength({min: 5}).withMessage('レビュー本文を入力してください（5文字以上）'),
+    body('title').optional({checkFalsy:true}).trim().isLength({max:120})
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const fieldErrors = {};
+      for (const e of errors.array()) fieldErrors[e.path] = e.msg;
+      return res.status(422).json({ ok:false, fieldErrors });
+    }
+
+    const { productId } = req.params;
+    const userId = req.session.user.id;
+    const user_name = req.session.user.name;
+    const { rating, title, body: text } = req.body;
+
+    try {
+      // product 存在チェック（省略可）
+      const exists = await dbQuery(`SELECT 1 FROM products WHERE id=$1 LIMIT 1`, [productId]);
+      if (!exists.length) return res.status(404).json({ ok:false, error:'product_not_found' });
+
+      const rows = await dbQuery(`
+        INSERT INTO product_reviews (product_id, user_id, rating, title, body, status)
+        VALUES ($1,$2,$3,$4,$5,'published')
+        ON CONFLICT (product_id, user_id)
+        DO UPDATE SET rating=EXCLUDED.rating, title=EXCLUDED.title, body=EXCLUDED.body, status='published', updated_at=now()
+        RETURNING id, rating, title, body, created_at, updated_at
+      `, [productId, userId, Number(rating), title || null, text]);
+
+      // 最新の集計値を返す（ビューを再クエリ）
+      const stat = await dbQuery(`
+        SELECT review_count, rating_avg
+          FROM product_rating_stats
+         WHERE product_id = $1
+      `, [productId]);
+
+      return res.json({
+        ok: true,
+        review: rows[0],
+        userName: user_name,
+        stats: stat[0] || { review_count: 1, rating_avg: Number(rating) }
+      });
+    } catch (e) {
+      console.error('review upsert error:', e);
+      return res.status(500).json({ ok:false, error:'server_error' });
+    }
+  }
+);
 
 /* =========================================================
  *  出品（表示/保存）

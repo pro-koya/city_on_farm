@@ -63,13 +63,16 @@ body {
 }
 
 .thumbs-wrap {
-  display: grid;                /* ボタン左右 + 中央レールをきれいに配置 */
+  display: grid;
+  /* ボタン左右 + 中央レールをきれいに配置 */
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: .4rem;
   margin-top: .6rem;
-  min-width: 0;                 /* ← これが無いと子が横に広がりページが伸びる */
-  overflow: hidden;             /* ← レール外のオーバーフローを切る */
+  min-width: 0;
+  /* ← これが無いと子が横に広がりページが伸びる */
+  overflow: hidden;
+  /* ← レール外のオーバーフローを切る */
 }
 
 /* 横並びスクロールレーン */
@@ -145,7 +148,7 @@ body {
   height: 34px;
   line-height: 1;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
   user-select: none;
 }
 
@@ -460,7 +463,9 @@ body {
   border-radius: 12px;
   overflow: hidden
 }
-table th,table td{
+
+table th,
+table td {
   border-radius: 5px;
   text-align: center;
   padding: 10px 0;
@@ -477,7 +482,7 @@ table th,table td{
   width: 35%;
   background-color: var(--main);
   color: var(--white);
-  border:solid 1px var(--main);
+  border: solid 1px var(--main);
 }
 
 .spec-table td {
@@ -486,7 +491,7 @@ table th,table td{
   border: 1px solid var(--white);
 }
 
-.spec-table tr:nth-child(even) > td {
+.spec-table tr:nth-child(even)>td {
   background: var(--hi);
   border: 1px solid var(--hi);
 }
@@ -499,33 +504,141 @@ table th,table td{
 .review-head {
   display: flex;
   justify-content: space-between;
-  align-items: center
+  align-items: flex-end;
+  margin: 8px 0 10px
+}
+
+.review-head h3 {
+  margin: 0
+}
+
+.review-head .score {
+  color: #6b7280
 }
 
 .review-list {
   list-style: none;
+  margin: 0;
   padding: 0;
-  margin: .6rem 0;
   display: grid;
-  gap: .6rem
+  gap: 12px
 }
 
 .review {
-  background: #f9fafb;
+  background: #fff;
   border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: .7rem .8rem
+  border-radius: 12px;
+  padding: .8rem 1rem
 }
 
 .review__meta {
   display: flex;
-  gap: .6rem;
-  flex-wrap: wrap;
-  color: #374151
+  gap: 10px;
+  align-items: center;
+  color: #6b7280;
+  font-size: .9rem;
+  margin-bottom: .35rem
 }
 
 .review__stars {
+  color: #f59e0b;
+  font-weight: 700
+}
+
+.review__title {
+  margin: .2rem 0 .35rem;
+  font-size: 1rem
+}
+
+.review p {
+  margin: .2rem 0
+}
+
+.review-form {
+  margin-top: 14px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: .9rem
+}
+
+.review-form h4 {
+  margin: .2rem 0 .6rem
+}
+
+/* モーダル汎用（既存のものがあればそれでOK） */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:12px;z-index:60}
+.modal.is-open{display:flex}
+.modal__content{width:min(680px,100%);background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden}
+.modal__head{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1rem;border-bottom:1px solid #e5e7eb}
+.modal__foot{display:flex;gap:.6rem;justify-content:flex-end;padding:.9rem 1rem;border-top:1px solid #e5e7eb}
+.icon-btn{border:none;background:transparent;font-size:1.1rem;cursor:pointer}
+
+#reviewForm{padding:1rem}
+.field{display:grid;gap:.4rem;margin:.7rem 0}
+.hint{font-size:.85rem;color:#6b7280;margin:0}
+.error{color:#dc2626;margin:.25rem 0 0}
+
+/* 星UI */
+.stars__row{display:flex;gap:.25rem;font-size:28px;line-height:1}
+.star{border:none;background:transparent;cursor:pointer;opacity:.45;transition:transform .1s ease, opacity .15s ease; font-weight: 700; font-size: 28px;}
+.star.is-active{opacity:1;transform:scale(1.05);color: #f59e0b;}
+
+/* レビュー本文の改行を保持（これがポイント！） */
+.review__body{white-space:pre-wrap;}
+
+/* “あなたのレビュー”徽章 */
+.badge.mine{display:inline-block;margin-left:.5rem;padding:.1rem .4rem;border-radius:999px;background:#e0f2fe;color:#075985;font-weight:700;font-size:.75rem}
+
+.rating {
+  display: inline-flex;
+  flex-direction: row-reverse;
+  gap: 4px
+}
+
+.rating input {
+  display: none
+}
+
+.rating label {
+  font-size: 1.4rem;
+  color: #d1d5db;
+  cursor: pointer;
+  line-height: 1
+}
+
+.rating input:checked~label,
+.rating label:hover,
+.rating label:hover~label {
   color: #f59e0b
+}
+
+.field {
+  display: grid;
+  gap: .4rem;
+  margin: .6rem 0
+}
+
+.field input,
+.field textarea {
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: .55rem .7rem;
+  outline: none;
+  background: #fff
+}
+
+.field textarea {
+  resize: vertical
+}
+
+.actions {
+  margin-top: .6rem
+}
+
+.error {
+  color: #dc2626;
+  margin: .4rem 0 0
 }
 
 /* 関連商品レール（既存スタイルに寄せる） */

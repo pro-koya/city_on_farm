@@ -40,8 +40,8 @@
 
       <div class="rating">
         <span class="stars" aria-hidden="true"><%= '★'.repeat(Math.round(product.rating||0)) %><%= '☆'.repeat(5-Math.round(product.rating||0)) %></span>
-        <span class="rating__num"><%= (product.rating||0).toFixed(1) %></span>
-        <a class="rating__count" href="#reviews" id="goto-reviews">（<%= product.reviewCount || 0 %>件のレビュー）</a>
+        <span class="rating__num"><%= product.rating||0 %></span>
+        <a class="rating__count" href="#reviews" id="goto-reviews">（<%= product.review_count || 0 %>件のレビュー）</a>
       </div>
 
       <div class="price-row" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
@@ -150,32 +150,93 @@
         </div>
       </article>
 
+      <!-- レビュー -->
       <article id="pane-reviews" class="pane" role="tabpanel">
         <div id="reviews">
           <div class="review-head">
             <h3>レビュー</h3>
-            <div class="score"><strong><%= (product.rating||0).toFixed(1) %></strong> / 5（<%= product.reviewCount||0 %>件）</div>
+            <div class="score"><strong><%= product.rating || 0 %></strong> / 5（<%= product.review_count||0 %>件）</div>
+            <% if (currentUser) { %>
+              <button class="btn btn--buy" id="openReviewModal"
+                      data-has-review="<%= myReview ? '1':'0' %>"
+                      data-stars="<%= myReview?.rating || 5 %>"
+                      data-body="<%- (myReview?.body || '').replace(/"/g, '&quot;') %>"
+                      data-review-id="<%= myReview?.id || '' %>">
+                <%= myReview ? 'レビューを編集' : 'レビューを書く' %>
+              </button>
+            <% } %>
           </div>
 
-          <% if (product.reviews && product.reviews.length) { %>
-            <ul class="review-list">
-              <% product.reviews.slice(0,3).forEach(function(r){ %>
-                <li class="review">
+          <% if (reviews && reviews.length) { %>
+            <ul class="review-list" id="reviewList">
+              <% reviews.forEach(function(r){ %>
+                <li class="review" id="rev-<%= r.id %>">
                   <div class="review__meta">
-                    <span class="review__stars"><%= '★'.repeat(r.stars) %><%= '☆'.repeat(5-r.stars) %></span>
+                    <span class="review__stars" aria-label="<%= r.stars %>点"><%= '★'.repeat(r.stars) %><%= '☆'.repeat(5-r.stars) %></span>
                     <span class="review__author"><%= r.author %></span>
-                    <span class="review__date"><%= r.date %></span>
+                    <span class="review__date"><%= new Date(r.created_at).toLocaleDateString('ja-JP') %></span>
+                    <% if (currentUser && r.user_id === currentUser.id) { %>
+                      <span class="badge mine">あなたのレビュー</span>
+                    <% } %>
                   </div>
-                  <p><%= r.text %></p>
+                  <% if (r.title) { %><h4 class="review__title"><%= r.title %></h4><% } %>
+                  <!-- ★ 改行を尊重して表示（CSSで pre-wrap） -->
+                  <p class="review__body"><%= r.text %></p>
                 </li>
               <% }) %>
             </ul>
-            <a class="link" href="#">すべてのレビューを見る →</a>
+            <% if ((product.review_count||0) > reviews.length) { %>
+              <a class="link" href="/products/<%= product.slug || product.id %>/reviews">すべてのレビューを見る →</a>
+            <% } %>
           <% } else { %>
             <p class="muted">まだレビューはありません。</p>
           <% } %>
         </div>
       </article>
+
+      <!-- ▼ レビュー投稿/編集モーダル -->
+      <div class="modal" id="reviewModal" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="modal__content" role="document">
+          <div class="modal__head">
+            <h3 id="reviewModalTitle">レビューを書く</h3>
+            <button type="button" class="icon-btn" id="closeReviewModal" aria-label="閉じる">✕</button>
+          </div>
+
+          <form id="reviewForm" action="/products/<%= product.id %>/reviews" method="POST" novalidate>
+            <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
+            <input type="hidden" name="review_id" id="rv_id" value="">
+            <fieldset class="stars">
+              <legend>評価</legend>
+              <div class="stars__row" id="starsRow" data-value="5" aria-label="星で評価">
+                <!-- JSで .is-active を付け替え -->
+                <button type="button" class="star" data-v="1" aria-label="1点">★</button>
+                <button type="button" class="star" data-v="2" aria-label="2点">★</button>
+                <button type="button" class="star" data-v="3" aria-label="3点">★</button>
+                <button type="button" class="star" data-v="4" aria-label="4点">★</button>
+                <button type="button" class="star" data-v="5" aria-label="5点">★</button>
+              </div>
+              <input type="hidden" name="rating" id="rv_stars">
+            </fieldset>
+
+            <div class="field">
+              <label for="rvTitle">タイトル</label>
+              <input id="rvTitle" name="title" type="text" maxlength="120" value="<%= myReview?.title||'' %>">
+            </div>
+
+            <div class="field">
+              <label for="rv_body">本文</label>
+              <textarea id="rv_body" name="body" rows="6" placeholder="商品の良かった点・改善してほしい点など自由にどうぞ"></textarea>
+              <p class="hint">※ 公序良俗に反する内容は掲載できません</p>
+              <p class="error" id="rv_error"></p>
+            </div>
+
+            <div class="modal__foot">
+              <button type="button" class="btn btn--ghost" id="cancelReview">キャンセル</button>
+              <button type="submit" class="btn btn--buy" id="saveReview">保存</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   </section>
 
