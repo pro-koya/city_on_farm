@@ -12,6 +12,7 @@ public,orders,,24
 public,partners,取引先（主に飲食店などの法人・団体・個人事業主）,23
 public,payments,,8
 public,product_images,,12
+public,product_reviews,,9
 public,product_specs,,6
 public,product_tags,,2
 public,products,,18

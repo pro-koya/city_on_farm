@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-10-21T18:33:22.187Z
+> Generated at: 2025-10-22T18:35:09.454Z
 
 ---
 
@@ -804,6 +804,76 @@ _No indexes_
 
 ---
 
+### `public.product_rating_stats`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `product_id` | `uuid` | YES |  |  |
+| 2 | `review_count` | `integer` | YES |  |  |
+| 3 | `rating_avg` | `numeric` | YES |  |  |
+
+**Constraints**
+
+_No constraints_
+
+**Indexes**
+
+_No indexes_
+
+---
+
+### `public.product_reviews`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `product_id` | `uuid` | NO |  |  |
+| 3 | `user_id` | `uuid` | NO |  |  |
+| 4 | `rating` | `integer` | NO |  |  |
+| 5 | `title` | `text` | YES |  |  |
+| 6 | `body` | `text` | NO |  |  |
+| 7 | `status` | `review_status` *(enum)* | NO | 'published'::review_status |  |
+| 8 | `created_at` | `timestamp with time zone` | NO | now() |  |
+| 9 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+
+> **Enum `review_status` values**: `published`, `pending`, `hidden`
+
+**Constraints**
+
+- **CHECK**: `2200_17195_1_not_null`, `2200_17195_2_not_null`, `2200_17195_3_not_null`, `2200_17195_4_not_null`, `2200_17195_6_not_null`, `2200_17195_7_not_null`, `2200_17195_8_not_null`, `2200_17195_9_not_null`, `product_reviews_rating_check`
+- **FOREIGN KEY**: `product_reviews_product_id_fkey`, `product_reviews_user_id_fkey`
+- **PRIMARY KEY**: `product_reviews_pkey`
+- **UNIQUE**: `uq_product_reviews_user`
+
+**Indexes**
+
+- `idx_product_reviews_product_created`
+  
+  ```sql
+  CREATE INDEX idx_product_reviews_product_created ON public.product_reviews USING btree (product_id, created_at DESC)
+  ```
+- `idx_product_reviews_status`
+  
+  ```sql
+  CREATE INDEX idx_product_reviews_status ON public.product_reviews USING btree (status)
+  ```
+- `product_reviews_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX product_reviews_pkey ON public.product_reviews USING btree (id)
+  ```
+- `uq_product_reviews_user`
+  
+  ```sql
+  CREATE UNIQUE INDEX uq_product_reviews_user ON public.product_reviews USING btree (product_id, user_id)
+  ```
+
+---
+
 ### `public.product_specs`
 
 **Columns**
@@ -1183,6 +1253,7 @@ _No indexes_
 - `public.payment_method`: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`
 - `public.payment_status`: `pending`, `completed`, `failed`, `authorized`, `paid`, `canceled`, `refunded`, `unpaid`, `cancelled`
 - `public.product_status`: `draft`, `private`, `public`
+- `public.review_status`: `published`, `pending`, `hidden`
 - `public.ship_method`: `normal`, `cool`
 - `public.shipment_status`: `pending`, `preparing`, `shipped`, `delivered`, `cancelled`, `returned`, `lost`, `canceled`, `in_transit`
 

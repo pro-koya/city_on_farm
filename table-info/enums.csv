@@ -45,6 +45,9 @@ public,payment_status,cancelled,9
 public,product_status,draft,1
 public,product_status,private,2
 public,product_status,public,3
+public,review_status,published,1
+public,review_status,pending,2
+public,review_status,hidden,3
 public,ship_method,normal,1
 public,ship_method,cool,2
 public,shipment_status,pending,1

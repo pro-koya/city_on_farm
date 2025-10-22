@@ -63,6 +63,10 @@ public,product_images,ix_product_images_position,"CREATE INDEX ix_product_images
 public,product_images,ix_product_images_product_id,CREATE INDEX ix_product_images_product_id ON public.product_images USING btree (product_id),f,f
 public,product_images,product_images_pkey,CREATE UNIQUE INDEX product_images_pkey ON public.product_images USING btree (id),t,t
 public,product_images,product_images_r2_key_key,CREATE UNIQUE INDEX product_images_r2_key_key ON public.product_images USING btree (r2_key),t,f
+public,product_reviews,idx_product_reviews_product_created,"CREATE INDEX idx_product_reviews_product_created ON public.product_reviews USING btree (product_id, created_at DESC)",f,f
+public,product_reviews,idx_product_reviews_status,CREATE INDEX idx_product_reviews_status ON public.product_reviews USING btree (status),f,f
+public,product_reviews,product_reviews_pkey,CREATE UNIQUE INDEX product_reviews_pkey ON public.product_reviews USING btree (id),t,t
+public,product_reviews,uq_product_reviews_user,"CREATE UNIQUE INDEX uq_product_reviews_user ON public.product_reviews USING btree (product_id, user_id)",t,f
 public,product_specs,idx_product_specs_pos,"CREATE INDEX idx_product_specs_pos ON public.product_specs USING btree (product_id, ""position"")",f,f
 public,product_specs,idx_product_specs_product,CREATE INDEX idx_product_specs_product ON public.product_specs USING btree (product_id),f,f
 public,product_specs,product_specs_pkey,CREATE UNIQUE INDEX product_specs_pkey ON public.product_specs USING btree (id),t,t
