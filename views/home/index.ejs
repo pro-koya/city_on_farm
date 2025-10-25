@@ -1,179 +1,217 @@
 <%- include('../partials/header', { title, extraCSS, extraJS }) %>
 
-<main class="lp">
+    <main class="lp">
 
-  <!-- HERO / MISSION -->
-  <header class="hero2">
-    <div class="hero2__inner">
-      <p class="eyebrow">City on Farm</p>
-      <h1 class="display">
-        まちと畑を、もういちど近くへ。<br>
-        わたしたちは、地域の小さな生産をつなぎ<br class="sp"><span>「今日の食卓」</span>を豊かにします。
-      </h1>
-      <div class="hero2__cta">
-        <a class="btn btn--primary" href="/about">わたしたちの想い</a>
-        <a class="btn btn--ghost" href="/products">ショップを見る</a>
-      </div>
-    </div>
-    <figure class="hero2__art" aria-hidden="true">
-      <img src="/images/slide1.jpg" alt="">
-    </figure>
-  </header>
-
-  <!-- BRAND STORY -->
-  <section class="story">
-    <div class="wrap">
-      <h2 class="h">地域の循環をデザインする</h2>
-      <p class="lead">
-        採れすぎた野菜や小さな畑の収穫も、価値のある一皿へ。<br class="sp">
-        生産者・お店・家庭を“やさしく”つなぐ仕組みで、<br class="sp">無理のない地産地消を広げていきます。
-      </p>
-      <div class="pillars">
-        <article class="pillar">
-          <h3>小さな声を拾う</h3>
-          <p>家庭菜園や小規模農家の収穫を活かし、持続可能な販売機会に変えます。</p>
-        </article>
-        <article class="pillar">
-          <h3>まちの食を支える</h3>
-          <p>地域の飲食店や家庭に、新鮮で確かな食材を安定して届けます。</p>
-        </article>
-        <article class="pillar">
-          <h3>やさしい流通</h3>
-          <p>ムリ・ムダを生まない集荷と配送。人にも環境にもやさしい循環を。</p>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <!-- BUSINESS / 事業紹介（今は「野菜販売」だけを明示） -->
-  <section class="business">
-    <div class="wrap">
-      <div class="biz-head">
-        <h2 class="h">いま、わたしたちが取り組むこと</h2>
-        <!-- <p class="muted">今後ひろがる実験や活動の入口として、トップは“全体の地図”。</p> -->
-      </div>
-      <div class="biz-grid">
-        <a class="biz-card" href="/products">
-          <img src="/images/slide2.jpg" alt="">
-          <div class="biz-body">
-            <p class="eyebrow">SERVICE</p>
-            <h3>旬の野菜の販売</h3>
-            <p class="desc">地域で採れた旬を、そのままの温度でお届け。小さな収穫も大切に扱います。</p>
-            <span class="link">ショップへ →</span>
-          </div>
-        </a>
-        <!-- 未来の拡張プレースホルダ（無効リンクでもOK） -->
-        <div class="biz-card biz-card--soon" aria-disabled="true">
-          <img src="/images/slide3.jpg" alt="">
-          <div class="biz-body">
-            <p class="eyebrow">COMING SOON</p>
-            <h3>食と学びのプログラム</h3>
-            <p class="desc">生産者の想いに触れる食育・見学ツアーなどを準備中です。</p>
-          </div>
-        </div>
-        <div class="biz-card biz-card--soon" aria-disabled="true">
-          <img src="/images/slide1.jpg" alt="">
-          <div class="biz-body">
-            <p class="eyebrow">COMING SOON</p>
-            <h3>ローカルマーケット</h3>
-            <p class="desc">週末の小さな市場を企画。生産者と街が集う“いつもの場”を。</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- CAMPAIGNS / 特集バナー（横スクロール） -->
-  <% if (campaigns && campaigns.length) { %>
-  <section class="campaigns">
-    <div class="wrap">
-      <div class="sec-head">
-        <h2 class="h">特集・キャンペーン</h2>
-        <a class="link" href="/products">すべて見る →</a>
-      </div>
-      <div class="rail">
-        <% campaigns.forEach(c => { %>
-        <a class="banner" href="<%= c.href %>">
-          <img src="<%= c.image %>" alt="">
-          <div class="b-body">
-            <span class="eyebrow"><%= c.eyebrow %></span>
-            <h3><%= c.title %></h3>
-          </div>
-        </a>
-        <% }) %>
-      </div>
-    </div>
-  </section>
-  <% } %>
-
-  <!-- PRODUCTS TEASER（商品は“紹介だけ”。売り場は /products ） -->
-  <% if (featuredProducts && featuredProducts.length) { %>
-  <section class="teaser">
-    <div class="wrap">
-      <div class="sec-head">
-        <h2 class="h">こんな野菜がならんでいます</h2>
-        <a class="link" href="/products">ショップへ →</a>
-      </div>
-      <ul class="cards">
-        <% featuredProducts.forEach(p => { %>
-          <li class="card">
-            <a href="/products/<%= p.slug || p.id %>">
-              <img src="<%= p.image_url || '/images/placeholder.jpg' %>" alt="<%= p.title %>">
-              <div class="card__body">
-                <h3 class="name"><%= p.title %></h3>
-                <div class="meta">
-                  <span class="price">¥<%= p.price %></span>
-                  <span class="unit"><%= p.unit || '' %></span>
+        <!-- HERO / MISSION -->
+        <header class="hero2">
+            <div class="hero2__inner">
+                <p class="eyebrow">City on Farm</p>
+                <h1 class="display">まちと畑を、<br class="sp">もういちど近くへ。</h1>
+                <p class="lead">わたしたちは、<br class="sp">地域の小さな生産を繋ぎ<span class="display-span">今日の食卓</span>を豊かにします。</p>
+                <div class="hero2__cta">
+                    <a class="btn btn--primary" href="/about">わたしたちの想い</a>
+                    <a class="btn btn--ghost" href="/products">ショップを見る</a>
                 </div>
-              </div>
-            </a>
-          </li>
-        <% }) %>
-      </ul>
-    </div>
-  </section>
-  <% } %>
-
-  <!-- JOURNAL / 読みもの（note ティーザー） -->
-  <% if (latestPosts && latestPosts.length) { %>
-  <section class="journal">
-    <div class="wrap">
-      <div class="sec-head">
-        <h2 class="h">読みもの</h2>
-        <a class="link" href="/blog">もっと見る →</a>
-      </div>
-      <div class="posts">
-        <% latestPosts.forEach(post => { %>
-          <article class="post">
-            <a class="thumb" href="/blog/<%= post.slug %>">
-              <img src="<%= post.thumbnail || '/images/placeholder.jpg' %>" alt="<%= post.title %>">
-            </a>
-            <div class="body">
-              <p class="eyebrow"><%= post.category || '記事' %></p>
-              <h3 class="title"><a href="/blog/<%= post.slug %>"><%= post.title %></a></h3>
-              <% if (post.publishedAt) { %>
-                <time class="date" datetime="<%= post.publishedAt.toISOString() %>"><%= post.publishedAt.toLocaleDateString('ja-JP') %></time>
-              <% } %>
             </div>
-          </article>
-        <% }) %>
-      </div>
-    </div>
-  </section>
-  <% } %>
+            <figure class="hero2__art" aria-hidden="true">
+                <img src="/images/slide1.jpg" alt="">
+            </figure>
+        </header>
 
-  <!-- CTA / コミットメント -->
-  <section class="cta">
-    <div class="wrap cta__inner">
-      <h2>「地域でつくり、地域で食べる」をいっしょに。</h2>
-      <div class="cta__btns">
-        <a class="btn btn--primary" href="/products">まずは旬の野菜を見る</a>
-        <a class="btn btn--ghost" href="/contact">問い合わせる</a>
-      </div>
-    </div>
-  </section>
+        <!-- BRAND STORY -->
+        <section class="story v2" aria-labelledby="story-title">
+            <div class="story__bg" aria-hidden="true">
+                <span class="blob b1"></span>
+                <span class="blob b2"></span>
+                <span class="grid"></span>
+            </div>
 
-</main>
+            <div class="wrap">
+                <header class="story__head">
+                    <p class="eyebrow">Our Story</p>
+                    <h2 id="story-title" class="display">
+                        地域の<span class="accent">循環</span>をデザインする
+                    </h2>
+                    <p class="lead">
+                        採れすぎた野菜や小さな畑の収穫も、<br class="sp">価値のある一皿へ。<br class="sp">
+                        生産者・お店・家庭を<span class="display-span">やさしくつなぐ仕組み</span>で、<br class="sp">
+                        無理のない地産地消を広げていきます。
+                    </p>
+                </header>
 
-<script src="/js/home.js"></script>
-<%- include('../partials/footer') %>
+                <div class="pillars">
+                    <article class="pillar r1">
+                        <h3>小さな声を拾う</h3>
+                        <p>家庭菜園や小規模農家の収穫を活かし、持続可能な販売機会に変えます。</p>
+                        <span class="badge">01</span>
+                    </article>
+
+                    <article class="pillar r2">
+                        <h3>まちの食を支える</h3>
+                        <p>地域の飲食店や家庭に、新鮮で確かな食材を安定して届けます。</p>
+                        <span class="badge">02</span>
+                    </article>
+
+                    <article class="pillar r3">
+                        <h3>やさしい流通</h3>
+                        <p>ムリ・ムダを生まない集荷と配送。人にも環境にもやさしい循環を。</p>
+                        <span class="badge">03</span>
+                    </article>
+                </div>
+
+                <footer class="story__cta">
+                    <a class="btn btn--primary" href="/about">私たちの想いを見る</a>
+                    <a class="btn btn--ghost" href="/products">旬の野菜をみる</a>
+                </footer>
+            </div>
+        </section>
+
+        <!-- BUSINESS / 事業紹介（今は「野菜販売」だけを明示） -->
+        <section class="business">
+            <div class="wrap">
+                <div class="biz-head">
+                    <h2 class="h">いま、わたしたちが取り組むこと</h2>
+                    <!-- <p class="muted">今後ひろがる実験や活動の入口として、トップは“全体の地図”。</p> -->
+                </div>
+                <div class="biz-grid">
+                    <a class="biz-card" href="/products">
+                        <img src="/images/slide2.jpg" alt="">
+                        <div class="biz-body">
+                            <p class="eyebrow">SERVICE</p>
+                            <h3>旬の野菜の販売</h3>
+                            <p class="desc">地域で採れた旬を、そのままの温度でお届け。小さな収穫も大切に扱います。</p>
+                            <span class="link">ショップへ →</span>
+                        </div>
+                    </a>
+                    <!-- 未来の拡張プレースホルダ（無効リンクでもOK） -->
+                    <div class="biz-card biz-card--soon" aria-disabled="true">
+                        <img src="/images/slide3.jpg" alt="">
+                        <div class="biz-body">
+                            <p class="eyebrow">COMING SOON</p>
+                            <h3>食と学びのプログラム</h3>
+                            <p class="desc">生産者の想いに触れる食育・見学ツアーなどを準備中です。</p>
+                        </div>
+                    </div>
+                    <div class="biz-card biz-card--soon" aria-disabled="true">
+                        <img src="/images/slide1.jpg" alt="">
+                        <div class="biz-body">
+                            <p class="eyebrow">COMING SOON</p>
+                            <h3>ローカルマーケット</h3>
+                            <p class="desc">週末の小さな市場を企画。生産者と街が集う“いつもの場”を。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CAMPAIGNS / 特集バナー（横スクロール） -->
+        <% if (campaigns && campaigns.length) { %>
+            <section class="campaigns">
+                <div class="wrap">
+                    <div class="sec-head">
+                        <h2 class="h">特集・キャンペーン</h2>
+                        <a class="link" href="/products">すべて見る →</a>
+                    </div>
+                    <div class="rail">
+                        <% campaigns.forEach(c=> { %>
+                            <a class="banner" href="<%= c.href %>">
+                                <img src="<%= c.image %>" alt="">
+                                <div class="b-body">
+                                    <span class="eyebrow">
+                                        <%= c.eyebrow %>
+                                    </span>
+                                    <h3>
+                                        <%= c.title %>
+                                    </h3>
+                                </div>
+                            </a>
+                            <% }) %>
+                    </div>
+                </div>
+            </section>
+        <% } %>
+
+        <!-- PRODUCTS TEASER（商品は“紹介だけ”。売り場は /products ） -->
+        <% if (featuredProducts && featuredProducts.length) { %>
+            <section class="teaser">
+                <div class="wrap">
+                    <div class="sec-head">
+                        <h2 class="h">こんな野菜がならんでいます</h2>
+                        <a class="link" href="/products">ショップへ →</a>
+                    </div>
+                    <ul class="cards">
+                        <% featuredProducts.forEach(p=> { %>
+                            <li class="card">
+                                <a href="/products/<%= p.slug || p.id %>">
+                                    <img src="<%= p.image_url || '/images/placeholder.jpg' %>"
+                                        alt="<%= p.title %>">
+                                    <div class="card__body">
+                                        <h3 class="name">
+                                            <%= p.title %>
+                                        </h3>
+                                        <div class="meta">
+                                            <span class="price">¥<%= p.price %></span>
+                                            <span class="unit">
+                                                <%= p.unit || '' %>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </a>
+                            </li>
+                            <% }) %>
+                    </ul>
+                </div>
+            </section>
+        <% } %>
+
+        <!-- JOURNAL / 読みもの（note ティーザー） -->
+        <% if (latestPosts && latestPosts.length) { %>
+            <section class="journal">
+                <div class="wrap">
+                    <div class="sec-head">
+                        <h2 class="h">読みもの</h2>
+                        <a class="link" href="/blog">もっと見る →</a>
+                    </div>
+                    <div class="posts">
+                        <% latestPosts.forEach(post=> { %>
+                            <article class="post">
+                                <a class="thumb" href="/blog/<%= post.slug %>">
+                                    <img src="<%= post.thumbnail || '/images/placeholder.jpg' %>"
+                                        alt="<%= post.title %>">
+                                </a>
+                                <div class="body">
+                                    <p class="eyebrow">
+                                        <%= post.category || '記事' %>
+                                    </p>
+                                    <h3 class="title"><a href="/blog/<%= post.slug %>">
+                                            <%= post.title %>
+                                        </a></h3>
+                                    <% if (post.publishedAt) { %>
+                                        <time class="date"
+                                            datetime="<%= post.publishedAt.toISOString() %>">
+                                            <%= post.publishedAt.toLocaleDateString('ja-JP') %>
+                                        </time>
+                                        <% } %>
+                                </div>
+                            </article>
+                            <% }) %>
+                    </div>
+                </div>
+            </section>
+        <% } %>
+
+        <!-- CTA / コミットメント -->
+        <section class="ab-cta">
+            <div class="wrap ab-cta__inner">
+            <h2>「地域でつくり、地域で食べる」を一緒に</h2>
+            <div class="btns">
+                <a class="btn btn--primary" href="/products">旬の野菜を見る</a>
+                <a class="btn btn--ghost" href="/contact">お問い合わせ</a>
+            </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="/js/home.js"></script>
+    <%- include('../partials/footer') %>
