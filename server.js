@@ -875,30 +875,87 @@ const noteService = require('./services/noteService');
 /* =========================================================
  *  ホーム
  * =======================================================*/
+
+// --- Top（ブランド/コンセプト中心） ---
 app.get('/', async (req, res, next) => {
   try {
-    // 新着商品（公開・在庫>0）8件＋サムネ1枚
-    const products = await dbQuery(`
-      SELECT p.*, c.name AS category,
-             (SELECT url FROM product_images pi WHERE pi.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
-        FROM products p
-        LEFT JOIN categories c ON c.id = p.category_id
-       WHERE p.status = 'public'
-       ORDER BY p.published_at DESC NULLS LAST, p.created_at DESC
-       LIMIT 8
+    // 最小限のティーザーだけ渡す（重くしない）
+    const featuredProducts = await dbQuery(`
+      SELECT id, slug, title, price, unit, stock,
+             (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
+      FROM products p
+      WHERE p.status='public'
+      ORDER BY p.updated_at DESC
+      LIMIT 6
     `);
 
-    const page = 1;
-    const q = (req.query.q || '').trim();
-    const category = (req.query.category || 'all').trim();
-    const sort = (req.query.sort || 'published_desc').trim(); // 'published_desc' | 'published_asc' | 'updated_desc' | 'updated_asc' | 'popular_desc' | 'popular_asc'
+    // キャンペーン/特集（DBやCMSがなければ固定でもOK）
+    const campaigns = [
+      { id:'spring', title:'春の山菜フェア', href:'/shop?tag=sansai', image:'/images/slide1.jpg', eyebrow:'特集' },
+      { id:'organic', title:'有機農家の恵み', href:'/shop?tag=organic', image:'/images/slide2.jpg', eyebrow:'特集' }
+    ];
 
-    const perPage = 12; // 表示用
-    const { posts, total, pageCount, categories } =
-      await noteService.getListFiltered({ q, category, sort, page, perPage });
-    res.render('index', { title: '新・今日の食卓', products, blogPosts: posts });
+    // note の最新3件のティーザー
+    let latestPosts = [];
+    try {
+      const page = 1;
+      const q = (req.query.q || '').trim();
+      const category = (req.query.category || 'all').trim();
+      const sort = (req.query.sort || 'published_desc').trim(); // 'published_desc' | 'published_asc' | 'updated_desc' | 'updated_asc' | 'popular_desc' | 'popular_asc'
+
+      const perPage = 3; // 表示用
+      const { posts, total, pageCount, categories } =
+        await noteService.getListFiltered({ q, category, sort, page, perPage });
+      latestPosts = posts || [];
+    } catch {}
+
+    res.render('home/index', {
+      title: '地域の野菜お届け便',
+      featuredProducts,
+      campaigns,
+      latestPosts,
+      extraCSS: '/styles/home.css',
+      extraJS: '/js/home.js'
+    });
   } catch (e) { next(e); }
 });
+
+// About
+app.get('/about', async (req, res, next) => {
+  try {
+    // 将来CMS化するならここで取得。今は静的。
+    res.render('home/about', {
+      title: 'わたしたちについて',
+      extraCSS: '/styles/about.css',
+      extraJS: '/js/about.js'
+    });
+  } catch (e) { next(e); }
+});
+
+// app.get('/', async (req, res, next) => {
+//   try {
+//     // 新着商品（公開・在庫>0）8件＋サムネ1枚
+//     const products = await dbQuery(`
+//       SELECT p.*, c.name AS category,
+//              (SELECT url FROM product_images pi WHERE pi.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
+//         FROM products p
+//         LEFT JOIN categories c ON c.id = p.category_id
+//        WHERE p.status = 'public'
+//        ORDER BY p.published_at DESC NULLS LAST, p.created_at DESC
+//        LIMIT 8
+//     `);
+
+//     const page = 1;
+//     const q = (req.query.q || '').trim();
+//     const category = (req.query.category || 'all').trim();
+//     const sort = (req.query.sort || 'published_desc').trim(); // 'published_desc' | 'published_asc' | 'updated_desc' | 'updated_asc' | 'popular_desc' | 'popular_asc'
+
+//     const perPage = 12; // 表示用
+//     const { posts, total, pageCount, categories } =
+//       await noteService.getListFiltered({ q, category, sort, page, perPage });
+//     res.render('index', { title: '新・今日の食卓', products, blogPosts: posts });
+//   } catch (e) { next(e); }
+// });
 
 /* =========================================================
  * お問い合わせフォーム表示
