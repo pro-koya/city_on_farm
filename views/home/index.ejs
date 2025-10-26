@@ -134,10 +134,17 @@
         <!-- PRODUCTS TEASER（商品は“紹介だけ”。売り場は /products ） -->
         <% if (featuredProducts && featuredProducts.length) { %>
             <section class="teaser">
-                <div class="wrap">
-                    <div class="sec-head">
-                        <h2 class="h">こんな野菜がならんでいます</h2>
-                        <a class="link" href="/products">ショップへ →</a>
+                <div class="wrap padding-none">
+                    <div class="sec-head-products">
+                        <h2 class="h">Products</h2>
+                        <h3>こんな野菜を販売しています</h3>
+                        <p>
+                            地域の循環をテーマに、<br class="sp">
+                            これまで商品とならなかった作物も販売。<br>
+                            農家さんだけでなく<br class="sp">飲食店さんの協力を得ることで、<br>
+                            少しの無駄から、少しの豊かさ<br class="sp">が生み出されることを目指しています。
+                        </p>
+                        <a class="btn btn--primary" href="/products">ショップへ →</a>
                     </div>
                     <ul class="cards">
                         <% featuredProducts.forEach(p=> { %>
