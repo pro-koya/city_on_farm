@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-10-25T18:29:58.291Z
+> Generated at: 2025-10-26T18:30:51.658Z
 
 ---
 
@@ -76,6 +76,8 @@
 | 6 | `created_at` | `timestamp with time zone` | NO | now() |  |
 | 7 | `updated_at` | `timestamp with time zone` | NO | now() |  |
 | 8 | `user_id` | `uuid` | YES |  |  |
+| 9 | `seller_id` | `uuid` | YES |  |  |
+| 10 | `seller_name` | `text` | YES |  |  |
 
 **Constraints**
 
@@ -105,6 +107,11 @@
   
   ```sql
   CREATE INDEX idx_cart_items_product ON public.cart_items USING btree (product_id)
+  ```
+- `idx_cart_items_seller`
+  
+  ```sql
+  CREATE INDEX idx_cart_items_seller ON public.cart_items USING btree (seller_id)
   ```
 - `idx_cart_items_user`
   
@@ -409,6 +416,46 @@
 
 ---
 
+### `public.order_groups`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `user_id` | `uuid` | NO |  |  |
+| 3 | `group_number` | `text` | YES |  |  |
+| 4 | `total_amount` | `integer` | NO | 0 |  |
+| 5 | `created_at` | `timestamp with time zone` | NO | now() |  |
+| 6 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+
+**Constraints**
+
+- **CHECK**: `2200_17233_1_not_null`, `2200_17233_2_not_null`, `2200_17233_4_not_null`, `2200_17233_5_not_null`, `2200_17233_6_not_null`
+- **FOREIGN KEY**: `order_groups_user_id_fkey`
+- **PRIMARY KEY**: `order_groups_pkey`
+- **UNIQUE**: `order_groups_group_number_key`
+
+**Indexes**
+
+- `idx_order_groups_user_created`
+  
+  ```sql
+  CREATE INDEX idx_order_groups_user_created ON public.order_groups USING btree (user_id, created_at DESC)
+  ```
+- `order_groups_group_number_key`
+  
+  ```sql
+  CREATE UNIQUE INDEX order_groups_group_number_key ON public.order_groups USING btree (group_number)
+  ```
+- `order_groups_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX order_groups_pkey ON public.order_groups USING btree (id)
+  ```
+
+---
+
 ### `public.order_items`
 
 **Columns**
@@ -480,16 +527,24 @@
 | 22 | `coupon_code` | `text` | YES |  |  |
 | 23 | `coupon_discount` | `integer` | NO | 0 |  |
 | 24 | `bill_same` | `boolean` | NO | true |  |
+| 25 | `group_id` | `uuid` | YES |  |  |
+| 26 | `seller_id` | `uuid` | YES |  |  |
+| 27 | `seller_name` | `text` | YES |  |  |
+| 28 | `delivery_status` | `shipment_status` *(enum)* | YES |  |  |
+| 29 | `ship_to` | `jsonb` | YES | '{}'::jsonb |  |
+| 30 | `payment_provider` | `text` | YES |  |  |
+| 31 | `payment_external_id` | `text` | YES |  |  |
 
 > **Enum `order_status` values**: `pending`, `paid`, `shipped`, `cancelled`, `confirmed`, `processing`, `delivered`, `canceled`, `refunded`, `fulfilled`
 > **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`
 > **Enum `payment_status` values**: `pending`, `completed`, `failed`, `authorized`, `paid`, `canceled`, `refunded`, `unpaid`, `cancelled`
 > **Enum `ship_method` values**: `normal`, `cool`
+> **Enum `shipment_status` values**: `pending`, `preparing`, `shipped`, `delivered`, `cancelled`, `returned`, `lost`, `canceled`, `in_transit`
 
 **Constraints**
 
 - **CHECK**: `2200_16722_15_not_null`, `2200_16722_1_not_null`, `2200_16722_20_not_null`, `2200_16722_21_not_null`, `2200_16722_23_not_null`, `2200_16722_24_not_null`, `2200_16722_2_not_null`, `2200_16722_3_not_null`, `2200_16722_4_not_null`, `2200_16722_5_not_null`, `2200_16722_6_not_null`, `2200_16722_7_not_null`, `2200_16722_8_not_null`, `2200_16722_9_not_null`, `orders_amounts_check`
-- **FOREIGN KEY**: `orders_buyer_id_fkey`
+- **FOREIGN KEY**: `orders_buyer_id_fkey`, `orders_group_id_fkey`, `orders_seller_id_fkey`
 - **PRIMARY KEY**: `orders_pkey`
 - **UNIQUE**: `orders_order_number_key`, `uq_orders_order_number`
 
@@ -510,6 +565,11 @@
   ```sql
   CREATE INDEX idx_orders_created ON public.orders USING btree (created_at DESC)
   ```
+- `idx_orders_group`
+  
+  ```sql
+  CREATE INDEX idx_orders_group ON public.orders USING btree (group_id)
+  ```
 - `idx_orders_order_number`
   
   ```sql
@@ -519,6 +579,11 @@
   
   ```sql
   CREATE INDEX idx_orders_payment_status ON public.orders USING btree (payment_status)
+  ```
+- `idx_orders_seller_created`
+  
+  ```sql
+  CREATE INDEX idx_orders_seller_created ON public.orders USING btree (seller_id, created_at DESC)
   ```
 - `idx_orders_shipment_status`
   
@@ -643,13 +708,16 @@ _No indexes_
 | 21 | `postal_norm` | `text` | YES |  |  |
 | 22 | `phone_norm` | `text` | YES |  |  |
 | 24 | `partner_key` | `text` | YES |  |  |
+| 25 | `payment_methods` | `ARRAY` | NO | ARRAY['card'::payment_method] |  |
+| 26 | `min_order_amount` | `integer` | NO | 0 |  |
+| 27 | `shipping_policy` | `jsonb` | NO | '{}'::jsonb |  |
 
 > **Enum `partner_type` values**: `restaurant`, `retailer`, `wholesale`, `corporate`, `individual`, `other`
 > **Enum `partner_status` values**: `active`, `inactive`, `prospect`, `suspended`
 
 **Constraints**
 
-- **CHECK**: `2200_17101_18_not_null`, `2200_17101_19_not_null`, `2200_17101_1_not_null`, `2200_17101_2_not_null`, `2200_17101_4_not_null`, `2200_17101_5_not_null`
+- **CHECK**: `2200_17101_18_not_null`, `2200_17101_19_not_null`, `2200_17101_1_not_null`, `2200_17101_25_not_null`, `2200_17101_26_not_null`, `2200_17101_27_not_null`, `2200_17101_2_not_null`, `2200_17101_4_not_null`, `2200_17101_5_not_null`
 - **PRIMARY KEY**: `partners_pkey`
 - **UNIQUE**: `ux_partners_partner_key`
 
@@ -724,6 +792,11 @@ _No indexes_
   
   ```sql
   CREATE INDEX idx_payments_order ON public.payments USING btree (order_id)
+  ```
+- `idx_payments_order_updated`
+  
+  ```sql
+  CREATE INDEX idx_payments_order_updated ON public.payments USING btree (order_id, updated_at DESC)
   ```
 - `idx_payments_status`
   
@@ -1098,6 +1171,11 @@ _No indexes_
   
   ```sql
   CREATE INDEX idx_shipments_order ON public.shipments USING btree (order_id)
+  ```
+- `idx_shipments_order_updated`
+  
+  ```sql
+  CREATE INDEX idx_shipments_order_updated ON public.shipments USING btree (order_id, updated_at DESC)
   ```
 - `idx_shipments_status`
   

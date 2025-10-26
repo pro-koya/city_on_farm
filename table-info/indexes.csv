@@ -7,6 +7,7 @@ public,cart_items,cart_items_cart_id_product_id_key,"CREATE UNIQUE INDEX cart_it
 public,cart_items,cart_items_pkey,CREATE UNIQUE INDEX cart_items_pkey ON public.cart_items USING btree (id),t,t
 public,cart_items,idx_cart_items_cart,CREATE INDEX idx_cart_items_cart ON public.cart_items USING btree (cart_id),f,f
 public,cart_items,idx_cart_items_product,CREATE INDEX idx_cart_items_product ON public.cart_items USING btree (product_id),f,f
+public,cart_items,idx_cart_items_seller,CREATE INDEX idx_cart_items_seller ON public.cart_items USING btree (seller_id),f,f
 public,cart_items,idx_cart_items_user,CREATE INDEX idx_cart_items_user ON public.cart_items USING btree (user_id),f,f
 public,carts,carts_pkey,CREATE UNIQUE INDEX carts_pkey ON public.carts USING btree (id),t,t
 public,carts,carts_user_id_key,CREATE UNIQUE INDEX carts_user_id_key ON public.carts USING btree (user_id),t,f
@@ -32,14 +33,19 @@ public,order_addresses,idx_order_addresses_type,CREATE INDEX idx_order_addresses
 public,order_addresses,ix_order_addresses_order_id,CREATE INDEX ix_order_addresses_order_id ON public.order_addresses USING btree (order_id),f,f
 public,order_addresses,ix_order_addresses_type,CREATE INDEX ix_order_addresses_type ON public.order_addresses USING btree (address_type),f,f
 public,order_addresses,order_addresses_pkey,CREATE UNIQUE INDEX order_addresses_pkey ON public.order_addresses USING btree (id),t,t
+public,order_groups,idx_order_groups_user_created,"CREATE INDEX idx_order_groups_user_created ON public.order_groups USING btree (user_id, created_at DESC)",f,f
+public,order_groups,order_groups_group_number_key,CREATE UNIQUE INDEX order_groups_group_number_key ON public.order_groups USING btree (group_number),t,f
+public,order_groups,order_groups_pkey,CREATE UNIQUE INDEX order_groups_pkey ON public.order_groups USING btree (id),t,t
 public,order_items,idx_order_items_order,CREATE INDEX idx_order_items_order ON public.order_items USING btree (order_id),f,f
 public,order_items,idx_order_items_product,CREATE INDEX idx_order_items_product ON public.order_items USING btree (product_id),f,f
 public,order_items,order_items_pkey,CREATE UNIQUE INDEX order_items_pkey ON public.order_items USING btree (id),t,t
 public,orders,idx_orders_buyer,CREATE INDEX idx_orders_buyer ON public.orders USING btree (buyer_id),f,f
 public,orders,idx_orders_buyer_created_at,"CREATE INDEX idx_orders_buyer_created_at ON public.orders USING btree (buyer_id, created_at DESC)",f,f
 public,orders,idx_orders_created,CREATE INDEX idx_orders_created ON public.orders USING btree (created_at DESC),f,f
+public,orders,idx_orders_group,CREATE INDEX idx_orders_group ON public.orders USING btree (group_id),f,f
 public,orders,idx_orders_order_number,CREATE INDEX idx_orders_order_number ON public.orders USING btree (order_number),f,f
 public,orders,idx_orders_payment_status,CREATE INDEX idx_orders_payment_status ON public.orders USING btree (payment_status),f,f
+public,orders,idx_orders_seller_created,"CREATE INDEX idx_orders_seller_created ON public.orders USING btree (seller_id, created_at DESC)",f,f
 public,orders,idx_orders_shipment_status,CREATE INDEX idx_orders_shipment_status ON public.orders USING btree (shipment_status),f,f
 public,orders,idx_orders_status,CREATE INDEX idx_orders_status ON public.orders USING btree (status),f,f
 public,orders,idx_orders_status_updated_at,"CREATE INDEX idx_orders_status_updated_at ON public.orders USING btree (status, updated_at DESC)",f,f
@@ -54,6 +60,7 @@ public,partners,partners_pkey,CREATE UNIQUE INDEX partners_pkey ON public.partne
 public,partners,ux_partners_partner_key,CREATE UNIQUE INDEX ux_partners_partner_key ON public.partners USING btree (partner_key),t,f
 public,payments,idx_payments_created,CREATE INDEX idx_payments_created ON public.payments USING btree (created_at DESC),f,f
 public,payments,idx_payments_order,CREATE INDEX idx_payments_order ON public.payments USING btree (order_id),f,f
+public,payments,idx_payments_order_updated,"CREATE INDEX idx_payments_order_updated ON public.payments USING btree (order_id, updated_at DESC)",f,f
 public,payments,idx_payments_status,CREATE INDEX idx_payments_status ON public.payments USING btree (status),f,f
 public,payments,payments_pkey,CREATE UNIQUE INDEX payments_pkey ON public.payments USING btree (id),t,t
 public,payments,payments_transaction_id_key,CREATE UNIQUE INDEX payments_transaction_id_key ON public.payments USING btree (transaction_id),t,f
@@ -85,6 +92,7 @@ public,r2_assets,r2_assets_seller_idx,CREATE INDEX r2_assets_seller_idx ON publi
 public,r2_assets,r2_assets_sha256_idx,CREATE INDEX r2_assets_sha256_idx ON public.r2_assets USING btree (sha256),f,f
 public,shipments,idx_shipments_created,CREATE INDEX idx_shipments_created ON public.shipments USING btree (created_at DESC),f,f
 public,shipments,idx_shipments_order,CREATE INDEX idx_shipments_order ON public.shipments USING btree (order_id),f,f
+public,shipments,idx_shipments_order_updated,"CREATE INDEX idx_shipments_order_updated ON public.shipments USING btree (order_id, updated_at DESC)",f,f
 public,shipments,idx_shipments_status,CREATE INDEX idx_shipments_status ON public.shipments USING btree (status),f,f
 public,shipments,ix_shipments_order,CREATE INDEX ix_shipments_order ON public.shipments USING btree (order_id),f,f
 public,shipments,ix_shipments_status,CREATE INDEX ix_shipments_status ON public.shipments USING btree (status),f,f

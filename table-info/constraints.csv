@@ -98,6 +98,14 @@ public,order_addresses,2200_16705_8_not_null,CHECK
 public,order_addresses,2200_16705_9_not_null,CHECK
 public,order_addresses,order_addresses_order_id_fkey,FOREIGN KEY
 public,order_addresses,order_addresses_pkey,PRIMARY KEY
+public,order_groups,2200_17233_1_not_null,CHECK
+public,order_groups,2200_17233_2_not_null,CHECK
+public,order_groups,2200_17233_4_not_null,CHECK
+public,order_groups,2200_17233_5_not_null,CHECK
+public,order_groups,2200_17233_6_not_null,CHECK
+public,order_groups,order_groups_group_number_key,UNIQUE
+public,order_groups,order_groups_pkey,PRIMARY KEY
+public,order_groups,order_groups_user_id_fkey,FOREIGN KEY
 public,order_items,2200_16714_1_not_null,CHECK
 public,order_items,2200_16714_2_not_null,CHECK
 public,order_items,2200_16714_3_not_null,CHECK
@@ -125,12 +133,17 @@ public,orders,2200_16722_8_not_null,CHECK
 public,orders,2200_16722_9_not_null,CHECK
 public,orders,orders_amounts_check,CHECK
 public,orders,orders_buyer_id_fkey,FOREIGN KEY
+public,orders,orders_group_id_fkey,FOREIGN KEY
 public,orders,orders_order_number_key,UNIQUE
 public,orders,orders_pkey,PRIMARY KEY
+public,orders,orders_seller_id_fkey,FOREIGN KEY
 public,orders,uq_orders_order_number,UNIQUE
 public,partners,2200_17101_18_not_null,CHECK
 public,partners,2200_17101_19_not_null,CHECK
 public,partners,2200_17101_1_not_null,CHECK
+public,partners,2200_17101_25_not_null,CHECK
+public,partners,2200_17101_26_not_null,CHECK
+public,partners,2200_17101_27_not_null,CHECK
 public,partners,2200_17101_2_not_null,CHECK
 public,partners,2200_17101_4_not_null,CHECK
 public,partners,2200_17101_5_not_null,CHECK
