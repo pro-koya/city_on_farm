@@ -4590,8 +4590,10 @@ app.get('/checkout/confirm', async (req, res, next) => {
       return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
 
-    // 注文対象（選択済みがあればそのみ）
-    const items = await loadSelectedItemsWithDetails(req);
+    const allPairs = await loadCartItems(req);
+    const selectedIds = getSelectedIdsBySeller(req, sellerId);
+    const filtered    = filterPairsBySelectedAndSeller(allPairs, selectedIds, sellerId);
+    const items       = await fetchCartItemsWithDetails(filtered);
     if (!items.length) {
       req.session.flash = { type:'error', message:'カートに注文対象の商品がありません。' };
       console.log(req.session.flash.message);
