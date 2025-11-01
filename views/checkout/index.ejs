@@ -107,14 +107,24 @@
       <!-- 支払い方法 -->
       <section class="card">
         <div class="card__head"><h2>お支払い方法</h2></div>
-        <div class="field">
-          <label class="radio">
-            <input type="radio" name="paymentMethod" value="cod"  <%= form.paymentMethod === 'cod'  ? 'checked' : '' %>> 代金引換
-          </label>
-          <label class="radio">
-            <input type="radio" name="paymentMethod" value="bank" <%= form.paymentMethod === 'bank' ? 'checked' : '' %>> 銀行振込
-          </label>
-        </div>
+
+        <% if (!allowedPayments || !allowedPayments.length) { %>
+          <p class="muted">利用可能な決済方法がありません。出品者へお問い合わせください。</p>
+        <% } else { %>
+          <div class="field">
+            <% allowedPayments.forEach(pm => { %>
+              <label class="radio">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="<%= pm.code %>"
+                  <%= form.paymentMethod === pm.code ? 'checked' : '' %>
+                >
+                <%= pm.label_ja || pm.code %>
+              </label>
+            <% }) %>
+          </div>
+        <% } %>
       </section>
 
       <!-- クーポン・メモ -->

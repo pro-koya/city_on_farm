@@ -16,6 +16,7 @@
       <span>更新: <%= new Date(partner.updated_at).toLocaleString('ja-JP') %></span>
     </div>
 
+    <% if (user.roles.includes('admin')) { %>
     <div class="ps__actions">
       <form id="statusForm" action="/admin/partners/<%= partner.id %>/status" method="POST" class="inline">
         <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
@@ -26,6 +27,7 @@
       </form>
       <a class="btn btn--ghost" href="/admin/partners">一覧へ戻る</a>
     </div>
+    <% } %>
   </header>
 
   <section class="ps__grid">
@@ -56,6 +58,7 @@
       </dl>
     </article>
 
+    <% if (user.roles.includes('seller') || user.roles.includes('admin')) { %>
     <article class="card">
       <div class="card__head">
         <h2 class="card__title">決済方法（取引先全体）</h2>
@@ -67,9 +70,9 @@
         <div class="chips">
           <% allPaymentMethods.forEach(m => { %>
             <label class="chip">
-              <input type="checkbox" name="methods" value="<%= m %>"
-                    <%= paymentMethods.includes(m) ? 'checked' : '' %> >
-              <span><%= m %></span>
+              <input type="checkbox" name="methods" value="<%= m.value %>"
+                    <%= paymentMethods.includes(m.value) ? 'checked' : '' %> >
+              <span><%= m.label_ja %></span>
             </label>
           <% }) %>
         </div>
@@ -80,10 +83,11 @@
         </p>
 
         <div class="row-right">
-          <button class="btn btn--primary" type="submit">保存</button>
+          <button class="btn btn--toggle" type="submit">保存</button>
         </div>
       </form>
     </article>
+    <% } %>
 
     <!-- ユーザー一覧 -->
     <article class="card">
@@ -101,7 +105,9 @@
               <tr>
                 <th>ユーザー</th>
                 <th>メール</th>
+                <% if (user.roles.includes('admin')) { %>
                 <th>ロール</th>
+                <% } %>
                 <th>登録日</th>
                 <th></th>
               </tr>
@@ -111,7 +117,9 @@
                 <tr>
                   <td><strong><%= u.name %></strong></td>
                   <td><%= u.email %></td>
+                  <% if (user.roles.includes('admin')) { %>
                   <td><%= (u.roles||[]).join(', ') %></td>
+                  <% } %>
                   <td><%= new Date(u.created_at).toLocaleDateString('ja-JP') %></td>
                   <td class="ta-right">
                     <a class="btn" href="/admin/users/<%= u.id %>">詳細</a>
@@ -126,7 +134,9 @@
                 <div class="table-row">
                     <a class="table-info" href="/admin/users/<%= u.id %>">
                         <span>氏名　 ： <%= u.name %></span>
+                        <% if (user.roles.includes('admin')) { %>
                         <span>ロール ： <%= (u.roles||[]).join(', ') %></span>
+                        <% } %>
                         <span>メール ： <%= u.email %></span>
                         <span>登録日 ： <%= new Date(u.created_at).toLocaleDateString('ja-JP') %></span>
                     </a>

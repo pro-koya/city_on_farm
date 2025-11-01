@@ -4,7 +4,8 @@
     <form id="confirmForm" class="cfm-grid" method="POST" action="/checkout/confirm">
       <% if (typeof csrfToken !=='undefined' && csrfToken) { %>
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-        <% } %>
+      <% } %>
+      <input type="hidden" name="sellerId" value="<%= sellerId %>">
 
           <!-- 左：内容確認 -->
           <section class="cfm-left">

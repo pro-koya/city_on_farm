@@ -344,13 +344,29 @@ async function mergeSessionCartToDb(req, userId){
 }
 
 // ---- services/payments-config-ish ----
-async function getAllowedMethodsForUser(userId) {
+async function getAllowedMethodsForUser(userId, allMethod) {
+
+  // ユーザーに許可された方法（user_allowed_payment_methods）
   const rows = await dbQuery(
     `SELECT method, synced_from_partner
        FROM user_allowed_payment_methods
       WHERE user_id=$1::uuid
-      ORDER BY method`, [userId]);
-  return rows;
+      ORDER BY method`,
+    [userId]
+  );
+  console.log(rows);
+  console.log(allMethod);
+  // ラベルを付与（フォールバックあり）
+  return rows.map(r => {
+    console.log(r);
+    const m = allMethod.find(x => x.value === r.method);
+    console.log(m);
+    return {
+      method: r.method,
+      synced_from_partner: r.synced_from_partner,
+      payment_method_ja: m ? m.label_ja : (r.method || '')
+    };
+  });
 }
 
 async function getAllowedMethodsForPartner(partnerId) {
@@ -363,7 +379,23 @@ async function getAllowedMethodsForPartner(partnerId) {
 }
 
 // 「列挙」に合わせた全候補（UIでチェックボックスを出す）
-const ALL_PAYMENT_METHODS = ['cod','bank','card','bank_transfer','convenience_store','paypay'];
+async function loadAllPaymentMethods(enumTypeName, category) {
+  const rows = await dbQuery(`
+    SELECT
+      e.enumlabel              AS code,
+      COALESCE(ol.label_ja, INITCAP(REPLACE(e.enumlabel, '_', ' '))) AS label_ja,
+      COALESCE(ol.sort, 999)  AS sort
+    FROM pg_type t
+    JOIN pg_enum e ON t.oid = e.enumtypid
+    LEFT JOIN public.option_labels ol
+      ON ol.category = $2
+    AND ol.value    = e.enumlabel
+    AND ol.active   = true
+    WHERE t.typname = $1
+    ORDER BY COALESCE(ol.sort, 999), e.enumsortorder
+  `, [enumTypeName, category]);
+  return rows.map(r => ({ value: r.code, label_ja: r.label_ja, sort: r.sort }));
+}
 
 /* =========================================================
  *  認証
@@ -4168,11 +4200,36 @@ function filterPairsBySelectedAndSeller(pairs, selectedIdsSet, sellerId){
 }
 
 async function fetchSellerConfig(sellerUserId) {
-  const rows = await getAllowedMethodsForUser(sellerUserId);
-  const methods = rows.map(r => r.method);
+  // 支払い方法マスタ（option_labels ベース）
+  const allMethod = await loadAllPaymentMethods('payment_method', 'payment_method');
+  const allMap = new Map(allMethod.map(m => [m.code, m]));
+
+  // 出品者ごとの許可メソッド（無ければ cod デフォルト）
+  const rows = await getAllowedMethodsForUser(sellerUserId, allMethod);
+  const allowedCodes = rows.length ? rows.map(r => String(r.method)) : ['cod'];
+
+  // 日本語ラベル付きで整形
+  const allowedPaymentMethods = allowedCodes.map(code => {
+    const meta = allMap.get(code);
+    const synced = !!rows.find(r => String(r.method) === code)?.synced_from_partner;
+    return {
+      code,
+      label_ja: meta?.label_ja || jaLabel('payment_method', code) || code,
+      label_en: meta?.label_en || code,
+      synced_from_partner: synced
+    };
+  });
+
+  // 配送方法も同じ思想で（必要なら option_labels からの取得に差し替え可）
+  const allowedShipMethods = [
+    { code: 'normal', label_ja: jaLabel('ship_method', 'normal') || '通常便' },
+    { code: 'cool',   label_ja: jaLabel('ship_method', 'cool')   || 'クール便' }
+  ];
+
   return {
-    allowedPaymentMethods: methods.length ? methods : ['cod'],
-    allowedShipMethods: ['normal','cool']
+    // UI 側は .map(m => m.code) で value、 .map(m => m.label_ja) で表示が使える
+    allowedPaymentMethods,
+    allowedShipMethods
   };
 }
 
@@ -4254,7 +4311,7 @@ app.get('/checkout', async (req, res, next) => {
       shipMethod: draft.shipMethod || '',
       shipDate:   draft.shipDate   || '',
       shipTime:   draft.shipTime   || '',
-      paymentMethod: draft.paymentMethod || '',
+      paymentMethod: draft.paymentMethod || sellerConfig.allowedPaymentMethods[0].code || 'cod',
       orderNote: draft.orderNote || ''
     };
 
@@ -4269,8 +4326,8 @@ app.get('/checkout', async (req, res, next) => {
       form,
       isInitial,
       sellerId,                       // ← ビューへ渡す
-      allowedPayments: sellerConfig.allowedPaymentMethods || ['cod','bank','card'],
-      allowedShipMethods: sellerConfig.allowedShipMethods || ['normal','cool'],
+      allowedPayments: sellerConfig.allowedPaymentMethods || [{code: 'cod', label_ja: '代金引換'}],
+      allowedShipMethods: sellerConfig.allowedShipMethods || [{code: 'normal', label_ja: '常温便'}, {code: 'cool', label_ja: 'クール便'}],
     });
   } catch (e) { next(e); }
 });
@@ -4288,6 +4345,7 @@ app.post('/checkout', async (req, res, next) => {
     // ✅ sellerId を必ず受け取る（hidden等でフォームに埋め込む）
     const sellerId = (req.body.sellerId || req.query.seller || '').trim();
     if (!sellerId) {
+      console.log(req.session.flash.message);
       req.session.flash = { type:'error', message:'出品者が特定できません。もう一度やり直してください。' };
       return res.redirect('/cart');
     }
@@ -4299,28 +4357,35 @@ app.post('/checkout', async (req, res, next) => {
 
     // 出品者の許可設定
     const sellerConfig = await fetchSellerConfig(sellerId);
-    const allowedPayments = sellerConfig.allowedPaymentMethods || ['cod','bank','card'];
+    const allowedPayments = sellerConfig.allowedPaymentMethods || [{code: 'cod', label_ja: '代金引換'}];
+    const allowedPaymentCodes = allowedPayments.map(p => String(p.code || '').trim());
     const allowedShips    = sellerConfig.allowedShipMethods || ['normal','cool'];
-
+    const allowedShipsCodes = allowedShips.map(s => String(s.code || '').trim());
+    
     // バリデーション
     if (!shippingAddressId) {
       req.session.flash = { type:'error', message:'配送先を選択してください。' };
+      console.log(req.session.flash.message);
       return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
     if (!agree) {
       req.session.flash = { type:'error', message:'利用規約に同意してください。' };
+      console.log(req.session.flash.message);
       return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
-    if (!allowedShips.includes(String(shipMethod || ''))) {
+    if (!allowedShipsCodes.includes(String(shipMethod || ''))) {
       req.session.flash = { type:'error', message:'配送方法が無効です。' };
+      console.log(req.session.flash.message);
       return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
-    if (!allowedPayments.includes(String(paymentMethod || ''))) {
+    if (!allowedPaymentCodes.includes(String(paymentMethod || ''))) {
       req.session.flash = { type:'error', message:'この出品者では選択されたお支払い方法はご利用いただけません。' };
+      console.log(req.session.flash.message);
       return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
     if (!billSame && !billingAddressId) {
       req.session.flash = { type:'error', message:'請求先住所を選択してください。' };
+      console.log(req.session.flash.message);
       return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
 
@@ -4332,6 +4397,7 @@ app.post('/checkout', async (req, res, next) => {
     );
     if (!shipAddrRows.length) {
       req.session.flash = { type:'error', message:'配送先住所が不正です。' };
+      console.log(req.session.flash.message);
       return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
     if (!billSame) {
@@ -4341,6 +4407,7 @@ app.post('/checkout', async (req, res, next) => {
       );
       if (!billAddrRows.length) {
         req.session.flash = { type:'error', message:'請求先住所が不正です。' };
+        console.log(req.session.flash.message);
         return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
       }
     }
@@ -4505,19 +4572,29 @@ app.post(
 app.get('/checkout/confirm', async (req, res, next) => {
   try {
     if (!req.session?.user) {
-      return res.redirect('/login?next=' + encodeURIComponent('/checkout/confirm'));
+      const nextUrl = '/checkout/confirm' + (req.query.seller ? `?seller=${encodeURIComponent(req.query.seller)}` : '');
+      return res.redirect('/login?next=' + encodeURIComponent(nextUrl));
     }
-    const draft = req.session.checkoutDraft;
+
+    const sellerId = (req.query.seller || '').trim();
+    if (!sellerId) {
+      req.session.flash = { type:'error', message:'出品者が特定できません。もう一度やり直してください。' };
+      return res.redirect('/cart');
+    }
+
+    const draft = req.session.checkoutDraftBySeller?.[sellerId];
     if (!draft) {
       // 入力が未完了
       req.session.flash = { type: 'error', message: '先に注文情報を入力してください。' };
-      return res.redirect('/checkout');
+      console.log(req.session.flash.message);
+      return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
 
     // 注文対象（選択済みがあればそのみ）
     const items = await loadSelectedItemsWithDetails(req);
     if (!items.length) {
       req.session.flash = { type:'error', message:'カートに注文対象の商品がありません。' };
+      console.log(req.session.flash.message);
       return res.redirect('/cart');
     }
 
@@ -4526,6 +4603,7 @@ app.get('/checkout/confirm', async (req, res, next) => {
     const shippingAddress = await findUserAddress(uid, draft.shippingAddressId);
     if (!shippingAddress) {
       req.session.flash = { type:'error', message:'配送先住所が不正です。' };
+      console.log(req.session.flash.message);
       return res.redirect('/checkout');
     }
     const billingAddress = draft.billSame
@@ -4543,6 +4621,7 @@ app.get('/checkout/confirm', async (req, res, next) => {
       items,
       totals,
       draft,
+      sellerId,
       shippingAddress,
       billingAddress,
       shipMethod: draft.shipMethod,
@@ -4600,19 +4679,25 @@ app.post('/checkout/confirm', async (req, res, next) => {
   const client = await pool.connect();
   try {
     if (!req.session?.user) {
-      return res.redirect('/login?next=' + encodeURIComponent('/checkout/confirm'));
+      const nextUrl = '/checkout/confirm' + (req.query.seller ? `?seller=${encodeURIComponent(req.query.seller)}` : '');
+      return res.redirect('/login?next=' + encodeURIComponent(nextUrl));
     }
     const uid = req.session.user.id;
-    const draft = req.session.checkoutDraft;
+    const sellerId = String(req.body.sellerId || req.query.seller || '').trim();
+    if (!sellerId) {
+      req.session.flash = { type:'error', message:'出品者が特定できません。もう一度やり直してください。' };
+      return res.redirect('/cart');
+    }
+    const draft = req.session.checkoutDraftBySeller?.[sellerId];
     if (!draft) {
       req.session.flash = { type: 'error', message: '注文情報が見つかりません。' };
-      return res.redirect('/checkout');
+      return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
 
     // 対象アイテム（選択済みがあればそれのみ）
-    const pairs = await loadCartItems(req);                         // [{productId, quantity}]
-    const selectedIds = getSelectedIds(req);
-    const targetPairs = filterPairsBySelection(pairs, selectedIds); // 今回の注文対象
+    const allPairs   = await loadCartItems(req);
+    const selectedIds = getSelectedIdsBySeller(req, sellerId);
+    const targetPairs = filterPairsBySelectedAndSeller(allPairs, selectedIds, sellerId);
     if (!targetPairs.length) {
       req.session.flash = { type:'error', message:'注文対象の商品がありません。' };
       return res.redirect('/cart');
@@ -4663,6 +4748,15 @@ app.post('/checkout/confirm', async (req, res, next) => {
     }
     const billAddr = draft.billSame ? null : await findUserAddress(uid, draft.billingAddressId);
 
+    // 出品者の許可設定を再取得し、支払い方法を最終バリデーション
+    const sellerConfig = await fetchSellerConfig(sellerId);
+    const allowedPaymentObjs  = sellerConfig.allowedPaymentMethods || [{ code:'cod', label_ja:'代金引換' }];
+    const allowedPaymentCodes = allowedPaymentObjs.map(p => String(p.code || '').trim());
+    let safePaymentMethod = String(draft.paymentMethod || '');
+    if (!allowedPaymentCodes.includes(safePaymentMethod)) {
+      safePaymentMethod = allowedPaymentCodes[0] || 'cod';
+    }
+
     // 注文番号・ETA
     const orderNo = genOrderNo();
     const etaAt = draft.shipDate ? new Date(draft.shipDate) : null;
@@ -4683,7 +4777,7 @@ app.post('/checkout/confirm', async (req, res, next) => {
       [
         orderNo, uid,
         subtotal, discount, shipping_fee, total,
-        draft.paymentMethod, (draft.orderNote || '').slice(0,1000), etaAt,
+        safePaymentMethod, (draft.orderNote || '').slice(0,1000), etaAt,
         coupon?.code || null, draft.shipMethod
       ]
     );
@@ -4729,10 +4823,14 @@ app.post('/checkout/confirm', async (req, res, next) => {
       req.session.cart.items = req.session.cart.items.filter(i => !ids.includes(i.productId));
     }
 
-    // 今回選択の記録はクリア（次回に持ち越さない）
-    if (req.session?.cart) req.session.cart.selection = [];
-    // チェックアウトドラフト/クーポンもクリア（任意）
-    req.session.checkoutDraft = null;
+    // 今回選択（出品者別）だけクリア
+    if (req.session?.cart?.selectionBySeller) {
+      delete req.session.cart.selectionBySeller[sellerId];
+    }
+    // 出品者別ドラフトだけクリア
+    if (req.session.checkoutDraftBySeller) {
+      delete req.session.checkoutDraftBySeller[sellerId];
+    }
     req.session.cart = req.session.cart || {};
     // クーポンは「使い切り」にしたいならここで null
     // req.session.cart.coupon = null;
@@ -5819,11 +5917,14 @@ app.get('/admin/partners', requireAuth, requireRole(['admin']), async (req, res,
 app.get(
   '/admin/partners/:id',
   requireAuth,
-  requireRole(['admin']),
   async (req, res, next) => {
     try {
       const id = String(req.params.id || '').trim();
       if (!isUuid(id)) return res.status(400).render('errors/404', { title: '不正なID' });
+      // 権限：管理者 or その取引先メンバー
+      if (!isAdmin(req) && !(await isMemberOfPartner(req, id))) {
+        return res.status(403).send('forbidden');
+      }
 
       // 取引先
       const partners = await dbQuery(
@@ -5849,12 +5950,14 @@ app.get(
         [id]
       );
 
+      const user = req.session.user;
+      const allMethod = await loadAllPaymentMethods('payment_method', 'payment_method');
       const partnerMethods = await getAllowedMethodsForPartner(id);
       res.render('admin/partners/show', {
         title: `取引先詳細 | ${partner.name}`,
-        partner, users,
+        partner, users, user,
         paymentMethods: partnerMethods,
-        allPaymentMethods: ALL_PAYMENT_METHODS,
+        allPaymentMethods: allMethod,
         csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
       });
     } catch (e) { next(e); }
@@ -5935,10 +6038,12 @@ app.post(
       }
 
       // 受け取り（チェックボックス name="methods"）
+      const allMethod = await loadAllPaymentMethods('payment_method', 'payment_method');
+      const allCodes = allMethod.map(m => m.value);
       const methods = []
         .concat(req.body?.methods || [])
         .map(String).map(s=>s.trim())
-        .filter(m => ALL_PAYMENT_METHODS.includes(m));
+        .filter(m => allCodes.includes(m));
 
       // トランザクション
       await dbQuery('BEGIN');
@@ -6012,14 +6117,21 @@ app.get('/admin/users/:id', requireAuth, async (req,res,next)=>{
     if (!user) return res.status(404).send('not found');
 
     const partner = (await dbQuery(`SELECT id,name,type,status,phone,billing_email,postal_code,prefecture,city,address1,address2 FROM partners WHERE id=(SELECT partner_id FROM users WHERE id=$1)`, [uid]))[0] || null;
-
+    if (!isAdmin(req) && !(await isMemberOfPartner(req, partner.id))) {
+        return res.status(403).render('errors/403', { title: '権限がありません' })
+    }
+    
     const addresses = await dbQuery(
       `SELECT id,full_name,phone,postal_code,prefecture,city,address_line1,address_line2,address_type,is_default
          FROM addresses WHERE user_id=$1 ORDER BY is_default DESC, created_at DESC LIMIT 30`, [uid]
     );
 
-    const userMethodsRows = await getAllowedMethodsForUser(user.id);
+    // マスタ（= 全システムの有効な支払い方法 & 日本語ラベル）
+    const allMethod = await loadAllPaymentMethods('payment_method', 'payment_method');
+    const userMethodsRows = await getAllowedMethodsForUser(user.id, allMethod);
+    console.log(userMethodsRows);
     const userMethods = userMethodsRows.map(r => r.method);
+    console.log(userMethods);
     const userSynced = userMethodsRows.some(r => r.synced_from_partner);
 
     res.render('admin/users/show', {
@@ -6027,7 +6139,7 @@ app.get('/admin/users/:id', requireAuth, async (req,res,next)=>{
       user, partner, addresses,
       userPaymentMethods: userMethods,
       userPaymentSynced: userSynced,
-      allPaymentMethods: ALL_PAYMENT_METHODS,
+      allPaymentMethods: allMethod,
       isSelf,
       currentRoles: req.session.user.roles || [],
       csrfToken: req.csrfToken()
@@ -6073,10 +6185,14 @@ app.post('/admin/users/:id/payments', requireAuth, csrfProtect, async (req,res,n
     }
     if (!allowed) return res.status(403).send('forbidden');
 
+    const allMethod = await loadAllPaymentMethods('payment_method', 'payment_method');
+    const allCodes = allMethod.map(m => m.value);
+    console.log(req.body?.methods);
     const methods = []
       .concat(req.body?.methods || [])
       .map(String).map(s=>s.trim())
-      .filter(m => ALL_PAYMENT_METHODS.includes(m));
+      .filter(m => allCodes.includes(m));
+    console.log(methods);
 
     await dbQuery('BEGIN');
 

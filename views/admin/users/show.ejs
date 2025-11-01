@@ -99,6 +99,7 @@
     </article>
     <% } %>
 
+    <% if ((isSelf || currentRoles.includes('admin'))&& (currentRoles.includes('admin') || currentRoles.includes('seller'))) { %>
     <article class="card">
       <div class="card__head">
         <h2>決済方法（このユーザー）</h2>
@@ -115,10 +116,10 @@
         <div class="chips">
           <% allPaymentMethods.forEach(m => { %>
             <label class="chip">
-              <input type="checkbox" name="methods" value="<%= m %>"
-                    <%= userPaymentMethods.includes(m) ? 'checked' : '' %>
+              <input type="checkbox" name="methods" value="<%= m.value %>"
+                    <%= userPaymentMethods.includes(m.value) ? 'checked' : '' %>
                     <%= canEditPayments ? '' : 'disabled' %> >
-              <span><%= m %></span>
+              <span><%= m.label_ja %></span>
             </label>
           <% }) %>
         </div>
@@ -139,6 +140,7 @@
         </div>
       </form>
     </article>
+    <% } %>
 
     <!-- 所属取引先（コンパクト＆視認性UP） -->
     <article class="card">
@@ -169,10 +171,10 @@
             </div>
           </div>
           <div class="partner__action">
-            <% if (currentRoles.includes('admin')) { %>
-              <a class="btn btn--ghost" href="/admin/partners/<%= partner.id %>">取引先詳細へ</a>
+            <a class="btn btn--ghost" href="/admin/partners/<%= partner.id %>">取引先詳細へ</a>
+            <% if (isSelf) { %>
+              <button type="button" class="btn btn--primary" id="btnChangePartner">変更</button>
             <% } %>
-            <button type="button" class="btn btn--primary" id="btnChangePartner">変更</button>
           </div>
         </div>
 
