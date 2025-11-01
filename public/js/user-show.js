@@ -260,4 +260,11 @@
     if (!resp.ok || !j.ok) return $('#partnerErr').textContent = j.message || '作成に失敗しました';
     location.reload();
   });
+
+  const payment_form = document.querySelector('form[action$="/payments"]');
+  if (!payment_form) return;
+  payment_form.addEventListener('submit', () => {
+    const btn = payment_form.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
+  });
 })();

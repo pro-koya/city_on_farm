@@ -99,6 +99,47 @@
     </article>
     <% } %>
 
+    <article class="card">
+      <div class="card__head">
+        <h2>決済方法（このユーザー）</h2>
+      </div>
+
+      <% const canEditPayments =
+          (currentRoles.includes('admin')) || isSelf ||
+          (partner && (currentRoles.includes('admin') || true)); %>
+      <!-- ※実権限はサーバー側で担保。ここはUIの可視制御だけ -->
+
+      <form action="/admin/users/<%= user.id %>/payments" method="POST" class="form" <%= canEditPayments ? '' : 'aria-disabled="true"' %>>
+        <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
+
+        <div class="chips">
+          <% allPaymentMethods.forEach(m => { %>
+            <label class="chip">
+              <input type="checkbox" name="methods" value="<%= m %>"
+                    <%= userPaymentMethods.includes(m) ? 'checked' : '' %>
+                    <%= canEditPayments ? '' : 'disabled' %> >
+              <span><%= m %></span>
+            </label>
+          <% }) %>
+        </div>
+
+        <% if (userPaymentSynced) { %>
+          <p class="muted small">
+            現在の設定には取引先から同期された項目が含まれています。
+            保存すると、このユーザーは「手動設定優先」に切り替わります。
+          </p>
+        <% } %>
+
+        <div class="row-right">
+          <% if (canEditPayments) { %>
+            <button class="btn btn--primary" type="submit">保存</button>
+          <% } else { %>
+            <span class="muted">権限がありません</span>
+          <% } %>
+        </div>
+      </form>
+    </article>
+
     <!-- 所属取引先（コンパクト＆視認性UP） -->
     <article class="card">
       <div class="card__head">
@@ -131,7 +172,7 @@
             <% if (currentRoles.includes('admin')) { %>
               <a class="btn btn--ghost" href="/admin/partners/<%= partner.id %>">取引先詳細へ</a>
             <% } %>
-            <!-- <button type="button" class="btn btn--primary" id="btnChangePartner">変更</button> -->
+            <button type="button" class="btn btn--primary" id="btnChangePartner">変更</button>
           </div>
         </div>
 

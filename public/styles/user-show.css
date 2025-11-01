@@ -9,6 +9,7 @@
     --hi: #D6EADF;
     --accent: #A3C9A8;
     --danger: #e11d48;
+    --border:#e5e7eb;
 }
 
 html,
@@ -29,7 +30,7 @@ a {
 .us {
     max-width: 1080px;
     margin: 80px auto;
-    padding: 0 14px
+    padding: 0;
 }
 
 .us__head {
@@ -37,7 +38,8 @@ a {
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 12px
+    margin-bottom: 12px;
+    padding: 0 14px;
 }
 
 .us__title h1 {
@@ -124,7 +126,7 @@ a {
 
 .kv>div {
     display: grid;
-    grid-template-columns: 120px 1fr;
+    grid-template-columns: 20% 1fr;
     gap: 10px
 }
 
@@ -446,4 +448,32 @@ input[type="checkbox"]:checked::after{
 .result-list .meta {
     color: var(--muted);
     font-size: .9rem
+}
+
+/* 支払い方法チップ */
+.chips{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-top: 8px;
+}
+.chip{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: .35rem .6rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+}
+.chip input[type="checkbox"]{
+  margin: 0;
+  width: 26px; height: 26px;
+  border-radius: 4px;
+}
+.chip span{
+  font-size: .92rem;
 }

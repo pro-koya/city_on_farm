@@ -16,7 +16,7 @@ a {
     text-decoration: none;
 }
 .complete {
-    max-width: 1000px;
+    max-width: 1600px;
     margin: 80px auto 72px;
     padding: 0 16px;
 }
@@ -381,6 +381,10 @@ a {
 
 /* Compact mode for small screens */
 @media (max-width: 560px) {
+    .complete {
+        padding: 0 8px;
+    }
+
     .complete-order {
         display: flex;
         flex-direction: column;

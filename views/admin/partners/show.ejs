@@ -56,6 +56,35 @@
       </dl>
     </article>
 
+    <article class="card">
+      <div class="card__head">
+        <h2 class="card__title">決済方法（取引先全体）</h2>
+      </div>
+
+      <form action="/admin/partners/<%= partner.id %>/payments" method="POST" class="form">
+        <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
+
+        <div class="chips">
+          <% allPaymentMethods.forEach(m => { %>
+            <label class="chip">
+              <input type="checkbox" name="methods" value="<%= m %>"
+                    <%= paymentMethods.includes(m) ? 'checked' : '' %> >
+              <span><%= m %></span>
+            </label>
+          <% }) %>
+        </div>
+
+        <p class="muted small">
+          保存すると、この取引先に所属する全ユーザーの「パートナー由来の決済方法」が同期されます。
+          （ユーザー側で手動編集済みの設定は上書きされません）
+        </p>
+
+        <div class="row-right">
+          <button class="btn btn--primary" type="submit">保存</button>
+        </div>
+      </form>
+    </article>
+
     <!-- ユーザー一覧 -->
     <article class="card">
       <div class="card__head">

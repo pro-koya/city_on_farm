@@ -1,17 +1,9 @@
 (() => {
-  const list = document.getElementById('cartList');
+  const list = document.getElementById('allList');
   const selectAll = document.getElementById('selectAll');
   const removeSelected = document.getElementById('removeSelected');
   const couponCode = document.getElementById('couponCode');
   const applyCoupon = document.getElementById('applyCoupon');
-
-  const sumSubtotal = document.getElementById('sumSubtotal');
-  const sumDiscount = document.getElementById('sumDiscount');
-  const sumShipping = document.getElementById('sumShipping');
-  const sumTotal    = document.getElementById('sumTotal');
-
-  const freeShipBar    = document.getElementById('freeShipBar');
-  const freeShipRemain = document.getElementById('freeShipRemain');
 
   const CSRF = document.querySelector('input[name="_csrf"]')?.value || '';
   const FREE_SHIP_THRESHOLD = 5000; // 任意：送料無料のしきい値（円）
@@ -25,33 +17,58 @@
   // 合計の再計算
   function recalc() {
     const rows = [...list.querySelectorAll('.cart-item')];
-    let subtotal = 0;
-    rows.forEach(li => {
-      const checked = li.querySelector('.rowCheck')?.checked;
-      if (!checked) return;
-      const price = Number(li.dataset.price || 0);
-      const qty   = Number(li.querySelector('.qty__input')?.value || 1);
-      subtotal += price * qty;
-      const subEl = li.querySelector('.subtotal__val');
-      if (subEl) subEl.textContent = (price * qty).toLocaleString();
-    });
+    const groupedBySeller = rows.reduce((partner, item) => {
+      const sellerId = item.dataset.seller;
+      if (!partner[sellerId]) {
+        partner[sellerId] = [];
+      }
+      partner[sellerId].push(item);
+      console.log(sellerId);
+      return partner;
+    }, {});
+    console.log(groupedBySeller);
 
-    // 仮の送料：合計300円（0円 if FREE_SHIP）
-    const shipping = subtotal >= FREE_SHIP_THRESHOLD || subtotal === 0 ? 0 : 300;
-    const total = Math.max(0, subtotal - discount) + shipping;
+    for (const partnerId in groupedBySeller) {
+      let subtotal = 0;
+      const perItems = groupedBySeller[partnerId];
+      console.log(perItems);
+      perItems.forEach(li => {
+        const checked = li.querySelector('.rowCheck')?.checked;
+        if (!checked) return;
+        const price = Number(li.dataset.price || 0);
+        console.log(li.dataset.price);
+        const qty   = Number(li.querySelector('.qty__input')?.value || 1);
+        subtotal += price * qty;
+        console.log(subtotal);
+        const subEl = li.querySelector('.subtotal__val');
+        if (subEl) subEl.textContent = (price * qty).toLocaleString();
+      });
+      // 仮の送料：合計300円（0円 if FREE_SHIP）
+      const shipping = subtotal >= FREE_SHIP_THRESHOLD || subtotal === 0 ? 0 : 300;
+      const total = Math.max(0, subtotal - discount) + shipping;
 
-    if (sumSubtotal) sumSubtotal.textContent = yen(subtotal);
-    if (sumDiscount) sumDiscount.textContent = `-${yen(discount)}`;
-    if (sumShipping) sumShipping.textContent = yen(shipping);
-    if (sumTotal)    sumTotal.textContent    = yen(total);
+      const sumSubtotal = document.getElementById('sumSubtotal-' + partnerId);
+      const sumDiscount = document.getElementById('sumDiscount-' + partnerId);
+      const sumShipping = document.getElementById('sumShipping-' + partnerId);
+      const sumTotal    = document.getElementById('sumTotal-' + partnerId);
+      console.log(subtotal);
+      if (sumSubtotal) sumSubtotal.textContent = yen(subtotal);
+      if (sumDiscount) sumDiscount.textContent = `-${yen(discount)}`;
+      if (sumShipping) sumShipping.textContent = yen(shipping);
+      if (sumTotal)    sumTotal.textContent    = yen(total);
+      console.log(sumSubtotal + ':' + sumTotal);
 
-    // 送料無料メーター
-    const remain = Math.max(0, FREE_SHIP_THRESHOLD - subtotal);
-    if (freeShipRemain) freeShipRemain.textContent = remain.toLocaleString();
-    if (freeShipBar) {
-      const pct = Math.min(100, Math.floor((subtotal / FREE_SHIP_THRESHOLD) * 100));
-      freeShipBar.style.width = `${pct}%`;
+      // 送料無料メーター
+      const freeShipBar    = document.getElementById('freeShipBar-' + partnerId);
+      const freeShipRemain = document.getElementById('freeShipRemain-' + partnerId);
+      const remain = Math.max(0, FREE_SHIP_THRESHOLD - subtotal);
+      if (freeShipRemain) freeShipRemain.textContent = remain.toLocaleString();
+      if (freeShipBar) {
+        const pct = Math.min(100, Math.floor((subtotal / FREE_SHIP_THRESHOLD) * 100));
+        freeShipBar.style.width = `${pct}%`;
+      }
     }
+
   }
 
   // 行イベント（数量変更・削除等）
@@ -170,36 +187,79 @@
     recalc();
   });
 
-  const checkoutBtn = document.getElementById('checkoutBtn');
-  checkoutBtn?.addEventListener('click', async (e) => {
-    e.preventDefault();
+  // 既存の .checkoutBtn へのリスナーを書き換え/追加
+  document.querySelectorAll('.checkoutBtn').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
 
-    // チェックされている行の product_id を収集
-    const checkedLis = [...list.querySelectorAll('.cart-item')]
-      .filter(li => li.querySelector('.rowCheck')?.checked);
+      const sellerId = btn.dataset.seller;
+      const errEl = document.getElementById('checkoutError-' + sellerId);
+      const list = document.querySelector('#cartList-' + sellerId);
+      const CSRF = document.querySelector('input[name="_csrf"]')?.value || '';
 
-    if (!checkedLis.length) {
-      alert('購入対象の商品が選択されていません。チェックを入れてください。');
-      return;
-    }
+      // 表示ヘルパ
+      const showError = (msg) => {
+        if (!errEl) return;
+        errEl.textContent = msg || '';
+        errEl.hidden = !msg;
+      };
+      const clearError = () => showError('');
 
-    const ids = checkedLis.map(li => li.dataset.id).filter(Boolean);
+      clearError(); // まず消す
 
-    try {
-      // サーバに「選択中ID」を一時保存
-      const resp = await fetch('/cart/selection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF },
-        body: JSON.stringify({ ids })
-      });
-      if (!resp.ok) throw new Error('save selection failed');
+      if (!sellerId || !list) {
+        showError('対象の出品者グループが見つかりません。ページを更新して再度お試しください。');
+        return;
+      }
 
-      // 保存できたら /checkout へ遷移
-      window.location.href = '/checkout';
-    } catch (err) {
-      console.error(err);
-      alert('購入手続きの開始に失敗しました。時間をおいて再度お試しください。');
-    }
+      const rows = [...list.querySelectorAll('.cart-item')];
+      const checkedLis = rows.filter(li => li.querySelector('.rowCheck')?.checked);
+      if (!checkedLis.length) {
+        showError('購入対象の商品が選択されていません。チェックを入れてください。');
+        return;
+      }
+
+      const ids = checkedLis.map(li => li.dataset.id).filter(Boolean);
+      if (!ids.length) {
+        showError('購入対象の商品が特定できませんでした。ページを更新して再度お試しください。');
+        return;
+      }
+
+      // 送信中ロック
+      btn.disabled = true;
+
+      try {
+        const resp = await fetch('/cart/selection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF },
+          body: JSON.stringify({ sellerId, ids })
+        });
+        if (!resp.ok) {
+          // 可能ならサーバのメッセージを拾う
+          let msg = '購入手続きの開始に失敗しました。時間をおいて再度お試しください。';
+          try { const j = await resp.json(); if (j?.message) msg = j.message; } catch {}
+          showError(msg);
+          return;
+        }
+        clearError();
+        window.location.href = `/checkout?seller=${encodeURIComponent(sellerId)}`;
+      } catch (err) {
+        console.error(err);
+        showError('通信に失敗しました。ネットワーク状況をご確認ください。');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+
+  // 追加：チェック変更・数量変更時はそのグループのエラーを消す
+  document.querySelectorAll('.cart-item').forEach((li) => {
+    const sellerId = li.dataset.seller;
+    const errEl = document.getElementById('checkoutError-' + sellerId);
+    const clearError = () => { if (errEl) { errEl.textContent=''; errEl.hidden = true; } };
+
+    li.querySelector('.rowCheck')?.addEventListener('change', clearError);
+    li.querySelector('.qty__input')?.addEventListener('input', clearError);
   });
 
   // 初期バインド

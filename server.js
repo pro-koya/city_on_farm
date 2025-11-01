@@ -22,11 +22,11 @@ const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
 app.set('trust proxy', 1);
 // ローカル用のデフォルト値（自分の環境に合わせて）
-const LOCAL_DB_URL = 'postgresql://city_on_firm_d95k_user:eKQB9mqVvBdcEyHaX5StMevF6elgh89R@dpg-d3hs8es9c44c73cau4ig-a.oregon-postgres.render.com/city_on_firm_d95k';
+const LOCAL_DB_URL = 'postgresql://city_on_firm_s43g_user:2skJEN9AjwEOXy3Li3oSHVJWYmmilkgC@dpg-d42r7u3ipnbc73c3msng-a.oregon-postgres.render.com/city_on_firm_s43g';
 
 /* ========== DB ========== */
 const { Pool } = require('pg');
-const externalDB = 'postgresql://city_on_firm_d95k_user:eKQB9mqVvBdcEyHaX5StMevF6elgh89R@dpg-d3hs8es9c44c73cau4ig-a.oregon-postgres.render.com/city_on_firm_d95k';
+const externalDB = 'postgresql://city_on_firm_s43g_user:2skJEN9AjwEOXy3Li3oSHVJWYmmilkgC@dpg-d42r7u3ipnbc73c3msng-a.oregon-postgres.render.com/city_on_firm_s43g';
 
 // Renderの接続文字列（環境変数に置くのが推奨）
 const dbUrl = process.env.External_Database_URL || LOCAL_DB_URL;
@@ -162,6 +162,22 @@ function requireRole(roles) {
     if (!allow) return res.status(403).render('errors/403', { title: '権限がありません' });
     next();
   };
+}
+// ---- helpers/permissions-ish（server.jsの上の方に置く） ----
+function isAdmin(req) {
+  return !!req.session?.user?.roles?.includes('admin');
+}
+function isSelf(req, userId) {
+  return String(req.session?.user?.id || '') === String(userId || '');
+}
+async function getUserPartnerId(userId) {
+  const rows = await dbQuery(`SELECT partner_id FROM users WHERE id=$1::uuid`, [userId]);
+  return rows[0]?.partner_id || null;
+}
+async function isMemberOfPartner(req, partnerId) {
+  if (!partnerId) return false;
+  const myPartner = (await getUserPartnerId(req.session.user.id));
+  return String(myPartner || '') === String(partnerId || '');
 }
 
 /* ========== Utils ========== */
@@ -326,6 +342,28 @@ async function mergeSessionCartToDb(req, userId){
   // セッション側は空に
   req.session.cart = { items: [], coupon: null };
 }
+
+// ---- services/payments-config-ish ----
+async function getAllowedMethodsForUser(userId) {
+  const rows = await dbQuery(
+    `SELECT method, synced_from_partner
+       FROM user_allowed_payment_methods
+      WHERE user_id=$1::uuid
+      ORDER BY method`, [userId]);
+  return rows;
+}
+
+async function getAllowedMethodsForPartner(partnerId) {
+  const rows = await dbQuery(
+    `SELECT method
+       FROM partner_allowed_payment_methods
+      WHERE partner_id=$1::uuid
+      ORDER BY method`, [partnerId]);
+  return rows.map(r => r.method);
+}
+
+// 「列挙」に合わせた全候補（UIでチェックボックスを出す）
+const ALL_PAYMENT_METHODS = ['cod','bank','card','bank_transfer','convenience_store','paypay'];
 
 /* =========================================================
  *  認証
@@ -931,31 +969,6 @@ app.get('/about', async (req, res, next) => {
     });
   } catch (e) { next(e); }
 });
-
-// app.get('/', async (req, res, next) => {
-//   try {
-//     // 新着商品（公開・在庫>0）8件＋サムネ1枚
-//     const products = await dbQuery(`
-//       SELECT p.*, c.name AS category,
-//              (SELECT url FROM product_images pi WHERE pi.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
-//         FROM products p
-//         LEFT JOIN categories c ON c.id = p.category_id
-//        WHERE p.status = 'public'
-//        ORDER BY p.published_at DESC NULLS LAST, p.created_at DESC
-//        LIMIT 8
-//     `);
-
-//     const page = 1;
-//     const q = (req.query.q || '').trim();
-//     const category = (req.query.category || 'all').trim();
-//     const sort = (req.query.sort || 'published_desc').trim(); // 'published_desc' | 'published_asc' | 'updated_desc' | 'updated_asc' | 'popular_desc' | 'popular_asc'
-
-//     const perPage = 12; // 表示用
-//     const { posts, total, pageCount, categories } =
-//       await noteService.getListFiltered({ q, category, sort, page, perPage });
-//     res.render('index', { title: '新・今日の食卓', products, blogPosts: posts });
-//   } catch (e) { next(e); }
-// });
 
 /* =========================================================
  * お問い合わせフォーム表示
@@ -3462,38 +3475,70 @@ function toInt(n, def = 0) {
   return Number.isFinite(v) ? v : def;
 }
 
-// セッション + DB のカートを読み込み、{ productId, quantity } に正規化
+// セッション + DB のカートを読み込み、{ productId, quantity, sellerId, sellerPartnerId } に正規化
 async function loadCartItems(req) {
-  const sessItems = (req.session?.cart?.items || []).map(it => ({
-    productId: String(it.productId || it.product_id || '').trim(),
-    quantity: Math.max(1, parseInt(it.quantity, 10) || 1)
-  }));
-
   let dbItems = [];
+
   if (req.session?.user?.id) {
     const uid = req.session.user.id;
     const cart = await getOrCreateUserCart(uid);
     const rows = await dbQuery(
-      `SELECT product_id, quantity
-         FROM cart_items
-        WHERE cart_id = $1 AND saved_for_later = false
-        ORDER BY created_at ASC`,
+      `SELECT
+         ci.product_id      AS product_id,
+         ci.quantity        AS quantity,
+         p.seller_id        AS seller_id,
+         u.partner_id       AS seller_partner_id
+       FROM cart_items ci
+       JOIN products p ON p.id = ci.product_id
+       LEFT JOIN users u ON u.id = p.seller_id
+       WHERE ci.cart_id = $1 AND ci.saved_for_later = false
+       ORDER BY ci.created_at ASC`,
       [cart.id]
     );
+
+    // ここは素直にそのまま
     dbItems = rows.map(r => ({
       productId: String(r.product_id || '').trim(),
-      quantity: Math.max(1, parseInt(r.quantity, 10) || 1)
+      quantity: Math.max(1, parseInt(r.quantity, 10) || 1),
+      sellerId: r.seller_id ? String(r.seller_id) : null,
+      sellerPartnerId: r.seller_partner_id ? String(r.seller_partner_id) : null,
+    }));
+  } else {
+    // 未ログイン時はセッションの cart.items 由来
+    dbItems = (req.session?.cart?.items || []).map(it => ({
+      productId: String(it.productId || it.product_id || '').trim(),
+      quantity: Math.max(1, parseInt(it.quantity, 10) || 1),
+      sellerId: it.seller_id ? String(it.seller_id) : null,
+      sellerPartnerId: it.seller_partner_id ? String(it.seller_partner_id) : null,
     }));
   }
 
-  // マージ（同じ productId は足し合わせ）
-  const map = new Map();
-  for (const src of [...dbItems, ...sessItems]) {
-    if (!isUuid(src.productId)) continue;         // 変なIDは捨てる
-    const prev = map.get(src.productId) || 0;
-    map.set(src.productId, prev + src.quantity);
+  // マージ（同じ productId は quantity を足し合わせ、seller 情報も保持）
+  const map = new Map(); // key: productId, value: { quantity, sellerId, sellerPartnerId }
+  for (const src of dbItems) {
+    if (!isUuid(src.productId)) continue;
+    const prev = map.get(src.productId);
+    if (!prev) {
+      map.set(src.productId, {
+        quantity: src.quantity,
+        sellerId: src.sellerId ?? null,
+        sellerPartnerId: src.sellerPartnerId ?? null,
+      });
+    } else {
+      prev.quantity += src.quantity;
+      // 既にある方を優先。空なら埋める
+      if (!prev.sellerId && src.sellerId) prev.sellerId = src.sellerId;
+      if (!prev.sellerPartnerId && src.sellerPartnerId) prev.sellerPartnerId = src.sellerPartnerId;
+    }
   }
-  return [...map.entries()].map(([productId, quantity]) => ({ productId, quantity }));
+
+  // 正規化配列に戻す
+  return [...map.entries()].map(([productId, v]) => ({
+    productId,
+    quantity: v.quantity,
+    sellerId: v.sellerId,
+    sellerPartnerId: v.sellerPartnerId,
+  }));
 }
 
 /** DB からカート内の商品詳細を取得して表示用に整形 */
@@ -3514,12 +3559,18 @@ async function fetchCartItemsWithDetails(items) {
     `
     SELECT
       p.id, p.slug, p.title, p.price, p.unit, p.stock,
-      p.is_organic, p.is_seasonal,
+      p.is_organic, p.is_seasonal, p.seller_id,
       (SELECT url FROM product_images i
          WHERE i.product_id = p.id
          ORDER BY position ASC
-         LIMIT 1) AS image_url
+         LIMIT 1) AS image_url,
+      s.name AS seller_name,
+      s.partner_id,
+      partner.name AS seller_partner_name,
+      partner.id AS seller_partner_id
     FROM products p
+    LEFT JOIN users s ON s.id = p.seller_id
+    LEFT JOIN partners partner ON partner.Id = s.partner_id
     WHERE p.id IN (${ph})
     `,
     uniqIds
@@ -3607,14 +3658,36 @@ function genOrderNo(){
  * -------------------------- */
 app.get('/cart', async (req, res, next) => {
   try {
-    const cartItems = await loadCartItems(req);               // ← 変更
-    const items = await fetchCartItemsWithDetails(cartItems); // ← 変更
+    const cartItems = await loadCartItems(req);
+    const items = await fetchCartItemsWithDetails(cartItems);
     const totals = calcTotals(items, req.session?.cart?.coupon || null);
+
+    const groupedBySeller = items.reduce((partner, item) => {
+      const { seller_partner_id, seller_id } = item;
+
+      const keyId = seller_partner_id || seller_id;
+      
+      if (!partner[keyId]) {
+        partner[keyId] = [];
+      }
+      
+      partner[keyId].push(item);
+      return partner;
+    }, {});
+
+    const totalPerSeller = new Map();
+    for (const partnerId in groupedBySeller) {
+      const perItems = groupedBySeller[partnerId];
+      const total = calcTotals(perItems, null);
+      totalPerSeller.set(partnerId, total);
+    }
 
     res.render('cart/index', {
       title: 'カート',
+      groupedBySeller,
       items,
       totals,
+      req
     });
   } catch (e) { next(e); }
 });
@@ -3795,21 +3868,78 @@ app.post('/cart/apply-coupon', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// POST /cart/selection  選択中のカート商品IDを一時保存
-app.post('/cart/selection', (req, res) => {
-  const ids = []
-    .concat(req.body?.ids || [])
-    .map(String)
-    .map(s => s.trim())
-    .filter(isUuid);
+async function getUserCartId(sessionUserId) {
+  const rows = await dbQuery(
+    `
+    SELECT id FROM carts WHERE user_id = $1
+    `,
+    [sessionUserId]
+  );
 
-  if (!ids.length) {
-    return res.status(400).json({ ok:false, message:'選択された商品がありません。' });
+  if (!rows) return null;
+  const cart = rows[0];
+  return cart.id;
+}
+
+// POST /cart/selection  選択中のカート商品IDを一時保存（出品者別対応・後方互換）
+app.post('/cart/selection', async (req, res) => {
+  try {
+    const rawIds = [].concat(req.body?.ids || []);
+    const ids = rawIds.map(String).map(s => s.trim()).filter(isUuid);
+
+    if (!ids.length) {
+      return res.status(400).json({ ok: false, message: '選択された商品がありません。' });
+    }
+    if (ids.length > 200) {
+      return res.status(400).json({ ok: false, message: '選択点数が多すぎます。' });
+    }
+
+    const sellerId = String(req.body?.sellerId || '').trim() || null;
+
+    const cartId = await getUserCartId(req.session.user?.id);
+    if (!cartId) return res.status(400).json({ ok: false, message: 'カートが見つかりません。' });
+
+    const rows = await dbQuery(
+      `
+      SELECT ci.id AS cart_item_id, p.seller_id AS seller_id,
+        u.partner_id AS user_partner_id, pa.id AS partner_id
+        FROM cart_items ci
+        JOIN products p ON p.id = ci.product_id
+        LEFT JOIN users u ON u.id = p.seller_id
+        LEFT JOIN partners pa ON pa.id = u.partner_id
+       WHERE ci.cart_id = $1
+         AND ci.product_id = ANY($2::uuid[])
+      `,
+      [cartId, ids]
+    );
+
+    if (rows.length !== ids.length) {
+      return res.status(400).json({ ok:false, message:'選択商品に不正なIDが含まれています。' });
+    }
+
+    if (sellerId) {
+      const bad = rows.find(r => (String(r.seller_id) !== String(sellerId) && String(r.partner_id) !== String(sellerId)));
+      if (bad) {
+        return res.status(400).json({ ok:false, message:'異なる出品者の商品が混在しています。' });
+      }
+    }
+
+    // 保存
+    if (!req.session.cart) req.session.cart = { items: [], coupon: null };
+
+    if (sellerId) {
+      if (!req.session.cart.selectionBySeller) req.session.cart.selectionBySeller = {};
+      req.session.cart.selectionBySeller[sellerId] = ids;
+    } else {
+      // 従来互換：sellerId未指定の旧フロー
+      req.session.cart.selection = ids;
+    }
+
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('save selection failed:', e);
+    return res.status(500).json({ ok:false, message:'保存に失敗しました。' });
   }
-  if (!req.session.cart) req.session.cart = { items: [], coupon: null };
-  // セッションに選択IDを保存（チェックアウトのときだけ参照）
-  req.session.cart.selection = ids;
-  return res.json({ ok:true });
 });
 
 /* =========================================================
@@ -4028,66 +4158,103 @@ app.post('/seller/listings/:id/delete',
   }
 );
 
+function getSelectedIdsBySeller(req, sellerId){
+  const sel = req.session?.cart?.selectionBySeller || {};
+  return new Set(sel[sellerId] || []);
+}
+
+function filterPairsBySelectedAndSeller(pairs, selectedIdsSet, sellerId){
+  return pairs.filter(p => selectedIdsSet.has(p.productId) && (String(p.sellerId) === String(sellerId) || String(p.sellerPartnerId) === String(sellerId)));
+}
+
+async function fetchSellerConfig(sellerUserId) {
+  const rows = await getAllowedMethodsForUser(sellerUserId);
+  const methods = rows.map(r => r.method);
+  return {
+    allowedPaymentMethods: methods.length ? methods : ['cod'],
+    allowedShipMethods: ['normal','cool']
+  };
+}
+
 /* ----------------------------
  *  GET /checkout  注文情報入力ページ
  * -------------------------- */
 app.get('/checkout', async (req, res, next) => {
   try {
     if (!req.session.user) {
-      const nextUrl = encodeURIComponent('/checkout');
+      const nextUrl = encodeURIComponent(req.originalUrl || '/checkout');
       return res.redirect(`/login?next=${nextUrl}`);
     }
 
-    // カートの全アイテム（{productId, quantity}）
+    // ✅ どの出品者グループか明示
+    const sellerId = (req.query.seller || '').trim();
+    if (!sellerId) {
+      // セッションに1つでも選択があれば、最初の出品者にフォールバック
+      const map = req.session?.cart?.selectionBySeller || {};
+      const firstSeller = Object.keys(map)[0];
+      if (firstSeller) return res.redirect(`/checkout?seller=${encodeURIComponent(firstSeller)}`);
+      // なければカートへ
+      req.session.flash = { type:'error', message:'購入対象の出品者が選択されていません。' };
+      console.log(req.session.flash);
+      return res.redirect('/cart');
+    }
+
+    // カート全体（{ productId, quantity, sellerPartnerId, ... } 想定）
     const allPairs = await loadCartItems(req);
+    console.log(allPairs.length);
+    console.log(allPairs);
 
-    // ★ 選択中IDがあれば絞り込み（なければ全件）
-    const selectedIds = (req.session.cart && Array.isArray(req.session.cart.selection))
-      ? new Set(req.session.cart.selection)
-      : null;
+    // ✅ 出品者ごとの選択IDで絞り込み
+    const selectedIds = getSelectedIdsBySeller(req, sellerId);
+    console.log(selectedIds);
+    const pairs = filterPairsBySelectedAndSeller(allPairs, selectedIds, sellerId);
+    console.log(pairs.length);
 
-    const pairs = selectedIds
-      ? allPairs.filter(p => selectedIds.has(p.productId))
-      : allPairs;
-
-    // カート空 or 選択0 件なら戻す
     if (!pairs.length) {
-      req.session.flash = { type: 'error', message: '購入対象の商品が選択されていません。' };
+      req.session.flash = { type:'error', message:'購入対象の商品が選択されていません。' };
+      console.log(req.session.flash);
       return res.redirect('/cart');
     }
 
-    const items  = await fetchCartItemsWithDetails(pairs);
+    const items = await fetchCartItemsWithDetails(pairs); // ← ここで seller/商品詳細が付与される前提
     if (!items.length) {
-      req.session.flash = { type: 'error', message: '購入対象の商品が見つかりません。' };
+      req.session.flash = { type:'error', message:'購入対象の商品が見つかりません。' };
+      console.log(req.session.flash);
       return res.redirect('/cart');
     }
 
-    // 合計（クーポンは既存のまま）
+    // ✅ 念のため全アイテムが同一 sellerId か検証
+    const bad = items.find(it => String(it.sellerId) === String(sellerId) || String(it.sellerPartnerId) === String(sellerId));
+    if (bad){
+      req.session.flash = { type:'error', message:'異なる出品者の商品が混在しています。もう一度選択してください。' };
+      console.log(req.session.flash);
+      return res.redirect('/cart');
+    }
+
+    // 合計系はグループ内で計算
     const totals = calcTotals(items, req.session?.cart?.coupon || null);
 
-    // 住所帳など既存処理はそのまま…
+    // 出品者の許可決済手段（例：DBから）
+    const sellerConfig = await fetchSellerConfig(sellerId); // { allowedPaymentMethods: ['cod','bank','card'], allowedShipMethods: ... }
+
+    // 住所など既存処理
     const uid = req.session.user.id;
     const addresses = await dbQuery(
-      `SELECT *
-         FROM addresses
-        WHERE user_id = $1 AND scope = 'user'
-        ORDER BY is_default DESC, created_at DESC`,
+      `SELECT * FROM addresses WHERE user_id=$1 AND scope='user' ORDER BY is_default DESC, created_at DESC`,
       [uid]
     );
     const defaultAddr = addresses.find(a => a.is_default) || addresses[0] || null;
-    const draft = req.session.checkoutDraft || {};
-    const isInitial = !draft;
-    const selectedShippingId = draft.shippingAddressId || defaultAddr?.id || null;
-    const selectedBillingId  = draft.billSame ? null : (draft.billingAddressId || null);
+    const draft = req.session.checkoutDraftBySeller?.[sellerId] || {};
+    const isInitial = !req.session.checkoutDraftBySeller || !req.session.checkoutDraftBySeller[sellerId];
 
     const form = {
-      shippingAddressId: selectedShippingId,
+      shippingAddressId: draft.shippingAddressId || defaultAddr?.id || null,
       billSame: !!draft.billSame,
-      billingAddressId: selectedBillingId,
-      shipMethod: draft.shipMethod || '',     // 'normal' | 'cool'
-      shipDate: draft.shipDate || '',         // 'YYYY-MM-DD'
-      shipTime: draft.shipTime || '',         // '午前中' など
-      paymentMethod: draft.paymentMethod || '', // 'cod' | 'bank' | 'card'
+      billingAddressId: draft.billSame ? null : (draft.billingAddressId || null),
+      shipMethod: draft.shipMethod || '',
+      shipDate:   draft.shipDate   || '',
+      shipTime:   draft.shipTime   || '',
+      paymentMethod: draft.paymentMethod || '',
       orderNote: draft.orderNote || ''
     };
 
@@ -4096,11 +4263,14 @@ app.get('/checkout', async (req, res, next) => {
       items,
       totals,
       addresses,
-      selectedShippingId,
-      selectedBillingId,
+      selectedShippingId: form.shippingAddressId,
+      selectedBillingId: form.billingAddressId,
       coupon: req.session?.cart?.coupon || null,
       form,
       isInitial,
+      sellerId,                       // ← ビューへ渡す
+      allowedPayments: sellerConfig.allowedPaymentMethods || ['cod','bank','card'],
+      allowedShipMethods: sellerConfig.allowedShipMethods || ['normal','cool'],
     });
   } catch (e) { next(e); }
 });
@@ -4110,75 +4280,82 @@ app.get('/checkout', async (req, res, next) => {
  * -------------------------- */
 app.post('/checkout', async (req, res, next) => {
   try {
-    if (!req.session.user) return res.redirect('/login?next=' + encodeURIComponent('/checkout'));
+    if (!req.session.user) {
+      const nextUrl = encodeURIComponent('/checkout' + (req.query.seller ? `?seller=${encodeURIComponent(req.query.seller)}` : ''));
+      return res.redirect(`/login?next=${nextUrl}`);
+    }
+
+    // ✅ sellerId を必ず受け取る（hidden等でフォームに埋め込む）
+    const sellerId = (req.body.sellerId || req.query.seller || '').trim();
+    if (!sellerId) {
+      req.session.flash = { type:'error', message:'出品者が特定できません。もう一度やり直してください。' };
+      return res.redirect('/cart');
+    }
 
     const {
-      shippingAddressId,
-      billSame,
-      billingAddressId,
-      shipMethod,
-      shipDate,
-      shipTime,
-      paymentMethod,
-      orderNote,
-      agree
+      shippingAddressId, billSame, billingAddressId,
+      shipMethod, shipDate, shipTime, paymentMethod, orderNote, agree
     } = req.body;
+
+    // 出品者の許可設定
+    const sellerConfig = await fetchSellerConfig(sellerId);
+    const allowedPayments = sellerConfig.allowedPaymentMethods || ['cod','bank','card'];
+    const allowedShips    = sellerConfig.allowedShipMethods || ['normal','cool'];
 
     // バリデーション
     if (!shippingAddressId) {
-      req.session.flash = { type: 'error', message: '配送先を選択してください。' };
-      return res.redirect('/checkout');
+      req.session.flash = { type:'error', message:'配送先を選択してください。' };
+      return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
     if (!agree) {
-      req.session.flash = { type: 'error', message: '利用規約に同意してください。' };
-      return res.redirect('/checkout');
+      req.session.flash = { type:'error', message:'利用規約に同意してください。' };
+      return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
-    if (!['normal','cool'].includes(String(shipMethod || ''))) {
-      req.session.flash = { type: 'error', message: '配送方法を選択してください。' };
-      return res.redirect('/checkout');
+    if (!allowedShips.includes(String(shipMethod || ''))) {
+      req.session.flash = { type:'error', message:'配送方法が無効です。' };
+      return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
-    if (!['cod','bank','card'].includes(String(paymentMethod || ''))) {
-      req.session.flash = { type: 'error', message: 'お支払い方法を選択してください。' };
-      return res.redirect('/checkout');
+    if (!allowedPayments.includes(String(paymentMethod || ''))) {
+      req.session.flash = { type:'error', message:'この出品者では選択されたお支払い方法はご利用いただけません。' };
+      return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
     if (!billSame && !billingAddressId) {
-      req.session.flash = { type: 'error', message: '請求先住所を選択してください。' };
-      return res.redirect('/checkout');
+      req.session.flash = { type:'error', message:'請求先住所を選択してください。' };
+      return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
 
-    // 住所の存在/所有者チェック（軽く）
+    // 住所の存在/所有者チェック
     const uid = req.session.user.id;
     const shipAddrRows = await dbQuery(
-      `SELECT id FROM addresses
-        WHERE id = $1::uuid AND user_id = $2 AND scope='user' LIMIT 1`,
+      `SELECT id FROM addresses WHERE id=$1::uuid AND user_id=$2 AND scope='user' LIMIT 1`,
       [shippingAddressId, uid]
     );
     if (!shipAddrRows.length) {
-      req.session.flash = { type: 'error', message: '配送先住所が不正です。' };
-      return res.redirect('/checkout');
+      req.session.flash = { type:'error', message:'配送先住所が不正です。' };
+      return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
     if (!billSame) {
       const billAddrRows = await dbQuery(
-        `SELECT id FROM addresses
-          WHERE id = $1::uuid AND user_id = $2 AND scope='user' LIMIT 1`,
+        `SELECT id FROM addresses WHERE id=$1::uuid AND user_id=$2 AND scope='user' LIMIT 1`,
         [billingAddressId, uid]
       );
       if (!billAddrRows.length) {
-        req.session.flash = { type: 'error', message: '請求先住所が不正です。' };
-        return res.redirect('/checkout');
+        req.session.flash = { type:'error', message:'請求先住所が不正です。' };
+        return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
       }
     }
 
-    // カートが空なら戻す
-    const pairs = await loadCartItems(req);
-    const selectedIds = getSelectedIds(req);
-    const filtered    = filterPairsBySelection(pairs, selectedIds);
+    // 対象アイテムの再取得（改竄防止）
+    const allPairs = await loadCartItems(req);
+    const selectedIds = getSelectedIdsBySeller(req, sellerId);
+    const filtered    = filterPairsBySelectedAndSeller(allPairs, selectedIds, sellerId);
     const items       = await fetchCartItemsWithDetails(filtered);
-
     if (!items.length) return res.redirect('/cart');
 
-    // セッションに「注文ドラフト」を保存
-    req.session.checkoutDraft = {
+    // セッションに「出品者別の注文ドラフト」を保存
+    if (!req.session.checkoutDraftBySeller) req.session.checkoutDraftBySeller = {};
+    req.session.checkoutDraftBySeller[sellerId] = {
+      sellerId,
       shippingAddressId,
       billSame: !!billSame,
       billingAddressId: billSame ? null : billingAddressId,
@@ -4189,8 +4366,8 @@ app.post('/checkout', async (req, res, next) => {
       orderNote: (orderNote || '').trim()
     };
 
-    // 確認ページへ（未実装ならカートへ戻すなどでもOK）
-    return res.redirect('/checkout/confirm');
+    // 確認ページへ
+    return res.redirect(`/checkout/confirm?seller=${encodeURIComponent(sellerId)}`);
   } catch (e) {
     next(e);
   }
@@ -5672,9 +5849,12 @@ app.get(
         [id]
       );
 
+      const partnerMethods = await getAllowedMethodsForPartner(id);
       res.render('admin/partners/show', {
         title: `取引先詳細 | ${partner.name}`,
         partner, users,
+        paymentMethods: partnerMethods,
+        allPaymentMethods: ALL_PAYMENT_METHODS,
         csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
       });
     } catch (e) { next(e); }
@@ -5740,6 +5920,88 @@ app.post(
   }
 );
 
+// 取引先 決済方法の更新（管理者 or 取引先メンバー）
+app.post(
+  '/admin/partners/:id/payments',
+  requireAuth, csrfProtect,
+  async (req, res, next) => {
+    try {
+      const partnerId = String(req.params.id || '').trim();
+      if (!isUuid(partnerId)) return res.status(400).send('bad partner id');
+
+      // 権限：管理者 or その取引先メンバー
+      if (!isAdmin(req) && !(await isMemberOfPartner(req, partnerId))) {
+        return res.status(403).send('forbidden');
+      }
+
+      // 受け取り（チェックボックス name="methods"）
+      const methods = []
+        .concat(req.body?.methods || [])
+        .map(String).map(s=>s.trim())
+        .filter(m => ALL_PAYMENT_METHODS.includes(m));
+
+      // トランザクション
+      await dbQuery('BEGIN');
+      // 1) 取引先の既存を全削除 → 挿入（UPSERTでもOK）
+      await dbQuery(`DELETE FROM partner_allowed_payment_methods WHERE partner_id=$1::uuid`, [partnerId]);
+
+      if (methods.length) {
+        const values = methods.map((m,i)=>`($1::uuid,$${i+2}::payment_method)`).join(',');
+        await dbQuery(
+          `INSERT INTO partner_allowed_payment_methods(partner_id, method)
+           VALUES ${values}
+           ON CONFLICT (partner_id, method) DO NOTHING`,
+          [partnerId, ...methods]
+        );
+      }
+
+      // 2) 同取引先に属するユーザーの「パートナー由来」設定を全て入れ替える
+      //    - まず partner由来の行だけ削除
+      await dbQuery(
+        `DELETE FROM user_allowed_payment_methods
+          WHERE user_id IN (SELECT id FROM users WHERE partner_id=$1::uuid)
+            AND synced_from_partner = true`,
+        [partnerId]
+      );
+
+      if (methods.length) {
+        // 各ユーザーに partner由来 = true で挿入
+        // ※行数は多くなりがちなので一括 INSERT VALUES (…) を生成
+        const userRows = await dbQuery(
+          `SELECT id FROM users WHERE partner_id=$1::uuid`,
+          [partnerId]
+        );
+        if (userRows.length) {
+          const tuples = [];
+          const params = [/* 動的 */];
+          let idx = 1;
+          for (const u of userRows) {
+            for (const m of methods) {
+              tuples.push(`($${idx++}::uuid, $${idx++}::payment_method, true)`);
+              params.push(u.id, m);
+            }
+          }
+          await dbQuery(
+            `INSERT INTO user_allowed_payment_methods(user_id, method, synced_from_partner)
+             VALUES ${tuples.join(',')}
+             ON CONFLICT (user_id, method)
+             DO UPDATE SET synced_from_partner = EXCLUDED.synced_from_partner,
+                           updated_at = now()`,
+            params
+          );
+        }
+      }
+
+      await dbQuery('COMMIT');
+      req.session.flash = { type:'ok', message:'決済方法を更新しました。' };
+      res.redirect(`/admin/partners/${partnerId}`);
+    } catch (e) {
+      await dbQuery('ROLLBACK').catch(()=>{});
+      next(e);
+    }
+  }
+);
+
 // GET: ユーザー詳細（本人 or 管理者）
 app.get('/admin/users/:id', requireAuth, async (req,res,next)=>{
   try{
@@ -5756,9 +6018,16 @@ app.get('/admin/users/:id', requireAuth, async (req,res,next)=>{
          FROM addresses WHERE user_id=$1 ORDER BY is_default DESC, created_at DESC LIMIT 30`, [uid]
     );
 
+    const userMethodsRows = await getAllowedMethodsForUser(user.id);
+    const userMethods = userMethodsRows.map(r => r.method);
+    const userSynced = userMethodsRows.some(r => r.synced_from_partner);
+
     res.render('admin/users/show', {
       title: isSelf ? 'アカウント設定' : `ユーザー: ${user.name}`,
       user, partner, addresses,
+      userPaymentMethods: userMethods,
+      userPaymentSynced: userSynced,
+      allPaymentMethods: ALL_PAYMENT_METHODS,
       isSelf,
       currentRoles: req.session.user.roles || [],
       csrfToken: req.csrfToken()
@@ -5784,6 +6053,60 @@ app.post('/admin/users/:id', requireAuth, csrfProtect, async (req,res,next)=>{
     );
     res.redirect('/admin/users/' + uid);
   }catch(e){ next(e); }
+});
+
+app.post('/admin/users/:id/payments', requireAuth, csrfProtect, async (req,res,next)=>{
+  try{
+    const uid = String(req.params.id || '').trim();
+    if (!isUuid(uid)) return res.status(400).send('bad user id');
+
+    const myRoles = req.session.user.roles || [];
+    const myId    = req.session.user.id;
+
+    // 権限：管理者 or 本人 or 同一取引先メンバー
+    let allowed = false;
+    if (isAdmin(req) || isSelf(req, uid)) {
+      allowed = true;
+    } else {
+      const targetPartner = await getUserPartnerId(uid);
+      allowed = await isMemberOfPartner(req, targetPartner);
+    }
+    if (!allowed) return res.status(403).send('forbidden');
+
+    const methods = []
+      .concat(req.body?.methods || [])
+      .map(String).map(s=>s.trim())
+      .filter(m => ALL_PAYMENT_METHODS.includes(m));
+
+    await dbQuery('BEGIN');
+
+    // 「ユーザーが明示保存」＝手動設定を優先に切り替える。
+    // partner由来の行を消す → 手動由来(false)で入れ直す
+    await dbQuery(
+      `DELETE FROM user_allowed_payment_methods
+        WHERE user_id=$1::uuid`,
+      [uid]
+    );
+
+    if (methods.length) {
+      const values = methods.map((m,i)=>`($1::uuid, $${i+2}::payment_method, false)`).join(',');
+      await dbQuery(
+        `INSERT INTO user_allowed_payment_methods(user_id, method, synced_from_partner)
+         VALUES ${values}
+         ON CONFLICT (user_id, method) DO UPDATE
+           SET synced_from_partner = EXCLUDED.synced_from_partner,
+               updated_at = now()`,
+        [uid, ...methods]
+      );
+    }
+
+    await dbQuery('COMMIT');
+    req.session.flash = { type:'ok', message:'決済方法を更新しました。' };
+    res.redirect('/admin/users/' + uid);
+  }catch(e){
+    await dbQuery('ROLLBACK').catch(()=>{});
+    next(e);
+  }
 });
 
 // パスワード変更（本人のみ）

@@ -58,4 +58,11 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.disabled = false;
     }
   });
+
+  const payment_form = document.querySelector('form[action*="/admin/partners/"][action$="/payments"]');
+  if (!payment_form) return;
+  payment_form.addEventListener('submit', () => {
+    const btn = payment_form.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
+  });
 });

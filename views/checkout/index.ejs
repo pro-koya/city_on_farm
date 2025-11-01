@@ -5,6 +5,7 @@
     <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <% } %>
+    <input type="hidden" name="sellerId" value="<%= sellerId %>">
 
     <!-- 左カラム：入力領域 -->
     <section class="ck-left">
