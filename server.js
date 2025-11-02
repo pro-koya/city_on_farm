@@ -152,10 +152,8 @@ function requireRole(roles) {
     const currentRoles = req.session.user.roles || [];
     let allow = false;
     for (const role of roles) {
-      console.log(role + ' : ' + currentRoles);
       if (currentRoles.includes(role)) {
         allow = true;
-        console.log(allow);
         break;
       }
     }
@@ -354,13 +352,10 @@ async function getAllowedMethodsForUser(userId, allMethod) {
       ORDER BY method`,
     [userId]
   );
-  console.log(rows);
-  console.log(allMethod);
+
   // ラベルを付与（フォールバックあり）
   return rows.map(r => {
-    console.log(r);
     const m = allMethod.find(x => x.value === r.method);
-    console.log(m);
     return {
       method: r.method,
       synced_from_partner: r.synced_from_partner,
@@ -1024,9 +1019,8 @@ const hasSmtp =
 let mailer;
 if (hasSmtp) {
   mailer = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: Number(process.env.SMTP_PORT) === 465,
+    host: process.env.SMTP_HOST || "sandbox.smtp.mailtrap.io",
+    port: Number(process.env.SMTP_PORT) || 2525,
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
   });
 } else {
@@ -1058,7 +1052,6 @@ app.post(
     if (!errors.isEmpty()) {
       const fieldErrors = {};
       for (const e of errors.array()) if (!fieldErrors[e.path]) fieldErrors[e.path] = e.msg;
-      console.log('error');
       return res.status(422).render('contact', {
         title: 'お問い合わせ',
         csrfToken: req.csrfToken(),
@@ -1079,8 +1072,8 @@ app.post(
       const contact = rows[0];
 
       // 管理者向けメール
-      const adminTo = process.env.CONTACT_TO || process.env.SMTP_USER || 'kouya114@outlook.jp';
-      const from    = process.env.CONTACT_FROM || `kouya114@outlook.jp'`;
+      const adminTo = process.env.SMTP_MAIL || 'kouya114@outlook.jp';
+      const from    = email || process.env.CONTACT_FROM || `koyablog.1104@gmail.com'`;
       const mailSubject = `[お問い合わせ] ${subject} : ${category.toUpperCase()} - ${name}`;
       const adminText =
 `新規お問い合わせが届きました。
@@ -1128,8 +1121,6 @@ ${message}
       } catch (e) {
         console.warn('auto-reply failed (skip):', e.message);
       }
-
-      console.log('contact safe');
       return res.redirect(`/contact/thanks?no=${contact.id}`);;
     } catch (e) {
       console.error('contact insert error:', e);
@@ -2360,6 +2351,10 @@ app.get('/orders/recent', requireAuth, async (req, res, next) => {
       )`);
     }
 
+    const userId = req.session?.user?.id;
+    params.push(userId);
+    where.push(`o.buyer_id = $${params.length}`);
+
     // ステータス
     if (status !== 'all') {
       params.push(status);
@@ -3060,15 +3055,12 @@ app.get('/seller/trades', requireAuth, requireRole(['seller', 'admin']), async (
 
     let where = [];
     let params = [];
-    console.log(owner);
     if (!owner || owner !== 'owner_all') {
       where = ['EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $1)'];
       params = [uid];
     } else if (owner === 'owner_all') {
       where = ['EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id)'];
     }
-    console.log(where);
-    console.log(params);
 
     if (q) {
       params.push(`%${q}%`);
@@ -3101,7 +3093,8 @@ app.get('/seller/trades', requireAuth, requireRole(['seller', 'admin']), async (
         o.id, COALESCE(o.order_number, o.id::text) AS order_no,
         o.status, o.payment_status, o.shipment_status,
         o.total, o.created_at,
-        p.name AS partner_name
+        p.name AS partner_name,
+        u.name AS buyer_name
       FROM orders o
         JOIN users u ON u.id = o.buyer_id
         LEFT JOIN partners p ON p.id = u.partner_id
@@ -3122,7 +3115,7 @@ app.get('/seller/trades', requireAuth, requireRole(['seller', 'admin']), async (
       shipment_status: r.shipment_status,
       shipment_status_ja: jaLabel('shipment_status', r.shipment_status),
       total: r.total,
-      partner_name: r.partner_name,
+      partner_name: r.partner_name || r.buyer_name,
       created_at: new Date(r.created_at).toLocaleString('ja-JP')
     }));
 
@@ -3985,7 +3978,6 @@ app.get('/seller/listings',
       const sellerId = req.session.user.id;
       const currentRoles = req.session.user.roles;
       const previousUrl = req.headers.referer;
-      console.log(previousUrl);
       const { q = '', status = 'all', sort = 'updated', owner = 'owner', page = 1 } = req.query;
       const pageNum  = Math.max(1, toInt(page, 1));
       const pageSize = 20;
@@ -4252,31 +4244,24 @@ app.get('/checkout', async (req, res, next) => {
       if (firstSeller) return res.redirect(`/checkout?seller=${encodeURIComponent(firstSeller)}`);
       // なければカートへ
       req.session.flash = { type:'error', message:'購入対象の出品者が選択されていません。' };
-      console.log(req.session.flash);
       return res.redirect('/cart');
     }
 
     // カート全体（{ productId, quantity, sellerPartnerId, ... } 想定）
     const allPairs = await loadCartItems(req);
-    console.log(allPairs.length);
-    console.log(allPairs);
 
     // ✅ 出品者ごとの選択IDで絞り込み
     const selectedIds = getSelectedIdsBySeller(req, sellerId);
-    console.log(selectedIds);
     const pairs = filterPairsBySelectedAndSeller(allPairs, selectedIds, sellerId);
-    console.log(pairs.length);
 
     if (!pairs.length) {
       req.session.flash = { type:'error', message:'購入対象の商品が選択されていません。' };
-      console.log(req.session.flash);
       return res.redirect('/cart');
     }
 
     const items = await fetchCartItemsWithDetails(pairs); // ← ここで seller/商品詳細が付与される前提
     if (!items.length) {
       req.session.flash = { type:'error', message:'購入対象の商品が見つかりません。' };
-      console.log(req.session.flash);
       return res.redirect('/cart');
     }
 
@@ -4284,7 +4269,6 @@ app.get('/checkout', async (req, res, next) => {
     const bad = items.find(it => String(it.sellerId) === String(sellerId) || String(it.sellerPartnerId) === String(sellerId));
     if (bad){
       req.session.flash = { type:'error', message:'異なる出品者の商品が混在しています。もう一度選択してください。' };
-      console.log(req.session.flash);
       return res.redirect('/cart');
     }
 
@@ -4345,7 +4329,6 @@ app.post('/checkout', async (req, res, next) => {
     // ✅ sellerId を必ず受け取る（hidden等でフォームに埋め込む）
     const sellerId = (req.body.sellerId || req.query.seller || '').trim();
     if (!sellerId) {
-      console.log(req.session.flash.message);
       req.session.flash = { type:'error', message:'出品者が特定できません。もう一度やり直してください。' };
       return res.redirect('/cart');
     }
@@ -4365,27 +4348,22 @@ app.post('/checkout', async (req, res, next) => {
     // バリデーション
     if (!shippingAddressId) {
       req.session.flash = { type:'error', message:'配送先を選択してください。' };
-      console.log(req.session.flash.message);
       return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
     if (!agree) {
       req.session.flash = { type:'error', message:'利用規約に同意してください。' };
-      console.log(req.session.flash.message);
       return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
     if (!allowedShipsCodes.includes(String(shipMethod || ''))) {
       req.session.flash = { type:'error', message:'配送方法が無効です。' };
-      console.log(req.session.flash.message);
       return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
     if (!allowedPaymentCodes.includes(String(paymentMethod || ''))) {
       req.session.flash = { type:'error', message:'この出品者では選択されたお支払い方法はご利用いただけません。' };
-      console.log(req.session.flash.message);
       return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
     if (!billSame && !billingAddressId) {
       req.session.flash = { type:'error', message:'請求先住所を選択してください。' };
-      console.log(req.session.flash.message);
       return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
 
@@ -4397,7 +4375,6 @@ app.post('/checkout', async (req, res, next) => {
     );
     if (!shipAddrRows.length) {
       req.session.flash = { type:'error', message:'配送先住所が不正です。' };
-      console.log(req.session.flash.message);
       return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
     if (!billSame) {
@@ -4407,7 +4384,6 @@ app.post('/checkout', async (req, res, next) => {
       );
       if (!billAddrRows.length) {
         req.session.flash = { type:'error', message:'請求先住所が不正です。' };
-        console.log(req.session.flash.message);
         return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
       }
     }
@@ -4586,7 +4562,6 @@ app.get('/checkout/confirm', async (req, res, next) => {
     if (!draft) {
       // 入力が未完了
       req.session.flash = { type: 'error', message: '先に注文情報を入力してください。' };
-      console.log(req.session.flash.message);
       return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
 
@@ -4596,7 +4571,6 @@ app.get('/checkout/confirm', async (req, res, next) => {
     const items       = await fetchCartItemsWithDetails(filtered);
     if (!items.length) {
       req.session.flash = { type:'error', message:'カートに注文対象の商品がありません。' };
-      console.log(req.session.flash.message);
       return res.redirect('/cart');
     }
 
@@ -4605,7 +4579,6 @@ app.get('/checkout/confirm', async (req, res, next) => {
     const shippingAddress = await findUserAddress(uid, draft.shippingAddressId);
     if (!shippingAddress) {
       req.session.flash = { type:'error', message:'配送先住所が不正です。' };
-      console.log(req.session.flash.message);
       return res.redirect('/checkout');
     }
     const billingAddress = draft.billSame
@@ -4770,11 +4743,13 @@ app.post('/checkout/confirm', async (req, res, next) => {
       `INSERT INTO orders
          (order_number, buyer_id, status,
           subtotal, discount, shipping_fee, total,
-          payment_method, note, eta_at, coupon_code, ship_method)
+          payment_method, note, eta_at, coupon_code, ship_method,
+          payment_status, delivery_status)
        VALUES
          ($1, $2, 'pending',
           $3, $4, $5, $6,
-          $7, $8, $9, $10, $11)
+          $7, $8, $9, $10, $11,
+          'pending', 'pending')
        RETURNING id`,
       [
         orderNo, uid,
@@ -5044,39 +5019,6 @@ app.get('/orders/:no', requireAuth, async (req, res, next) => {
     // 請求先が無ければ「配送先と同一」とみなす（A方針）
     const billingAddress  = addrRows.find(a => a.address_type === 'billing') || null;
 
-    // ─ 4) 配送（出荷）情報
-    const shipments = await dbQuery(
-      `
-      SELECT id, status, carrier, shipped_at, delivered_at, created_at
-        FROM shipments
-       WHERE order_id = $1
-       ORDER BY created_at ASC
-      `,
-      [order.id]
-    );
-
-    // ─ 5) 支払い情報（最新一件を表示）
-    const payRows = await dbQuery(
-      `
-      SELECT method, status, transaction_id, created_at
-        FROM payments
-       WHERE order_id = $1
-       ORDER BY created_at DESC
-       LIMIT 1
-      `,
-      [order.id]
-    );
-    const pay = payRows[0] || null;
-    const payment = pay
-      ? {
-          method: pay.method || '',
-          status: pay.status || '',
-          transaction_id: pay.transaction_id || '',
-          method_label: jaLabel('payment_method', pay.method) || null,
-          status_label: jaLabel('payment_status', pay.status) || null
-        }
-      : null;
-
     // ─ 6) 合計
     const totals = {
       subtotal: Number(order.subtotal || 0),
@@ -5107,9 +5049,7 @@ app.get('/orders/:no', requireAuth, async (req, res, next) => {
       totals,
       shippingAddress,
       // 請求先が無ければ null のまま → EJS 側で「同一です」表示
-      billingAddress: billingAddress,
-      shipments,
-      payment,
+      billingAddress: billingAddress
     });
   } catch (e) {
     next(e);
@@ -6131,9 +6071,7 @@ app.get('/admin/users/:id', requireAuth, async (req,res,next)=>{
     // マスタ（= 全システムの有効な支払い方法 & 日本語ラベル）
     const allMethod = await loadAllPaymentMethods('payment_method', 'payment_method');
     const userMethodsRows = await getAllowedMethodsForUser(user.id, allMethod);
-    console.log(userMethodsRows);
     const userMethods = userMethodsRows.map(r => r.method);
-    console.log(userMethods);
     const userSynced = userMethodsRows.some(r => r.synced_from_partner);
 
     res.render('admin/users/show', {
@@ -6189,12 +6127,10 @@ app.post('/admin/users/:id/payments', requireAuth, csrfProtect, async (req,res,n
 
     const allMethod = await loadAllPaymentMethods('payment_method', 'payment_method');
     const allCodes = allMethod.map(m => m.value);
-    console.log(req.body?.methods);
     const methods = []
       .concat(req.body?.methods || [])
       .map(String).map(s=>s.trim())
       .filter(m => allCodes.includes(m));
-    console.log(methods);
 
     await dbQuery('BEGIN');
 

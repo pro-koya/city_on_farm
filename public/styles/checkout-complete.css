@@ -77,13 +77,13 @@ a {
     border-radius: 8px;
     cursor: pointer;
 }
-.btn:hover { background: #f9fafb; }
+.btn:hover { background: .8; }
 .btn-primary {
     background: var(--color-main);
     color: var(--color-white);
     border-color: transparent;
 }
-.btn-primary:hover { opacity: .95; }
+.btn-primary:hover { opacity: .8; }
 
 .complete-progress {
     margin: 24px 0 8px;

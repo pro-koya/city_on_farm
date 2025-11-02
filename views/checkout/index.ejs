@@ -87,8 +87,9 @@
             </select>
           </div>
           <div>
-            <label for="shipDate">お届け希望日（任意）</label>
-            <input type="date" id="shipDate" name="shipDate" min="<%= new Date().toISOString().slice(0,10) %>" value="<%= form.shipDate %>">
+            <label for="event_date">お届け希望日（任意）</label>
+            <input id="event_date" type="text" value="<%= form.shipDate || '' %>">
+            <input type="hidden" id="shipDate" name="shipDate" value="<%= form.shipDate || '' %>">
           </div>
           <div>
             <label for="shipTime">お届け時間帯（任意）</label>

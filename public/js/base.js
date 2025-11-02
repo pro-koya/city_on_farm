@@ -144,4 +144,17 @@ document.addEventListener('DOMContentLoaded', function () {
             inst?.calendarContainer?.classList?.add('fp-year-only');
         });
     }
+
+    // --- 日付レンジ（日単位） ---
+    const eventDate = document.getElementById('event_date');
+    if (eventDate) {
+        fp(eventDate, {
+            onChange: (selectedDates) => {
+                const nowDate = selectedDates[0];
+                console.log(selectedDates + ' : ' + nowDate);
+                const dt = document.getElementById('shipDate');
+                if (dt) dt.value = nowDate ? fp.formatDate(nowDate, 'Y-m-d') : '';
+            }
+        });
+    }
 });

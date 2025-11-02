@@ -10,7 +10,7 @@
       <table class="lv-table">
         <thead>
           <tr>
-            <th>注文番号</th>
+            <th>注文者</th>
             <th>注文状況</th>
             <th>支払い</th>
             <th>出荷</th>
@@ -22,7 +22,7 @@
         <tbody>
           ${items.map(it => `
             <tr>
-              <td data-label="注文者">#${it.partner_name}</td>
+              <td data-label="注文者">${it.partner_name}</td>
               <td data-label="注文状況" class="pc__status"><span class="lv-badge">${it.status_ja}</span></td>
               <td data-label="支払い" class="pc__status"><span class="lv-badge ${it.payment_status==='paid'?'ok': it.payment_status==='unpaid'?'warn':''}">${it.payment_status_ja}</span></td>
               <td data-label="出荷" class="pc__status"><span class="lv-badge ${it.shipment_status==='delivered'?'ok': it.shipment_status==='returned'?'ng':''}">${it.shipment_status_ja}</span></td>
