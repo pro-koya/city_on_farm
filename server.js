@@ -4855,7 +4855,7 @@ app.post('/checkout/confirm', async (req, res, next) => {
          ($1, $2, 'pending',
           $3, $4, $5, $6,
           $7, $8, $9, $10, $11,
-          'pending', 'pending')
+          'unpaid', 'preparing')
        RETURNING id`,
       [
         orderNo, uid,
@@ -4960,8 +4960,7 @@ app.post('/checkout/confirm', async (req, res, next) => {
           from: fromAddr,
           to: buyer.email,
           subject: buyerMail.subject,
-          text: buyerMail.text,
-          bcc
+          text: buyerMail.text
         });
     }catch(err){
       console.error('order mail (buyer) failed:', err?.message || err);
@@ -4980,8 +4979,7 @@ app.post('/checkout/confirm', async (req, res, next) => {
           from: fromAddr,
           to: sellerTos,
           subject: sellerMail.subject,
-          text: sellerMail.text,
-          bcc
+          text: sellerMail.text
         });
       }
     }catch(err){

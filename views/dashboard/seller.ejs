@@ -3,6 +3,7 @@
     title,
     active: 'seller',
     body: `
+      ${include('./_cards/seller-actions.ejs',  { })}
       ${include('./_cards/listings', { listings })}
       ${include('./_cards/trades',   { trades })}
       ${include('./_cards/revenue',  { revenue })}

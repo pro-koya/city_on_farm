@@ -264,8 +264,17 @@ section {
   border-radius: 1.5rem;
   cursor: pointer;
 }
+
 .btn.is-active {
   background-color: var(--main);
   color: var(--white);
   transition: all .4s ease-in-out;
+}
+
+.btn-grid {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  flex-wrap: wrap;
+  gap: 6px;
 }
