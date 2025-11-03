@@ -8,26 +8,32 @@ const bool = v => String(v).toLowerCase() === 'true';
  * 初期化: provider に応じて transporter を用意（シングルトン）
  */
 async function getTransporter() {
-  if (transporterPromise) return transporterPromise;
-  transporterPromise = (async () => {
+    if (transporterPromise) return transporterPromise;
+    transporterPromise = (async () => {
 
-    // 既定は SMTP（Gmail想定）
-    return nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: bool(process.env.SMTP_SECURE || 'false'),
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      }
-    });
-  })();
-  return transporterPromise;
+        // 既定は SMTP（Gmail想定）
+        return nodemailer.createTransport({
+            host: process.env.SMTP_HOST || 'smtp.gmail.com',
+            port: Number(process.env.SMTP_PORT || 587),
+            secure: bool(process.env.SMTP_SECURE || 'false'),
+            family: 4,
+            pool: false,
+            auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+            connectionTimeout: 20000,
+            greetingTimeout: 10000,
+            socketTimeout: 20000,
+            tls: {
+                minVersion: 'TLSv1.2',
+                servername: process.env.SMTP_HOST
+            }
+        });
+    })();
+    return transporterPromise;
 }
 
 /** ヘッダインジェクションの軽いガード */
 function sanitizeHeader(v) {
-  return String(v || '').replace(/[\r\n]+/g, ' ').slice(0, 300);
+    return String(v || '').replace(/[\r\n]+/g, ' ').slice(0, 300);
 }
 
 /**
@@ -42,25 +48,25 @@ function sanitizeHeader(v) {
  * @returns {Promise<{messageId:string, previewUrl?:string}>}
  */
 async function sendMail(opts) {
-  const transporter = await getTransporter();
-  const from = sanitizeHeader(opts.from || process.env.MAIL_FROM || process.env.SMTP_USER);
-  const to = opts.to;
-  const subject = sanitizeHeader(opts.subject || '(no subject)');
-  const replyTo = opts.replyTo ? sanitizeHeader(opts.replyTo) : undefined;
+    const transporter = await getTransporter();
+    const from = sanitizeHeader(opts.from || process.env.MAIL_FROM || process.env.SMTP_USER);
+    const to = opts.to;
+    const subject = sanitizeHeader(opts.subject || '(no subject)');
+    const replyTo = opts.replyTo ? sanitizeHeader(opts.replyTo) : undefined;
 
-  const info = await transporter.sendMail({
-    from,
-    to,
-    subject,
-    text: opts.text,
-    html: opts.html,
-    replyTo
-  });
+    const info = await transporter.sendMail({
+        from,
+        to,
+        subject,
+        text: opts.text,
+        html: opts.html,
+        replyTo
+    });
 
-  // Ethereal の場合、プレビューURLが取れる
-  const previewUrl = nodemailer.getTestMessageUrl ? nodemailer.getTestMessageUrl(info) : null;
+    // Ethereal の場合、プレビューURLが取れる
+    const previewUrl = nodemailer.getTestMessageUrl ? nodemailer.getTestMessageUrl(info) : null;
 
-  return { messageId: info.messageId, previewUrl };
+    return { messageId: info.messageId, previewUrl };
 }
 
 module.exports = { sendMail };
