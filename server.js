@@ -5140,6 +5140,8 @@ app.get('/orders/:no', requireAuth, async (req, res, next) => {
     order.status_ja = jaLabel('order_status', order.status);
     order.paymentMethod = jaLabel('payment_method', order.payment_method);
     order.paymentStatus = jaLabel('payment_status', order.payment_status);
+    order.deliveryStatus = jaLabel('shipment_status', order.delivery_status);
+    order.shipMethod = jaLabel('ship_method', order.ship_method);
     order.status_ja = jaLabel('order_status', order.status);
     if (!order) return res.status(404).render('errors/404', { title: '注文が見つかりません' });
 

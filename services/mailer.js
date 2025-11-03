@@ -2,6 +2,7 @@
 const nodemailer = require('nodemailer');
 
 let transporterPromise = null;
+const bool = v => String(v).toLowerCase() === 'true';
 
 /**
  * 初期化: provider に応じて transporter を用意（シングルトン）
@@ -13,8 +14,8 @@ async function getTransporter() {
     // 既定は SMTP（Gmail想定）
     return nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: Number(process.env.SMTP_PORT || 465),
-      secure: String(process.env.SMTP_SECURE || 'true') === 'true',
+      port: Number(process.env.SMTP_PORT || 587),
+      secure: bool(process.env.SMTP_SECURE || 'false'),
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,

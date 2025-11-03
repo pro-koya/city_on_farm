@@ -158,33 +158,20 @@
       </section>
 
       <!-- 配送状況 -->
-      <!-- <section class="card">
+      <section class="card">
         <div class="card__head"><h2>配送状況</h2></div>
-        <% if (shipments && shipments.length) { %>
+        <% if (order.deliveryStatus) { %>
           <ul class="shipments">
-            <% shipments.forEach(function(s){ %>
-              <li class="shipment">
-                <div class="shipment__head">
-                  <span class="badge badge--soft"><%= s.carrier || '配送業者' %></span>
-                  <% if (s.tracking_number) { %>
-                    <span class="mono">#<%= s.tracking_number %></span>
-                    <% if (s.tracking_url) { %>
-                      <a class="btn-link" target="_blank" rel="noopener" href="<%= s.tracking_url %>">追跡</a>
-                    <% } %>
-                  <% } %>
-                </div>
-                <div class="shipment__meta">
-                  <span>状態：<strong><%= s.status %></strong></span>
-                  <% if (s.shipped_at){ %><span class="dot">•</span><span>出荷：<%= new Date(s.shipped_at).toLocaleString('ja-JP') %></span><% } %>
-                  <% if (s.delivered_at){ %><span class="dot">•</span><span>配達：<%= new Date(s.delivered_at).toLocaleString('ja-JP') %></span><% } %>
-                </div>
-              </li>
-            <% }) %>
+            <li class="shipment">
+              <div class="shipment__meta">
+                <span>状態：<strong><%= order.deliveryStatus %></strong></span>
+              </div>
+            </li>
           </ul>
         <% } else { %>
           <p class="muted">配送情報はまだありません。</p>
         <% } %>
-      </section> -->
+      </section>
     </div>
 
     <!-- 右：支払い/操作 -->
@@ -195,17 +182,12 @@
               <dl class="payinfo">
                 <div class="row">
                   <dt>支払い方法</dt>
-                  <dd><%= (payment && payment.method_label) || order.paymentMethod || '—' %></dd>
+                  <dd><%= order.paymentMethod || '—' %></dd>
                 </div>
                 <div class="row">
                   <dt>支払い状態</dt>
-                  <dd><%= (payment && payment.status_label) || order.paymentStatus || '—' %></dd>
+                  <dd><%= order.paymentStatus || '—' %></dd>
                 </div>
-                <% if (payment && payment.transaction_id) { %>
-                <div class="row">
-                  <dt>取引ID</dt><dd class="mono"><%= payment.transaction_id %></dd>
-                </div>
-                <% } %>
               </dl>
       
               <div class="side-actions">
