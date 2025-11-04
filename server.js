@@ -16,6 +16,9 @@ const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { r2, R2_BUCKET, R2_PUBLIC_BASE_URL } = require('./r2');
 const { randomUUID } = require('crypto');
 const upload = multer();
+const { google } = require('googleapis');
+const { generateAuthUrl, getTokenFromCode, getAuthedClient } = require('./services/gmailClient');
+const { gmailSend } = require('./services/mailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -143,6 +146,31 @@ app.use(async (req, res, next) => {
 });
 
 /* ========== 認可ミドルウェア ========== */
+// 1) 認可開始
+app.get('/oauth2/start', requireAuth, requireRole(['admin']), (req, res) => {
+  const returnTo = req.query.return_to
+    || req.get('Referer')
+    || '/'; // デフォルトの戻り先
+
+  const url = generateAuthUrl(encodeURIComponent(returnTo)); // ← state で渡す
+  res.redirect(url);
+});
+
+// 2) Google から返ってくるコールバック
+app.get('/oauth2/callback', requireAuth, requireRole(['admin']), async (req, res, next) => {
+  try {
+    const code  = String(req.query.code || '');
+    const state = decodeURIComponent(String(req.query.state || '')) || '/';
+    if (!code) return res.status(400).send('Missing code');
+
+    await getTokenFromCode(code);   // 保存まで行う
+    // 完了後は元のページへ
+    res.redirect(`${state}?oauth=ok`);
+  } catch (e) {
+    next(e);
+  }
+});
+
 function requireAuth(req, res, next) {
   if (!req.session.user) return res.redirect('/login');
   next();
@@ -1010,10 +1038,8 @@ app.get('/contact', (req, res) => {
   });
 });
 
-const { sendMail } = require('./services/mailer');
-
 /* =========================================================
- * お問い合わせ送信（メール通知付き）
+ * お問い合わせ送信（メール通知付き / Gmail API 対応）
  * POST /contact
  * =======================================================*/
 app.post(
@@ -1041,27 +1067,50 @@ app.post(
       });
     }
 
+    // === 送信先・送信元の決定（環境変数フォールバック） ===
+    // 表示名付きの From（Gmail API では "From:" 表記、実送信は認可済みアカウント）
+    const MAIL_FROM =
+      process.env.MAIL_FROM ||
+      process.env.CONTACT_FROM ||
+      process.env.SMTP_USER ||
+      'no-reply@example.com';
+
+    const ADMIN_TO =
+      process.env.CONTACT_TO ||
+      process.env.SMTP_USER ||
+      process.env.CONTACT_FROM ||
+      'owner@example.com';
+
     try {
-      // DB保存
+      // 1) DB 保存
       const rows = await dbQuery(
         `INSERT INTO contacts (name, email, category, subject, message, type)
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id, created_at`,
-        [String(name).trim(), String(email).trim().toLowerCase(), category, subject, String(message).trim(), category + ' : ' + subject]
+        [
+          String(name).trim(),
+          String(email).trim().toLowerCase(),
+          category,
+          subject,
+          String(message).trim(),
+          `${category} : ${subject}`
+        ]
       );
-      const category_ja = jaLabel('contact_category', category) || category;
-      const contact = rows[0];
 
-      // 管理者向けメール
-      const adminTo = process.env.CONTACT_TO || process.env.SMTP_USER; // 通知先
-      const from     = process.env.MAIL_FROM || process.env.SMTP_USER; // 送信元（見た目）
-      const mailSubject = `[お問い合わせ] ${subject} : ${category_ja} - ${name}`;
+      const contact = rows[0];
+      const category_ja = jaLabel('contact_category', category) || category;
+
+      // 2) 管理者向けメール本文
+      const adminSubject = `[お問い合わせ] ${subject} : ${category_ja} - ${name}`;
+      const createdAtJa = new Date(contact.created_at).toLocaleString('ja-JP');
+
       const adminText =
 `新規お問い合わせが届きました。
 
 ■ID: ${contact.id}
-■日時: ${new Date(contact.created_at).toLocaleString('ja-JP')}
+■日時: ${createdAtJa}
 ■種別: ${category_ja}
+■件名: ${subject}
 ■お名前: ${name}
 ■メール: ${email}
 
@@ -1069,22 +1118,40 @@ app.post(
 ${message}
 `;
 
-      // ③ 管理者向けメール送信
-      const adminResult = await sendMail({
-        from,
-        to: adminTo,
-        subject: mailSubject,
-        text: adminText,
-        replyTo: email  // 返信で相談者に返せるように
-      });
+      const adminHtml =
+`<p>新規お問い合わせが届きました。</p>
+<ul>
+  <li><b>ID:</b> ${contact.id}</li>
+  <li><b>日時:</b> ${createdAtJa}</li>
+  <li><b>種別:</b> ${category_ja}</li>
+  <li><b>件名:</b> ${subject}</li>
+  <li><b>お名前:</b> ${escapeHtml(name)}</li>
+  <li><b>メール:</b> ${escapeHtml(email)}</li>
+</ul>
+<pre style="white-space:pre-wrap; font-family: system-ui, sans-serif;">${escapeHtml(message)}</pre>`;
 
-      // Ethereal のときはプレビューURLをログ
-      if (adminResult.previewUrl) {
-        console.log('Admin mail preview URL:', adminResult.previewUrl);
+      // 3) 送信（失敗しても UI は成功に）
+      try {
+        const adminResult = await gmailSend({
+          from: MAIL_FROM,
+          to: ADMIN_TO,
+          subject: adminSubject,
+          text: adminText,
+          html: adminHtml,
+          replyTo: email
+        });
+        if (adminResult?.previewUrl) {
+          console.log('Admin mail preview URL:', adminResult.previewUrl);
+        }
+      } catch (e) {
+        // Gmail 未認可 / タイムアウト等はここに来る
+        console.warn('[MAIL][admin] failed (skip):', e.message);
+        // 将来的に: ここでキュー/再送フラグをDBに積むのもアリ
       }
 
-      // ④ 送信者への自動返信（失敗しても処理は継続）
+      // 4) 送信者への自動返信（失敗しても継続）
       try {
+        const autoSubject = '【自動返信】お問い合わせありがとうございます';
         const autoText =
 `${name} 様
 
@@ -1093,6 +1160,7 @@ ${message}
 
 --- お問い合わせ控え ---
 お問い合わせ種別: ${category_ja}
+件名: ${subject}
 お名前: ${name}
 メール: ${email}
 
@@ -1101,20 +1169,38 @@ ${message}
 
 今後ともよろしくお願いいたします。
 `;
-        const autoResult = await sendMail({
-          from,
+
+        const autoHtml =
+`<p>${escapeHtml(name)} 様</p>
+<p>この度は「野菜お届け便」にお問い合わせありがとうございます。<br>
+担当者が内容を確認のうえ、通常1〜2営業日以内にご返信いたします。</p>
+<hr>
+<p><b>— お問い合わせ控え —</b></p>
+<ul>
+  <li><b>お問い合わせ種別:</b> ${category_ja}</li>
+  <li><b>件名:</b> ${subject}</li>
+  <li><b>お名前:</b> ${escapeHtml(name)}</li>
+  <li><b>メール:</b> ${escapeHtml(email)}</li>
+</ul>
+<pre style="white-space:pre-wrap; font-family: system-ui, sans-serif;">${escapeHtml(message)}</pre>
+<hr>
+<p>今後ともよろしくお願いいたします。</p>`;
+
+        const autoResult = await gmailSend({
+          from: MAIL_FROM,
           to: email,
-          subject: '【自動返信】お問い合わせありがとうございます',
-          text: autoText
+          subject: autoSubject,
+          text: autoText,
+          html: autoHtml
         });
-        if (autoResult.previewUrl) {
+        if (autoResult?.previewUrl) {
           console.log('Auto-reply preview URL:', autoResult.previewUrl);
         }
       } catch (e) {
-        console.warn('auto-reply failed (skip):', e.message);
+        console.warn('[MAIL][auto-reply] failed (skip):', e.message);
       }
 
-      // ⑤ 完了リダイレクト
+      // 5) 完了
       return res.redirect(`/contact/thanks?no=${contact.id}`);
     } catch (e) {
       console.error('contact insert/send error:', e);
@@ -1128,6 +1214,16 @@ ${message}
     }
   }
 );
+
+// 小さなHTMLエスケープ（XSS対策）
+function escapeHtml(s='') {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
 
 /* =========================================================
  * サンクスページ
@@ -4641,13 +4737,38 @@ async function insertOrderAddresses(client, {
   );
 }
 
-// メール本文生成（購入者向け）
+function esc(s=''){
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function addrBlock(a){
+  if(!a) return '—';
+  const lines = [
+    `〒${esc(a.postal_code||'')}`,
+    esc([a.prefecture,a.city,a.address_line1,a.address_line2].filter(Boolean).join(' ')),
+    `TEL: ${esc(a.phone||'—')}`
+  ];
+  return lines.join('\n');
+}
+function addrHtml(a){
+  if(!a) return '—';
+  return `
+    <div>
+      <div>〒${esc(a.postal_code||'')}</div>
+      <div>${esc([a.prefecture,a.city,a.address_line1,a.address_line2].filter(Boolean).join(' '))}</div>
+      <div>TEL: ${esc(a.phone||'—')}</div>
+    </div>
+  `;
+}
+
+// 購入者向け
 function buildBuyerMail({orderNo, createdAt, buyer, items, totals, shippingAddress, billingAddress, paymentMethodJa, shipMethodJa, etaAt, coupon}){
-  const lines = items.map(it => `・${it.title} × ${it.quantity} … ${it.price.toLocaleString()}円`).join('\n');
-  const addr = (a) => a ? `〒${a.postal_code}\n${[a.prefecture,a.city,a.address_line1,a.address_line2].filter(Boolean).join(' ')}\nTEL: ${a.phone||'—'}` : '—';
-  return {
-    subject: `【ご注文完了】注文番号: ${orderNo}`,
-    text:
+  const linesText = items.map(it => `・${it.title} × ${it.quantity} … ${it.price.toLocaleString()}円`).join('\n');
+  const linesHtml = items.map(it => `<li>${esc(it.title)} × ${it.quantity} … ${it.price.toLocaleString()}円</li>`).join('');
+
+  const subject = `【ご注文完了】注文番号: ${orderNo}`;
+  const text =
 `${buyer.name} 様
 
 この度はご注文ありがとうございます。以下の内容で注文を承りました。
@@ -4660,7 +4781,7 @@ function buildBuyerMail({orderNo, createdAt, buyer, items, totals, shippingAddre
 クーポン：${coupon?.code || '—'}
 
 【ご注文商品】
-${lines}
+${linesText}
 
 小計：${totals.subtotal.toLocaleString()}円
 割引：-${totals.discount.toLocaleString()}円
@@ -4668,23 +4789,55 @@ ${lines}
 合計：${totals.total.toLocaleString()}円
 
 【配送先】
-${addr(shippingAddress)}
+${addrBlock(shippingAddress)}
 
 【請求先】
-${billingAddress ? addr(billingAddress) : '（配送先と同じ）'}
+${billingAddress ? addrBlock(billingAddress) : '（配送先と同じ）'}
 
 本メールは自動送信です。ご不明点があればご連絡ください。
-`
-  };
+`;
+
+  const html = `
+<p>${esc(buyer.name)} 様</p>
+<p>この度はご注文ありがとうございます。以下の内容で注文を承りました。</p>
+<table style="border-collapse:collapse">
+  <tr><td style="padding:2px 6px">注文番号</td><td>${esc(orderNo)}</td></tr>
+  <tr><td style="padding:2px 6px">ご注文日時</td><td>${esc(new Date(createdAt).toLocaleString('ja-JP'))}</td></tr>
+  <tr><td style="padding:2px 6px">お支払い方法</td><td>${esc(paymentMethodJa || '—')}</td></tr>
+  <tr><td style="padding:2px 6px">配送方法</td><td>${esc(shipMethodJa || '—')}</td></tr>
+  <tr><td style="padding:2px 6px">お届け希望日</td><td>${esc(etaAt ? new Date(etaAt).toLocaleDateString('ja-JP') : '—')}</td></tr>
+  <tr><td style="padding:2px 6px">クーポン</td><td>${esc(coupon?.code || '—')}</td></tr>
+</table>
+
+<h3>ご注文商品</h3>
+<ul>${linesHtml}</ul>
+
+<p>
+小計：${totals.subtotal.toLocaleString()}円<br>
+割引：-${totals.discount.toLocaleString()}円<br>
+送料：${totals.shipping_fee.toLocaleString()}円<br>
+<b>合計：${totals.total.toLocaleString()}円</b>
+</p>
+
+<h3>配送先</h3>
+${addrHtml(shippingAddress)}
+
+<h3>請求先</h3>
+${billingAddress ? addrHtml(billingAddress) : '（配送先と同じ）'}
+
+<p style="color:#666">※本メールは自動送信です。ご不明点があればご連絡ください。</p>
+`;
+
+  return { subject, text, html };
 }
 
-// メール本文生成（出品者向け）
+// 出品者向け
 function buildSellerMail({orderNo, createdAt, seller, buyer, items, totals, shippingAddress, paymentMethodJa, shipMethodJa, etaAt}){
-  const lines = items.map(it => `・${it.title} × ${it.quantity} … ${it.price.toLocaleString()}円`).join('\n');
-  const addr = (a) => a ? `〒${a.postal_code} ${[a.prefecture,a.city,a.address_line1,a.address_line2].filter(Boolean).join(' ')} TEL:${a.phone||'—'}` : '—';
-  return {
-    subject: `【新規注文】注文番号: ${orderNo}（${buyer.name} 様）`,
-    text:
+  const linesText = items.map(it => `・${it.title} × ${it.quantity} … ${it.price.toLocaleString()}円`).join('\n');
+  const linesHtml = items.map(it => `<li>${esc(it.title)} × ${it.quantity} … ${it.price.toLocaleString()}円</li>`).join('');
+
+  const subject = `【新規注文】注文番号: ${orderNo}（${buyer.name} 様）`;
+  const text =
 `新規注文を受け付けました。
 
 注文番号：${orderNo}
@@ -4695,7 +4848,7 @@ function buildSellerMail({orderNo, createdAt, seller, buyer, items, totals, ship
 お届け希望日：${etaAt ? new Date(etaAt).toLocaleDateString('ja-JP') : '—'}
 
 【商品明細】
-${lines}
+${linesText}
 
 小計：${totals.subtotal.toLocaleString()}円
 割引：-${totals.discount.toLocaleString()}円
@@ -4703,11 +4856,39 @@ ${lines}
 合計：${totals.total.toLocaleString()}円
 
 【配送先】
-${addr(shippingAddress)}
+${addrBlock(shippingAddress)}
 
 本メールは通知専用です。対応をお願いします。
-`
-  };
+`;
+
+  const html = `
+<p>新規注文を受け付けました。</p>
+<table style="border-collapse:collapse">
+  <tr><td style="padding:2px 6px">注文番号</td><td>${esc(orderNo)}</td></tr>
+  <tr><td style="padding:2px 6px">注文日時</td><td>${esc(new Date(createdAt).toLocaleString('ja-JP'))}</td></tr>
+  <tr><td style="padding:2px 6px">購入者</td><td>${esc(buyer.name)} / ${esc(buyer.email||'')}</td></tr>
+  <tr><td style="padding:2px 6px">支払い方法</td><td>${esc(paymentMethodJa || '—')}</td></tr>
+  <tr><td style="padding:2px 6px">配送方法</td><td>${esc(shipMethodJa || '—')}</td></tr>
+  <tr><td style="padding:2px 6px">お届け希望日</td><td>${esc(etaAt ? new Date(etaAt).toLocaleDateString('ja-JP') : '—')}</td></tr>
+</table>
+
+<h3>商品明細</h3>
+<ul>${linesHtml}</ul>
+
+<p>
+小計：${totals.subtotal.toLocaleString()}円<br>
+割引：-${totals.discount.toLocaleString()}円<br>
+送料：${totals.shipping_fee.toLocaleString()}円<br>
+<b>合計：${totals.total.toLocaleString()}円</b>
+</p>
+
+<h3>配送先</h3>
+${addrHtml(shippingAddress)}
+
+<p style="color:#666">※本メールは通知専用です。対応をお願いします。</p>
+`;
+
+  return { subject, text, html };
 }
 
 async function getSellerRecipientsBySellerUserId(sellerUserId){
@@ -4920,72 +5101,90 @@ app.post('/checkout/confirm', async (req, res, next) => {
 
     await client.query('COMMIT');
 
-    // 注文表示用に整形するため、最低限の情報を取得
-    const createdAt = new Date(); // ほぼ今
+    // 表示名付き From（Gmail APIでもOK。実送は認可済アカウント）
+    const FROM = process.env.MAIL_FROM || process.env.CONTACT_FROM || process.env.SMTP_USER || 'no-reply@example.com';
+    const ORDER_BCC = (process.env.ORDER_BCC || '').trim() || undefined;
+
+    // 注文表示用データの整形は既存の通り
+    const createdAt = new Date();
     const buyer = (await dbQuery(`SELECT id,name,email FROM users WHERE id=$1`, [uid]))[0] || {name:'',email:''};
 
-    // 完了画面で使っている item 情報に近い形を再構築（最小限）
     const items = targetPairs.map(p => {
       const prod = byId.get(p.productId);
       return { title: prod.title, quantity: p.quantity, price: prod.price };
     });
-
     const totals = { subtotal, discount, shipping_fee, total };
-
-    // 配送先／請求先（さきほど取得済みの shipAddr / billAddr をそのまま使用）
     const shippingAddress = shipAddr || null;
     const billingAddress  = draft.billSame ? null : (billAddr || null);
-
-    // ラベル
     const paymentMethodJa = jaLabel('payment_method', safePaymentMethod);
     const shipMethodJa    = jaLabel('ship_method', draft.shipMethod);
 
-    // 出品者通知先（今回のカートは seller 単位で確定している想定）
-    const firstProd   = byId.get(targetPairs[0].productId);
-    const sellerUserId = firstProd?.seller_id;
+    // 出品者宛先の算出
+    const firstProd      = byId.get(targetPairs[0].productId);
+    const sellerUserId   = firstProd?.seller_id;
     const { seller, to: sellerTos } = await getSellerRecipientsBySellerUserId(sellerUserId);
 
-    // 送信元・監視用
-    const fromAddr = process.env.MAIL_FROM || process.env.SMTP_USER;
-    const bcc = (process.env.ORDER_BCC || '').trim() || undefined;
+    // —— メール送信：購入者 / 出品者（並列送信でもOK）
+    const tasks = [];
 
-    // —— 購入者へ
-    try{
+    // 購入者へ（返信先は運営：不要なら消す）
+    try {
       const buyerMail = buildBuyerMail({
         orderNo, createdAt, buyer, items, totals,
         shippingAddress, billingAddress,
         paymentMethodJa, shipMethodJa, etaAt, coupon
       });
-      await sendMail({
-          from: fromAddr,
-          to: buyer.email,
+
+      tasks.push(
+        gmailSend({
+          from: FROM,
+          to: buyer.email,              // 念のため null/空なら sendMail 内で弾く実装だと安全
           subject: buyerMail.subject,
-          text: buyerMail.text
-        });
-    }catch(err){
-      console.error('order mail (buyer) failed:', err?.message || err);
-      // 失敗しても注文は確定済み。ログのみ
+          text: buyerMail.text,
+          html: buyerMail.html,
+          bcc: ORDER_BCC || undefined
+        }).then(res => {
+          if (res?.previewUrl) console.log('Buyer mail preview:', res.previewUrl);
+        }).catch(err => {
+          console.error('order mail (buyer) failed:', err?.message || err);
+        })
+      );
+    } catch (e) {
+      console.error('build buyer mail failed:', e?.message || e);
     }
 
-    // —— 出品者へ
-    try{
+    // 出品者へ（replyTo を購入者に）
+    try {
       if (sellerTos.length){
         const sellerMail = buildSellerMail({
           orderNo, createdAt, seller, buyer, items, totals,
           shippingAddress,
           paymentMethodJa, shipMethodJa, etaAt
         });
-        await sendMail({
-          from: fromAddr,
-          to: sellerTos,
-          subject: sellerMail.subject,
-          text: sellerMail.text
-        });
+
+        tasks.push(
+          gmailSend({
+            from: FROM,
+            to: sellerTos,               // 配列OK（ラッパー側で join or そのまま扱えるように）
+            subject: sellerMail.subject,
+            text: sellerMail.text,
+            html: sellerMail.html,
+            replyTo: buyer.email || undefined,
+            bcc: ORDER_BCC || undefined
+          }).then(res => {
+            if (res?.previewUrl) console.log('Seller mail preview:', res.previewUrl);
+          }).catch(err => {
+            console.error('order mail (seller) failed:', err?.message || err);
+          })
+        );
       }
-    }catch(err){
-      console.error('order mail (seller) failed:', err?.message || err);
+    } catch (e) {
+      console.error('build seller mail failed:', e?.message || e);
     }
-    // ========= ★ メール送信ここまで =========
+
+    // 送信は待たずに画面遷移してOKにしたい場合：await を外す（完全非同期）
+    // 失敗ログを確実に出したい・Ethereal プレビューを見たいなら settle
+    await Promise.allSettled(tasks);
 
     // 完了へ
     return res.redirect(`/checkout/complete?no=${encodeURIComponent(orderNo)}`);
