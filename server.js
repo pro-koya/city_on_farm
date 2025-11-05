@@ -6,6 +6,7 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const helmet  = require('helmet');
 const csrf    = require('csurf');
+const rateLimit = require('express-rate-limit');
 const bcrypt  = require('bcryptjs');
 const { body, validationResult, param } = require('express-validator');
 const multer = require('multer');
@@ -16,7 +17,6 @@ const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { r2, R2_BUCKET, R2_PUBLIC_BASE_URL } = require('./r2');
 const { randomUUID } = require('crypto');
 const upload = multer();
-const { google } = require('googleapis');
 const { generateAuthUrl, getTokenFromCode, getAuthedClient } = require('./services/gmailClient');
 const { gmailSend } = require('./services/mailer');
 
@@ -24,35 +24,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
 app.set('trust proxy', 1);
-// ローカル用のデフォルト値（自分の環境に合わせて）
-const LOCAL_DB_URL = 'postgresql://city_on_firm_s43g_user:2skJEN9AjwEOXy3Li3oSHVJWYmmilkgC@dpg-d42r7u3ipnbc73c3msng-a.oregon-postgres.render.com/city_on_firm_s43g';
-
-/* ========== DB ========== */
-const { Pool } = require('pg');
-const externalDB = 'postgresql://city_on_firm_s43g_user:2skJEN9AjwEOXy3Li3oSHVJWYmmilkgC@dpg-d42r7u3ipnbc73c3msng-a.oregon-postgres.render.com/city_on_firm_s43g';
 
 // Renderの接続文字列（環境変数に置くのが推奨）
-const dbUrl = process.env.External_Database_URL || LOCAL_DB_URL;
-const useSSL =
-  isProd || /\brender\.com\b/.test(dbUrl) || process.env.PGSSL === '1';
-const pool = new Pool({
-  connectionString: dbUrl,
-  ssl: useSSL ? { rejectUnauthorized: false } : false,
-  max: 10,
-  idleTimeoutMillis: 30_000,
-  connectionTimeoutMillis: 10_000
-});
+const { pool, dbQuery } = require('./services/db');
 app.locals.db = pool;
-
-async function dbQuery(text, params = []) {
-  const client = await pool.connect();
-  try {
-    const res = await client.query(text, params);
-    return res.rows;
-  } finally {
-    client.release();
-  }
-}
 
 /* ========== MIME ========== */
 const ALLOWED_IMAGE_MIME = new Set([
@@ -243,10 +218,6 @@ function buildQueryPath(basePath, base) {
 function wantsJSON(req){
   return req.xhr || req.get('X-Requested-With') === 'XMLHttpRequest' ||
          (req.headers.accept || '').includes('application/json');
-}
-function getCart(req){
-  if (!req.session.cart) req.session.cart = { items: [], updatedAt: new Date() };
-  return req.session.cart;
 }
 
 function isUuid(v){
@@ -767,7 +738,9 @@ app.post(
 
 // 絶対URLを作る（.env の BASE_URL があればそれを採用）
 function absoluteUrl(req, path) {
-  const base = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+  const base =
+    process.env.BASE_URL
+    || `${(req.headers['x-forwarded-proto'] || req.protocol)}://${req.headers['x-forwarded-host'] || req.get('host')}`;
   return base.replace(/\/$/, '') + path;
 }
 
@@ -778,6 +751,55 @@ function createResetToken() {
   const token = buf.toString('hex');
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
   return { token, tokenHash };
+}
+
+const forgotLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15分
+  max: 5,                    // 5回/15分
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const resetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20
+});
+
+async function sendPasswordResetMail({ to, name, url }) {
+  const from = process.env.MAIL_FROM || process.env.CONTACT_FROM || 'no-reply@example.com';
+  const subject = '【新・今日の食卓】パスワード再設定のご案内';
+  const text = `${name || 'ユーザー'} 様
+
+パスワード再設定のご依頼を受け付けました。
+以下のリンクから1時間以内に新しいパスワードを設定してください。
+
+${url}
+
+※心当たりがない場合は、このメールは破棄してください。`;
+
+  const escapeHtml = (s='') => String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
+  const html = `
+<p>${escapeHtml(name || 'ユーザー')} 様</p>
+<p>パスワード再設定のご依頼を受け付けました。<br>
+以下のボタンから <b>1時間以内</b> に再設定を完了してください。</p>
+<p><a href="${escapeHtml(url)}" style="display:inline-block;padding:10px 16px;background:#4C6B5C;color:#fff;border-radius:8px;text-decoration:none">パスワードを再設定する</a></p>
+<p>リンク：<br><a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>
+<hr>
+<p>※心当たりがない場合は、本メールは破棄してください。</p>`;
+
+  // 件名の MIME エンコード（文字化け対策）
+  const enc = (s) => `=?UTF-8?B?${Buffer.from(s, 'utf8').toString('base64')}?=`;
+
+  await gmailSend({
+    from,
+    to,
+    subject: enc(subject),
+    text,
+    html
+  });
 }
 
 /** リクエスト：メールアドレスを受けてリセットメールを送る */
@@ -794,6 +816,7 @@ app.get('/password/forgot', csrfProtect, (req, res) => {
 app.post(
   '/password/forgot',
   csrfProtect,
+  forgotLimiter,
   [ body('email').trim().isEmail().withMessage('有効なメールアドレスを入力してください。').normalizeEmail() ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -831,22 +854,9 @@ app.post(
     );
 
     const url = absoluteUrl(req, `/password/reset?token=${encodeURIComponent(token)}&u=${encodeURIComponent(user.id)}`);
-    const text = `${user.name || 'ユーザー'} 様
-
-パスワード再設定のご依頼を受け付けました。
-以下のリンクから1時間以内に新しいパスワードを設定してください。
-
-${url}
-
-※心当たりがない場合は、このメールは破棄してください。`;
 
     try {
-      await mailer.sendMail({
-        to: user.email,
-        from: process.env.CONTACT_FROM || process.env.SMTP_USER || 'noreply@example.com',
-        subject: '【新・今日の食卓】パスワード再設定のご案内',
-        text
-      });
+      await sendPasswordResetMail({ to: user.email, name: user.name, url });
     } catch (e) {
       console.warn('reset mail send error:', e.message);
       // メール失敗でも同文言（アタック対策）
@@ -896,6 +906,7 @@ app.get('/password/reset', csrfProtect, async (req, res) => {
 app.post(
   '/password/reset',
   csrfProtect,
+  resetLimiter,
   [
     body('token').notEmpty(),
     body('userId').custom(isUuid).withMessage('不正なリクエストです。'),
@@ -954,6 +965,8 @@ app.post(
         WHERE user_id = $1::uuid AND used = false`,
       [userId]
     );
+
+    try { req.session.regenerate(()=>{}); } catch {}
 
     // 完了画面へ
     return res.render('auth/password-reset-done', {

@@ -409,4 +409,3 @@ input:focus {
 .auth-hint{ color:var(--muted); font-size:.86rem; min-height:1.2em; }
 
 .auth-links{ margin-top:1rem; display:flex; gap:.6rem; align-items:center; }
-.auth-links a{ color:var(--main); text-decoration:underline; }

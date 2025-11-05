@@ -1,17 +1,14 @@
 // gmailClient.js
-const fs = require('fs/promises');
-const path = require('path');
 const { google } = require('googleapis');
-
+const { pool, dbQuery } = require('./db');
 const {
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
   GOOGLE_REDIRECT_URI,
-  GMAIL_SCOPE_SEND = 'https://www.googleapis.com/auth/gmail.send',
-  GMAIL_TOKEN_PATH = './gmail_token.json',
-  GMAIL_TOKEN_JSON
+  GMAIL_SCOPE_SEND = 'https://www.googleapis.com/auth/gmail.send'
 } = process.env;
 
+// OAuth2 クライアント生成
 function createOAuth2Client() {
   return new google.auth.OAuth2(
     GOOGLE_CLIENT_ID,
@@ -20,42 +17,34 @@ function createOAuth2Client() {
   );
 }
 
-async function loadSavedToken() {
-  // 1) 環境変数に JSON を保持している場合はそれを優先
-  if (GMAIL_TOKEN_JSON) {
-    try {
-      return JSON.parse(GMAIL_TOKEN_JSON);
-    } catch {}
-  }
-  // 2) ファイルから読む
-  try {
-    const p = path.resolve(GMAIL_TOKEN_PATH);
-    const raw = await fs.readFile(p, 'utf8');
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
+// === DBにトークンを保存 ===
 async function saveToken(token) {
-  const p = path.resolve(GMAIL_TOKEN_PATH);
-  // ディレクトリが無い場合を考慮
-  await fs.mkdir(path.dirname(p), { recursive: true });
-  await fs.writeFile(p, JSON.stringify(token, null, 2), 'utf8');
-  // パーミッション（ローカルの安全対策、RenderでもOK）
-  try { await fs.chmod(p, 0o600); } catch {}
+  await dbQuery(
+    `INSERT INTO gmail_tokens (id, token_json, updated_at)
+     VALUES (1, $1, now())
+     ON CONFLICT (id) DO UPDATE
+       SET token_json = EXCLUDED.token_json, updated_at = now()`,
+    [token]
+  );
 }
 
-function generateAuthUrl(state) {
+// === DBからトークンを読み込み ===
+async function loadToken() {
+  const rows = await dbQuery(`SELECT token_json FROM gmail_tokens WHERE id=1`);
+  return rows.length ? rows[0].token_json : null;
+}
+
+// === 認可URL生成 ===
+function generateAuthUrl() {
   const oAuth2Client = createOAuth2Client();
   return oAuth2Client.generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
-    scope: [GMAIL_SCOPE_SEND],
-    state: state || '' // ← ここで復帰先を持ち回す
+    scope: [GMAIL_SCOPE_SEND]
   });
 }
 
+// === 認可コード→トークン交換 ===
 async function getTokenFromCode(code) {
   const oAuth2Client = createOAuth2Client();
   const { tokens } = await oAuth2Client.getToken(code);
@@ -63,12 +52,15 @@ async function getTokenFromCode(code) {
   return tokens;
 }
 
+// === 認可済みクライアント取得 ===
 async function getAuthedClient() {
   const oAuth2Client = createOAuth2Client();
-  const token = await loadSavedToken();
-  if (!token) throw new Error('Gmail API not authorized yet. Ask an admin to visit /oauth2/start');
+  const token = await loadToken();
+  if (!token) throw new Error('Gmail API not authorized yet. Visit /oauth2/start');
+
   oAuth2Client.setCredentials(token);
 
+  // refresh_token更新時にDBへ自動保存
   oAuth2Client.on('tokens', async (t) => {
     const merged = { ...token, ...t };
     await saveToken(merged);
