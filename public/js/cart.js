@@ -10,28 +10,48 @@
   let discount = 0;
 
   if (!list) return; // 空カートのとき
+  // ── 追加: グループユーティリティ
+  function getGroupRoot(el) {
+    return el.closest('.partner-group');
+  }
+  function getGroupList(elOrGroup) {
+    const group = elOrGroup.classList.contains('partner-group') ? elOrGroup : getGroupRoot(elOrGroup);
+    return group ? group.querySelector('.cart-list') : null;
+  }
+  function removeGroupIfEmpty(elOrGroup) {
+    const group = elOrGroup.classList.contains('partner-group') ? elOrGroup : getGroupRoot(elOrGroup);
+    if (!group) return;
+    const ul = getGroupList(group);
+    const hasItems = !!(ul && ul.querySelector('.cart-item'));
+    if (!hasItems) {
+      group.remove();
+    }
+  }
+  function afterAnyRemovalCleanup() {
+    // 全体件数を更新
+    const count = document.getElementById('itemCount');
+    if (count) count.textContent = String(document.querySelectorAll('.cart-item').length);
+    // カートが空ならリロード or 空表示に置換（今回は簡単にリロード）
+    if (!document.querySelector('.cart-item')) {
+      // サーバ側の最新状態を反映
+      location.reload();
+    }
+  }
 
   // 通貨フォーマット
   const yen = n => `${Number(n||0).toLocaleString()}円`;
 
   // 合計の再計算
   function recalc() {
-    const rows = [...list.querySelectorAll('.cart-item')];
-    const groupedBySeller = rows.reduce((partner, item) => {
-      const sellerId = item.dataset.seller;
-      if (!partner[sellerId]) {
-        partner[sellerId] = [];
-      }
-      partner[sellerId].push(item);
-      console.log(sellerId);
-      return partner;
-    }, {});
-    console.log(groupedBySeller);
+    // 現在のグループごとに計算（存在するグループのみ）
+    const groups = [...list.querySelectorAll('.partner-group')];
+    groups.forEach(group => {
+      const partnerId = group.id.replace('seller-','');
+      const perItems = [...group.querySelectorAll('.cart-item')];
+      // 念のため: グループが空なら消す
+      if (!perItems.length) { removeGroupIfEmpty(group); return; }
 
-    for (const partnerId in groupedBySeller) {
       let subtotal = 0;
-      const perItems = groupedBySeller[partnerId];
-      console.log(perItems);
       perItems.forEach(li => {
         const checked = li.querySelector('.rowCheck')?.checked;
         if (!checked) return;
@@ -67,8 +87,8 @@
         const pct = Math.min(100, Math.floor((subtotal / FREE_SHIP_THRESHOLD) * 100));
         freeShipBar.style.width = `${pct}%`;
       }
-    }
-
+    });
+    afterAnyRemovalCleanup();
   }
 
   // 行イベント（数量変更・削除等）
@@ -116,7 +136,9 @@
     btnInc?.addEventListener('click', () => onChange(+1));
     btnRemove?.addEventListener('click', () => {
       // 見た目から即時削除
+      const group = getGroupRoot(li);
       li.remove();
+      removeGroupIfEmpty(group);
       recalc();
       // API（任意）
       fetch(`/cart/${encodeURIComponent(id)}`, {
@@ -124,9 +146,7 @@
         headers: { 'CSRF-Token': CSRF }
       }).catch(()=>{});
       // 件数更新
-      const count = document.getElementById('itemCount');
-      if (count) count.textContent = String(list.querySelectorAll('.cart-item').length);
-      // 空になったらリロードや置換などの挙動はお好みで
+      afterAnyRemovalCleanup();
     });
 
     rowCheck?.addEventListener('change', recalc);
@@ -145,15 +165,16 @@
     if (!targets.length) return;
     targets.forEach(li => {
       const id = li.dataset.id;
+      const group = getGroupRoot(li);
       li.remove();
+      removeGroupIfEmpty(group);
       fetch(`/cart/${encodeURIComponent(id)}`, {
         method: 'DELETE',
         headers: { 'CSRF-Token': CSRF }
       }).catch(()=>{});
     });
     recalc();
-    const count = document.getElementById('itemCount');
-    if (count) count.textContent = String(list.querySelectorAll('.cart-item').length);
+    afterAnyRemovalCleanup();
   });
 
   // クーポン適用（ダミー：SUM10 → 10%OFF）

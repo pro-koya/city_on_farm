@@ -3194,7 +3194,7 @@ app.get('/seller/trades', requireAuth, requireRole(['seller', 'admin']), async (
       `
       SELECT
         o.id, COALESCE(o.order_number, o.id::text) AS order_no,
-        o.status, o.payment_status, o.shipment_status,
+        o.status, o.payment_status, o.delivery_status,
         o.total, o.created_at,
         p.name AS partner_name,
         u.name AS buyer_name
@@ -3215,8 +3215,8 @@ app.get('/seller/trades', requireAuth, requireRole(['seller', 'admin']), async (
       status_ja: jaLabel('order_status', r.status),
       payment_status: r.payment_status,
       payment_status_ja: jaLabel('payment_status', r.payment_status),
-      shipment_status: r.shipment_status,
-      shipment_status_ja: jaLabel('shipment_status', r.shipment_status),
+      shipment_status: r.delivery_status,
+      shipment_status_ja: jaLabel('shipment_status', r.delivery_status),
       total: r.total,
       partner_name: r.partner_name || r.buyer_name,
       created_at: new Date(r.created_at).toLocaleString('ja-JP')
@@ -3810,13 +3810,17 @@ app.get('/cart', async (req, res, next) => {
       totalPerSeller.set(partnerId, total);
     }
 
+    const errorsBySeller = (req.session.cart && req.session.cart.errorsBySeller) || {};
+
     res.render('cart/index', {
       title: 'カート',
       groupedBySeller,
       items,
       totals,
-      req
+      req,
+      errorsBySeller
     });
+    if (req.session?.cart) req.session.cart.errorsBySeller = {};
   } catch (e) { next(e); }
 });
 
@@ -4373,6 +4377,19 @@ app.get('/checkout', async (req, res, next) => {
     if (bad){
       req.session.flash = { type:'error', message:'異なる出品者の商品が混在しています。もう一度選択してください。' };
       return res.redirect('/cart');
+    }
+
+    // ✅ 在庫検証：在庫0 or 在庫 < 注文数 が1つでもあれば /cart に差し戻し
+    const shortages = items.filter(it => ((it.stock|0) <= 0) || ((it.stock|0) < ((it.quantity|0) || 1)));
+    if (shortages.length) {
+      const msg = `在庫不足のため購入手続きに進めません：${
+        shortages.map(it => `${it.title}（在庫:${it.stock} / 注文:${it.quantity || 1}）`).join('、')
+      }。数量を調整してください。`;
+      req.session.cart = req.session.cart || {};
+      req.session.cart.errorsBySeller = req.session.cart.errorsBySeller || {};
+      req.session.cart.errorsBySeller[sellerId] = msg;
+      // 出品者ブロックにスクロールしやすいようハッシュ付きで戻す（任意）
+      return res.redirect(`/cart#seller-${encodeURIComponent(sellerId)}`);
     }
 
     // 合計系はグループ内で計算

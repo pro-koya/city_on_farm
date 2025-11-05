@@ -35,7 +35,7 @@
         </div> -->
 
         <% for (const partnerId in groupedBySeller) { %>
-        <div class="partner-group">
+        <div class="partner-group" id="seller-<%= partnerId %>">
             <div class="partner-info">
               <p>出品者：<%= groupedBySeller[partnerId][0].seller_partner_name || groupedBySeller[partnerId][0].seller_name %></p>
             </div>
@@ -106,12 +106,13 @@
               <span>合計（税込）</span><span id="sumTotal-<%= partnerId %>">-</span>
             </div>
 
-            <a class="btn btn--lg btn--primary checkoutBtn" data-seller="<%= partnerId %>" href="/checkout">購入手続きへ</a>
+            <a class="btn btn--lg btn--primary checkoutBtn" data-seller="<%= partnerId %>" href="/checkout?seller=<%= encodeURIComponent(partnerId) %>">購入手続きへ</a>
+            <% const errMsg = (typeof errorsBySeller !== 'undefined' && errorsBySeller && errorsBySeller[partnerId]) ? errorsBySeller[partnerId] : null; %>
             <p id="checkoutError-<%= partnerId %>"
               class="checkout-error"
               aria-live="polite"
               role="alert"
-              hidden><%= req.session?.flash?.message || '' %></p>
+              <%= errMsg ? '' : 'hidden' %>><%= errMsg || '' %></p>
             <p class="summary__note">お支払いは安全に処理されます</p>
           </div>
           <div class="freeship card" id="freeShip">
