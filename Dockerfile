@@ -11,7 +11,7 @@ RUN apt-get update && \
         libasound2 \
         # 日本語フォント (文字化け対策)
         fonts-noto-cjk \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
 # PuppeteerがChromeを見つけられるように環境変数を設定（任意、推奨）

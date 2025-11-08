@@ -43,7 +43,7 @@
   <section class="rail">
     <div class="rail__head">
       <h2>新着</h2>
-      <a class="link" href="<%= buildQuery({sort:'new', page:1}) %>">すべて見る →</a>
+      <a class="link" href="/products/list">すべて見る →</a>
     </div>
     <div class="rail__track">
       <% newArrivals.forEach(function(p){ %>
@@ -129,7 +129,7 @@
       </div>
 
       <div style="text-align:center; margin-top:1rem;">
-        <a class="btn" href="<%= buildQuery({ page: 1 }) %>">
+        <a class="btn" href="/products/list">
           すべての商品（全 <%= previewTotal %> 件）を見る →
         </a>
       </div>
