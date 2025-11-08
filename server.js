@@ -5515,7 +5515,13 @@ async function fetchInvoiceData(query, { orderNo, userId }) {
 
   // ---- 購入者 ----
   const userRows = await query(
-    `SELECT id, name, email FROM users WHERE id = $1 LIMIT 1`,
+    `
+    SELECT
+      u.id, u.name, u.email, u.partner_id,
+      pa.name AS partner_name, pa.phone AS partner_phone, pa.email AS partner_email
+    FROM users u
+    LEFT JOIN partners pa ON pa.id = u.partner_id
+    WHERE u.id = $1 LIMIT 1`,
     [o.buyer_id]
   );
   const buyer = userRows[0] || { id: o.buyer_id, name: '', email: '' };

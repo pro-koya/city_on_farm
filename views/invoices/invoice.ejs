@@ -41,6 +41,9 @@
       <div class="card">
         <h3>購入者</h3>
         <div class="buyer-lines">
+          <% if (buyer.partner_id) { %>
+            店舗名：<%= buyer.partner_name %>
+          <% } %>
           <% if (buyer.name) { %>
             <div>
               <%= buyer.name %> 様

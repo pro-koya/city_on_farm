@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- 日付レンジ（日単位） ---
-    const eventDate = document.getElementById('event_date');
+    const eventDate = document.getElementById('ev_date');
     if (eventDate) {
         fp(eventDate, {
             onChange: (selectedDates) => {
