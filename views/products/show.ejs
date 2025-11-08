@@ -103,11 +103,11 @@
 
     <div class="panes">
       <article id="pane-desc" class="pane is-active" role="tabpanel">
-        <div class="prose" itemprop="description">
+        <div class="prose product-desc" itemprop="description">
           <% if (product.description_html) { %>
             <%- product.description_html %>
           <% } else { %>
-            <p><%= product.description_html || '商品の詳細説明が入ります。' %></p>
+            <p><%- product.description_html || '商品の詳細説明が入ります。' %></p>
           <% } %>
         </div>
       </article>
@@ -116,7 +116,12 @@
         <div class="seller">
           <img class="seller__avatar" src="<%= (product.seller && product.seller.avatar) || '/images/test-image.jpeg' %>" alt="<%= product.seller_name || '生産者' %>">
           <div class="seller__meta">
-            <h3><%= product.seller_name || '生産者名' %></h3>
+            <% if (product.seller_partner_name) { %>
+              <h3><%= product.seller_partner_name || '生産社名' %></h3>
+              <small><%= product.seller_name || '生産者名' %> さん</small>
+            <% } else { %>
+              <h3><%= product.seller_name || '生産者名' %>さん</h3>
+            <% } %>
             <p><%= product.seller?.bio || '生産者紹介文が入ります。' %></p>
             <% if (product.seller && product.seller.location){ %><p class="muted">所在地：<%= product.seller.location %></p><% } %>
             <a class="link" href="/products/list?producer=<%= encodeURIComponent(product.seller?.name||'') %>">この出品者の他商品 →</a>

@@ -1,5 +1,5 @@
 <div class="card">
-  <a href="/products/<%= p.slug || p.id %>" data-product-id="<%= p.id %>" aria-label="<%= p.name %>の詳細">
+  <a href="/products/<%= p.id %>" data-product-id="<%= p.id %>" aria-label="<%= p.name %>の詳細">
     <%
       const created = new Date(p.created_at);
       const today = new Date();

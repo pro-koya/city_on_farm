@@ -78,7 +78,7 @@
         <div class="field">
           <label for="description">商品説明 *</label>
           <textarea id="description" name="description" rows="8" required
-                    placeholder="栽培方法、味の特徴、保存方法、おすすめレシピなど"><%= product.description_html || '' %></textarea>
+                    placeholder="栽培方法、味の特徴、保存方法、おすすめレシピなど"><%= product.description_raw || '' %></textarea>
           <p class="error" data-for="description"></p>
         </div>
 

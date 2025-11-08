@@ -806,6 +806,7 @@ table td {
   border-radius: 6px
 }
 
+
 /* モバイル最適化：カード幅を少し広めにしてスワイプを心地よく */
 @media (max-width: 768px) {
   .rail {

@@ -1537,20 +1537,22 @@ app.get('/products/list', async (req, res, next) => {
 });
 
 // /products/:slug（詳細）
-app.get('/products/:slug', async (req, res, next) => {
+app.get('/products/:id', async (req, res, next) => {
   try {
-    const slug = req.params.slug;
+    const productId = req.params.id;
     const rows = await dbQuery(`
       SELECT p.*, c.name AS category_name, u.name AS seller_name,
+             pa.name AS seller_partner_name,
              prs.rating_avg  AS rating,
              prs.review_count
         FROM products p
         LEFT JOIN categories c ON c.id = p.category_id
         LEFT JOIN product_rating_stats prs ON prs.product_id = p.id
         JOIN users u ON u.id = p.seller_id
-       WHERE p.slug = $1
+        LEFT JOIN partners pa ON pa.id = u.partner_id
+       WHERE p.id = $1
        LIMIT 1
-    `, [slug]);
+    `, [productId]);
     const product = rows[0];
     if (!product) return next();
 
@@ -1614,7 +1616,10 @@ app.get('/products/:slug', async (req, res, next) => {
       product, specs, tags, related, reviews, myReview,
       recentlyViewed, currentUser
     });
-  } catch (e) { next(e); }
+  } catch (e) {
+    console.log(e);
+    next(e);
+  }
 });
 
 app.post(
@@ -1694,6 +1699,7 @@ app.get(
   }
 );
 
+const { renderDescHtml } = require('./services/desc');
 // POST 出品保存
 app.post(
   '/seller/listing-new',
@@ -1749,6 +1755,8 @@ app.post(
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+      const descriptionRaw  = String(req.body.description || '');
+      const descriptionHtml = await renderDescHtml(req.body.description || '');
 
       const sellerId = req.session.user.id;
 
@@ -1783,19 +1791,20 @@ app.post(
       const isPublic = req.body.status === 'public';
       const insertProduct = `
         INSERT INTO products
-          (seller_id, category_id, slug, title, description_html,
+          (seller_id, category_id, slug, title, description_html, description_raw,
            price, unit, stock, is_organic, is_seasonal,
            ship_method, ship_days, status, published_at)
         VALUES
-          ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+          ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
         RETURNING id
       `;
-      const pr = await dbQuery(insertProduct, [
+      const pr = await client.query(insertProduct, [
         sellerId,
         Number(req.body.categoryId),
         slug,
         req.body.title,
-        req.body.description, // 今はmarkdown扱いなし。必要なら両方保存へ変更
+        descriptionHtml,
+        descriptionRaw,
         Number(req.body.price),
         req.body.unit,
         Number(req.body.stock),
@@ -1959,7 +1968,7 @@ app.post(
       }
 
       await client.query('COMMIT'); // pool helperはトランザクション対象外なので client 版が必要だが、簡易にclient.query利用→OK
-      res.redirect(`/products/${slug}`);
+      res.redirect(`/products/${productId}`);
     } catch (err) {
       await client.query('ROLLBACK');
       console.error('listing-new INSERT error:', err);
@@ -2025,9 +2034,12 @@ app.get(
         ),
       ]);
 
+      const { htmlToRaw } = require('./services/desc');
+      const rawForForm = product.description_raw ? product.description_raw : htmlToRaw(product.description_html || '');
       return res.render('seller/listing-edit', {
         title: '出品を編集',
-        product, categories, images, specs, tags
+        product: { ...product, description_raw: rawForForm },
+        categories, images, specs, tags
       });
     } catch (e) { next(e); }
   }
@@ -2106,7 +2118,7 @@ app.post(
     const status      = req.body.status;
     const isOrganic   = !!req.body.isOrganic;
     const isSeasonal  = !!req.body.isSeasonal;
-    const description = req.body.description;
+    const description = renderDescHtml(req.body.description);
 
     // 画像（既存リスト + 新規URL）
     const imagesPayload = req.body.images || []; // {id?, url, alt?, position}[]
@@ -2168,23 +2180,26 @@ app.post(
         return res.status(404).render('errors/404', { title: '商品が見つかりません' });
       }
 
+      const descriptionRaw  = String(req.body.description || '');
+      const descriptionHtml = await renderDescHtml(req.body.description || '');
       // 本体 UPDATE（slug は据え置き）
       await client.query(
         `UPDATE products SET
             category_id = $1,
             title = $2,
             description_html = $3,
-            price = $4,
-            unit = $5,
-            stock = $6,
-            is_organic = $7,
-            is_seasonal = $8,
-            ship_method = $9,
-            ship_days = $10,
-            status = $11,
+            description_raw  = $4,
+            price = $5,
+            unit = $6,
+            stock = $7,
+            is_organic = $8,
+            is_seasonal = $9,
+            ship_method = $10,
+            ship_days = $11,
+            status = $12,
             updated_at = now()
-         WHERE id = $12::uuid`,
-        [categoryId, title, description, price, unit, stock, isOrganic, isSeasonal, shipMethod, shipDays, status, id]
+         WHERE id = $13::uuid`,
+        [categoryId, title, descriptionHtml, descriptionRaw, price, unit, stock, isOrganic, isSeasonal, shipMethod, shipDays, status, id]
       );
 
       /* ===== 画像 ===== */
@@ -2397,8 +2412,8 @@ app.post(
       await client.query('COMMIT');
 
       // 保存後は商品詳細へ（slugは据え置き）
-      const prod = await dbQuery(`SELECT slug FROM products WHERE id = $1::uuid LIMIT 1`, [id]);
-      return res.redirect(`/products/${prod[0].slug}`);
+      const prod = await dbQuery(`SELECT id, slug FROM products WHERE id = $1::uuid LIMIT 1`, [id]);
+      return res.redirect(`/products/${prod[0].id}`);
     } catch (e) {
       try { await pool.query('ROLLBACK'); } catch {}
       next(e);

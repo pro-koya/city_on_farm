@@ -71,7 +71,7 @@
           <div class="order__body">
             <div class="order__items" role="list">
               <% (o.items || []).forEach(function(it){ %>
-                <a class="order-item" role="listitem" href="/products/<%= it.slug %>" data-product-id="<%= it.id %>">
+                <a class="order-item" role="listitem" href="/products/<%= it.id %>" data-product-id="<%= it.id %>">
                   <img src="<%= it.image %>" alt="<%= it.name %>" loading="lazy">
                   <div class="order-item__info">
                     <div class="order-item__name"><%= it.name %></div>

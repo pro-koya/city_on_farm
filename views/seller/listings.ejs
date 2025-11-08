@@ -114,11 +114,11 @@
                           </label>
                         </td>
                         <td class="col-main">
-                          <a class="thumb" href="/products/<%= it.slug %>" target="_blank" rel="noopener">
+                          <a class="thumb" href="/products/<%= it.id %>" target="_blank" rel="noopener">
                             <img src="<%= it.image_url || '/images/placeholder.png' %>" alt="" loading="lazy">
                           </a>
                           <div class="meta">
-                            <a class="title" href="/products/<%= it.slug %>" target="_blank" rel="noopener">
+                            <a class="title" href="/products/<%= it.id %>" target="_blank" rel="noopener">
                               <%= it.title %>
                             </a>
                             <div class="badges">
@@ -171,11 +171,11 @@
                           <input type="checkbox" class="rowCheck" value="<%= it.id %>" aria-label="カードを選択">
                         </label>
                       </div>
-                      <a class="card__thumb" href="/products/<%= it.slug %>" target="_blank" rel="noopener">
+                      <a class="card__thumb" href="/products/<%= it.id %>" target="_blank" rel="noopener">
                         <img src="<%= it.image_url || '/images/placeholder.png' %>" alt="">
                       </a>
                       <div class="card__main">
-                        <a class="card__title" href="/products/<%= it.slug %>" target="_blank" rel="noopener">
+                        <a class="card__title" href="/products/<%= it.id %>" target="_blank" rel="noopener">
                           <%= it.title %>
                         </a>
                         <div class="badges">
