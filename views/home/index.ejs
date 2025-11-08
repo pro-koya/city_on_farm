@@ -149,7 +149,7 @@
                     <ul class="cards">
                         <% featuredProducts.forEach(p=> { %>
                             <li class="card">
-                                <a href="/products/<%= p.slug || p.id %>">
+                                <a href="/products/<%= p.id %>">
                                     <img src="<%= p.image_url || '/images/placeholder.jpg' %>"
                                         alt="<%= p.title %>">
                                     <div class="card__body">
