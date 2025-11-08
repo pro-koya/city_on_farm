@@ -189,6 +189,11 @@ a.link{text-decoration:underline;text-underline-offset:2px}
 .ab-cta h2{font-size: 18px;}
 .ab-cta__inner{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1.2rem 0}
 
+.teaser-link {
+  position: relative;
+  z-index: 99;
+}
+
 /* responsive */
 @media(min-width:720px){
   .pillars{grid-template-columns:repeat(3,1fr)}

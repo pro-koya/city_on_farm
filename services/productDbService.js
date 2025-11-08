@@ -26,7 +26,7 @@ function getSortSql(sort = 'new') {
 }
 
 /** 検索条件の WHERE と params を構築（/products & /products/list で共用） */
-function buildWhere({ q, category, flags, visible = 'all' }) {
+function buildWhere({ q, category, flags, visible = 'public' }) {
     const where = [];
     const params = [];
 
@@ -76,7 +76,7 @@ function buildWhere({ q, category, flags, visible = 'all' }) {
 async function fetchProductsWithCount(dbQuery, {
     q = '', category = 'all', sort = 'new',
     page = 1, pageSize = PAGE_SIZE_DEFAULT,
-    flags = {}, visible = 'all'
+    flags = {}, visible = 'public'
 }) {
     const { where, params } = buildWhere({ q, category, flags, visible });
     const orderBy = getSortSql(sort);

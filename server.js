@@ -1356,6 +1356,7 @@ async function fetchRecentProducts(req, limit = 8) {
         FROM user_recent_products urp
         JOIN products p ON p.id = urp.product_id
        WHERE urp.user_id = $1
+       AND p.status = 'public'
        ORDER BY urp.viewed_at DESC
        LIMIT $2
       `,
@@ -1476,7 +1477,7 @@ app.get('/products', async (req, res, next) => {
     const categoriesChips = categories.map(c => c.name);
 
     const { items, total, pageNum } = await fetchProductsWithCount(dbQuery, {
-      q, category, sort, page, flags, visible: 'all', pageSize: 20
+      q, category, sort, page, flags, visible: 'public', pageSize: 20
     });
 
     const buildQuery = buildQueryPath('/products', { q, category, sort });
@@ -6507,6 +6508,8 @@ app.post('/admin/users/:id', requireAuth, csrfProtect, async (req,res,next)=>{
         ? [uid, req.body.name, req.body.email || null, roles]
         : [uid, req.body.name, req.body.email || null]
     );
+
+    req.session.user.name = req.body.name;
     res.redirect('/admin/users/' + uid);
   }catch(e){ next(e); }
 });
