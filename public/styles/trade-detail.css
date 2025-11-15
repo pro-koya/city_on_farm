@@ -16,12 +16,20 @@
     color: var(--text);
 }
 
+.td {
+    margin-top: 90px;
+}
+
+.td-btn {
+    margin-left: 2.5rem;
+}
+
 .td__head {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: .8rem;
     align-items: start;
-    margin: 100px 7rem 0 3rem;
+    margin: 25px 3.5rem 0 3rem;
 }
 
 .td__title {
@@ -393,6 +401,9 @@
 }
 
 @media (max-width: 720px) {
+    .td-btn {
+        margin-left: .5rem;
+    }
     .td__head {
         grid-template-columns: 1fr;
         gap: .4rem;

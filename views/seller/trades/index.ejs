@@ -13,7 +13,7 @@
             <th>注文者</th>
             <th>注文状況</th>
             <th>支払い</th>
-            <th>出荷</th>
+            <th>出荷/受取状況</th>
             <th>合計</th>
             <th>注文日時</th>
             <th></th>
@@ -25,11 +25,24 @@
               <td data-label="注文者">${it.partner_name}</td>
               <td data-label="注文状況" class="pc__status"><span class="lv-badge">${it.status_ja}</span></td>
               <td data-label="支払い" class="pc__status"><span class="lv-badge ${it.payment_status==='paid'?'ok': it.payment_status==='unpaid'?'warn':''}">${it.payment_status_ja}</span></td>
-              <td data-label="出荷" class="pc__status"><span class="lv-badge ${it.shipment_status==='delivered'?'ok': it.shipment_status==='returned'?'ng':''}">${it.shipment_status_ja}</span></td>
+              <td data-label="出荷" class="pc__status"><span class="lv-badge ${it.shipment_status==='delivered'?'ok': it.shipment_status==='returned'?'ng':''}">
+                ${
+                  it.ship_method === 'pickup'
+                    ? (it.shipment_status === 'delivered' ? '受取完了' : '未受取')
+                    : it.shipment_status_ja
+                }
+              </span></td>
+
               <td class="sub-table">
                 <div data-label="注文状況" class="sub__status">注文状況<span class="lv-badge">${it.status_ja}</span></div>
                 <div data-label="支払い" class="sub__status">支払い状況<span class="lv-badge ${it.payment_status==='paid'?'ok': it.payment_status==='unpaid'?'warn':''}">${it.payment_status_ja}</span></div>
-                <div data-label="出荷" class="sub__status">出荷状況<span class="lv-badge ${it.shipment_status==='delivered'?'ok': it.shipment_status==='returned'?'ng':''}">${it.ship_method==='pickup' ? '畑受取' : it.shipment_status_ja}</span></div>
+                <div data-label="出荷" class="sub__status">${it.ship_method === 'pickup' ? '受取状況' : '出荷状況'}<span class="lv-badge ${it.shipment_status==='delivered'?'ok': it.shipment_status==='returned'?'ng':''}">
+                  ${
+                    it.ship_method === 'pickup'
+                      ? (it.shipment_status === 'delivered' ? '受取完了' : '未受取')
+                      : it.shipment_status_ja
+                  }
+                </span></div>
               </td>
               <td data-label="合計">¥${(it.total||0).toLocaleString()}</td>
               <td data-label="注文日時">${it.created_at}</td>

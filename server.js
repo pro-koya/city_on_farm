@@ -3392,8 +3392,8 @@ app.get('/seller/trades/:id', requireAuth, requireRole(['seller', 'admin']), asy
       payment_method_ja: jaLabel('payment_method', o.payment_method),
       ship_method: o.ship_method,
       ship_method_ja: jaLabel('ship_method', o.ship_method),
-      shipment_status: o.shipment_status,
-      shipment_status_ja: jaLabel('shipment_status', o.shipment_status),
+      shipment_status: o.delivery_status,
+      shipment_status_ja: jaLabel('shipment_status', o.delivery_status),
       created_at: new Date(o.created_at).toLocaleString('ja-JP'),
       eta: o.eta_at ? new Date(o.eta_at).toLocaleDateString('ja-JP') : null,
       subtotal: o.subtotal, discount: o.discount, shipping_fee: o.shipping_fee, tax: o.tax, total: o.total,
@@ -3415,73 +3415,116 @@ app.get('/seller/trades/:id', requireAuth, requireRole(['seller', 'admin']), asy
   } catch (e) { next(e); }
 });
 
-// ステータス更新（簡易）
-app.post('/seller/trades/:id/status',
-  requireAuth, requireRole(['seller', 'admin']),
+// ステータス更新
+app.post(
+  '/seller/trades/:id/status',
+  requireAuth,
+  requireRole(['seller', 'admin']),
   async (req, res, next) => {
     try {
       const id = String(req.params.id).trim();
-      const { order_status, payment_status, shipment_status } = req.body || {};
+      const { payment_status, shipment_status } = req.body || {};
       const sellerId = req.session.user.id;
-      const currentRoles = req.session.user.roles;
+      const currentRoles = req.session.user.roles || [];
 
-      // 所有者チェック：この注文が本人（出品者）の受注に含まれるか（必要であれば厳格化）
+      // ===== 所有者チェック =====
       let own;
       if (currentRoles.includes('admin')) {
-        own = await dbQuery(`
+        // 管理者は order_items が存在する注文ならOK（必要に応じて縛りを強くする）
+        own = await dbQuery(
+          `
           SELECT 1
             FROM orders o
-          WHERE o.id = $1
-            AND EXISTS (
-              SELECT 1 FROM order_items oi WHERE oi.order_id = o.id
-            )
+           WHERE o.id = $1
+             AND EXISTS (
+               SELECT 1 FROM order_items oi WHERE oi.order_id = o.id
+             )
           LIMIT 1
-        `, [id]);
+          `,
+          [id]
+        );
       } else {
-        own = await dbQuery(`
+        // seller は自分が seller_id の order_items を持つ注文のみ操作可能
+        own = await dbQuery(
+          `
           SELECT 1
             FROM orders o
-          WHERE o.id = $1
-            AND EXISTS (
-              SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $2
-            )
+           WHERE o.id = $1
+             AND EXISTS (
+               SELECT 1
+                 FROM order_items oi
+                WHERE oi.order_id = o.id
+                  AND oi.seller_id = $2
+             )
           LIMIT 1
-        `, [id, sellerId]);
+          `,
+          [id, sellerId]
+        );
       }
-      if (!own.length) return res.status(404).json({ ok:false, message:'not found' });
-
-      // 値のバリデーション（ENUMに合わせて）
-      const okOrder    = ['pending','confirmed','paid','fulfilled','canceled','refunded'];
-      const okPayment  = ['unpaid','paid','canceled','refunded'];
-      const okShipment = ['preparing','in_transit','delivered','returned'];
-
-      const updates = [];
-      const params  = [];
-      if (order_status && okOrder.includes(order_status)) {
-        updates.push(`status = $${params.length+1}`); params.push(order_status);
+      if (!own.length) {
+        return res.status(404).json({ ok: false, message: 'not found' });
       }
+
+      // ===== 値のバリデーション（ENUMに合わせて調整） =====
+      const okPayment  = ['pending','completed','failed','authorized','paid','canceled','refunded','unpaid','cancelled'];
+      const okShipment = ['pending','preparing','shipped','delivered','cancelled','returned','lost','canceled','in_transit'];
+
+      const sets   = [];
+      const params = [];
+
       if (payment_status && okPayment.includes(payment_status)) {
-        updates.push(`payment_status = $${params.length+1}`); params.push(payment_status);
+        sets.push(`payment_status = $${params.length + 1}`);
+        params.push(payment_status);
       }
-      if (shipment_status && okShipment.includes(shipment_status)) {
-        updates.push(`shipment_status = $${params.length+1}`); params.push(shipment_status);
-      }
-      if (!updates.length) return res.status(400).json({ ok:false, message:'no valid fields' });
 
+      if (shipment_status && okShipment.includes(shipment_status)) {
+        // ✅ DB カラム名は shipment_status を想定（delivery_status ではない）
+        sets.push(`delivery_status = $${params.length + 1}`);
+        params.push(shipment_status);
+      }
+
+      if (!sets.length) {
+        return res.status(400).json({ ok: false, message: 'no valid fields' });
+      }
+
+      // WHERE のための id
       params.push(id);
 
-      await dbQuery(`UPDATE orders SET ${updates.join(', ')}, updated_at = now() WHERE id = $${params.length}`, params);
+      // ===== UPDATE + トリガーで status を自動更新 → RETURNING で取得 =====
+      const rows = await dbQuery(
+        `
+        UPDATE orders
+           SET ${sets.join(', ')},
+               updated_at = now()
+         WHERE id = $${params.length}
+        RETURNING
+          id,
+          status,
+          payment_status,
+          delivery_status
+        `,
+        params
+      );
 
-      // フロントでそのまま使えるよう返す
+      if (!rows.length) {
+        // ありえない想定だが、念のため
+        return res.status(404).json({ ok: false, message: 'not found' });
+      }
+
+      const updated = rows[0];
+
       return res.json({
         ok: true,
         order: {
-          order_status,
-          payment_status,
-          shipment_status
+          id:               updated.id,
+          status:           updated.status,
+          payment_status:   updated.payment_status,
+          shipment_status:  updated.delivery_status
         }
       });
-    } catch (e) { next(e); }
+    } catch (e) {
+      next(e);
+    }
   }
 );
 

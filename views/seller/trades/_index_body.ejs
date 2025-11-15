@@ -47,6 +47,11 @@
                     </td>
                     <td>
                         <%= r.shipmentStatus %>
+                        <% if (isPickup) { %>
+                            <%= order.shipmentStatus === 'delivered' ? '受取完了' : '未受取' %>
+                        <% } else { %>
+                            <%= order.shipmentStatus_ja %>
+                        <% } %>
                     </td>
                     <td>¥<%= Number(r.amount||0).toLocaleString() %>
                     </td>
