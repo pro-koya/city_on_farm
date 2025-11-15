@@ -1,8 +1,8 @@
 (() => {
-  const $ = (s, r=document) => r.querySelector(s);
+  const $ = (s, r = document) => r.querySelector(s);
 
-  // 領収書印刷
-  $('#printReceipt')?.addEventListener('click', () => {
+  // 注文書印刷（ボタン id をテンプレートに合わせて修正）
+  $('#printOrders')?.addEventListener('click', () => {
     window.print();
   });
 
@@ -33,16 +33,16 @@
       el.style.padding = '10px 14px';
       el.style.borderRadius = '8px';
       el.style.zIndex = '9999';
+      el.style.transition = 'opacity .3s';
       document.body.appendChild(el);
     }
     el.textContent = msg;
     el.style.opacity = '1';
-    setTimeout(()=> el.style.opacity = '0', 1500);
+    setTimeout(() => { el.style.opacity = '0'; }, 1500);
   }
 
   // 完了時のクリーンアップ（クライアント側）
   try {
-    // もしクライアント側に checkoutDraft や selection を持っていたら削除
     sessionStorage.removeItem('checkoutDraft');
     sessionStorage.removeItem('cartSelection');
   } catch {}

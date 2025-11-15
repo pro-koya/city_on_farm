@@ -44,6 +44,36 @@
     justify-items: end;
 }
 
+.td__head-total {
+    font-weight: 800;
+}
+
+.td__head-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+}
+
+/* pill ラベル */
+.pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: .8rem;
+    font-weight: 600;
+}
+.pill--soft {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+.pill--outline {
+    background: #fff;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
 .status-badge {
     display: inline-flex;
     align-items: center;
@@ -62,31 +92,26 @@
     color: #b45309;
     background: #fffbeb;
 }
-
 .status--確定 {
     border-color: #93c5fd;
     color: #1d4ed8;
     background: #eff6ff;
 }
-
 .status--支払い済み {
     border-color: #34d399;
     color: #065f46;
     background: #ecfdf5;
 }
-
 .status--出荷完了 {
     border-color: #86efac;
     color: #065f46;
     background: #ecfdf5;
 }
-
 .status--キャンセル {
     border-color: #fecaca;
     color: #991b1b;
     background: #fff1f2;
 }
-
 .status--返金済み {
     border-color: #fca5a5;
     color: #9f1239;
@@ -166,6 +191,12 @@
 
 .addr__muted {
     color: var(--muted);
+}
+
+.addr__hint {
+    font-size: .9rem;
+    color: var(--muted);
+    margin-bottom: .6rem;
 }
 
 /* タイムライン（任意） */
@@ -283,6 +314,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: .5rem;
+    margin-top: .8rem;
 }
 
 .td-actions .btn {
@@ -295,12 +327,63 @@
     cursor: pointer;
 }
 
-.td-actions .btn--ghost {
+.td-actions .btn.btn--ghost {
     background: #fff;
     color: var(--brand);
     border-color: var(--border);
 }
 
+/* ステータスフォーム */
+.td-status-form {
+    display: block;
+}
+
+.td-status-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: .6rem;
+    margin: .6rem 0;
+}
+
+@media(max-width:900px){
+    .td-status-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.td-status-field select {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: .4rem .6rem;
+    background: #fff;
+    font-size: .9rem;
+}
+
+.td-status-label {
+    display: block;
+    font-size: .9rem;
+    color: #6b7280;
+    margin-bottom: .2rem;
+}
+
+.td-status-hint {
+    margin: .4rem 0 0;
+    font-size: .9rem;
+}
+
+/* ボタン（共通） */
+.btn{
+    border:1px solid #e5e7eb;
+    background:var(--color-white);
+    padding:8px 12px;
+    border-radius:999px;
+    cursor:pointer;
+    font-size:.9rem;
+}
+
+/* レスポンシブ */
 @media (max-width: 1200px) {
     .td-items,
     .td-summary,
@@ -309,19 +392,19 @@
     }
 }
 
-/* モバイル最適化 */
 @media (max-width: 720px) {
     .td__head {
         grid-template-columns: 1fr;
         gap: .4rem;
         margin-left: 1rem;
-        margin-right: 0;
+        margin-right: 1rem;
     }
 
     .td__head-right {
         display: flex;
         align-items: center;
-        gap: 1rem;
+        gap: .6rem;
+        justify-content: space-between;
     }
 
     .kv__row {

@@ -10,17 +10,79 @@
     <!-- 左カラム：入力領域 -->
     <section class="ck-left">
 
-      <!-- 配送先 -->
-      <section class="card" id="shippingAddress">
+      <section class="card sticky">
+        <h2>ご注文内容</h2>
+
+        <ul class="mini-cart">
+          <% (items || []).forEach(function(it){ %>
+            <li class="mini-row">
+              <img src="<%= it.image_url || '/images/placeholder.png' %>" alt="" loading="lazy">
+              <div class="mini-main">
+                <div class="mini-title"><%= it.title %></div>
+                <div class="mini-meta">数量 × 単価：<%= it.quantity %> × ¥<%= Number(it.price).toLocaleString() %></div>
+                <div class="mini-meta">数量1あたり：<%= it.unit || '点' %></div>
+              </div>
+              <div class="mini-sub">¥<%= Number(it.price*it.quantity).toLocaleString() %></div>
+            </li>
+          <% }) %>
+        </ul>
+
+        <div class="sum">
+          <div class="row"><span>小計</span><strong class="sumSubtotal">¥<%= Number(totals?.subtotal||0).toLocaleString() %></strong></div>
+          <div class="row"><span>割引</span><strong class="sumDiscount">-¥<%= Number(totals?.discount||0).toLocaleString() %></strong></div>
+          <div class="row"><span>送料</span><strong class="sumShipping">¥<%= Number(totals?.shipping||0).toLocaleString() %></strong></div>
+          <hr>
+          <div class="row total"><span>合計</span><strong class="sumTotal">¥<%= Number(totals?.total||0).toLocaleString() %></strong></div>
+        </div>
+
+      </section>
+
+      <!-- 受け取り方法・日時 -->
+      <section class="card" id="shipMethodCard">
+        <div class="card__head"><h2>受け取り方法・日時</h2></div>
+        <div class="field field--row">
+          <div>
+            <label for="shipMethod">受け取り方法</label>
+            <select class="pulldown" name="shipMethod" id="shipMethod" required>
+              <% (allowedShipMethods || []).forEach(function(m){ %>
+                <option value="<%= m.code %>" <%= form.shipMethod === m.code ? 'selected' : '' %>>
+                  <%= m.label_ja || m.code %>
+                </option>
+              <% }) %>
+            </select>
+          </div>
+          <div>
+            <label for="ev_date"><%= form.shipMethod === 'pickup' ? '受け取り希望日（任意）' : 'お届け希望日（任意）' %></label>
+            <input id="ev_date" type="text" name="ev_date" value="<%= form.shipDate || '' %>">
+            <input type="hidden" id="shipDate" name="shipDate" value="<%= form.shipDate || '' %>">
+          </div>
+          <div>
+            <label for="shipTime"><%= form.shipMethod === 'pickup' ? '受け取り時間帯（任意）' : 'お届け時間帯（任意）' %></label>
+            <select class="pulldown" id="shipTime" name="shipTime">
+              <option value="">指定なし</option>
+              <option value="am"    <%= form.shipTime === 'am' ? 'selected' : '' %>>午前中</option>
+              <option value="14-16" <%= form.shipTime === '14-16' ? 'selected' : '' %>>14-16時</option>
+              <option value="16-18" <%= form.shipTime === '16-18' ? 'selected' : '' %>>16-18時</option>
+              <option value="18-20" <%= form.shipTime === '18-20' ? 'selected' : '' %>>18-20時</option>
+              <option value="19-21" <%= form.shipTime === '19-21' ? 'selected' : '' %>>19-21時</option>
+            </select>
+          </div>
+        </div>
+        <p class="help" id="shipHelp">
+          <%= form.shipMethod === 'pickup'
+              ? '受け取り場所は出品者指定の畑になります。詳細はご注文確定後のメールをご確認ください。'
+              : 'ご指定の配送先へお届けします。' %>
+        </p>
+      </section>
+
+      <!-- 配送先（pickupでは非表示） -->
+      <section class="card" id="shippingAddress" aria-hidden="<%= form.shipMethod === 'pickup' ? 'true' : 'false' %>">
         <div class="card__head">
           <h2>配送先住所</h2>
           <button class="link" type="button" id="openAddressModal" aria-haspopup="dialog">＋ 新しい住所を追加</button>
         </div>
-
-        <% if (!addresses || !addresses.length) { %>
-          <p class="muted">住所が登録されていません。「新しい住所を追加」からご登録ください。</p>
-        <% } else { %>
-          <ul id="shippingAddrList" class="addr-list" role="list">
+          <p class="muted" id="shippingAddrInv" aria-hidden="<%= form.shipMethod === 'pickup' ? 'true' : 'false' %>">畑受け取りでは配送先は不要です。</p>
+          <ul id="shippingAddrList" class="addr-list" role="list" aria-hidden="<%= form.shipMethod === 'pickup' ? 'true' : 'false' %>">
             <% addresses.forEach(function(a){ %>
               <li class="addr-item">
                 <label class="addr-radio">
@@ -34,28 +96,24 @@
                   </div>
                 </label>
               </li>
-            <% }) %>
+              <% }); %>
           </ul>
-        <% } %>
       </section>
 
-      <!-- 請求先 -->
+      <!-- 請求先（pickupでも必要） -->
       <section class="card" id="billingAddress">
         <div class="card__head">
           <h2>請求先住所</h2>
         </div>
 
-        <label class="check">
+        <label class="check" id="billSameCheck" aria-hidden="<%= form.shipMethod === 'pickup' ? 'true' : 'false' %>">
           <input type="checkbox" id="billSame" name="billSame" value="1" <%= (!selectedBillingId) ? 'checked' : '' %> >
           配送先と同じにする
         </label>
-        <button class="link" type="button" id="openBillingAddressModal" aria-haspopup="dialog">＋ 新しい請求先を追加</button>
 
-        <div id="billingBlock" class="<%= (!selectedBillingId) ? 'is-hidden' : '' %>">
-          <% if (!addresses || !addresses.length) { %>
-            <p class="muted">住所が登録されていません。</p>
-          <% } else { %>
-            <ul id="billingAddrList" class="addr-list" role="list">
+        <button class="link" type="button" id="openBillingAddressModal" aria-haspopup="dialog">＋ 新しい請求先を追加</button>
+        <div id="billingBlock" class="<%= (form.shipMethod === 'delivery' && !selectedBillingId) ? 'is-hidden' : '' %>">
+          <ul id="billingAddrList" class="addr-list" role="list">
               <% addresses.forEach(function(a){ %>
                 <li class="addr-item">
                   <label class="addr-radio">
@@ -71,41 +129,10 @@
                 </li>
               <% }) %>
             </ul>
-          <% } %>
         </div>
       </section>
 
-      <!-- 配送方法・日時 -->
-      <section class="card" id="shipMethod">
-        <div class="card__head"><h2>配送方法・日時</h2></div>
-        <div class="field field--row">
-          <div>
-            <label for="shipMethod">配送方法</label>
-            <select class="pulldown" name="shipMethod" id="shipMethod" required>
-              <option value="normal" <%= form.shipMethod === 'normal' ? 'selected' : '' %>>常温便</option>
-              <option value="cool"<%= form.shipMethod === 'cool'   ? 'selected' : '' %>>クール便</option>
-            </select>
-          </div>
-          <div>
-            <label for="ev_date">お届け希望日（任意）</label>
-            <input id="ev_date" type="text" name="ev_date" value="<%= form.shipDate || '' %>">
-            <input type="hidden" id="shipDate" name="shipDate" value="<%= form.shipDate || '' %>">
-          </div>
-          <div>
-            <label for="shipTime">お届け時間帯（任意）</label>
-            <select class="pulldown" id="shipTime" name="shipTime">
-              <option value="">指定なし</option>
-              <option value="am" <%= form.shipTime === 'am' ? 'selected' : '' %>>午前中</option>
-              <option value="14-16" <%= form.shipTime === '14-16' ? 'selected' : '' %>>14-16時</option>
-              <option value="16-18" <%= form.shipTime === '16-18' ? 'selected' : '' %>>16-18時</option>
-              <option value="18-20" <%= form.shipTime === '18-20' ? 'selected' : '' %>>18-20時</option>
-              <option value="19-21" <%= form.shipTime === '19-21' ? 'selected' : '' %>>19-21時</option>
-            </select>
-          </div>
-        </div>
-      </section>
-
-      <!-- 支払い方法 -->
+      <!-- お支払い方法 -->
       <section class="card">
         <div class="card__head"><h2>お支払い方法</h2></div>
 
@@ -128,19 +155,24 @@
         <% } %>
       </section>
 
-      <!-- クーポン・メモ -->
-      <section class="card coupon-card">
+      <!-- クーポン・規約 -->
+      <section class="card coupon-card" id="coupon_card">
         <div class="card__head"><h2>クーポン・ご要望</h2></div>
         <div class="field field--row">
           <div class="coupon">
             <label for="couponCode">クーポンコード</label>
             <div class="row">
-              <input id="couponCode" type="text" placeholder="例）SUM10">
-              <button type="button" class="btn btn--ghost" id="applyCoupon">適用</button>
+              <input id="couponCode" type="text" placeholder="例）SUM10" value="<%= (form?.couponCode || (req.session?.cart?.coupon?.code || '')) %>" <%= (req.session?.cart?.coupon?.code ? 'disabled' : '') %> >
+              <button type="button" class="btn btn--ghost" id="applyCoupon" <%= (req.session?.cart?.coupon?.code ? 'disabled' : '') %> >適用</button>
+              <button type="button" class="btn btn--ghost" id="removeCoupon" <%= (req.session?.cart?.coupon?.code ? '' : 'disabled') %> >解除</button>
+            </div>
+            <p class="help" id="couponMsg">
+              <%= (req.session?.cart?.coupon?.code ? `適用中: ${req.session.cart.coupon.code}` : '') %>
+            </p>
             </div>
             <p class="help" id="couponMsg"></p>
           </div>
-          <div class="note">
+          <div class="note field">
             <label for="orderNote">ご要望・備考（任意）</label>
             <textarea id="orderNote" name="orderNote" rows="3" placeholder="例）不在時は宅配ボックスへ など"><%= form.orderNote %></textarea>
           </div>
@@ -149,6 +181,7 @@
           <input type="checkbox" name="agree" value="1" required> 利用規約とキャンセルポリシーに同意します
         </label>
       </section>
+
     </section>
 
     <!-- 右カラム：サマリー -->
@@ -171,14 +204,17 @@
         </ul>
 
         <div class="sum">
-          <div class="row"><span>小計</span><strong id="sumSubtotal">¥<%= Number(totals?.subtotal||0).toLocaleString() %></strong></div>
-          <div class="row"><span>割引</span><strong id="sumDiscount">-¥<%= Number(totals?.discount||0).toLocaleString() %></strong></div>
-          <div class="row"><span>送料</span><strong id="sumShipping">¥<%= Number(totals?.shipping||0).toLocaleString() %></strong></div>
+          <div class="row"><span>小計</span><strong class="sumSubtotal">¥<%= Number(totals?.subtotal||0).toLocaleString() %></strong></div>
+          <div class="row"><span>割引</span><strong class="sumDiscount">-¥<%= Number(totals?.discount||0).toLocaleString() %></strong></div>
+          <div class="row"><span>送料</span><strong class="sumShipping">¥<%= Number(totals?.shipping||0).toLocaleString() %></strong></div>
           <hr>
-          <div class="row total"><span>合計</span><strong id="sumTotal">¥<%= Number(totals?.total||0).toLocaleString() %></strong></div>
+          <div class="row total"><span>合計</span><strong class="sumTotal">¥<%= Number(totals?.total||0).toLocaleString() %></strong></div>
         </div>
 
         <button class="btn btn--primary btn--lg" type="submit" id="toConfirm">確認へ進む</button>
+        <% if (req.session.flash) { %>
+          <p class="error"><%= req.session.flash.message || '' %></p>
+        <% } %>
         <p class="muted small">お支払いは安全に処理されます</p>
       </section>
     </aside>

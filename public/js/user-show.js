@@ -249,15 +249,27 @@
       address2: $('#pn_line2').value.trim(),
       phone: $('#pn_phone').value.trim()
     };
-    if (!data.name) { $('#partnerErr').textContent = '名称を入力してください。'; return; }
+    if (!data.name) {
+      $('#partnerErr').textContent = '名称を入力してください。';
+      return;
+    }
+
     const resp = await fetch(`/admin/users/${encodeURIComponent(userId)}/partner/create`, {
       method:'POST',
-      headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
+      headers:{
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'CSRF-Token': csrf            // ★ 追加
+      },
       body: JSON.stringify(data),
-      credentials:'same-origin'
+      credentials: 'same-origin'
     });
-    const j = await resp.json();
-    if (!resp.ok || !j.ok) return $('#partnerErr').textContent = j.message || '作成に失敗しました';
+
+    const j = await resp.json().catch(() => ({}));
+    if (!resp.ok || !j.ok) {
+      $('#partnerErr').textContent = j.message || '作成に失敗しました';
+      return;
+    }
     location.reload();
   });
 

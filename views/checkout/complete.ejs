@@ -1,22 +1,39 @@
 <%- include('../partials/header', { title: 'ご注文ありがとうございました', extraCSS: '/styles/checkout-complete.css' }) %>
 
+<%
+  // 受け取り方法（配送 / 畑受け取り）
+  const isPickup = order && order.ship_method === 'pickup';
+%>
+
 <main class="complete">
+  <!-- ヒーロー：完了メッセージ -->
   <section class="complete-hero" aria-labelledby="completeTitle">
     <div class="complete-hero__icon" aria-hidden="true">✔</div>
-    <h1 id="completeTitle" class="complete-hero__title">ご注文ありがとうございました</h1>
+
+    <h1 id="completeTitle" class="complete-hero__title">
+      ご注文ありがとうございます
+    </h1>
+
     <p class="complete-hero__lead">
-      ご注文を受け付けました。<br>確認メールを送信しています。
+      ご注文を受け付けました。<br>
+      <%= isPickup
+        ? '収穫の準備ができ次第、受け取り場所の詳細をメールでお送りします。'
+        : '確認メールを送信しています。<br>出荷準備ができ次第、改めてご連絡します。'
+      %>
     </p>
 
-    <div class="complete-order">
+    <div class="complete-order" aria-label="ご注文情報">
       <div class="complete-order__no">
         ご注文番号：
-        <strong id="orderNo"><%= order?.orderNo || order?.id || '-' %></strong>
+        <button type="button" class="btn-link" id="copyOrderNo"><strong id="orderNo"><%= order?.orderNo || order?.id || '-' %></strong></button>
       </div>
       <div class="complete-order__eta">
-        お届け予定：
+        <%= isPickup ? '受け取り日時：' : 'お届け予定：' %>
         <strong>
-          <%= order?.eta_at ? new Date(order.eta_at).toLocaleDateString('ja-JP') : '追ってご連絡' %>
+          <%= order?.eta_at
+                ? new Date(order.eta_at).toLocaleDateString('ja-JP')
+                : '追ってご連絡'
+          %>
         </strong>
       </div>
       <div class="complete-order__time">
@@ -25,39 +42,42 @@
       </div>
     </div>
 
-    <div class="complete-actions">
+    <div class="complete-actions" aria-label="操作">
       <a class="btn btn-primary" href="/orders/<%= order?.id || '' %>">注文詳細を見る</a>
       <a class="btn" href="/products/list">お買い物を続ける</a>
       <a class="btn" target="_blank" rel="noopener" href="/orders/<%= order.orderNo || order.id %>/invoice.pdf">領収書を表示</a>
       <button class="btn" id="printOrders" type="button">注文書を印刷</button>
     </div>
+
+    <!-- 注文の流れ（ワクワクさせる進行イメージ） -->
+    <section class="complete-progress" aria-label="注文の流れ">
+      <ul class="progress progress--path is-step-2">
+        <li class="is-done">
+          <span class="progress__dot"></span>
+          <span class="progress__label">ご注文完了</span>
+        </li>
+        <li class="is-active">
+          <span class="progress__dot"></span>
+          <span class="progress__label"><%= isPickup ? '収穫の準備' : '出荷準備' %></span>
+        </li>
+        <li>
+          <span class="progress__dot"></span>
+          <span class="progress__label"><%= isPickup ? '畑で受け取り' : '配送中' %></span>
+        </li>
+        <li>
+          <span class="progress__dot"></span>
+          <span class="progress__label">おいしくお召し上がりください</span>
+        </li>
+      </ul>
+    </section>
   </section>
 
-  <!-- <section class="complete-progress" aria-label="注文の進捗">
-    <ol class="progress progress--sfpath is-step-3">
-      <li class="is-done">
-        <span class="progress__dot" aria-hidden="true"></span>
-        <span class="progress__label">注文受付</span>
-      </li>
-      <li class="<%= order?.status === 'paid' || order?.status === 'processing' ? 'is-active' : '' %>">
-        <span class="progress__dot" aria-hidden="true"></span>
-        <span class="progress__label">準備中</span>
-      </li>
-      <li class="">
-        <span class="progress__dot" aria-hidden="true"></span>
-        <span class="progress__label">出荷</span>
-      </li>
-      <li class="">
-        <span class="progress__dot" aria-hidden="true"></span>
-        <span class="progress__label">お届け</span>
-      </li>
-    </ol>
-  </section> -->
-
+  <!-- 注文内容 -->
   <section class="complete-summary">
     <h2 class="section-title">ご注文内容</h2>
 
     <div class="summary">
+      <!-- 左：商品一覧 -->
       <div class="summary__items">
         <% (items || []).forEach(function(it){ %>
           <article class="item">
@@ -65,9 +85,13 @@
               <img src="<%= it.image_url || '/img/noimage.png' %>" alt="<%= it.title %>">
             </a>
             <div class="item__meta">
-              <h3 class="item__title"><a href="/products/<%= it.slug %>"><%= it.title %></a></h3>
+              <h3 class="item__title">
+                <a href="/products/<%= it.slug %>"><%= it.title %></a>
+              </h3>
               <div class="item__sub">
-                数量：<%= it.quantity %>　/　単価：¥<%= (it.price||0).toLocaleString() %> <%= it.unit ? ` / ${it.unit}` : '' %>
+                数量：<%= it.quantity %> /
+                単価：¥<%= (it.price||0).toLocaleString() %>
+                <%= it.unit ? ` / ${it.unit}` : '' %>
               </div>
               <div class="item__amount">
                 ¥<%= (it.price * it.quantity).toLocaleString() %>
@@ -77,7 +101,8 @@
         <% }) %>
       </div>
 
-      <aside class="summary__totals" aria-label="合計">
+      <!-- 右：合計・支払い・配送 -->
+      <aside class="summary__totals" aria-label="合計・お支払い情報">
         <dl class="totals">
           <div class="row">
             <dt>小計</dt>
@@ -85,18 +110,19 @@
           </div>
           <div class="row">
             <dt>割引</dt>
-            <dd>- ¥<%= (order?.discount ?? 0).toLocaleString() %>
+            <dd>
+              - ¥<%= (order?.discount ?? 0).toLocaleString() %>
               <% if (coupon?.code) { %>
                 <span class="badge">クーポン: <%= coupon.code %></span>
               <% } %>
             </dd>
           </div>
           <div class="row">
-            <dt>送料</dt>
+            <dt><%= isPickup ? 'サービス料（送料相当）' : '送料' %></dt>
             <dd>¥<%= (order?.shipping_fee ?? 0).toLocaleString() %></dd>
           </div>
           <div class="row totals__grand">
-            <dt>合計</dt>
+            <dt>合計（税込）</dt>
             <dd>¥<%= (order?.total ?? 0).toLocaleString() %></dd>
           </div>
         </dl>
@@ -105,12 +131,27 @@
           <h3>お支払い方法</h3>
           <p><%= order.payment_method_ja || (order?.payment_method || '').toUpperCase() || '-' %></p>
         </div>
+
         <div class="shipping">
-          <h3>配送方法</h3>
-          <p>
-            <%= order.ship_method_ja || order.ship_method || '-' %>
+          <h3><%= isPickup ? '受け取り方法' : '配送方法' %></h3>
+          <p class="shipping__method">
+            <span class="pill">
+              <%= order.ship_method_ja
+                    || (isPickup ? '畑で受け取り' : '配送')
+              %>
+            </span>
+          </p>
+          <p class="shipping__method">
             <% if (order?.eta_at) { %>
-              ／ お届け予定：<%= new Date(order.eta_at).toLocaleDateString('ja-JP') %>
+              <%= isPickup ? '受け取り日時：' : 'お届け予定：' %>
+              <%= new Date(order.eta_at).toLocaleDateString('ja-JP') %>
+            <% } %>
+          </p>
+          <p class="shipping__note">
+            <% if (isPickup) { %>
+              受け取り場所の詳細は、確定メールまたは「注文詳細を見る」ページからご確認ください。
+            <% } else { %>
+              出荷が完了しましたら、配送状況を「注文詳細を見る」ページからご確認いただけます。
             <% } %>
           </p>
         </div>
@@ -118,17 +159,26 @@
     </div>
   </section>
 
+  <!-- 住所ブロック（配送 / 受け取り先 + 請求先） -->
   <section class="complete-address">
     <div class="addr-card">
-      <h2 class="section-title">配送先</h2>
-      <address>
-        <div><%= shippingAddress?.full_name %>（<%= shippingAddress?.phone %>）</div>
-        <div>〒<%= shippingAddress?.postal_code %></div>
-        <div><%= shippingAddress?.prefecture %><%= shippingAddress?.city %><%= shippingAddress?.address_line1 %></div>
-        <% if (shippingAddress?.address_line2) { %>
-          <div><%= shippingAddress.address_line2 %></div>
-        <% } %>
-      </address>
+      <h2 class="section-title"><%= isPickup ? '受け取り先' : '配送先' %></h2>
+      <% if (isPickup) { %>
+        <p class="muted">
+          畑受け取りを選択されています。受け取り場所の詳細は、確定メールをご確認ください。
+        </p>
+      <% } else if (shippingAddress) { %>
+        <address>
+          <div><%= shippingAddress.full_name %>（<%= shippingAddress.phone %>）</div>
+          <div>〒<%= shippingAddress.postal_code %></div>
+          <div><%= shippingAddress.prefecture %><%= shippingAddress.city %><%= shippingAddress.address_line1 %></div>
+          <% if (shippingAddress.address_line2) { %>
+            <div><%= shippingAddress.address_line2 %></div>
+          <% } %>
+        </address>
+      <% } else { %>
+        <p class="muted">配送先が登録されていません。</p>
+      <% } %>
     </div>
 
     <div class="addr-card">
@@ -142,16 +192,17 @@
             <div><%= billingAddress.address_line2 %></div>
           <% } %>
         <% } else { %>
-          <div>配送先と同じ</div>
+          <div><%= isPickup ? '受け取り先と同じ' : '配送先と同じ' %></div>
         <% } %>
       </address>
     </div>
   </section>
 
+  <!-- お問い合わせ -->
   <section class="complete-help">
     <h2 class="section-title">サポート</h2>
     <p>
-      ご不明点があれば以下問い合わせフォームよりお問い合わせください。
+      ご不明点があれば、以下の問い合わせフォームよりお気軽にお問い合わせください。
     </p>
     <a class="btn" href="/contact">お問い合わせ</a>
   </section>

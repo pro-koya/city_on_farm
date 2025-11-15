@@ -1,58 +1,115 @@
 <%- include('../../partials/header', { title, extraCSS: '/styles/trade-detail.css' }) %>
+
+<%
+  const orderNo     = order.orderNo;
+  const createdAt   = order.created_at;
+  const eta         = order.eta;
+  const shipMethod  = order.ship_method;             // 'delivery' | 'pickup' など
+  const isPickup    = shipMethod === 'pickup';
+  const shipLabel   = order.ship_method_ja || (isPickup ? '畑で受け取り' : (shipMethod ? '配送' : '—'));
+%>
+
 <main class="td">
-<style>
-  .td-status-form{display:block}
-  .td-status-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin:.6rem 0}
-  @media(max-width:900px){.td-status-grid{grid-template-columns:1fr}}
-  .td-status-field select{width:100%;min-height:40px;border:1px solid #e5e7eb;border-radius:10px;padding:.4rem .6rem;background:#fff}
-  .td-status-label{display:block;font-size:.9rem;color:#6b7280;margin-bottom:.2rem}
-  .td-status-hint{margin:.4rem 0 0;font-size:.9rem}
-</style>
   <header class="td__head">
     <div>
-      <h1 class="td__title">取引 #<%= order.orderNo %></h1>
+      <h1 class="td__title">取引 #<%= orderNo %></h1>
       <div class="td__meta">
-        <span>作成: <%= order.created_at %></span>
-        <% if (order.eta) { %><span>お届け予定日: <%= order.eta %></span><% } %>
+        <span>作成: <%= createdAt %></span>
+        <% if (eta) { %>
+          <span>
+            <%= isPickup ? '受け取りの目安: ' : 'お届け予定日: ' %><%= eta %>
+          </span>
+        <% } %>
       </div>
     </div>
+
     <div class="td__head-right">
-      <span class="status-badge status--<%= order.status_ja %>"><%= order.status_ja %></span>
-      <div class="price">合計 ¥<%= order.total.toLocaleString() %></div>
+      <span class="status-badge status--<%= order.status_ja %>">
+        <%= order.status_ja %>
+      </span>
+      <div class="td__head-summary">
+        <span class="pill pill--soft"><%= shipLabel %></span>
+        <span class="pill pill--outline"><%= order.payment_status_ja %></span>
+      </div>
     </div>
   </header>
 
   <section class="td__grid">
+    <!-- 左：注文情報 -->
     <article class="td-card">
       <h2 class="td-card__title">注文情報</h2>
       <div class="kv">
-        <div class="kv__row"><div class="kv__key">支払い方法</div><div class="kv__val"><%= order.payment_method_ja %></div></div>
-        <div class="kv__row"><div class="kv__key">支払い状況</div><div class="kv__val"><%= order.payment_status_ja %></div></div>
-        <div class="kv__row"><div class="kv__key">出荷方法</div><div class="kv__val"><%= order.ship_method_ja || order.ship_method %></div></div>
-        <div class="kv__row"><div class="kv__key">出荷状況</div><div class="kv__val"><%= order.shipment_status_ja %></div></div>
+        <div class="kv__row">
+          <div class="kv__key">支払い方法</div>
+          <div class="kv__val"><%= order.payment_method_ja %></div>
+        </div>
+        <div class="kv__row">
+          <div class="kv__key">支払い状況</div>
+          <div class="kv__val"><%= order.payment_status_ja %></div>
+        </div>
+        <div class="kv__row">
+          <div class="kv__key"><%= isPickup ? '受け取り方法' : '配送方法' %></div>
+          <div class="kv__val"><%= shipLabel %></div>
+        </div>
+        <div class="kv__row">
+          <div class="kv__key"><%= isPickup ? '受け取りステータス' : '配送ステータス' %></div>
+          <div class="kv__val"><%= order.shipment_status_ja %></div>
+        </div>
         <% if (order.ship_tracking_no) { %>
-          <div class="kv__row"><div class="kv__key">追跡番号</div><div class="kv__val mono"><%= order.ship_tracking_no %></div></div>
+          <div class="kv__row">
+            <div class="kv__key">追跡番号</div>
+            <div class="kv__val mono"><%= order.ship_tracking_no %></div>
+          </div>
         <% } %>
       </div>
     </article>
 
+    <!-- 右：お届け先 / 受け取り先 -->
     <aside class="td-card">
-      <h2 class="td-card__title">お届け先</h2>
-      <div class="addr">
-        <div class="addr__name">店舗名：<%= order.partner.name %></div>
-        <div class="addr__name">氏名：<%= order.shipping.full_name %></div>
-        <div class="addr__row">〒<%= order.shipping.postal_code.substring(0,3) %>-<%= order.shipping.postal_code.slice(-4) %></div>
-        <div class="addr__row"><%= order.shipping.prefecture %><%= order.shipping.city %><%= order.shipping.address_line1 %> <%= order.shipping.address_line2 %></div>
-        <div class="addr__muted">TEL：<%= order.shipping.phone %></div>
-      </div>
+      <h2 class="td-card__title">
+        <%= isPickup ? '受け取り先（連絡先）' : 'お届け先' %>
+      </h2>
+
+      <% if (isPickup) { %>
+        <p class="addr__hint">
+          畑での受け取りが選択されています。受け取り場所の詳細は、出品者と購入者間のやり取りで確定してください。
+        </p>
+      <% } %>
+
+      <% if (order.shipping) { %>
+        <div class="addr">
+          <div class="addr__name">店舗名：<%= order.partner?.name || '—' %></div>
+          <div class="addr__name"><%= isPickup ? 'ご担当者：' : '氏名：' %><%= order.shipping.full_name %></div>
+
+          <% if (order.shipping.postal_code) { %>
+            <div class="addr__row">
+              〒<%= order.shipping.postal_code.substring(0,3) %>-<%= order.shipping.postal_code.slice(-4) %>
+            </div>
+          <% } %>
+
+          <div class="addr__row">
+            <%= order.shipping.prefecture %><%= order.shipping.city %><%= order.shipping.address_line1 %>
+            <%= order.shipping.address_line2 || '' %>
+          </div>
+
+          <% if (order.shipping.phone) { %>
+            <div class="addr__muted">TEL：<%= order.shipping.phone %></div>
+          <% } %>
+        </div>
+      <% } else { %>
+        <p class="addr__hint">配送 / 連絡先情報が登録されていません。</p>
+      <% } %>
     </aside>
   </section>
 
+  <!-- 商品明細 -->
   <section class="td-items">
     <table>
       <thead>
         <tr>
-          <th>商品</th><th>数量</th><th>単価</th><th>小計</th>
+          <th>商品</th>
+          <th>数量 / 単価</th>
+          <th>小計</th>
         </tr>
       </thead>
       <tbody>
@@ -63,43 +120,57 @@
                 <img class="td-item__img" src="<%= it.image_url %>" alt="">
                 <div>
                   <p class="td-item__title"><%= it.title %></p>
-                  <div class="td-item__meta">出品者：<%= it.producer %> / 単位：<%= it.unit %></div>
+                  <div class="td-item__meta">
+                    出品者：<%= it.producer %> ／ 単位：<%= it.unit %>
+                  </div>
                 </div>
               </div>
             </td>
-            <td class="price">数量：<%= it.quantity %> / 単価：¥<%= it.price.toLocaleString() %></td>
-            <td class="price">小計：¥<%= (it.price * it.quantity).toLocaleString() %></td>
+            <td class="price">
+              数量：<%= it.quantity %><%= it.unit %><br>
+              単価：¥<%= it.price.toLocaleString() %>
+            </td>
+            <td class="price">
+              小計：¥<%= (it.price * it.quantity).toLocaleString() %>
+            </td>
           </tr>
         <% }) %>
       </tbody>
     </table>
   </section>
 
+  <!-- 金額サマリ -->
   <section class="td-summary">
     <div class="td-summary__row">
       <div class="td-summary__key">小計：</div>
       <div class="td-summary__val price">¥<%= order.subtotal.toLocaleString() %></div>
     </div>
+
     <% if (order.discount && order.discount > 0) { %>
       <div class="td-summary__row">
         <div class="td-summary__key">割引：</div>
         <div class="td-summary__val price">-¥<%= order.discount.toLocaleString() %></div>
       </div>
     <% } %>
+
     <div class="td-summary__row">
-      <div class="td-summary__key">送料：</div>
+      <div class="td-summary__key"><%= isPickup ? 'サービス料（送料相当）：' : '送料：' %></div>
       <div class="td-summary__val price">¥<%= order.shipping_fee.toLocaleString() %></div>
     </div>
+
     <div class="td-summary__row td-summary__total">
       <div class="td-summary__key">合計：</div>
       <div class="td-summary__val price">¥<%= order.total.toLocaleString() %></div>
     </div>
   </section>
 
+  <!-- ステータス更新 -->
   <section class="td-card td-action">
     <h2 class="td-card__title">ステータス更新</h2>
+
     <form id="statusForm" class="td-status-form">
       <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>">
+
       <div class="td-status-grid">
         <label class="td-status-field">
           <span class="td-status-label">注文ステータス</span>
@@ -112,6 +183,7 @@
             <option value="refunded"  <%= order.status === 'refunded'  ? 'selected' : '' %>>返金済み</option>
           </select>
         </label>
+
         <label class="td-status-field">
           <span class="td-status-label">支払いステータス</span>
           <select class="pulldown" name="payment_status" id="paymentStatus">
@@ -121,57 +193,80 @@
             <option value="refunded" <%= order.payment_status === 'refunded' ? 'selected' : '' %>>返金済み</option>
           </select>
         </label>
+
         <label class="td-status-field">
-          <span class="td-status-label">配送ステータス</span>
+          <span class="td-status-label"><%= isPickup ? '受け取りステータス' : '配送ステータス' %></span>
           <select class="pulldown" name="shipment_status" id="shipmentStatus">
-            <option value="preparing"  <%= order.shipment_status === 'preparing'  ? 'selected' : '' %>>出荷準備中</option>
-            <option value="in_transit" <%= order.shipment_status === 'in_transit' ? 'selected' : '' %>>お届け中</option>
-            <option value="delivered"  <%= order.shipment_status === 'delivered'  ? 'selected' : '' %>>配達完了</option>
-            <option value="returned"   <%= order.shipment_status === 'returned'   ? 'selected' : '' %>>返品</option>
+            <% if (isPickup) { %>
+              <option value="preparing"  <%= order.shipment_status === 'preparing'  ? 'selected' : '' %>>受け取り準備中</option>
+              <option value="in_transit" <%= order.shipment_status === 'in_transit' ? 'selected' : '' %>>準備完了（連絡済み）</option>
+              <option value="delivered"  <%= order.shipment_status === 'delivered'  ? 'selected' : '' %>>受け渡し完了</option>
+              <option value="returned"   <%= order.shipment_status === 'returned'   ? 'selected' : '' %>>キャンセル / 返品</option>
+            <% } else { %>
+              <option value="preparing"  <%= order.shipment_status === 'preparing'  ? 'selected' : '' %>>出荷準備中</option>
+              <option value="in_transit" <%= order.shipment_status === 'in_transit' ? 'selected' : '' %>>お届け中</option>
+              <option value="delivered"  <%= order.shipment_status === 'delivered'  ? 'selected' : '' %>>配達完了</option>
+              <option value="returned"   <%= order.shipment_status === 'returned'   ? 'selected' : '' %>>返品</option>
+            <% } %>
           </select>
         </label>
       </div>
+
       <div class="td-actions">
-        <button class="btn" type="submit">更新する</button>
+        <button class="btn" type="submit" id="statusSubmit">更新する</button>
+        <button class="btn btn--ghost" type="button" id="revertStatus">元に戻す</button>
       </div>
     </form>
+
     <p class="td-status-hint" id="statusMsg" aria-live="polite"></p>
   </section>
 </main>
+
 <script>
   (function(){
-    const form = document.getElementById('statusForm');
-    const msg  = document.getElementById('statusMsg');
-    const csrf = form?.querySelector('input[name="_csrf"]')?.value || '';
+    const form   = document.getElementById('statusForm');
+    const msg    = document.getElementById('statusMsg');
+    const csrf   = form?.querySelector('input[name="_csrf"]')?.value || '';
+    const submit = document.getElementById('statusSubmit');
+    const revert = document.getElementById('revertStatus');
+
     const initial = {
       order: '<%= order.status %>',
       pay:   '<%= order.payment_status %>',
       ship:  '<%= order.shipment_status %>'
     };
 
-    function setMsg(t, ok=true){
+    function setMsg(t, ok = true){
       if (!msg) return;
       msg.textContent = t || '';
       msg.style.color = ok ? '#14532d' : '#7f1d1d';
     }
 
-    document.getElementById('revertStatus')?.addEventListener('click', () => {
-      document.getElementById('orderStatus').value    = initial.order || 'pending';
-      document.getElementById('paymentStatus').value  = initial.pay   || 'unpaid';
-      document.getElementById('shipmentStatus').value = initial.ship  || 'preparing';
-      setMsg('元に戻しました。');
+    // 元に戻す
+    revert?.addEventListener('click', () => {
+      const os = document.getElementById('orderStatus');
+      const ps = document.getElementById('paymentStatus');
+      const ss = document.getElementById('shipmentStatus');
+      if (os) os.value = initial.order || 'pending';
+      if (ps) ps.value = initial.pay   || 'unpaid';
+      if (ss) ss.value = initial.ship  || 'preparing';
+      setMsg('選択内容を元に戻しました。', true);
     });
 
+    // 更新
     form?.addEventListener('submit', async (e) => {
       e.preventDefault();
       setMsg('更新中…');
+      submit?.setAttribute('disabled', 'disabled');
+
       const payload = {
-        order_status: document.getElementById('orderStatus').value,
-        payment_status: document.getElementById('paymentStatus').value,
-        shipment_status: document.getElementById('shipmentStatus').value
+        order_status:   document.getElementById('orderStatus')?.value,
+        payment_status: document.getElementById('paymentStatus')?.value,
+        shipment_status:document.getElementById('shipmentStatus')?.value
       };
+
       try {
-        // 現在URLが /seller/trades/:id である前提で /status へPOST
+        // /seller/trades/:id → /seller/trades/:id/status を想定
         const url = location.pathname.replace(/\/?$/, '') + '/status';
         const res = await fetch(url, {
           method: 'POST',
@@ -183,59 +278,30 @@
           credentials: 'same-origin',
           body: JSON.stringify(payload)
         });
+
         if (!res.ok) {
           const t = await res.text();
           throw new Error(t || ('HTTP ' + res.status));
         }
-        const data = await res.json(); // { ok:true, order:{...} }
+        const data = await res.json(); // { ok:true, order:{...} などを想定 }
         if (!data?.ok) throw new Error(data?.message || '更新に失敗しました');
 
-        // 画面上の表示を最新に反映（日本語ラベルはサーバから返してもらえると尚良いが、ここでは簡易マップ）
-        const ja = {
-          order_status: {
-            pending: '受付中', confirmed: '確定', paid: '支払い済み', fulfilled: '出荷完了', canceled: 'キャンセル', refunded: '返金済み'
-          },
-          payment_status: {
-            unpaid: '未入金', paid: '入金完了', canceled: 'キャンセル', refunded: '返金済み'
-          },
-          shipment_status: {
-            preparing: '出荷準備中', in_transit: 'お届け中', delivered: '配達完了', returned: '返品'
-          }
-        };
         const updated = data.order || payload;
-        // ヘッダーのバッジ
-        const badge = document.querySelector('.status-badge');
-        if (badge) {
-          badge.textContent = ja.order_status[updated.order_status] || badge.textContent;
-        }
-        // KV 表示
-        const setKv = (key, text) => {
-          const el = document.querySelector('.kv__row .kv__key:contains("'+key+'")');
-          // :contains はブラウザに無いので次のように全走査
-        };
-        const mapSet = [
-          ['支払い状況', ja.payment_status[updated.payment_status]],
-          ['出荷状況',   ja.shipment_status[updated.shipment_status]],
-          ['注文ステータス', ja.order_status[updated.order_status]]
-        ];
-        document.querySelectorAll('.kv__row').forEach(row => {
-          const k = row.querySelector('.kv__key')?.textContent?.trim();
-          const vEl = row.querySelector('.kv__val');
-          const found = mapSet.find(([label]) => label === k);
-          if (found && vEl) vEl.textContent = found[1] || vEl.textContent;
-        });
 
-        // 初期値更新
-        initial.order = updated.order_status;
-        initial.pay   = updated.payment_status;
-        initial.ship  = updated.shipment_status;
+        // 初期値を更新しておく（次回「元に戻す」用）
+        initial.order = updated.order_status   || initial.order;
+        initial.pay   = updated.payment_status || initial.pay;
+        initial.ship  = updated.shipment_status|| initial.ship;
 
-        setMsg('更新しました。', true);
+        setMsg('ステータスを更新しました。', true);
       } catch (err) {
         console.error(err);
         setMsg('更新に失敗しました。時間をおいて再度お試しください。', false);
+      } finally {
+        submit?.removeAttribute('disabled');
       }
     });
   })();
 </script>
+
 <%- include('../../partials/footer') %>

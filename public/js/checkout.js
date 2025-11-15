@@ -1,5 +1,6 @@
 (() => {
     const qs = (s, r=document) => r.querySelector(s);
+    const qsa = (s, r=document) => r.querySelectorAll(s);
 
     const csrf = window.__CK__?.csrfToken || '';
     const applyCouponUrl = window.__CK__?.applyCouponUrl || '/checkout/apply-coupon';
@@ -14,47 +15,107 @@
     });
 
     // ====== クーポン適用 ======
-    const applyCouponBtn = qs('#applyCoupon');
-    const couponCodeEl = qs('#couponCode');
-    const couponMsg = qs('#couponMsg');
+    const applyBtn  = qs('#applyCoupon');
+    const codeInput = qs('#couponCode');
+    const msgEl     = qs('#couponMsg');
 
-    const sumSubtotal = qs('#sumSubtotal');
-    const sumDiscount = qs('#sumDiscount');
-    const sumShipping = qs('#sumShipping');
-    const sumTotal    = qs('#sumTotal');
+    const sumSubtotalEls = [...qsa('.sumSubtotal'), ...qsa('#sumSubtotal')];
+    const sumDiscountEls = [...qsa('.sumDiscount'), ...qsa('#sumDiscount')];
+    const sumShippingEls = [...qsa('.sumShipping'), ...qsa('#sumShipping')];
+    const sumTotalEls    = [...qsa('.sumTotal'),    ...qsa('#sumTotal')];
 
-    function yen(n){ return '¥' + Number(n||0).toLocaleString(); }
+    const checkoutForm = qs('#checkoutForm');
+    const sellerIdInput = checkoutForm?.querySelector('input[name="sellerId"]');
+    const currentSellerId = sellerIdInput?.value || '';
 
-    applyCouponBtn?.addEventListener('click', async () => {
-        const code = (couponCodeEl?.value || '').trim();
+    // ====== 表示更新ヘルパ ======
+    const yen = (n) => '¥' + Number(n||0).toLocaleString();
+    function writeAll(els, text) { els.forEach(el => { if (!el) return; el.textContent = text; }); }
+    function paintTotals(totals) {
+        if (!totals) return;
+        writeAll(sumSubtotalEls, yen(totals.subtotal));
+        writeAll(sumDiscountEls, '-' + yen(totals.discount));
+        writeAll(sumShippingEls, yen(totals.shipping));
+        writeAll(sumTotalEls,    yen(totals.total));
+    }
+
+    async function postJSON(url, body) {
+        const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'CSRF-Token': csrf },
+        body: JSON.stringify(body)
+        });
+        if (!resp.ok) throw new Error('request failed');
+        return resp.json();
+    }
+
+    // ====== クーポン「適用」 ======
+    applyBtn?.addEventListener('click', async () => {
+        const code = (codeInput?.value || '').trim();
         if (!code) {
-        couponMsg.textContent = 'クーポンコードを入力してください。';
+        if (msgEl) msgEl.textContent = 'クーポンコードを入力してください。';
         return;
         }
-        applyCouponBtn.disabled = true;
+        applyBtn.disabled = true;
         try {
-        const resp = await fetch(applyCouponUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'CSRF-Token': csrf },
-            body: JSON.stringify({ code })
+        const data = await postJSON(applyCouponUrl, {
+            code,                          // ← 適用
+            shipMethod: shipMethodSel?.value || 'delivery',
+            sellerId: currentSellerId
         });
-        if (!resp.ok) throw new Error('coupon failed');
-        const data = await resp.json();
-        if (data.applied && data.totals) {
-            couponMsg.textContent = 'クーポンを適用しました。';
-            sumSubtotal.textContent = yen(data.totals.subtotal);
-            sumDiscount.textContent = '-' + yen(data.totals.discount);
-            sumShipping.textContent = yen(data.totals.shipping);
-            sumTotal.textContent    = yen(data.totals.total);
-        } else {
-            couponMsg.textContent = '無効なクーポンです。';
+        if (msgEl) msgEl.textContent = data?.message || (data?.applied ? 'クーポンを適用しました。' : '無効なクーポンです。');
+        paintTotals(data?.totals);
+        // 適用済みになったら入力ロック（1注文1クーポン）
+        if (data?.applied) {
+            codeInput?.setAttribute('disabled','disabled');
+            applyBtn?.setAttribute('disabled','disabled');
+            ensureRemoveButtonEnabled(true);
         }
         } catch (e) {
-        couponMsg.textContent = '適用に失敗しました。時間をおいて再度お試しください。';
-        } finally {
-        applyCouponBtn.disabled = false;
-        }
+        if (msgEl) msgEl.textContent = '適用に失敗しました。時間をおいて再度お試しください。';
+        } finally { applyBtn.disabled = false; }
     });
+
+    // ====== 解除ボタン（無ければ動的追加） ======
+    let removeBtn = qs('#removeCoupon');
+    function ensureRemoveButtonEnabled(enable) {
+        if (!removeBtn) {
+        // 既存マークアップに無ければ追加
+        const row = codeInput?.closest('.row');
+        if (row) {
+            removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn--ghost';
+            removeBtn.id = 'removeCoupon';
+            removeBtn.textContent = '解除';
+            row.appendChild(removeBtn);
+            removeBtn.addEventListener('click', onRemoveCoupon);
+        }
+        }
+        if (removeBtn) removeBtn.disabled = !enable;
+    }
+
+    async function onRemoveCoupon() {
+        if (!removeBtn) return;
+        removeBtn.disabled = true;
+        try {
+        const data = await postJSON(applyCouponUrl, {
+            code: '',                       // ← 解除
+            shipMethod: shipMethodSel?.value || 'delivery',
+            sellerId: currentSellerId
+        });
+        paintTotals(data?.totals);
+        if (msgEl) msgEl.textContent = data?.message || 'クーポンを解除しました。';
+        // 入力復帰
+        codeInput?.removeAttribute('disabled');
+        applyBtn?.removeAttribute('disabled');
+        if (codeInput) codeInput.value = '';
+        ensureRemoveButtonEnabled(false);
+        } catch (e) {
+        if (msgEl) msgEl.textContent = '解除に失敗しました。時間をおいて再度お試しください。';
+        } finally { removeBtn.disabled = false; }
+    }
+    removeBtn?.addEventListener('click', onRemoveCoupon);
 
     // ====== 住所モーダル ======
     // モーダル
@@ -177,7 +238,6 @@
     });
 
     // ====== 確認へ進む（二重送信防止 & バリデーション） ======
-    const checkoutForm = qs('#checkoutForm');
     const toConfirm = qs('#toConfirm');
 
     checkoutForm?.addEventListener('submit', (e) => {
@@ -190,4 +250,76 @@
     });
     toConfirm?.addEventListener('click', (e) => {
     });
+
+    // ====== 受け取り方法の切り替えでUIを出し分け ======
+    const shipMethodSel = qs('#shipMethod');
+    const shippingCard  = qs('#shippingAddress');
+    const labelDate     = qs('label[for="ev_date"]');
+    const labelTime     = qs('label[for="shipTime"]');
+    const shipHelp      = qs('#shipHelp');
+    const noShipMsg     = qs('#shippingAddrInv');
+    const shipAddrList  = qs('#shippingAddrList');
+    const billSameCheck = qs('#billSameCheck');
+
+    function applyShipMethodUI() {
+      const m = shipMethodSel?.value || 'delivery';
+      const isPickup = (m === 'pickup');
+      const fd = new FormData(checkoutForm);
+      const payload = Object.fromEntries(fd.entries());
+      payload.shipMethod = m;
+
+      // 配送先カードの表示
+      if (shippingCard) {
+        shippingCard.classList.toggle('is-hidden', isPickup);
+        shippingCard.setAttribute('aria-hidden', isPickup ? 'true' : 'false');
+      }
+      if (noShipMsg) {
+        noShipMsg.classList.toggle('is-hidden', isPickup);
+        noShipMsg.setAttribute('aria-hidden', isPickup ? 'true' : 'false');
+      }
+      if (shipAddrList) {
+        shipAddrList.classList.toggle('is-hidden', isPickup);
+        shipAddrList.setAttribute('aria-hidden', isPickup ? 'true' : 'false');
+      }
+      if (billSameCheck) {
+        billSameCheck.classList.toggle('is-hidden', isPickup);
+        billSameCheck.setAttribute('aria-hidden', isPickup ? 'true' : 'false');
+      }
+      // 「配送先と同じ」チェックは pickup では無効化＆非表示
+      if (billSame) {
+        const wrap = billSame.closest('label.check');
+        if (wrap) wrap.classList.toggle('is-hidden', isPickup);
+        if (isPickup) {
+          billSame.checked = false;
+          if (billingBlock) billingBlock.classList.remove('is-hidden'); // 請求先は表示
+        }
+      }
+      // ラベル切替
+      if (labelDate) labelDate.textContent = isPickup ? '受け取り希望日（任意）' : 'お届け希望日（任意）';
+      if (labelTime) labelTime.textContent = isPickup ? '受け取り時間帯（任意）' : 'お届け時間帯（任意）';
+      // ヘルプ文言（任意で切替したい場合は #shipHelp を更新）
+      if (shipHelp) shipHelp.textContent = isPickup ? '受け取り場所は出品者指定の畑になります。詳細はご注文確定後のメールをご確認ください。' : 'ご指定の配送先へお届けします。';
+    }
+
+    async function recalcTotalsForShipMethod() {
+        const m = shipMethodSel?.value || 'delivery';
+        try {
+        // ★ code を送らず shipMethod だけ送る → サーバ側が「クーポン維持のまま再計算」
+        const data = await postJSON(applyCouponUrl, {
+            shipMethod: m,
+            sellerId: currentSellerId
+        });
+        paintTotals(data?.totals);
+        // メッセージあれば出す（任意）
+        if (data?.message && msgEl) msgEl.textContent = data.message;
+        } catch (e) {
+         console.log(e);
+        }
+    }
+    
+    shipMethodSel?.addEventListener('change', () => {
+        applyShipMethodUI();
+        recalcTotalsForShipMethod();
+    });
+    applyShipMethodUI();  // 初期反映
 })();

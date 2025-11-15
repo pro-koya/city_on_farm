@@ -1,182 +1,233 @@
 <%- include('../partials/header', { title: 'ご注文内容の確認' , extraCSS: '/styles/checkout-confirm.css' }) %>
 
-  <main class="confirm">
-    <form id="confirmForm" class="cfm-grid" method="POST" action="/checkout/confirm">
-      <% if (typeof csrfToken !=='undefined' && csrfToken) { %>
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <% } %>
-      <input type="hidden" name="sellerId" value="<%= sellerId %>">
+<main class="confirm">
+  <form id="confirmForm" class="cfm-grid" method="POST" action="/checkout/confirm">
+    <% if (typeof csrfToken !=='undefined' && csrfToken) { %>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% } %>
+    <input type="hidden" name="sellerId" value="<%= sellerId %>">
 
-          <!-- 左：内容確認 -->
-          <section class="cfm-left">
-            <!-- セクション：お届け先 -->
-            <section class="card">
-              <div class="card__head">
-                <h2>お届け先</h2>
-                <a class="link" href="/checkout#shippingAddress">変更する</a>
+    <!-- 左：内容確認 -->
+    <section class="cfm-left">
+      <section class="card sp">
+        <div class="card__head">
+          <h2>お支払い金額</h2>
+        </div>
+        <div class="sum">
+          <div class="row"><span>小計</span><strong>¥<%= Number(totals?.subtotal||0).toLocaleString() %></strong></div>
+          <div class="row"><span>割引</span><strong>-¥<%= Number(totals?.discount||0).toLocaleString() %></strong></div>
+          <div class="row"><span>送料</span><strong>¥<%= Number(totals?.shipping||0).toLocaleString() %></strong></div>
+          <hr>
+          <div class="row total">
+            <span>合計（税込）</span>
+            <strong>¥<%= Number(totals?.total||0).toLocaleString() %></strong>
+          </div>
+          <% if (totals?.freeShipRemain > 0 && shipMethod === 'delivery') { %>
+            <p class="help">あと <strong>¥<%= Number(totals.freeShipRemain).toLocaleString() %></strong> で送料無料になります。</p>
+          <% } %>
+        </div>
+      </section>
+
+      <!-- 受け取り方法・日時 -->
+      <section class="card">
+        <div class="card__head">
+          <h2>受け取り方法・日時</h2>
+          <a class="link" href="/checkout#shipMethodCard">変更する</a>
+        </div>
+
+        <dl class="kv">
+          <div>
+            <dt>受け取り方法</dt>
+            <dd>
+              <span class="pill"><%= shipMethod_ja || (shipMethod === 'pickup' ? '畑で受け取り' : '配送') %></span>
+              <% if (shipMethod === 'pickup') { %>
+                <p class="help">受け取り場所は出品者指定の畑です。確定後のメールをご確認ください。</p>
+              <% } %>
+            </dd>
+          </div>
+
+          <div>
+            <dt><%= shipMethod === 'pickup' ? '受け取り希望日' : 'お届け希望日' %></dt>
+            <dd><%= shipDate ? new Date(shipDate).toLocaleDateString('ja-JP') : '指定なし' %></dd>
+          </div>
+
+          <div>
+            <dt><%= shipMethod === 'pickup' ? '受け取り時間帯' : 'お届け時間帯' %></dt>
+            <dd>
+              <%= ({ '' : '指定なし' , 'am' : '午前中' , '14-16' : '14-16時' , '16-18' : '16-18時' , '18-20' : '18-20時', '19-21' : '19-21時' })[shipTime || '' ] %>
+            </dd>
+          </div>
+
+          <div>
+            <dt>お支払い方法</dt>
+            <dd><%= paymentMethod_ja || paymentMethod %></dd>
+          </div>
+        </dl>
+
+        <% if (orderNote) { %>
+          <div class="note">
+            <div class="note__label">ご要望・備考</div>
+            <div class="note__body"><%= orderNote %></div>
+          </div>
+        <% } %>
+      </section>
+
+      <!-- 受け取り先／配送先 -->
+      <section class="card">
+        <div class="card__head">
+          <h2><%= shipMethod === 'pickup' ? '受け取り先' : '配送先' %></h2>
+          <a class="link" href="/checkout#shippingAddress">変更する</a>
+        </div>
+
+        <% if (shipMethod === 'pickup') { %>
+          <p class="muted">畑受け取りを選択しています。場所の詳細は確定メールでご案内します。</p>
+        <% } else { %>
+          <% if (shippingAddress) { %>
+            <div class="addr">
+              <div class="addr__name"><%= shippingAddress.full_name %>（<%= shippingAddress.phone %>）</div>
+              <div class="addr__lines">
+                〒<%= shippingAddress.postal_code %>　
+                <%= shippingAddress.prefecture %><%= shippingAddress.city %><%= shippingAddress.address_line1 %> <%= shippingAddress.address_line2 || '' %>
               </div>
-              <% if (shippingAddress) { %>
-                <div class="addr">
-                  <div class="addr__name">
-                    <%= shippingAddress.full_name %>（<%= shippingAddress.phone %>）
-                  </div>
-                  <div class="addr__lines">
-                    〒<%= shippingAddress.postal_code %>　
-                      <%= shippingAddress.prefecture %>
-                        <%= shippingAddress.city %>
-                          <%= shippingAddress.address_line1 %>
-                            <%= shippingAddress.address_line2 || '' %>
-                  </div>
-                </div>
-                <% } else { %>
-                  <p class="muted">お届け先が選択されていません。</p>
-                  <% } %>
-            </section>
+            </div>
+          <% } else { %>
+            <p class="muted">配送先が選択されていません。</p>
+          <% } %>
+        <% } %>
+      </section>
 
-            <!-- セクション：請求先 -->
-            <section class="card">
-              <div class="card__head">
-                <h2>請求先</h2>
-                <a class="link" href="/checkout#billingAddress">変更する</a>
+      <!-- 請求先 -->
+      <section class="card">
+        <div class="card__head">
+          <h2>請求先</h2>
+          <a class="link" href="/checkout#billingAddress">変更する</a>
+        </div>
+
+        <% if (!billingAddress) { %>
+          <p class="muted"><%= shipMethod === 'pickup' ? '受け取り先' : '配送先' %>と同じ</p>
+        <% } else if (billingAddress) { %>
+          <div class="addr">
+            <div class="addr__name"><%= billingAddress.full_name %>（<%= billingAddress.phone %>）</div>
+            <div class="addr__lines">
+              〒<%= billingAddress.postal_code %>　
+              <%= billingAddress.prefecture %><%= billingAddress.city %><%= billingAddress.address_line1 %> <%= billingAddress.address_line2 || '' %>
+            </div>
+          </div>
+        <% } else { %>
+          <p class="muted">請求先が未選択です。</p>
+        <% } %>
+      </section>
+
+      <!-- 商品明細 -->
+      <section class="card">
+        <div class="card__head">
+          <h2>商品明細</h2>
+          <a class="link" href="/cart">カートを編集</a>
+        </div>
+
+        <% if (!items || !items.length) { %>
+          <p class="muted">カートに商品がありません。</p>
+        <% } else { %>
+          <ul class="mini-cart">
+            <% items.forEach(function(it){ %>
+              <li class="mini-row">
+                <img src="<%= it.image_url || '/images/placeholder.png' %>" alt="" loading="lazy">
+                <div class="mini-main">
+                  <div class="mini-title"><%= it.title %></div>
+                  <div class="mini-meta">数量 × 単価：<%= it.quantity %> × ¥<%= Number(it.price).toLocaleString() %></div>
+                  <div class="mini-meta">数量1あたり：<%= it.unit || '点' %></div>
+                </div>
+                <div class="mini-sub">¥<%= Number(it.price * it.quantity).toLocaleString() %></div>
+              </li>
+            <% }) %>
+          </ul>
+        <% } %>
+      </section>
+
+      <!-- クーポン -->
+      <section class="card">
+        <div class="card__head">
+          <h2>適用するクーポン</h2>
+          <a class="link" href="/checkout#coupon_card">変更する</a>
+        </div>
+
+        <% if (!coupon) { %>
+          <p class="muted">適用なし</p>
+        <% } else if (coupon) { %>
+          <dl class="kv">
+            <div>
+              <dt>クーポンコード</dt>
+              <dd><%= coupon.code %></dd>
+            </div>
+            <div>
+              <dt>クーポン内容</dt>
+              <dd><%= coupon.name || coupon.description %></dd>
+            </div>
+            <div>
+              <dt><%= coupon.discount_type === 'percent' ? '割引率' : '割引金額' %></dt>
+              <dd><%= coupon.discount_value %><%= coupon.discount_type === 'percent' ? '%' : '円' %></dd>
+            </div>
+            <% if (coupon.discount_type === 'percent' && coupon.max_discount) { %>
+              <div>
+                <dt>最大割引金額</dt>
+                <dd><%= coupon.max_discount %>円</dd>
               </div>
-              <% if (billingAddress) { %>
-                <div class="addr">
-                  <div class="addr__name">
-                    <%= billingAddress.full_name %>（<%= billingAddress.phone %>）
-                  </div>
-                  <div class="addr__lines">
-                    〒<%= billingAddress.postal_code %>　
-                      <%= billingAddress.prefecture %>
-                        <%= billingAddress.city %>
-                          <%= billingAddress.address_line1 %>
-                            <%= billingAddress.address_line2 || '' %>
-                  </div>
-                </div>
-                <% } else { %>
-                  <p class="muted">請求先は配送先と同じです。</p>
-                  <% } %>
-            </section>
+            <% } %>
+          </dl>
+        <% } %>
+      </section>
+    </section>
 
-            <!-- セクション：配送・支払い -->
-            <section class="card">
-              <div class="card__head">
-                <h2>配送・支払い</h2>
-                <a class="link" href="/checkout#shipMethod">変更する</a>
-              </div>
-              <dl class="kv">
-                <div>
-                  <dt>配送方法</dt>
-                  <dd>
-                    <%= shipMethod_ja || shipMethod %>
-                  </dd>
-                </div>
-                <div>
-                  <dt>希望日</dt>
-                  <dd>
-                    <%= shipDate ? new Date(shipDate).toLocaleDateString('ja-JP') : '指定なし' %>
-                  </dd>
-                </div>
-                <div>
-                  <dt>時間帯</dt>
-                  <dd>
-                    <%= ({ '' : '指定なし' , 'am' : '午前中' , '14-16' : '14-16時' , '16-18' : '16-18時' , '18-20' : '18-20時'
-                      , '19-21' : '19-21時' })[shipTime || '' ] %>
-                  </dd>
-                </div>
-                <div>
-                  <dt>お支払い</dt>
-                  <dd>
-                    <%= paymentMethod_ja || paymentMethod %>
-                  </dd>
-                </div>
-              </dl>
-              <% if (orderNote) { %>
-                <div class="note">
-                  <div class="note__label">ご要望・備考</div>
-                  <div class="note__body">
-                    <%= orderNote %>
-                  </div>
-                </div>
-                <% } %>
-            </section>
+    <!-- 右：サマリー + 確定 -->
+    <aside class="cfm-right">
+      <section class="card sticky">
+        <h2>お支払い金額</h2>
+        <div class="sum">
+          <div class="row"><span>小計</span><strong>¥<%= Number(totals?.subtotal||0).toLocaleString() %></strong></div>
+          <div class="row"><span>割引</span><strong>-¥<%= Number(totals?.discount||0).toLocaleString() %></strong></div>
+          <div class="row"><span>送料</span><strong>¥<%= Number(totals?.shipping||0).toLocaleString() %></strong></div>
+          <hr>
+          <div class="row total">
+            <span>合計（税込）</span>
+            <strong>¥<%= Number(totals?.total||0).toLocaleString() %></strong>
+          </div>
+          <% if (totals?.freeShipRemain > 0 && shipMethod === 'delivery') { %>
+            <p class="help">あと <strong>¥<%= Number(totals.freeShipRemain).toLocaleString() %></strong> で送料無料になります。</p>
+          <% } %>
+        </div>
 
-            <!-- セクション：商品明細 -->
-            <section class="card">
-              <div class="card__head">
-                <h2>商品明細</h2>
-                <a class="link" href="/cart">カートを編集</a>
-              </div>
-              <% if (!items || !items.length) { %>
-                <p class="muted">カートに商品がありません。</p>
-                <% } else { %>
-                  <ul class="mini-cart">
-                    <% items.forEach(function(it){ %>
-                      <li class="mini-row">
-                        <img src="<%= it.image_url || '/images/placeholder.png' %>" alt="" loading="lazy">
-                        <div class="mini-main">
-                          <div class="mini-title">
-                            <%= it.title %>
-                          </div>
-                          <div class="mini-meta">数量 × 単価：<%= it.quantity %> × ¥<%= Number(it.price).toLocaleString() %></div>
-                          <div class="mini-meta">数量1あたり：<%= it.unit || '点' %></div>
-                        </div>
-                        <div class="mini-sub">¥<%= Number(it.price * it.quantity).toLocaleString() %>
-                        </div>
-                      </li>
-                      <% }) %>
-                  </ul>
-                  <% } %>
-            </section>
-          </section>
+        <!-- hidden でドラフト内容を引き継ぐ -->
+        <input type="hidden" name="shippingAddressId" value="<%= draft?.shippingAddressId || '' %>">
+        <input type="hidden" name="billingAddressId" value="<%= draft?.billingAddressId || '' %>">
+        <input type="hidden" name="billSame" value="<%= draft?.billSame ? '1':'0' %>">
+        <input type="hidden" name="shipMethod" value="<%= shipMethod %>">
+        <input type="hidden" name="shipDate" value="<%= shipDate || '' %>">
+        <input type="hidden" name="shipTime" value="<%= shipTime || '' %>">
+        <input type="hidden" name="paymentMethod" value="<%= paymentMethod %>">
+        <input type="hidden" name="orderNote" value="<%= orderNote || '' %>">
 
-          <!-- 右：サマリー + 確定 -->
-          <aside class="cfm-right">
-            <section class="card sticky">
-              <h2>お支払い金額</h2>
-              <div class="sum">
-                <div class="row">
-                  <span>小計</span>
-                  <strong>¥<%= Number(totals?.subtotal||0).toLocaleString() %></strong>
-                </div>
-                <div class="row">
-                  <span>割引</span>
-                  <strong>-¥<%= Number(totals?.discount||0).toLocaleString() %></strong>
-                </div>
-                <div class="row">
-                  <span>送料</span>
-                  <strong>¥<%= Number(totals?.shipping||0).toLocaleString() %></strong>
-                </div>
-                <hr>
-                <div class="row total">
-                  <span>合計（税込）</span>
-                  <strong>¥<%= Number(totals?.total||0).toLocaleString() %></strong>
-                </div>
-              </div>
+        <!-- 最終確定 -->
+        <button class="btn btn--primary btn--lg" id="placeOrder" type="submit">
+          <span class="btn__spinner" aria-hidden="true"></span>
+          この内容で注文する
+        </button>
+        <a class="btn btn--ghost btn--lg" href="/checkout">戻って修正する</a>
+        <p class="muted small">注文確定後の変更はお問い合わせください。</p>
+      </section>
+    </aside>
+  </form>
+</main>
 
-              <!-- hidden でドラフト内容を念のため引き継ぐ（POSTで最終確定用） -->
-              <input type="hidden" name="shippingAddressId" value="<%= draft?.shippingAddressId || '' %>">
-              <input type="hidden" name="billingAddressId" value="<%= draft?.billingAddressId || '' %>">
-              <input type="hidden" name="billSame" value="<%= draft?.billSame ? '1':'0' %>">
-              <input type="hidden" name="shipMethod" value="<%= shipMethod %>">
-              <input type="hidden" name="shipDate" value="<%= shipDate || '' %>">
-              <input type="hidden" name="shipTime" value="<%= shipTime || '' %>">
-              <input type="hidden" name="paymentMethod" value="<%= paymentMethod %>">
-              <input type="hidden" name="orderNote" value="<%= orderNote || '' %>">
+<script>
+  (function(){
+    const form = document.getElementById('confirmForm');
+    const btn  = document.getElementById('placeOrder');
+    form?.addEventListener('submit', function(e){
+      // 二重送信防止 & フィードバック
+      btn?.setAttribute('disabled','disabled');
+      btn?.classList.add('is-loading');
+    });
+  })();
+</script>
 
-              <!-- 最終確定 -->
-              <button class="btn btn--primary btn--lg" id="placeOrder" type="submit">この内容で注文する</button>
-              <a class="btn btn--ghost btn--lg" href="/checkout">戻って修正する</a>
-              <p class="muted small">注文確定後の変更はお問い合わせください</p>
-            </section>
-          </aside>
-    </form>
-  </main>
-
-  <script>
-    window.__CFM__ = {
-      csrfToken: '<%= csrfToken || '' %>',
-      // 必要ならAPIのURLをここに
-    };
-  </script>
-  <script src="/js/checkout-confirm.js"></script>
-  <%- include('../partials/footer') %>
+<%- include('../partials/footer') %>

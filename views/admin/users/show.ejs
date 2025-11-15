@@ -149,7 +149,11 @@
       </div>
 
       <% if (!partner) { %>
-        <p class="muted">未所属</p>
+        <p class="muted">個人アカウント</p>
+        <% if (isSelf) { %>
+          <button type="button" class="btn btn--primary" id="btnChangePartner">変更</button>
+          <%- include('./_partner-modal', { csrfToken }) %>
+        <% } %>
       <% } else { %>
         <div class="partner">
           <div class="partner__main">
