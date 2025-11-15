@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-10-31T18:34:11.272Z
+> Generated at: 2025-11-15T18:30:06.757Z
 
 ---
 
@@ -33,7 +33,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16629_10_not_null`, `2200_16629_11_not_null`, `2200_16629_12_not_null`, `2200_16629_14_not_null`, `2200_16629_15_not_null`, `2200_16629_17_not_null`, `2200_16629_18_not_null`, `2200_16629_1_not_null`, `2200_16629_2_not_null`, `2200_16629_5_not_null`, `2200_16629_6_not_null`, `2200_16629_9_not_null`, `addresses_address_type_check`, `addresses_check`, `addresses_scope_check`
+- **CHECK**: `2200_16681_10_not_null`, `2200_16681_11_not_null`, `2200_16681_12_not_null`, `2200_16681_14_not_null`, `2200_16681_15_not_null`, `2200_16681_17_not_null`, `2200_16681_18_not_null`, `2200_16681_1_not_null`, `2200_16681_2_not_null`, `2200_16681_5_not_null`, `2200_16681_6_not_null`, `2200_16681_9_not_null`, `addresses_address_type_check`, `addresses_check`, `addresses_scope_check`
 - **FOREIGN KEY**: `addresses_order_id_fkey`, `addresses_user_id_fkey`
 - **PRIMARY KEY**: `addresses_pkey`
 
@@ -81,7 +81,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16643_1_not_null`, `2200_16643_2_not_null`, `2200_16643_3_not_null`, `2200_16643_4_not_null`, `2200_16643_5_not_null`, `2200_16643_6_not_null`, `2200_16643_7_not_null`, `cart_items_quantity_check`
+- **CHECK**: `2200_16695_1_not_null`, `2200_16695_2_not_null`, `2200_16695_3_not_null`, `2200_16695_4_not_null`, `2200_16695_5_not_null`, `2200_16695_6_not_null`, `2200_16695_7_not_null`, `cart_items_quantity_check`
 - **FOREIGN KEY**: `cart_items_cart_id_fkey`, `cart_items_product_id_fkey`, `cart_items_user_id_fkey`
 - **PRIMARY KEY**: `cart_items_pkey`
 - **UNIQUE**: `cart_items_cart_id_product_id_key`
@@ -135,7 +135,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16651_1_not_null`, `2200_16651_2_not_null`, `2200_16651_4_not_null`, `2200_16651_5_not_null`
+- **CHECK**: `2200_16705_1_not_null`, `2200_16705_2_not_null`, `2200_16705_4_not_null`, `2200_16705_5_not_null`
 - **FOREIGN KEY**: `carts_user_id_fkey`
 - **PRIMARY KEY**: `carts_pkey`
 - **UNIQUE**: `carts_user_id_key`
@@ -170,7 +170,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16659_1_not_null`, `2200_16659_2_not_null`, `2200_16659_3_not_null`, `2200_16659_4_not_null`, `2200_16659_5_not_null`, `2200_16659_6_not_null`
+- **CHECK**: `2200_16713_1_not_null`, `2200_16713_2_not_null`, `2200_16713_3_not_null`, `2200_16713_4_not_null`, `2200_16713_5_not_null`, `2200_16713_6_not_null`
 - **PRIMARY KEY**: `categories_pkey`
 - **UNIQUE**: `categories_name_key`, `categories_slug_key`
 
@@ -217,7 +217,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16668_10_not_null`, `2200_16668_1_not_null`, `2200_16668_2_not_null`, `2200_16668_3_not_null`, `2200_16668_4_not_null`, `2200_16668_5_not_null`, `2200_16668_6_not_null`, `2200_16668_9_not_null`, `contacts_status_check`
+- **CHECK**: `2200_16722_10_not_null`, `2200_16722_1_not_null`, `2200_16722_2_not_null`, `2200_16722_3_not_null`, `2200_16722_4_not_null`, `2200_16722_5_not_null`, `2200_16722_6_not_null`, `2200_16722_9_not_null`, `contacts_status_check`
 - **FOREIGN KEY**: `contacts_handled_by_fkey`
 - **PRIMARY KEY**: `contacts_pkey`
 
@@ -292,7 +292,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16679_14_not_null`, `2200_16679_16_not_null`, `2200_16679_17_not_null`, `2200_16679_1_not_null`, `2200_16679_2_not_null`, `2200_16679_5_not_null`, `2200_16679_6_not_null`, `2200_16679_7_not_null`, `2200_16679_9_not_null`, `coupons_applies_to_check`, `coupons_check`, `coupons_discount_type_check`, `coupons_discount_value_check`, `coupons_max_discount_check`, `coupons_min_subtotal_check`
+- **CHECK**: `2200_16733_14_not_null`, `2200_16733_16_not_null`, `2200_16733_17_not_null`, `2200_16733_1_not_null`, `2200_16733_2_not_null`, `2200_16733_5_not_null`, `2200_16733_6_not_null`, `2200_16733_7_not_null`, `2200_16733_9_not_null`, `coupons_applies_to_check`, `coupons_check`, `coupons_discount_type_check`, `coupons_discount_value_check`, `coupons_max_discount_check`, `coupons_min_subtotal_check`
 - **PRIMARY KEY**: `coupons_pkey`
 - **UNIQUE**: `coupons_code_key`
 
@@ -316,6 +316,56 @@
 
 ---
 
+### `public.global_allowed_payment_methods`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `method` | `payment_method` *(enum)* | NO |  |  |
+
+> **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`
+
+**Constraints**
+
+- **CHECK**: `2200_16750_1_not_null`
+- **PRIMARY KEY**: `global_allowed_payment_methods_pkey`
+
+**Indexes**
+
+- `global_allowed_payment_methods_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX global_allowed_payment_methods_pkey ON public.global_allowed_payment_methods USING btree (method)
+  ```
+
+---
+
+### `public.gmail_tokens`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `smallint` | NO | 1 |  |
+| 2 | `token_json` | `jsonb` | NO |  |  |
+| 3 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+
+**Constraints**
+
+- **CHECK**: `2200_17270_1_not_null`, `2200_17270_2_not_null`, `2200_17270_3_not_null`
+- **PRIMARY KEY**: `gmail_tokens_pkey`
+
+**Indexes**
+
+- `gmail_tokens_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX gmail_tokens_pkey ON public.gmail_tokens USING btree (id)
+  ```
+
+---
+
 ### `public.option_labels`
 
 **Columns**
@@ -333,7 +383,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16696_1_not_null`, `2200_16696_2_not_null`, `2200_16696_3_not_null`, `2200_16696_4_not_null`, `2200_16696_5_not_null`, `2200_16696_6_not_null`, `2200_16696_7_not_null`, `2200_16696_8_not_null`
+- **CHECK**: `2200_16753_1_not_null`, `2200_16753_2_not_null`, `2200_16753_3_not_null`, `2200_16753_4_not_null`, `2200_16753_5_not_null`, `2200_16753_6_not_null`, `2200_16753_7_not_null`, `2200_16753_8_not_null`
 - **PRIMARY KEY**: `option_labels_pkey`
 - **UNIQUE**: `option_labels_unique`
 
@@ -382,7 +432,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16705_11_not_null`, `2200_16705_12_not_null`, `2200_16705_13_not_null`, `2200_16705_1_not_null`, `2200_16705_2_not_null`, `2200_16705_3_not_null`, `2200_16705_4_not_null`, `2200_16705_5_not_null`, `2200_16705_6_not_null`, `2200_16705_7_not_null`, `2200_16705_8_not_null`, `2200_16705_9_not_null`
+- **CHECK**: `2200_16762_11_not_null`, `2200_16762_12_not_null`, `2200_16762_13_not_null`, `2200_16762_1_not_null`, `2200_16762_2_not_null`, `2200_16762_3_not_null`, `2200_16762_4_not_null`, `2200_16762_5_not_null`, `2200_16762_6_not_null`, `2200_16762_7_not_null`, `2200_16762_8_not_null`, `2200_16762_9_not_null`
 - **FOREIGN KEY**: `order_addresses_order_id_fkey`
 - **PRIMARY KEY**: `order_addresses_pkey`
 
@@ -431,7 +481,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_17233_1_not_null`, `2200_17233_2_not_null`, `2200_17233_4_not_null`, `2200_17233_5_not_null`, `2200_17233_6_not_null`
+- **CHECK**: `2200_16771_1_not_null`, `2200_16771_2_not_null`, `2200_16771_4_not_null`, `2200_16771_5_not_null`, `2200_16771_6_not_null`
 - **FOREIGN KEY**: `order_groups_user_id_fkey`
 - **PRIMARY KEY**: `order_groups_pkey`
 - **UNIQUE**: `order_groups_group_number_key`
@@ -473,7 +523,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16714_1_not_null`, `2200_16714_2_not_null`, `2200_16714_3_not_null`, `2200_16714_4_not_null`, `2200_16714_5_not_null`, `order_items_price_check`, `order_items_quantity_check`
+- **CHECK**: `2200_16780_1_not_null`, `2200_16780_2_not_null`, `2200_16780_3_not_null`, `2200_16780_4_not_null`, `2200_16780_5_not_null`, `order_items_price_check`, `order_items_quantity_check`
 - **FOREIGN KEY**: `order_items_order_id_fkey`, `order_items_product_id_fkey`, `order_items_seller_id_fkey`
 - **PRIMARY KEY**: `order_items_pkey`
 
@@ -538,12 +588,12 @@
 > **Enum `order_status` values**: `pending`, `paid`, `shipped`, `cancelled`, `confirmed`, `processing`, `delivered`, `canceled`, `refunded`, `fulfilled`
 > **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`
 > **Enum `payment_status` values**: `pending`, `completed`, `failed`, `authorized`, `paid`, `canceled`, `refunded`, `unpaid`, `cancelled`
-> **Enum `ship_method` values**: `normal`, `cool`
+> **Enum `ship_method` values**: `pickup`, `delivery`
 > **Enum `shipment_status` values**: `pending`, `preparing`, `shipped`, `delivered`, `cancelled`, `returned`, `lost`, `canceled`, `in_transit`
 
 **Constraints**
 
-- **CHECK**: `2200_16722_15_not_null`, `2200_16722_1_not_null`, `2200_16722_20_not_null`, `2200_16722_21_not_null`, `2200_16722_23_not_null`, `2200_16722_24_not_null`, `2200_16722_2_not_null`, `2200_16722_3_not_null`, `2200_16722_4_not_null`, `2200_16722_5_not_null`, `2200_16722_6_not_null`, `2200_16722_7_not_null`, `2200_16722_8_not_null`, `2200_16722_9_not_null`, `orders_amounts_check`
+- **CHECK**: `2200_16788_15_not_null`, `2200_16788_1_not_null`, `2200_16788_20_not_null`, `2200_16788_21_not_null`, `2200_16788_23_not_null`, `2200_16788_24_not_null`, `2200_16788_2_not_null`, `2200_16788_3_not_null`, `2200_16788_4_not_null`, `2200_16788_5_not_null`, `2200_16788_6_not_null`, `2200_16788_7_not_null`, `2200_16788_8_not_null`, `2200_16788_9_not_null`, `orders_amounts_check`
 - **FOREIGN KEY**: `orders_buyer_id_fkey`, `orders_group_id_fkey`, `orders_seller_id_fkey`
 - **PRIMARY KEY**: `orders_pkey`
 - **UNIQUE**: `orders_order_number_key`, `uq_orders_order_number`
@@ -677,6 +727,40 @@ _No indexes_
 
 ---
 
+### `public.partner_allowed_payment_methods`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `partner_id` | `uuid` | NO |  |  |
+| 2 | `method` | `payment_method` *(enum)* | NO |  |  |
+| 3 | `created_at` | `timestamp with time zone` | NO | now() |  |
+| 4 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+
+> **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`
+
+**Constraints**
+
+- **CHECK**: `2200_16814_1_not_null`, `2200_16814_2_not_null`, `2200_16814_3_not_null`, `2200_16814_4_not_null`
+- **FOREIGN KEY**: `partner_allowed_payment_methods_partner_id_fkey`
+- **PRIMARY KEY**: `partner_allowed_payment_methods_pkey`
+
+**Indexes**
+
+- `idx_papm_partner`
+  
+  ```sql
+  CREATE INDEX idx_papm_partner ON public.partner_allowed_payment_methods USING btree (partner_id)
+  ```
+- `partner_allowed_payment_methods_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX partner_allowed_payment_methods_pkey ON public.partner_allowed_payment_methods USING btree (partner_id, method)
+  ```
+
+---
+
 ### `public.partners`
 
 取引先（主に飲食店などの法人・団体・個人事業主）
@@ -705,28 +789,43 @@ _No indexes_
 | 18 | `created_at` | `timestamp with time zone` | NO | now() |  |
 | 19 | `updated_at` | `timestamp with time zone` | NO | now() |  |
 | 20 | `name_key` | `text` | YES |  |  |
-| 21 | `postal_norm` | `text` | YES |  |  |
-| 22 | `phone_norm` | `text` | YES |  |  |
-| 24 | `partner_key` | `text` | YES |  |  |
-| 25 | `payment_methods` | `ARRAY` | NO | ARRAY['card'::payment_method] |  |
-| 26 | `min_order_amount` | `integer` | NO | 0 |  |
-| 27 | `shipping_policy` | `jsonb` | NO | '{}'::jsonb |  |
+| 21 | `postal_norm` | `text` | YES |  | 郵便番号（数字のみ7桁など） |
+| 22 | `phone_norm` | `text` | YES |  | 電話番号（数字のみ） |
+| 23 | `partner_key` | `text` | YES |  |  |
+| 24 | `payment_methods` | `ARRAY` | NO | ARRAY['card'::payment_method] |  |
+| 25 | `min_order_amount` | `integer` | NO | 0 |  |
+| 26 | `shipping_policy` | `jsonb` | NO | '{}'::jsonb |  |
 
 > **Enum `partner_type` values**: `restaurant`, `retailer`, `wholesale`, `corporate`, `individual`, `other`
 > **Enum `partner_status` values**: `active`, `inactive`, `prospect`, `suspended`
 
 **Constraints**
 
-- **CHECK**: `2200_17101_18_not_null`, `2200_17101_19_not_null`, `2200_17101_1_not_null`, `2200_17101_25_not_null`, `2200_17101_26_not_null`, `2200_17101_27_not_null`, `2200_17101_2_not_null`, `2200_17101_4_not_null`, `2200_17101_5_not_null`
+- **CHECK**: `2200_16819_18_not_null`, `2200_16819_19_not_null`, `2200_16819_1_not_null`, `2200_16819_24_not_null`, `2200_16819_25_not_null`, `2200_16819_26_not_null`, `2200_16819_2_not_null`, `2200_16819_4_not_null`, `2200_16819_5_not_null`
 - **PRIMARY KEY**: `partners_pkey`
 - **UNIQUE**: `ux_partners_partner_key`
 
 **Indexes**
 
+- `idx_partners_city_trgm`
+  
+  ```sql
+  CREATE INDEX idx_partners_city_trgm ON public.partners USING gin (city gin_trgm_ops)
+  ```
 - `idx_partners_name`
   
   ```sql
   CREATE INDEX idx_partners_name ON public.partners USING btree (name)
+  ```
+- `idx_partners_postal_norm`
+  
+  ```sql
+  CREATE INDEX idx_partners_postal_norm ON public.partners USING btree (postal_norm)
+  ```
+- `idx_partners_prefecture_city`
+  
+  ```sql
+  CREATE INDEX idx_partners_prefecture_city ON public.partners USING btree (prefecture, city)
   ```
 - `idx_partners_status`
   
@@ -756,6 +855,50 @@ _No indexes_
 
 ---
 
+### `public.password_reset_tokens`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `user_id` | `uuid` | NO |  |  |
+| 3 | `token_hash` | `text` | NO |  |  |
+| 4 | `expires_at` | `timestamp with time zone` | NO |  |  |
+| 5 | `used` | `boolean` | NO | false |  |
+| 6 | `created_at` | `timestamp with time zone` | NO | now() |  |
+
+**Constraints**
+
+- **CHECK**: `2200_17279_1_not_null`, `2200_17279_2_not_null`, `2200_17279_3_not_null`, `2200_17279_4_not_null`, `2200_17279_5_not_null`, `2200_17279_6_not_null`
+- **FOREIGN KEY**: `password_reset_tokens_user_id_fkey`
+- **PRIMARY KEY**: `password_reset_tokens_pkey`
+
+**Indexes**
+
+- `idx_prt_exp_used`
+  
+  ```sql
+  CREATE INDEX idx_prt_exp_used ON public.password_reset_tokens USING btree (expires_at, used)
+  ```
+- `idx_prt_user`
+  
+  ```sql
+  CREATE INDEX idx_prt_user ON public.password_reset_tokens USING btree (user_id)
+  ```
+- `idx_prt_user_token`
+  
+  ```sql
+  CREATE INDEX idx_prt_user_token ON public.password_reset_tokens USING btree (user_id, token_hash)
+  ```
+- `password_reset_tokens_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX password_reset_tokens_pkey ON public.password_reset_tokens USING btree (id)
+  ```
+
+---
+
 ### `public.payments`
 
 **Columns**
@@ -776,7 +919,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16747_1_not_null`, `2200_16747_2_not_null`, `2200_16747_3_not_null`, `2200_16747_4_not_null`, `2200_16747_5_not_null`, `2200_16747_7_not_null`, `2200_16747_8_not_null`, `payments_amount_check`
+- **CHECK**: `2200_16836_1_not_null`, `2200_16836_2_not_null`, `2200_16836_3_not_null`, `2200_16836_4_not_null`, `2200_16836_5_not_null`, `2200_16836_7_not_null`, `2200_16836_8_not_null`, `payments_amount_check`
 - **FOREIGN KEY**: `payments_order_id_fkey`
 - **PRIMARY KEY**: `payments_pkey`
 - **UNIQUE**: `payments_transaction_id_key`
@@ -837,7 +980,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16757_1_not_null`, `2200_16757_2_not_null`, `2200_16757_3_not_null`, `2200_16757_5_not_null`, `2200_16757_6_not_null`
+- **CHECK**: `2200_16846_1_not_null`, `2200_16846_2_not_null`, `2200_16846_3_not_null`, `2200_16846_5_not_null`, `2200_16846_6_not_null`
 - **FOREIGN KEY**: `product_images_product_id_fkey`
 - **PRIMARY KEY**: `product_images_pkey`
 - **UNIQUE**: `product_images_r2_key_key`
@@ -917,7 +1060,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_17195_1_not_null`, `2200_17195_2_not_null`, `2200_17195_3_not_null`, `2200_17195_4_not_null`, `2200_17195_6_not_null`, `2200_17195_7_not_null`, `2200_17195_8_not_null`, `2200_17195_9_not_null`, `product_reviews_rating_check`
+- **CHECK**: `2200_16854_1_not_null`, `2200_16854_2_not_null`, `2200_16854_3_not_null`, `2200_16854_4_not_null`, `2200_16854_6_not_null`, `2200_16854_7_not_null`, `2200_16854_8_not_null`, `2200_16854_9_not_null`, `product_reviews_rating_check`
 - **FOREIGN KEY**: `product_reviews_product_id_fkey`, `product_reviews_user_id_fkey`
 - **PRIMARY KEY**: `product_reviews_pkey`
 - **UNIQUE**: `uq_product_reviews_user`
@@ -962,7 +1105,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16765_1_not_null`, `2200_16765_2_not_null`, `2200_16765_3_not_null`, `2200_16765_4_not_null`, `2200_16765_5_not_null`, `2200_16765_6_not_null`
+- **CHECK**: `2200_16868_1_not_null`, `2200_16868_2_not_null`, `2200_16868_3_not_null`, `2200_16868_4_not_null`, `2200_16868_5_not_null`, `2200_16868_6_not_null`
 - **FOREIGN KEY**: `product_specs_product_id_fkey`
 - **PRIMARY KEY**: `product_specs_pkey`
 
@@ -997,7 +1140,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16773_1_not_null`, `2200_16773_2_not_null`
+- **CHECK**: `2200_16876_1_not_null`, `2200_16876_2_not_null`
 - **FOREIGN KEY**: `product_tags_product_id_fkey`, `product_tags_tag_id_fkey`
 - **PRIMARY KEY**: `product_tags_pkey`
 
@@ -1035,12 +1178,13 @@ _No indexes_
 | 16 | `published_at` | `timestamp with time zone` | YES |  |  |
 | 17 | `created_at` | `timestamp with time zone` | NO | now() |  |
 | 18 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+| 19 | `description_raw` | `text` | YES |  |  |
 
 > **Enum `product_status` values**: `draft`, `private`, `public`
 
 **Constraints**
 
-- **CHECK**: `2200_16776_10_not_null`, `2200_16776_11_not_null`, `2200_16776_12_not_null`, `2200_16776_13_not_null`, `2200_16776_14_not_null`, `2200_16776_15_not_null`, `2200_16776_17_not_null`, `2200_16776_18_not_null`, `2200_16776_1_not_null`, `2200_16776_2_not_null`, `2200_16776_4_not_null`, `2200_16776_5_not_null`, `2200_16776_8_not_null`, `2200_16776_9_not_null`, `products_price_check`, `products_ship_days_check`, `products_ship_method_check`, `products_stock_check`
+- **CHECK**: `2200_16879_10_not_null`, `2200_16879_11_not_null`, `2200_16879_12_not_null`, `2200_16879_13_not_null`, `2200_16879_14_not_null`, `2200_16879_15_not_null`, `2200_16879_17_not_null`, `2200_16879_18_not_null`, `2200_16879_1_not_null`, `2200_16879_2_not_null`, `2200_16879_4_not_null`, `2200_16879_5_not_null`, `2200_16879_8_not_null`, `2200_16879_9_not_null`, `products_price_check`, `products_ship_days_check`, `products_ship_method_check`, `products_stock_check`
 - **FOREIGN KEY**: `products_category_id_fkey`, `products_seller_id_fkey`
 - **PRIMARY KEY**: `products_pkey`
 - **UNIQUE**: `products_slug_key`
@@ -1107,7 +1251,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_17067_1_not_null`, `2200_17067_8_not_null`
+- **CHECK**: `2200_16895_1_not_null`, `2200_16895_8_not_null`
 - **PRIMARY KEY**: `r2_assets_pkey`
 
 **Indexes**
@@ -1155,7 +1299,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16792_1_not_null`, `2200_16792_2_not_null`, `2200_16792_3_not_null`, `2200_16792_8_not_null`, `2200_16792_9_not_null`
+- **CHECK**: `2200_16901_1_not_null`, `2200_16901_2_not_null`, `2200_16901_3_not_null`, `2200_16901_8_not_null`, `2200_16901_9_not_null`
 - **FOREIGN KEY**: `shipments_order_id_fkey`
 - **PRIMARY KEY**: `shipments_pkey`
 - **UNIQUE**: `shipments_tracking_number_key`
@@ -1219,7 +1363,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16801_1_not_null`, `2200_16801_2_not_null`, `2200_16801_3_not_null`, `2200_16801_4_not_null`, `2200_16801_5_not_null`
+- **CHECK**: `2200_16910_1_not_null`, `2200_16910_2_not_null`, `2200_16910_3_not_null`, `2200_16910_4_not_null`, `2200_16910_5_not_null`
 - **PRIMARY KEY**: `tags_pkey`
 - **UNIQUE**: `tags_name_key`, `tags_slug_key`
 
@@ -1248,6 +1392,41 @@ _No indexes_
 
 ---
 
+### `public.user_allowed_payment_methods`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `user_id` | `uuid` | NO |  |  |
+| 2 | `method` | `payment_method` *(enum)* | NO |  |  |
+| 3 | `created_at` | `timestamp with time zone` | NO | now() |  |
+| 4 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+| 5 | `synced_from_partner` | `boolean` | NO | true |  |
+
+> **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`
+
+**Constraints**
+
+- **CHECK**: `2200_16918_1_not_null`, `2200_16918_2_not_null`, `2200_16918_3_not_null`, `2200_16918_4_not_null`, `2200_16918_5_not_null`
+- **FOREIGN KEY**: `user_allowed_payment_methods_user_id_fkey`
+- **PRIMARY KEY**: `user_allowed_payment_methods_pkey`
+
+**Indexes**
+
+- `idx_uapm_user`
+  
+  ```sql
+  CREATE INDEX idx_uapm_user ON public.user_allowed_payment_methods USING btree (user_id)
+  ```
+- `user_allowed_payment_methods_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX user_allowed_payment_methods_pkey ON public.user_allowed_payment_methods USING btree (user_id, method)
+  ```
+
+---
+
 ### `public.user_recent_products`
 
 **Columns**
@@ -1260,7 +1439,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16809_1_not_null`, `2200_16809_2_not_null`, `2200_16809_3_not_null`
+- **CHECK**: `2200_16924_1_not_null`, `2200_16924_2_not_null`, `2200_16924_3_not_null`
 - **FOREIGN KEY**: `user_recent_products_product_id_fkey`, `user_recent_products_user_id_fkey`
 - **PRIMARY KEY**: `user_recent_products_pkey`
 
@@ -1293,20 +1472,43 @@ _No indexes_
 | 6 | `created_at` | `timestamp with time zone` | NO | now() |  |
 | 7 | `updated_at` | `timestamp with time zone` | NO | now() |  |
 | 8 | `partner_id` | `uuid` | YES |  | 所属取引先への外部キー（partners.id） |
+| 9 | `postal_code` | `text` | YES |  | 郵便番号（ハイフン付き可） |
+| 10 | `prefecture` | `text` | YES |  | 都道府県 |
+| 11 | `city` | `text` | YES |  | 市区町村 |
+| 12 | `address1` | `text` | YES |  | 番地・丁目まで |
+| 13 | `address2` | `text` | YES |  | 建物名・部屋番号など任意 |
+| 14 | `postal_norm` | `text` | YES |  | 郵便番号（数字のみ7桁など） |
+| 15 | `phone` | `text` | YES |  | 電話番号（ハイフン付き可） |
+| 16 | `phone_norm` | `text` | YES |  | 電話番号（数字のみ） |
 
 **Constraints**
 
-- **CHECK**: `2200_16813_1_not_null`, `2200_16813_2_not_null`, `2200_16813_3_not_null`, `2200_16813_4_not_null`, `2200_16813_5_not_null`, `2200_16813_6_not_null`, `2200_16813_7_not_null`
+- **CHECK**: `2200_16928_1_not_null`, `2200_16928_2_not_null`, `2200_16928_3_not_null`, `2200_16928_4_not_null`, `2200_16928_5_not_null`, `2200_16928_6_not_null`, `2200_16928_7_not_null`
 - **FOREIGN KEY**: `users_partner_id_fkey`
 - **PRIMARY KEY**: `users_pkey`
 - **UNIQUE**: `users_email_key`
 
 **Indexes**
 
+- `idx_users_city_trgm`
+  
+  ```sql
+  CREATE INDEX idx_users_city_trgm ON public.users USING gin (city gin_trgm_ops)
+  ```
 - `idx_users_partner`
   
   ```sql
   CREATE INDEX idx_users_partner ON public.users USING btree (partner_id)
+  ```
+- `idx_users_postal_norm`
+  
+  ```sql
+  CREATE INDEX idx_users_postal_norm ON public.users USING btree (postal_norm)
+  ```
+- `idx_users_prefecture_city`
+  
+  ```sql
+  CREATE INDEX idx_users_prefecture_city ON public.users USING btree (prefecture, city)
   ```
 - `users_email_key`
   
@@ -1332,6 +1534,6 @@ _No indexes_
 - `public.payment_status`: `pending`, `completed`, `failed`, `authorized`, `paid`, `canceled`, `refunded`, `unpaid`, `cancelled`
 - `public.product_status`: `draft`, `private`, `public`
 - `public.review_status`: `published`, `pending`, `hidden`
-- `public.ship_method`: `normal`, `cool`
+- `public.ship_method`: `pickup`, `delivery`
 - `public.shipment_status`: `pending`, `preparing`, `shipped`, `delivered`, `cancelled`, `returned`, `lost`, `canceled`, `in_transit`
 

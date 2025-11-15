@@ -48,8 +48,8 @@ public,product_status,public,3
 public,review_status,published,1
 public,review_status,pending,2
 public,review_status,hidden,3
-public,ship_method,normal,1
-public,ship_method,cool,2
+public,ship_method,pickup,1
+public,ship_method,delivery,2
 public,shipment_status,pending,1
 public,shipment_status,preparing,2
 public,shipment_status,shipped,3

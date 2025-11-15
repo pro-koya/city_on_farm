@@ -1,71 +1,71 @@
 table_schema,table_name,constraint_name,constraint_type
-public,addresses,2200_16629_10_not_null,CHECK
-public,addresses,2200_16629_11_not_null,CHECK
-public,addresses,2200_16629_12_not_null,CHECK
-public,addresses,2200_16629_14_not_null,CHECK
-public,addresses,2200_16629_15_not_null,CHECK
-public,addresses,2200_16629_17_not_null,CHECK
-public,addresses,2200_16629_18_not_null,CHECK
-public,addresses,2200_16629_1_not_null,CHECK
-public,addresses,2200_16629_2_not_null,CHECK
-public,addresses,2200_16629_5_not_null,CHECK
-public,addresses,2200_16629_6_not_null,CHECK
-public,addresses,2200_16629_9_not_null,CHECK
+public,addresses,2200_16681_10_not_null,CHECK
+public,addresses,2200_16681_11_not_null,CHECK
+public,addresses,2200_16681_12_not_null,CHECK
+public,addresses,2200_16681_14_not_null,CHECK
+public,addresses,2200_16681_15_not_null,CHECK
+public,addresses,2200_16681_17_not_null,CHECK
+public,addresses,2200_16681_18_not_null,CHECK
+public,addresses,2200_16681_1_not_null,CHECK
+public,addresses,2200_16681_2_not_null,CHECK
+public,addresses,2200_16681_5_not_null,CHECK
+public,addresses,2200_16681_6_not_null,CHECK
+public,addresses,2200_16681_9_not_null,CHECK
 public,addresses,addresses_address_type_check,CHECK
 public,addresses,addresses_check,CHECK
 public,addresses,addresses_order_id_fkey,FOREIGN KEY
 public,addresses,addresses_pkey,PRIMARY KEY
 public,addresses,addresses_scope_check,CHECK
 public,addresses,addresses_user_id_fkey,FOREIGN KEY
-public,cart_items,2200_16643_1_not_null,CHECK
-public,cart_items,2200_16643_2_not_null,CHECK
-public,cart_items,2200_16643_3_not_null,CHECK
-public,cart_items,2200_16643_4_not_null,CHECK
-public,cart_items,2200_16643_5_not_null,CHECK
-public,cart_items,2200_16643_6_not_null,CHECK
-public,cart_items,2200_16643_7_not_null,CHECK
+public,cart_items,2200_16695_1_not_null,CHECK
+public,cart_items,2200_16695_2_not_null,CHECK
+public,cart_items,2200_16695_3_not_null,CHECK
+public,cart_items,2200_16695_4_not_null,CHECK
+public,cart_items,2200_16695_5_not_null,CHECK
+public,cart_items,2200_16695_6_not_null,CHECK
+public,cart_items,2200_16695_7_not_null,CHECK
 public,cart_items,cart_items_cart_id_fkey,FOREIGN KEY
 public,cart_items,cart_items_cart_id_product_id_key,UNIQUE
 public,cart_items,cart_items_pkey,PRIMARY KEY
 public,cart_items,cart_items_product_id_fkey,FOREIGN KEY
 public,cart_items,cart_items_quantity_check,CHECK
 public,cart_items,cart_items_user_id_fkey,FOREIGN KEY
-public,carts,2200_16651_1_not_null,CHECK
-public,carts,2200_16651_2_not_null,CHECK
-public,carts,2200_16651_4_not_null,CHECK
-public,carts,2200_16651_5_not_null,CHECK
+public,carts,2200_16705_1_not_null,CHECK
+public,carts,2200_16705_2_not_null,CHECK
+public,carts,2200_16705_4_not_null,CHECK
+public,carts,2200_16705_5_not_null,CHECK
 public,carts,carts_pkey,PRIMARY KEY
 public,carts,carts_user_id_fkey,FOREIGN KEY
 public,carts,carts_user_id_key,UNIQUE
-public,categories,2200_16659_1_not_null,CHECK
-public,categories,2200_16659_2_not_null,CHECK
-public,categories,2200_16659_3_not_null,CHECK
-public,categories,2200_16659_4_not_null,CHECK
-public,categories,2200_16659_5_not_null,CHECK
-public,categories,2200_16659_6_not_null,CHECK
+public,categories,2200_16713_1_not_null,CHECK
+public,categories,2200_16713_2_not_null,CHECK
+public,categories,2200_16713_3_not_null,CHECK
+public,categories,2200_16713_4_not_null,CHECK
+public,categories,2200_16713_5_not_null,CHECK
+public,categories,2200_16713_6_not_null,CHECK
 public,categories,categories_name_key,UNIQUE
 public,categories,categories_pkey,PRIMARY KEY
 public,categories,categories_slug_key,UNIQUE
-public,contacts,2200_16668_10_not_null,CHECK
-public,contacts,2200_16668_1_not_null,CHECK
-public,contacts,2200_16668_2_not_null,CHECK
-public,contacts,2200_16668_3_not_null,CHECK
-public,contacts,2200_16668_4_not_null,CHECK
-public,contacts,2200_16668_5_not_null,CHECK
-public,contacts,2200_16668_6_not_null,CHECK
-public,contacts,2200_16668_9_not_null,CHECK
+public,contacts,2200_16722_10_not_null,CHECK
+public,contacts,2200_16722_1_not_null,CHECK
+public,contacts,2200_16722_2_not_null,CHECK
+public,contacts,2200_16722_3_not_null,CHECK
+public,contacts,2200_16722_4_not_null,CHECK
+public,contacts,2200_16722_5_not_null,CHECK
+public,contacts,2200_16722_6_not_null,CHECK
+public,contacts,2200_16722_9_not_null,CHECK
 public,contacts,contacts_handled_by_fkey,FOREIGN KEY
 public,contacts,contacts_pkey,PRIMARY KEY
 public,contacts,contacts_status_check,CHECK
-public,coupons,2200_16679_14_not_null,CHECK
-public,coupons,2200_16679_16_not_null,CHECK
-public,coupons,2200_16679_17_not_null,CHECK
-public,coupons,2200_16679_1_not_null,CHECK
-public,coupons,2200_16679_2_not_null,CHECK
-public,coupons,2200_16679_5_not_null,CHECK
-public,coupons,2200_16679_6_not_null,CHECK
-public,coupons,2200_16679_7_not_null,CHECK
-public,coupons,2200_16679_9_not_null,CHECK
+public,coupons,2200_16733_14_not_null,CHECK
+public,coupons,2200_16733_16_not_null,CHECK
+public,coupons,2200_16733_17_not_null,CHECK
+public,coupons,2200_16733_1_not_null,CHECK
+public,coupons,2200_16733_2_not_null,CHECK
+public,coupons,2200_16733_5_not_null,CHECK
+public,coupons,2200_16733_6_not_null,CHECK
+public,coupons,2200_16733_7_not_null,CHECK
+public,coupons,2200_16733_9_not_null,CHECK
 public,coupons,coupons_applies_to_check,CHECK
 public,coupons,coupons_check,CHECK
 public,coupons,coupons_code_key,UNIQUE
@@ -74,63 +74,69 @@ public,coupons,coupons_discount_value_check,CHECK
 public,coupons,coupons_max_discount_check,CHECK
 public,coupons,coupons_min_subtotal_check,CHECK
 public,coupons,coupons_pkey,PRIMARY KEY
-public,option_labels,2200_16696_1_not_null,CHECK
-public,option_labels,2200_16696_2_not_null,CHECK
-public,option_labels,2200_16696_3_not_null,CHECK
-public,option_labels,2200_16696_4_not_null,CHECK
-public,option_labels,2200_16696_5_not_null,CHECK
-public,option_labels,2200_16696_6_not_null,CHECK
-public,option_labels,2200_16696_7_not_null,CHECK
-public,option_labels,2200_16696_8_not_null,CHECK
+public,global_allowed_payment_methods,2200_16750_1_not_null,CHECK
+public,global_allowed_payment_methods,global_allowed_payment_methods_pkey,PRIMARY KEY
+public,gmail_tokens,2200_17270_1_not_null,CHECK
+public,gmail_tokens,2200_17270_2_not_null,CHECK
+public,gmail_tokens,2200_17270_3_not_null,CHECK
+public,gmail_tokens,gmail_tokens_pkey,PRIMARY KEY
+public,option_labels,2200_16753_1_not_null,CHECK
+public,option_labels,2200_16753_2_not_null,CHECK
+public,option_labels,2200_16753_3_not_null,CHECK
+public,option_labels,2200_16753_4_not_null,CHECK
+public,option_labels,2200_16753_5_not_null,CHECK
+public,option_labels,2200_16753_6_not_null,CHECK
+public,option_labels,2200_16753_7_not_null,CHECK
+public,option_labels,2200_16753_8_not_null,CHECK
 public,option_labels,option_labels_pkey,PRIMARY KEY
 public,option_labels,option_labels_unique,UNIQUE
-public,order_addresses,2200_16705_11_not_null,CHECK
-public,order_addresses,2200_16705_12_not_null,CHECK
-public,order_addresses,2200_16705_13_not_null,CHECK
-public,order_addresses,2200_16705_1_not_null,CHECK
-public,order_addresses,2200_16705_2_not_null,CHECK
-public,order_addresses,2200_16705_3_not_null,CHECK
-public,order_addresses,2200_16705_4_not_null,CHECK
-public,order_addresses,2200_16705_5_not_null,CHECK
-public,order_addresses,2200_16705_6_not_null,CHECK
-public,order_addresses,2200_16705_7_not_null,CHECK
-public,order_addresses,2200_16705_8_not_null,CHECK
-public,order_addresses,2200_16705_9_not_null,CHECK
+public,order_addresses,2200_16762_11_not_null,CHECK
+public,order_addresses,2200_16762_12_not_null,CHECK
+public,order_addresses,2200_16762_13_not_null,CHECK
+public,order_addresses,2200_16762_1_not_null,CHECK
+public,order_addresses,2200_16762_2_not_null,CHECK
+public,order_addresses,2200_16762_3_not_null,CHECK
+public,order_addresses,2200_16762_4_not_null,CHECK
+public,order_addresses,2200_16762_5_not_null,CHECK
+public,order_addresses,2200_16762_6_not_null,CHECK
+public,order_addresses,2200_16762_7_not_null,CHECK
+public,order_addresses,2200_16762_8_not_null,CHECK
+public,order_addresses,2200_16762_9_not_null,CHECK
 public,order_addresses,order_addresses_order_id_fkey,FOREIGN KEY
 public,order_addresses,order_addresses_pkey,PRIMARY KEY
-public,order_groups,2200_17233_1_not_null,CHECK
-public,order_groups,2200_17233_2_not_null,CHECK
-public,order_groups,2200_17233_4_not_null,CHECK
-public,order_groups,2200_17233_5_not_null,CHECK
-public,order_groups,2200_17233_6_not_null,CHECK
+public,order_groups,2200_16771_1_not_null,CHECK
+public,order_groups,2200_16771_2_not_null,CHECK
+public,order_groups,2200_16771_4_not_null,CHECK
+public,order_groups,2200_16771_5_not_null,CHECK
+public,order_groups,2200_16771_6_not_null,CHECK
 public,order_groups,order_groups_group_number_key,UNIQUE
 public,order_groups,order_groups_pkey,PRIMARY KEY
 public,order_groups,order_groups_user_id_fkey,FOREIGN KEY
-public,order_items,2200_16714_1_not_null,CHECK
-public,order_items,2200_16714_2_not_null,CHECK
-public,order_items,2200_16714_3_not_null,CHECK
-public,order_items,2200_16714_4_not_null,CHECK
-public,order_items,2200_16714_5_not_null,CHECK
+public,order_items,2200_16780_1_not_null,CHECK
+public,order_items,2200_16780_2_not_null,CHECK
+public,order_items,2200_16780_3_not_null,CHECK
+public,order_items,2200_16780_4_not_null,CHECK
+public,order_items,2200_16780_5_not_null,CHECK
 public,order_items,order_items_order_id_fkey,FOREIGN KEY
 public,order_items,order_items_pkey,PRIMARY KEY
 public,order_items,order_items_price_check,CHECK
 public,order_items,order_items_product_id_fkey,FOREIGN KEY
 public,order_items,order_items_quantity_check,CHECK
 public,order_items,order_items_seller_id_fkey,FOREIGN KEY
-public,orders,2200_16722_15_not_null,CHECK
-public,orders,2200_16722_1_not_null,CHECK
-public,orders,2200_16722_20_not_null,CHECK
-public,orders,2200_16722_21_not_null,CHECK
-public,orders,2200_16722_23_not_null,CHECK
-public,orders,2200_16722_24_not_null,CHECK
-public,orders,2200_16722_2_not_null,CHECK
-public,orders,2200_16722_3_not_null,CHECK
-public,orders,2200_16722_4_not_null,CHECK
-public,orders,2200_16722_5_not_null,CHECK
-public,orders,2200_16722_6_not_null,CHECK
-public,orders,2200_16722_7_not_null,CHECK
-public,orders,2200_16722_8_not_null,CHECK
-public,orders,2200_16722_9_not_null,CHECK
+public,orders,2200_16788_15_not_null,CHECK
+public,orders,2200_16788_1_not_null,CHECK
+public,orders,2200_16788_20_not_null,CHECK
+public,orders,2200_16788_21_not_null,CHECK
+public,orders,2200_16788_23_not_null,CHECK
+public,orders,2200_16788_24_not_null,CHECK
+public,orders,2200_16788_2_not_null,CHECK
+public,orders,2200_16788_3_not_null,CHECK
+public,orders,2200_16788_4_not_null,CHECK
+public,orders,2200_16788_5_not_null,CHECK
+public,orders,2200_16788_6_not_null,CHECK
+public,orders,2200_16788_7_not_null,CHECK
+public,orders,2200_16788_8_not_null,CHECK
+public,orders,2200_16788_9_not_null,CHECK
 public,orders,orders_amounts_check,CHECK
 public,orders,orders_buyer_id_fkey,FOREIGN KEY
 public,orders,orders_group_id_fkey,FOREIGN KEY
@@ -138,76 +144,90 @@ public,orders,orders_order_number_key,UNIQUE
 public,orders,orders_pkey,PRIMARY KEY
 public,orders,orders_seller_id_fkey,FOREIGN KEY
 public,orders,uq_orders_order_number,UNIQUE
-public,partners,2200_17101_18_not_null,CHECK
-public,partners,2200_17101_19_not_null,CHECK
-public,partners,2200_17101_1_not_null,CHECK
-public,partners,2200_17101_25_not_null,CHECK
-public,partners,2200_17101_26_not_null,CHECK
-public,partners,2200_17101_27_not_null,CHECK
-public,partners,2200_17101_2_not_null,CHECK
-public,partners,2200_17101_4_not_null,CHECK
-public,partners,2200_17101_5_not_null,CHECK
+public,partner_allowed_payment_methods,2200_16814_1_not_null,CHECK
+public,partner_allowed_payment_methods,2200_16814_2_not_null,CHECK
+public,partner_allowed_payment_methods,2200_16814_3_not_null,CHECK
+public,partner_allowed_payment_methods,2200_16814_4_not_null,CHECK
+public,partner_allowed_payment_methods,partner_allowed_payment_methods_partner_id_fkey,FOREIGN KEY
+public,partner_allowed_payment_methods,partner_allowed_payment_methods_pkey,PRIMARY KEY
+public,partners,2200_16819_18_not_null,CHECK
+public,partners,2200_16819_19_not_null,CHECK
+public,partners,2200_16819_1_not_null,CHECK
+public,partners,2200_16819_24_not_null,CHECK
+public,partners,2200_16819_25_not_null,CHECK
+public,partners,2200_16819_26_not_null,CHECK
+public,partners,2200_16819_2_not_null,CHECK
+public,partners,2200_16819_4_not_null,CHECK
+public,partners,2200_16819_5_not_null,CHECK
 public,partners,partners_pkey,PRIMARY KEY
 public,partners,ux_partners_partner_key,UNIQUE
-public,payments,2200_16747_1_not_null,CHECK
-public,payments,2200_16747_2_not_null,CHECK
-public,payments,2200_16747_3_not_null,CHECK
-public,payments,2200_16747_4_not_null,CHECK
-public,payments,2200_16747_5_not_null,CHECK
-public,payments,2200_16747_7_not_null,CHECK
-public,payments,2200_16747_8_not_null,CHECK
+public,password_reset_tokens,2200_17279_1_not_null,CHECK
+public,password_reset_tokens,2200_17279_2_not_null,CHECK
+public,password_reset_tokens,2200_17279_3_not_null,CHECK
+public,password_reset_tokens,2200_17279_4_not_null,CHECK
+public,password_reset_tokens,2200_17279_5_not_null,CHECK
+public,password_reset_tokens,2200_17279_6_not_null,CHECK
+public,password_reset_tokens,password_reset_tokens_pkey,PRIMARY KEY
+public,password_reset_tokens,password_reset_tokens_user_id_fkey,FOREIGN KEY
+public,payments,2200_16836_1_not_null,CHECK
+public,payments,2200_16836_2_not_null,CHECK
+public,payments,2200_16836_3_not_null,CHECK
+public,payments,2200_16836_4_not_null,CHECK
+public,payments,2200_16836_5_not_null,CHECK
+public,payments,2200_16836_7_not_null,CHECK
+public,payments,2200_16836_8_not_null,CHECK
 public,payments,payments_amount_check,CHECK
 public,payments,payments_order_id_fkey,FOREIGN KEY
 public,payments,payments_pkey,PRIMARY KEY
 public,payments,payments_transaction_id_key,UNIQUE
-public,product_images,2200_16757_1_not_null,CHECK
-public,product_images,2200_16757_2_not_null,CHECK
-public,product_images,2200_16757_3_not_null,CHECK
-public,product_images,2200_16757_5_not_null,CHECK
-public,product_images,2200_16757_6_not_null,CHECK
+public,product_images,2200_16846_1_not_null,CHECK
+public,product_images,2200_16846_2_not_null,CHECK
+public,product_images,2200_16846_3_not_null,CHECK
+public,product_images,2200_16846_5_not_null,CHECK
+public,product_images,2200_16846_6_not_null,CHECK
 public,product_images,product_images_pkey,PRIMARY KEY
 public,product_images,product_images_product_id_fkey,FOREIGN KEY
 public,product_images,product_images_r2_key_key,UNIQUE
-public,product_reviews,2200_17195_1_not_null,CHECK
-public,product_reviews,2200_17195_2_not_null,CHECK
-public,product_reviews,2200_17195_3_not_null,CHECK
-public,product_reviews,2200_17195_4_not_null,CHECK
-public,product_reviews,2200_17195_6_not_null,CHECK
-public,product_reviews,2200_17195_7_not_null,CHECK
-public,product_reviews,2200_17195_8_not_null,CHECK
-public,product_reviews,2200_17195_9_not_null,CHECK
+public,product_reviews,2200_16854_1_not_null,CHECK
+public,product_reviews,2200_16854_2_not_null,CHECK
+public,product_reviews,2200_16854_3_not_null,CHECK
+public,product_reviews,2200_16854_4_not_null,CHECK
+public,product_reviews,2200_16854_6_not_null,CHECK
+public,product_reviews,2200_16854_7_not_null,CHECK
+public,product_reviews,2200_16854_8_not_null,CHECK
+public,product_reviews,2200_16854_9_not_null,CHECK
 public,product_reviews,product_reviews_pkey,PRIMARY KEY
 public,product_reviews,product_reviews_product_id_fkey,FOREIGN KEY
 public,product_reviews,product_reviews_rating_check,CHECK
 public,product_reviews,product_reviews_user_id_fkey,FOREIGN KEY
 public,product_reviews,uq_product_reviews_user,UNIQUE
-public,product_specs,2200_16765_1_not_null,CHECK
-public,product_specs,2200_16765_2_not_null,CHECK
-public,product_specs,2200_16765_3_not_null,CHECK
-public,product_specs,2200_16765_4_not_null,CHECK
-public,product_specs,2200_16765_5_not_null,CHECK
-public,product_specs,2200_16765_6_not_null,CHECK
+public,product_specs,2200_16868_1_not_null,CHECK
+public,product_specs,2200_16868_2_not_null,CHECK
+public,product_specs,2200_16868_3_not_null,CHECK
+public,product_specs,2200_16868_4_not_null,CHECK
+public,product_specs,2200_16868_5_not_null,CHECK
+public,product_specs,2200_16868_6_not_null,CHECK
 public,product_specs,product_specs_pkey,PRIMARY KEY
 public,product_specs,product_specs_product_id_fkey,FOREIGN KEY
-public,product_tags,2200_16773_1_not_null,CHECK
-public,product_tags,2200_16773_2_not_null,CHECK
+public,product_tags,2200_16876_1_not_null,CHECK
+public,product_tags,2200_16876_2_not_null,CHECK
 public,product_tags,product_tags_pkey,PRIMARY KEY
 public,product_tags,product_tags_product_id_fkey,FOREIGN KEY
 public,product_tags,product_tags_tag_id_fkey,FOREIGN KEY
-public,products,2200_16776_10_not_null,CHECK
-public,products,2200_16776_11_not_null,CHECK
-public,products,2200_16776_12_not_null,CHECK
-public,products,2200_16776_13_not_null,CHECK
-public,products,2200_16776_14_not_null,CHECK
-public,products,2200_16776_15_not_null,CHECK
-public,products,2200_16776_17_not_null,CHECK
-public,products,2200_16776_18_not_null,CHECK
-public,products,2200_16776_1_not_null,CHECK
-public,products,2200_16776_2_not_null,CHECK
-public,products,2200_16776_4_not_null,CHECK
-public,products,2200_16776_5_not_null,CHECK
-public,products,2200_16776_8_not_null,CHECK
-public,products,2200_16776_9_not_null,CHECK
+public,products,2200_16879_10_not_null,CHECK
+public,products,2200_16879_11_not_null,CHECK
+public,products,2200_16879_12_not_null,CHECK
+public,products,2200_16879_13_not_null,CHECK
+public,products,2200_16879_14_not_null,CHECK
+public,products,2200_16879_15_not_null,CHECK
+public,products,2200_16879_17_not_null,CHECK
+public,products,2200_16879_18_not_null,CHECK
+public,products,2200_16879_1_not_null,CHECK
+public,products,2200_16879_2_not_null,CHECK
+public,products,2200_16879_4_not_null,CHECK
+public,products,2200_16879_5_not_null,CHECK
+public,products,2200_16879_8_not_null,CHECK
+public,products,2200_16879_9_not_null,CHECK
 public,products,products_category_id_fkey,FOREIGN KEY
 public,products,products_pkey,PRIMARY KEY
 public,products,products_price_check,CHECK
@@ -216,38 +236,45 @@ public,products,products_ship_days_check,CHECK
 public,products,products_ship_method_check,CHECK
 public,products,products_slug_key,UNIQUE
 public,products,products_stock_check,CHECK
-public,r2_assets,2200_17067_1_not_null,CHECK
-public,r2_assets,2200_17067_8_not_null,CHECK
+public,r2_assets,2200_16895_1_not_null,CHECK
+public,r2_assets,2200_16895_8_not_null,CHECK
 public,r2_assets,r2_assets_pkey,PRIMARY KEY
-public,shipments,2200_16792_1_not_null,CHECK
-public,shipments,2200_16792_2_not_null,CHECK
-public,shipments,2200_16792_3_not_null,CHECK
-public,shipments,2200_16792_8_not_null,CHECK
-public,shipments,2200_16792_9_not_null,CHECK
+public,shipments,2200_16901_1_not_null,CHECK
+public,shipments,2200_16901_2_not_null,CHECK
+public,shipments,2200_16901_3_not_null,CHECK
+public,shipments,2200_16901_8_not_null,CHECK
+public,shipments,2200_16901_9_not_null,CHECK
 public,shipments,shipments_order_id_fkey,FOREIGN KEY
 public,shipments,shipments_pkey,PRIMARY KEY
 public,shipments,shipments_tracking_number_key,UNIQUE
-public,tags,2200_16801_1_not_null,CHECK
-public,tags,2200_16801_2_not_null,CHECK
-public,tags,2200_16801_3_not_null,CHECK
-public,tags,2200_16801_4_not_null,CHECK
-public,tags,2200_16801_5_not_null,CHECK
+public,tags,2200_16910_1_not_null,CHECK
+public,tags,2200_16910_2_not_null,CHECK
+public,tags,2200_16910_3_not_null,CHECK
+public,tags,2200_16910_4_not_null,CHECK
+public,tags,2200_16910_5_not_null,CHECK
 public,tags,tags_name_key,UNIQUE
 public,tags,tags_pkey,PRIMARY KEY
 public,tags,tags_slug_key,UNIQUE
-public,user_recent_products,2200_16809_1_not_null,CHECK
-public,user_recent_products,2200_16809_2_not_null,CHECK
-public,user_recent_products,2200_16809_3_not_null,CHECK
+public,user_allowed_payment_methods,2200_16918_1_not_null,CHECK
+public,user_allowed_payment_methods,2200_16918_2_not_null,CHECK
+public,user_allowed_payment_methods,2200_16918_3_not_null,CHECK
+public,user_allowed_payment_methods,2200_16918_4_not_null,CHECK
+public,user_allowed_payment_methods,2200_16918_5_not_null,CHECK
+public,user_allowed_payment_methods,user_allowed_payment_methods_pkey,PRIMARY KEY
+public,user_allowed_payment_methods,user_allowed_payment_methods_user_id_fkey,FOREIGN KEY
+public,user_recent_products,2200_16924_1_not_null,CHECK
+public,user_recent_products,2200_16924_2_not_null,CHECK
+public,user_recent_products,2200_16924_3_not_null,CHECK
 public,user_recent_products,user_recent_products_pkey,PRIMARY KEY
 public,user_recent_products,user_recent_products_product_id_fkey,FOREIGN KEY
 public,user_recent_products,user_recent_products_user_id_fkey,FOREIGN KEY
-public,users,2200_16813_1_not_null,CHECK
-public,users,2200_16813_2_not_null,CHECK
-public,users,2200_16813_3_not_null,CHECK
-public,users,2200_16813_4_not_null,CHECK
-public,users,2200_16813_5_not_null,CHECK
-public,users,2200_16813_6_not_null,CHECK
-public,users,2200_16813_7_not_null,CHECK
+public,users,2200_16928_1_not_null,CHECK
+public,users,2200_16928_2_not_null,CHECK
+public,users,2200_16928_3_not_null,CHECK
+public,users,2200_16928_4_not_null,CHECK
+public,users,2200_16928_5_not_null,CHECK
+public,users,2200_16928_6_not_null,CHECK
+public,users,2200_16928_7_not_null,CHECK
 public,users,users_email_key,UNIQUE
 public,users,users_partner_id_fkey,FOREIGN KEY
 public,users,users_pkey,PRIMARY KEY
