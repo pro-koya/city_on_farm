@@ -380,3 +380,258 @@ select {
 .kv-row dd {
   margin: 0;
 }
+
+/* ===== detail: layout tweaks ===== */
+.contacts.contacts--detail {
+  max-width: 960px;
+  padding-top: 80px;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+/* メタカード */
+.contact-meta-card {
+  margin-top: 8px;
+}
+
+.contact-meta-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .6rem;
+}
+
+.contact-meta-head__left h1 {
+  margin: 0 0 .2rem;
+  font-size: 1.4rem;
+}
+
+.contact-id {
+  margin: 0;
+  font-size: .85rem;
+  color: var(--muted);
+}
+
+.contact-meta-head__right {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.contact-kv .kv-row {
+  border-bottom-color: var(--border);
+}
+
+/* 状態更新フォーム */
+.contact-status-form {
+  margin-top: 1rem;
+  padding-top: .6rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .6rem .8rem;
+}
+
+.contact-status-form .label {
+  display: block;
+  font-size: .85rem;
+  color: var(--muted);
+  margin-bottom: .15rem;
+}
+
+.contact-status-form .select-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.contact-status-form .pulldown {
+  min-width: 160px;
+}
+
+.contact-status-msg {
+  margin: 0;
+  font-size: .85rem;
+}
+
+.contact-status-msg.ok {
+  color: #166534;
+}
+
+.contact-status-msg.err {
+  color: #991b1b;
+}
+
+/* ===== chat area ===== */
+.contact-chat-card {
+  margin-top: 1.2rem;
+}
+
+.contact-chat-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: .4rem;
+  margin-bottom: .5rem;
+}
+
+.contact-chat-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.contact-chat-head .small {
+  margin: .15rem 0 0;
+}
+
+.contact-chat-thread {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: .8rem;
+  max-height: 420px;
+  overflow-y: auto;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+}
+
+.empty-chat {
+  margin: .3rem 0;
+}
+
+.msg {
+  max-width: 80%;
+  padding: .55rem .75rem;
+  border-radius: 14px;
+  background: var(--white);
+  box-shadow: 0 3px 8px rgba(0,0,0,.06);
+  font-size: .95rem;
+}
+
+.msg__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: .4rem;
+  margin-bottom: .15rem;
+}
+
+.msg__name {
+  font-weight: 700;
+  font-size: .85rem;
+}
+
+.msg__time {
+  font-size: .8rem;
+  color: var(--muted);
+}
+
+.msg__body {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ユーザー / 管理者で左右を分ける */
+.msg--user {
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+
+.msg--admin {
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+  background: var(--main);
+  color: #fff;
+}
+
+.msg--admin .msg__time {
+  color: rgba(255,255,255,.7);
+}
+
+/* 入力フォーム */
+.contact-chat-form {
+  margin-top: .8rem;
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+}
+
+.contact-chat-label {
+  font-size: .9rem;
+  font-weight: 600;
+}
+
+#chatBody {
+  width: 100%;
+  min-height: 100px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: .6rem .7rem;
+  resize: vertical;
+  font-family: inherit;
+  font-size: .95rem;
+}
+
+#chatBody:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.contact-chat-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.chat-hint {
+  margin: 0;
+  font-size: .8rem;
+}
+
+.contact-chat-msg {
+  margin: 0;
+  font-size: .85rem;
+}
+
+.contact-chat-msg.ok {
+  color: #166534;
+}
+
+.contact-chat-msg.err {
+  color: #991b1b;
+}
+
+/* トースト */
+#contactToast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(17,24,39,.9);
+  color: #fff;
+  font-size: .85rem;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s;
+}
+
+/* responsive */
+@media (max-width: 768px) {
+  .contacts.contacts--detail {
+    padding: 72px 10px;
+  }
+
+  .msg {
+    max-width: 92%;
+  }
+}

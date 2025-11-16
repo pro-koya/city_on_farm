@@ -7,11 +7,11 @@
             <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
 
             <label for="name">お名前</label>
-            <input type="text" id="name" name="name" value="<%= form?.name || '' %>" required>
+            <input type="text" id="name" name="name" value="<%= loginUser?.name || form?.name || '' %>" required>
             <p class="error"><%= fieldErrors?.name || '' %></p>
 
             <label for="email">メールアドレス</label>
-            <input type="email" id="email" name="email" value="<%= form?.email || '' %>" required>
+            <input type="email" id="email" name="email" value="<%= loginUser?.email || form?.email || '' %>" required>
             <p class="error"><%= fieldErrors?.email || '' %></p>
 
             <label for="category">お問い合わせ種別</label>

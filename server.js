@@ -448,6 +448,7 @@ app.post(
       req.session.user = { id: user.id, name: user.name, email: user.email, roles: user.roles || [] };
       await mergeSessionCartToDb(req, user.id);
       await mergeSessionRecentToDb(req);
+      await attachContactsToUserAfterLogin(user);
       const roles = user.roles || [];
       return res.redirect(roles.includes('seller') ? '/dashboard/seller' : '/dashboard/buyer');
     } catch (err) {
@@ -1038,6 +1039,18 @@ app.get('/about', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+async function attachContactsToUserAfterLogin(user) {
+  if (!user || !user.email) return;
+  await dbQuery(
+    `UPDATE contacts
+        SET user_id = $1,
+            updated_at = now()
+      WHERE user_id IS NULL
+        AND email = $2`,
+    [user.id, user.email]
+  );
+}
+
 /* =========================================================
  * お問い合わせフォーム表示
  * GET /contact
@@ -1047,7 +1060,8 @@ app.get('/contact', (req, res) => {
     title: 'お問い合わせ',
     form: {},
     fieldErrors: {},
-    globalError: null
+    globalError: null,
+    loginUser: req.session.user || null
   });
 });
 
@@ -1095,10 +1109,13 @@ app.post(
       'owner@example.com';
 
     try {
+      const user = req.session.user || null;
+      const uid = !user ? null : user.id;
+      const trimmedMessage = String(message).trim();
       // 1) DB 保存
       const rows = await dbQuery(
-        `INSERT INTO contacts (name, email, category, subject, message, type)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO contacts (name, email, category, subject, message, type, user_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING id, created_at`,
         [
           String(name).trim(),
@@ -1106,12 +1123,25 @@ app.post(
           category,
           subject,
           String(message).trim(),
-          `${category} : ${subject}`
+          `${category} : ${subject}`,
+          uid
         ]
       );
 
       const contact = rows[0];
       const category_ja = jaLabel('contact_category', category) || category;
+
+      // 1-2) 初回メッセージを contact_messages にコピー
+      await dbQuery(
+        `INSERT INTO contact_messages (contact_id, sender_id, sender_type, body)
+         VALUES ($1, $2, $3, $4)`,
+        [
+          contact.id,
+          uid || null,
+          'user',
+          trimmedMessage
+        ]
+      );
 
       // 2) 管理者向けメール本文
       const adminSubject = `[お問い合わせ] ${subject} : ${category_ja} - ${name}`;
@@ -1247,6 +1277,118 @@ app.get('/contact/thanks', (req, res) => {
     title: 'お問い合わせありがとうございました',
     inquiryNo: req.query.no || ''    // またはサーバ側で整形した受付番号
   });
+});
+
+// GET /my/contacts
+app.get('/my/contacts', requireAuth, async (req, res, next) => {
+  try {
+    const uid = req.session.user.id;
+    const { page = 1 } = req.query;
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const pageSize = 20;
+    const offset = (pageNum - 1) * pageSize;
+
+    const totalRow = await dbQuery(
+      `SELECT COUNT(*)::int AS cnt FROM contacts WHERE user_id = $1`,
+      [uid]
+    );
+    const total = totalRow[0]?.cnt || 0;
+
+    const items = await dbQuery(
+      `SELECT
+         c.*,
+         COALESCE(ol.label_ja, c.category::text) AS category_ja
+       FROM contacts c
+       LEFT JOIN option_labels ol
+         ON ol.category = 'contact_category'
+        AND ol.value = c.category::text
+        AND ol.active = TRUE
+       WHERE c.user_id = $1
+       ORDER BY c.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [uid, pageSize, offset]
+    );
+
+    const pagination = {
+      page: pageNum,
+      pageCount: Math.max(1, Math.ceil(total / pageSize))
+    };
+
+    res.render('admin/contacts/my-index', {
+      title: 'お問い合わせ履歴',
+      items,
+      total,
+      pagination
+    });
+  } catch (e) { next(e); }
+});
+
+// GET /my/contacts/:id
+app.get('/my/contacts/:id', requireAuth, async (req, res, next) => {
+  try {
+    const uid = req.session.user.id;
+    const id  = String(req.params.id).trim();
+
+    const rows = await dbQuery(
+      `SELECT
+         c.*,
+         COALESCE(ol.label_ja, c.category::text) AS category_ja
+       FROM contacts c
+       LEFT JOIN option_labels ol
+         ON ol.category = 'contact_category'
+        AND ol.value = c.category::text
+        AND ol.active = TRUE
+       WHERE c.id = $1::uuid AND c.user_id = $2
+       LIMIT 1`,
+      [id, uid]
+    );
+    const c = rows[0];
+    if (!c) return res.status(404).render('errors/404', { title: '見つかりません' });
+
+    const messages = await dbQuery(
+      `SELECT
+         cm.*,
+         u.name AS sender_name
+       FROM contact_messages cm
+       LEFT JOIN users u ON u.id = cm.sender_id
+       WHERE cm.contact_id = $1
+       ORDER BY cm.created_at ASC`,
+      [id]
+    );
+
+    res.render('admin/contacts/my-show', {
+      title: `お問い合わせ詳細`,
+      contact: c,
+      messages
+    });
+  } catch (e) { next(e); }
+});
+
+// POST /my/contacts/:id/messages  { body }
+app.post('/my/contacts/:id/messages', requireAuth, async (req, res, next) => {
+  try {
+    const uid = req.session.user.id;
+    const id  = String(req.params.id).trim();
+    const body = String(req.body.body || '').trim();
+    if (!body) return res.status(400).json({ ok:false, message:'メッセージを入力してください。' });
+
+    // 権限チェック：この問い合わせが自分のものか
+    const own = await dbQuery(
+      `SELECT 1 FROM contacts WHERE id = $1::uuid AND user_id = $2 LIMIT 1`,
+      [id, uid]
+    );
+    if (!own.length) return res.status(404).json({ ok:false, message:'not found' });
+
+    const rows = await dbQuery(
+      `INSERT INTO contact_messages (contact_id, sender_id, sender_type, body)
+       VALUES ($1, $2, 'user', $3)
+       RETURNING id, contact_id, sender_id, sender_type, body, created_at`,
+      [id, uid, body]
+    );
+    const msg = rows[0];
+
+    return res.json({ ok:true, message: msg });
+  } catch (e) { next(e); }
 });
 
 // 一覧（フィルタ＋ページング）
@@ -4137,6 +4279,11 @@ async function getUserCartId(sessionUserId) {
 // POST /cart/selection  選択中のカート商品IDを一時保存（出品者別対応・後方互換）
 app.post('/cart/selection', async (req, res) => {
   try {
+    if (!req.session.user) {
+      const nextUrl = encodeURIComponent(req.originalUrl || '/cart');
+      return res.redirect(`/login?next=${nextUrl}`);
+    }
+
     const rawIds = [].concat(req.body?.ids || []);
     const ids = rawIds.map(String).map(s => s.trim()).filter(isUuid);
 
@@ -6395,30 +6542,81 @@ app.get('/admin/contacts',
  * 管理：お問い合わせ詳細
  * GET /admin/contacts/:id
  * =======================================================*/
-app.get('/admin/contacts/:id',
-  requireAuth, requireRole(['admin']),
+app.get(
+  '/admin/contacts/:id',
+  requireAuth,
+  requireRole(['admin']),
   async (req, res, next) => {
     try {
       const id = String(req.params.id || '').trim();
-      const rows = await dbQuery(`SELECT * FROM contacts WHERE id = $1::uuid LIMIT 1`, [id]);
+
+      // お問い合わせ本体
+      const rows = await dbQuery(
+        `SELECT * FROM contacts WHERE id = $1::uuid LIMIT 1`,
+        [id]
+      );
       const c = rows[0];
-      if (!c) return res.status(404).render('errors/404', { title: '見つかりません' });
+      if (!c) {
+        return res
+          .status(404)
+          .render('errors/404', { title: '見つかりません' });
+      }
+
       const category_ja = jaLabel('contact_category', c.category) || null;
 
-      // 担当者名の表示（任意）
+      // 担当者情報
       let handler = null;
       if (c.handled_by) {
-        const u = await dbQuery(`SELECT id, name, email FROM users WHERE id = $1`, [c.handled_by]);
+        const u = await dbQuery(
+          `SELECT id, name, email FROM users WHERE id = $1`,
+          [c.handled_by]
+        );
         handler = u[0] || null;
       }
 
+      // お問い合わせに紐づくユーザー（あれば）
+      let contactUser = null;
+      if (c.user_id) {
+        const u = await dbQuery(
+          `SELECT id, name, email FROM users WHERE id = $1`,
+          [c.user_id]
+        );
+        contactUser = u[0] || null;
+      }
+
+      // チャットメッセージ一覧
+      // contact_messages テーブル想定:
+      // id, contact_id, sender_type('user'|'admin'), sender_id, body, created_at
+      const messages = await dbQuery(
+        `
+        SELECT
+          m.id,
+          m.contact_id,
+          m.sender_type,
+          m.sender_id,
+          m.body,
+          m.created_at,
+          u.name AS sender_name
+        FROM contact_messages AS m
+        LEFT JOIN users AS u
+          ON u.id = m.sender_id
+        WHERE m.contact_id = $1::uuid
+        ORDER BY m.created_at ASC
+        `,
+        [id]
+      );
+
       res.render('admin/contacts/show', {
-        title: `お問い合わせ詳細`,
+        title: 'お問い合わせ詳細',
         item: c,
         handler,
         category_ja,
+        contactUser,
+        messages,
       });
-    } catch (e) { next(e); }
+    } catch (e) {
+      next(e);
+    }
   }
 );
 
@@ -6426,37 +6624,123 @@ app.get('/admin/contacts/:id',
  * 管理：状態更新（対応開始/完了など）
  * POST /admin/contacts/:id/status  {status: open|in_progress|closed}
  * =======================================================*/
-app.post('/admin/contacts/:id/status',
-  requireAuth, requireRole(['admin']),
+app.post(
+  '/admin/contacts/:id/status',
+  requireAuth,
+  requireRole(['admin']),
   async (req, res, next) => {
     try {
       const id = String(req.params.id || '').trim();
-      const next = String(req.body.status || '');
-      if (!['open','in_progress','closed'].includes(next)) {
-        return res.status(400).json({ ok:false, message:'不正な状態です。' });
+      const nextStatus = String(req.body.status || '');
+
+      if (!['open', 'in_progress', 'closed'].includes(nextStatus)) {
+        return res
+          .status(400)
+          .json({ ok: false, message: '不正な状態です。' });
       }
 
       // 対応者・対応日時の扱い
       let handledBy = null;
       let handledAt = null;
-      if (next === 'in_progress' || next === 'closed') {
+      if (nextStatus === 'in_progress' || nextStatus === 'closed') {
         handledBy = req.session.user.id;
         handledAt = new Date();
       }
 
       await dbQuery(
-        `UPDATE contacts
-            SET status = $1,
-                handled_by = $2,
-                handled_at = $3,
-                updated_at = now()
-          WHERE id = $4::uuid`,
-        [next, handledBy, handledAt, id]
+        `
+        UPDATE contacts
+           SET status     = $1,
+               handled_by = $2,
+               handled_at = $3,
+               updated_at = now()
+         WHERE id = $4::uuid
+        `,
+        [nextStatus, handledBy, handledAt, id]
       );
 
-      if (wantsJSON(req)) return res.json({ ok:true });
+      // fetch(XHR) の場合: JSON を返す
+      if (wantsJSON(req)) {
+        return res.json({ ok: true, status: nextStatus });
+      }
+
+      // 通常フォーム POST の場合: 画面リダイレクト
       res.redirect(`/admin/contacts/${id}`);
-    } catch (e) { next(e); }
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+/* =========================================================
+ * 管理：お問い合わせチャット（管理者 → ユーザー）
+ * POST /admin/contacts/:id/messages  { body }
+ * =======================================================*/
+app.post(
+  '/admin/contacts/:id/messages',
+  requireAuth,
+  requireRole(['admin']),
+  async (req, res, next) => {
+    try {
+      const id = String(req.params.id || '').trim();
+      const body = String((req.body && req.body.body) || '').trim();
+
+      if (!body) {
+        return res
+          .status(400)
+          .json({ ok: false, message: 'メッセージ本文を入力してください。' });
+      }
+
+      // 対象のお問い合わせが存在するかチェック
+      const contacts = await dbQuery(
+        `SELECT id, status FROM contacts WHERE id = $1::uuid LIMIT 1`,
+        [id]
+      );
+      const contact = contacts[0];
+      if (!contact) {
+        return res
+          .status(404)
+          .json({ ok: false, message: 'お問い合わせが見つかりません。' });
+      }
+
+      const adminUserId = req.session.user.id;
+
+      // メッセージ登録
+      const inserted = await dbQuery(
+        `
+        INSERT INTO contact_messages (contact_id, sender_type, sender_id, body)
+        VALUES ($1::uuid, 'admin', $2, $3)
+        RETURNING id, contact_id, sender_type, sender_id, body, created_at
+        `,
+        [id, adminUserId, body]
+      );
+      const message = inserted[0];
+
+      // 初回返信などの場合、自動でステータスを in_progress に寄せる（open のときだけ）
+      if (contact.status === 'open') {
+        await dbQuery(
+          `
+          UPDATE contacts
+             SET status     = 'in_progress',
+                 handled_by = $1,
+                 handled_at = COALESCE(handled_at, now()),
+                 updated_at = now()
+           WHERE id = $2::uuid
+          `,
+          [adminUserId, id]
+        );
+      } else {
+        // 返信があったので最終更新のみ更新（任意）
+        await dbQuery(
+          `UPDATE contacts SET updated_at = now() WHERE id = $1::uuid`,
+          [id]
+        );
+      }
+
+      return res.json({ ok: true, message });
+    } catch (e) {
+      next(e);
+    }
   }
 );
 

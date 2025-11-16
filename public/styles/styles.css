@@ -403,6 +403,50 @@ footer nav a:hover {
   opacity:.55; cursor: not-allowed;
 }
 
+/* 日付入力欄全体を対象とするスタイル */
+.flatpickr-input {
+  /* Reset: ブラウザのデフォルトスタイルをリセット */
+  -webkit-appearance: none;
+  appearance: none;
+  /* Box: ベースとなるスタイル */
+  background-color: var(--color-white) !important;
+  color: var(--sel-text);
+  border: 1px solid var(--border) !important;
+  border-radius: 12px;
+  
+  /* アイコン分のスペースを右側に確保 */
+  padding: .6rem 2.8rem .6rem .9rem !important; 
+  /* (アイコンサイズ + アイコンと枠の間のスペース)分を確保 */
+  
+  font-size: .95rem;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .06s ease;
+  min-width: 150px;
+  
+  /* === カレンダーアイコンの配置 === */
+  /* SVGファイルのURLを指定 */
+  background-image: url('../images/calender.svg') !important; 
+  /* 繰り返しなし */
+  background-repeat: no-repeat !important;
+  /* 右端から 0.7rem の位置に中央揃えで配置 */
+  background-position: right .7rem center !important; 
+  /* アイコンのサイズ */
+  background-size: 18px 18px !important; 
+}
+
+/* 状態の変化（ホバー、フォーカス、無効化）はプルダウンと同様に設定 */
+.flatpickr-input:hover {
+  border-color: #cfd3da;
+}
+.flatpickr-input:focus {
+  border-color: var(--sel-focus);
+}
+.flatpickr-input:disabled {
+  opacity:.55; 
+  cursor: not-allowed;
+}
+
 input {
   font-size: 16px;
 }

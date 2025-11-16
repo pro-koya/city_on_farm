@@ -3,6 +3,7 @@
     title,
     active: 'buyer',
     body: `
+      ${include('./_cards/buyer-actions',  { })}
       ${include('./_cards/orders',  { orders })}
       ${include('./_cards/recent',  { recent })}
       ${include('./_cards/notices', { notices })}

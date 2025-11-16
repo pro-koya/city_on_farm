@@ -1,0 +1,76 @@
+<%- include('../../partials/header', {
+  title: title || 'お問い合わせ履歴',
+  extraCSS: '/styles/my-contacts.css'
+}) %>
+
+<main class="my-contacts">
+  <header class="myc-head">
+    <div>
+      <h1>お問い合わせ履歴</h1>
+      <p class="myc-head__sub">これまでに送信したお問い合わせの一覧です。</p>
+    </div>
+    <div class="myc-head__meta">
+      <span class="myc-count">合計 <strong><%= total || 0 %></strong> 件</span>
+    </div>
+  </header>
+
+  <% if (!items || !items.length) { %>
+    <section class="myc-empty">
+      <div class="myc-empty__icon">📭</div>
+      <h2>まだお問い合わせはありません</h2>
+      <p>ご不明点があれば、フッターの「お問い合わせ」からいつでもご連絡ください。</p>
+    </section>
+  <% } else { %>
+    <section class="myc-list">
+      <% items.forEach(function(it){ %>
+        <article class="myc-card">
+          <header class="myc-card__head">
+            <div class="myc-card__labels">
+              <span class="status status--<%= it.status %>">
+                <%= ({ open: '未対応', in_progress: '対応中', closed: '完了' }[it.status] || it.status) %>
+              </span>
+              <% if (it.category_ja) { %>
+                <span class="pill"><%= it.category_ja %></span>
+              <% } %>
+            </div>
+            <time class="myc-card__time" datetime="<%= new Date(it.created_at).toISOString() %>">
+              <%= new Date(it.created_at).toLocaleString('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) %>
+            </time>
+          </header>
+
+          <div class="myc-card__body">
+            <h2 class="myc-card__title">
+              <a href="/my/contacts/<%= it.id %>"><%= it.subject || '(件名なし)' %></a>
+            </h2>
+            <p class="myc-card__meta">
+              <span class="myc-card__name"><%= it.name %></span>
+              <span class="myc-dot">•</span>
+              <span class="myc-card__email"><%= it.email %></span>
+            </p>
+            <% if (it.message) { %>
+              <p class="myc-card__excerpt">
+                <%= String(it.message).replace(/\s+/g,' ').slice(0, 120) %><%=
+                  String(it.message).length > 120 ? '…' : '' %>
+              </p>
+            <% } %>
+          </div>
+
+          <footer class="myc-card__foot">
+            <a class="btn btn--primary" href="/my/contacts/<%= it.id %>">詳細・やり取りを見る</a>
+          </footer>
+        </article>
+      <% }) %>
+    </section>
+
+    <% if (pagination && pagination.pageCount > 1) { %>
+      <nav class="pager" aria-label="ページャ">
+        <% for (let p = 1; p <= pagination.pageCount; p++) { %>
+          <a class="page <%= p === pagination.page ? 'is-active' : '' %>"
+             href="?page=<%= p %>"><%= p %></a>
+        <% } %>
+      </nav>
+    <% } %>
+  <% } %>
+</main>
+
+<%- include('../../partials/footer') %>

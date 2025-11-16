@@ -1,41 +1,176 @@
 <%- include('../../partials/header', { title, extraCSS: '/styles/admin-contacts.css' }) %>
 
-<main class="contacts">
-  <a class="link" href="/admin/contacts">← 一覧へ戻る</a>
+<main class="contacts contacts--detail">
+  <a class="link back-link" href="/admin/contacts">← お問い合わせ一覧へ戻る</a>
 
-  <section class="card">
-    <h1>お問い合わせ詳細</h1>
-    <dl class="kv">
-      <div class="kv-row"><dt>ID：</dt><dd><code><%= item.id %></code></dd></div>
-      <div class="kv-row"><dt>日時：</dt><dd><%= new Date(item.created_at).toLocaleString('ja-JP') %></dd></div>
-      <div class="kv-row"><dt>件名：</dt><dd><%= item.subject %></dd></div>
-      <div class="kv-row"><dt>カテゴリ：</dt><dd><span class="pill"><%= category_ja || item.category %></span></dd></div>
-      <div class="kv-row"><dt>氏名：</dt><dd><%= item.name %></dd></div>
-      <div class="kv-row"><dt>メール：</dt><dd><a href="mailto:<%= item.email %>"><%= item.email %></a></dd></div>
-      <div class="kv-row"><dt>状態：</dt><dd><span class="status status--<%= item.status %>"><%= item.status %></span></dd></div>
-      <% if (handler) { %>
-        <div class="kv-row"><dt>担当：</dt><dd><%= handler.name %>（<a href="mailto:<%= handler.email %>"><%= handler.email %></a>）</dd></div>
+  <!-- メタ情報カード -->
+  <section class="card contact-meta-card">
+    <header class="contact-meta-head">
+      <div class="contact-meta-head__left">
+        <h1>お問い合わせ詳細</h1>
+        <p class="contact-id">
+          ID: <code><%= item.id %></code>
+        </p>
+      </div>
+      <div class="contact-meta-head__right">
+        <span class="status status--<%= item.status %>" id="statusBadge">
+          <%= item.status === 'open'
+                ? '未対応'
+                : item.status === 'in_progress'
+                  ? '対応中'
+                  : item.status === 'closed'
+                    ? '完了'
+                    : item.status %>
+        </span>
+      </div>
+    </header>
+
+    <dl class="kv contact-kv">
+      <div class="kv-row">
+        <dt>日時：</dt>
+        <dd><%= new Date(item.created_at).toLocaleString('ja-JP') %></dd>
+      </div>
+      <div class="kv-row">
+        <dt>件名：</dt>
+        <dd><%= item.subject || '（件名なし）' %></dd>
+      </div>
+      <div class="kv-row">
+        <dt>カテゴリ：</dt>
+        <dd><span class="pill"><%= category_ja || item.category %></span></dd>
+      </div>
+      <div class="kv-row">
+        <dt>氏名：</dt>
+        <dd><%= item.name %></dd>
+      </div>
+      <div class="kv-row">
+        <dt>メール：</dt>
+        <dd><a href="mailto:<%= item.email %>"><%= item.email %></a></dd>
+      </div>
+
+      <% if (contactUser) { %>
+        <div class="kv-row">
+          <dt>ユーザー：</dt>
+          <dd>
+            <a href="/admin/users/<%= contactUser.id %>" class="link">
+              <%= contactUser.name || '（名前未設定）' %>（<%= contactUser.email %>）
+            </a>
+          </dd>
+        </div>
+      <% } else if (item.user_id) { %>
+        <div class="kv-row">
+          <dt>ユーザー：</dt>
+          <dd>ユーザーID: <code><%= item.user_id %></code></dd>
+        </div>
       <% } %>
+
+      <div class="kv-row">
+        <dt>状態：</dt>
+        <dd>
+          <span class="status status--<%= item.status %>" id="statusBadgeInline">
+            <%= item.status === 'open'
+                  ? '未対応'
+                  : item.status === 'in_progress'
+                    ? '対応中'
+                    : item.status === 'closed'
+                      ? '完了'
+                      : item.status %>
+          </span>
+        </dd>
+      </div>
+
+      <% if (handler) { %>
+        <div class="kv-row">
+          <dt>担当：</dt>
+          <dd>
+            <%= handler.name %>
+            （<a href="mailto:<%= handler.email %>"><%= handler.email %></a>）
+          </dd>
+        </div>
+      <% } %>
+
       <% if (item.handled_at) { %>
-        <div class="kv-row"><dt>対応日時：</dt><dd><%= new Date(item.handled_at).toLocaleString('ja-JP') %></dd></div>
+        <div class="kv-row">
+          <dt>対応日時：</dt>
+          <dd><%= new Date(item.handled_at).toLocaleString('ja-JP') %></dd>
+        </div>
       <% } %>
     </dl>
 
-    <h2>内容</h2>
-    <pre class="message"><%= item.message %></pre>
-
-    <form id="statusForm" class="actions" method="POST" action="/admin/contacts/<%= item.id %>/status">
+    <!-- 状態更新フォーム（Ajax で更新） -->
+    <form id="statusForm"
+          class="contact-status-form"
+          method="POST"
+          action="/admin/contacts/<%= item.id %>/status">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <label class="select-wrap">
+        <span class="label">状態</span>
         <select name="status" id="status" class="pulldown">
           <option value="open"        <%= item.status==='open'?'selected':'' %>>未対応</option>
           <option value="in_progress" <%= item.status==='in_progress'?'selected':'' %>>対応中</option>
           <option value="closed"      <%= item.status==='closed'?'selected':'' %>>完了</option>
         </select>
       </label>
-      <button class="btn" type="submit">更新</button>
+      <button class="btn btn--primary" type="submit" id="statusSubmit">
+        状態を更新
+      </button>
+      <p class="contact-status-msg" id="statusMsg" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <!-- チャットカード -->
+  <section class="card contact-chat-card">
+    <header class="contact-chat-head">
+      <div>
+        <h2>チャット履歴</h2>
+        <p class="muted small">
+          お問い合わせ元のユーザーと、この画面から直接やり取りできます。
+        </p>
+      </div>
+    </header>
+
+    <div class="contact-chat-thread" id="chatThread" aria-live="polite">
+      <% if (!messages || !messages.length) { %>
+        <p class="muted empty-chat">まだチャットメッセージはありません。</p>
+      <% } else { %>
+        <% messages.forEach(function(m){ 
+             const isAdmin = m.sender_type === 'admin';
+        %>
+          <div class="msg msg--<%= isAdmin ? 'admin' : 'user' %>">
+            <div class="msg__meta">
+              <span class="msg__name">
+                <%= m.sender_name
+                      || (isAdmin ? 'サポート' : item.name || 'ユーザー') %>
+              </span>
+              <time class="msg__time">
+                <%= new Date(m.created_at).toLocaleString('ja-JP') %>
+              </time>
+            </div>
+            <div class="msg__body"><%= m.body %></div>
+          </div>
+        <% }) %>
+      <% } %>
+    </div>
+
+    <form id="adminChatForm"
+          class="contact-chat-form"
+          data-contact-id="<%= item.id %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label class="contact-chat-label" for="chatBody">
+        管理者からの返信
+      </label>
+      <textarea id="chatBody"
+                name="body"
+                rows="3"
+                placeholder="返信内容を入力してください"></textarea>
+      <div class="contact-chat-actions">
+        <button type="submit" class="btn btn--primary" id="chatSubmit">
+          送信
+        </button>
+      </div>
+      <p class="contact-chat-msg" id="chatMsg" aria-live="polite"></p>
     </form>
   </section>
 </main>
 
+<script src="/js/admin-contact-show.js" defer></script>
 <%- include('../../partials/footer') %>

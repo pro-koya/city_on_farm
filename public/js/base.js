@@ -149,6 +149,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const eventDate = document.getElementById('ev_date');
     if (eventDate) {
         fp(eventDate, {
+            ...baseOpts,
             onChange: (selectedDates) => {
                 const nowDate = selectedDates[0];
                 console.log(selectedDates + ' : ' + nowDate);

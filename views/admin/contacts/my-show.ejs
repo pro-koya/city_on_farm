@@ -1,0 +1,122 @@
+<%- include('../../partials/header', {
+  title: title || 'お問い合わせ詳細',
+  extraCSS: '/styles/my-contacts.css'
+}) %>
+
+<main class="my-contact-detail">
+  <a class="link mycd-back" href="/my/contacts">← お問い合わせ履歴へ戻る</a>
+
+  <!-- メタ情報 -->
+  <section class="card mycd-summary">
+    <header class="mycd-summary__head">
+      <div>
+        <h1 class="mycd-title"><%= contact.subject || 'お問い合わせ詳細' %></h1>
+        <p class="mycd-meta">
+          <span class="mycd-label">受付日時</span>
+          <time datetime="<%= new Date(contact.created_at).toISOString() %>">
+            <%= new Date(contact.created_at).toLocaleString('ja-JP') %>
+          </time>
+        </p>
+      </div>
+      <div class="mycd-summary__right">
+        <span class="status status--<%= contact.status %>">
+          <%= ({ open: '未対応', in_progress: '対応中', closed: '完了' }[contact.status] || contact.status) %>
+        </span>
+        <% if (contact.category_ja) { %>
+          <span class="pill"><%= contact.category_ja %></span>
+        <% } %>
+      </div>
+    </header>
+
+    <dl class="kv mycd-kv">
+      <div class="kv-row">
+        <dt>お問い合わせID</dt>
+        <dd><code><%= contact.id %></code></dd>
+      </div>
+      <div class="kv-row">
+        <dt>氏名</dt>
+        <dd><%= contact.name %></dd>
+      </div>
+      <div class="kv-row">
+        <dt>メールアドレス</dt>
+        <dd><%= contact.email %></dd>
+      </div>
+      <% if (contact.handled_at) { %>
+        <div class="kv-row">
+          <dt>最終対応日時</dt>
+          <dd><%= new Date(contact.handled_at).toLocaleString('ja-JP') %></dd>
+        </div>
+      <% } %>
+    </dl>
+  </section>
+
+  <!-- 元のお問い合わせ本文 -->
+  <section class="card mycd-original">
+    <h2>お問い合わせ内容</h2>
+    <pre class="mycd-message"><%= contact.message %></pre>
+  </section>
+
+  <!-- チャット（やり取り履歴） -->
+  <section class="card mycd-chat">
+    <header class="mycd-chat__head">
+      <div>
+        <h2>やり取り</h2>
+        <p class="mycd-chat__sub">
+          サポート担当者とのメッセージ履歴です。ご質問や補足があれば、下のフォームから送信できます。
+        </p>
+      </div>
+    </header>
+
+    <div class="mycd-chat__body" id="chatScroll">
+      <% if (!messages || !messages.length) { %>
+        <p class="mycd-chat__empty">まだ追加のメッセージはありません。</p>
+      <% } else { %>
+        <ul class="chat" id="chatList">
+          <% messages.forEach(function(m){ const isUser = m.sender_type === 'user'; %>
+            <li class="chat__item chat__item--<%= isUser ? 'me' : 'admin' %>">
+              <div class="chat__meta">
+                <span class="chat__sender">
+                  <%= isUser ? 'あなた' : ('サポート担当：' + m.sender_name || 'サポート') %>
+                </span>
+                <time class="chat__time" datetime="<%= new Date(m.created_at).toISOString() %>">
+                  <%= new Date(m.created_at).toLocaleString('ja-JP', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) %>
+                </time>
+              </div>
+              <pre class="chat__bubble"><%= m.body %></pre>
+            </li>
+          <% }) %>
+        </ul>
+      <% } %>
+    </div>
+
+    <!-- 送信フォーム -->
+    <footer class="mycd-chat__foot">
+      <form id="chatForm" class="chat-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken || (typeof _csrf !== 'undefined' ? _csrf : '') %>">
+        <textarea
+          id="chatBody"
+          name="body"
+          rows="3"
+          placeholder="サポートへのメッセージを入力してください"
+          required
+        ></textarea>
+        <div class="chat-form__actions">
+          <p class="chat-form__hint">※ 営業時間外の返信にはお時間をいただく場合があります。</p>
+          <button type="submit" class="btn btn--primary" id="chatSendBtn">
+            送信する
+          </button>
+        </div>
+        <p class="chat-form__msg" id="chatStatus" aria-live="polite"></p>
+      </form>
+    </footer>
+  </section>
+</main>
+
+<script>
+  window.__CONTACT__ = {
+    id: '<%= contact.id %>'
+  };
+</script>
+<script src="/js/my-contact-show.js" defer></script>
+
+<%- include('../../partials/footer') %>
