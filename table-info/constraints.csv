@@ -46,6 +46,16 @@ public,categories,2200_16713_6_not_null,CHECK
 public,categories,categories_name_key,UNIQUE
 public,categories,categories_pkey,PRIMARY KEY
 public,categories,categories_slug_key,UNIQUE
+public,contact_messages,2200_17319_1_not_null,CHECK
+public,contact_messages,2200_17319_2_not_null,CHECK
+public,contact_messages,2200_17319_4_not_null,CHECK
+public,contact_messages,2200_17319_5_not_null,CHECK
+public,contact_messages,2200_17319_6_not_null,CHECK
+public,contact_messages,2200_17319_7_not_null,CHECK
+public,contact_messages,2200_17319_8_not_null,CHECK
+public,contact_messages,contact_messages_contact_id_fkey,FOREIGN KEY
+public,contact_messages,contact_messages_pkey,PRIMARY KEY
+public,contact_messages,contact_messages_sender_id_fkey,FOREIGN KEY
 public,contacts,2200_16722_10_not_null,CHECK
 public,contacts,2200_16722_1_not_null,CHECK
 public,contacts,2200_16722_2_not_null,CHECK
@@ -57,6 +67,7 @@ public,contacts,2200_16722_9_not_null,CHECK
 public,contacts,contacts_handled_by_fkey,FOREIGN KEY
 public,contacts,contacts_pkey,PRIMARY KEY
 public,contacts,contacts_status_check,CHECK
+public,contacts,contacts_user_id_fkey,FOREIGN KEY
 public,coupons,2200_16733_14_not_null,CHECK
 public,coupons,2200_16733_16_not_null,CHECK
 public,coupons,2200_16733_17_not_null,CHECK

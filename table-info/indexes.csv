@@ -14,6 +14,9 @@ public,carts,carts_user_id_key,CREATE UNIQUE INDEX carts_user_id_key ON public.c
 public,categories,categories_name_key,CREATE UNIQUE INDEX categories_name_key ON public.categories USING btree (name),t,f
 public,categories,categories_pkey,CREATE UNIQUE INDEX categories_pkey ON public.categories USING btree (id),t,t
 public,categories,categories_slug_key,CREATE UNIQUE INDEX categories_slug_key ON public.categories USING btree (slug),t,f
+public,contact_messages,contact_messages_pkey,CREATE UNIQUE INDEX contact_messages_pkey ON public.contact_messages USING btree (id),t,t
+public,contact_messages,idx_contact_messages_contact_id,"CREATE INDEX idx_contact_messages_contact_id ON public.contact_messages USING btree (contact_id, created_at)",f,f
+public,contact_messages,idx_contact_messages_sender,"CREATE INDEX idx_contact_messages_sender ON public.contact_messages USING btree (sender_type, sender_id)",f,f
 public,contacts,contacts_pkey,CREATE UNIQUE INDEX contacts_pkey ON public.contacts USING btree (id),t,t
 public,contacts,idx_contacts_category,CREATE INDEX idx_contacts_category ON public.contacts USING btree (category),f,f
 public,contacts,idx_contacts_created_at,CREATE INDEX idx_contacts_created_at ON public.contacts USING btree (created_at DESC),f,f
@@ -22,6 +25,7 @@ public,contacts,idx_contacts_status,CREATE INDEX idx_contacts_status ON public.c
 public,contacts,idx_contacts_subject_body_trgm,"CREATE INDEX idx_contacts_subject_body_trgm ON public.contacts USING gin ((((COALESCE(subject, ''::text) || ' '::text) || COALESCE(message, ''::text))) gin_trgm_ops)",f,f
 public,contacts,idx_contacts_subject_trgm,CREATE INDEX idx_contacts_subject_trgm ON public.contacts USING gin (subject gin_trgm_ops),f,f
 public,contacts,idx_contacts_type,CREATE INDEX idx_contacts_type ON public.contacts USING btree (type),f,f
+public,contacts,idx_contacts_user_id,CREATE INDEX idx_contacts_user_id ON public.contacts USING btree (user_id),f,f
 public,coupons,coupons_code_key,CREATE UNIQUE INDEX coupons_code_key ON public.coupons USING btree (code),t,f
 public,coupons,coupons_pkey,CREATE UNIQUE INDEX coupons_pkey ON public.coupons USING btree (id),t,t
 public,coupons,ix_coupons_active_window,"CREATE INDEX ix_coupons_active_window ON public.coupons USING btree (is_active, starts_at, ends_at, code)",f,f

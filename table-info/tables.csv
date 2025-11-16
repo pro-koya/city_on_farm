@@ -3,7 +3,8 @@ public,addresses,,18
 public,cart_items,,10
 public,carts,,5
 public,categories,,6
-public,contacts,,12
+public,contact_messages,,8
+public,contacts,,13
 public,coupons,,17
 public,global_allowed_payment_methods,,1
 public,gmail_tokens,,3

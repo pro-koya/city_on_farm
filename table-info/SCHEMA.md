@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-11-15T18:30:06.757Z
+> Generated at: 2025-11-16T18:30:51.166Z
 
 ---
 
@@ -194,6 +194,47 @@
 
 ---
 
+### `public.contact_messages`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | uuid_generate_v4() |  |
+| 2 | `contact_id` | `uuid` | NO |  |  |
+| 3 | `sender_id` | `uuid` | YES |  |  |
+| 4 | `sender_type` | `text` | NO |  |  |
+| 5 | `body` | `text` | NO |  |  |
+| 6 | `is_internal` | `boolean` | NO | false |  |
+| 7 | `created_at` | `timestamp with time zone` | NO | now() |  |
+| 8 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+
+**Constraints**
+
+- **CHECK**: `2200_17319_1_not_null`, `2200_17319_2_not_null`, `2200_17319_4_not_null`, `2200_17319_5_not_null`, `2200_17319_6_not_null`, `2200_17319_7_not_null`, `2200_17319_8_not_null`
+- **FOREIGN KEY**: `contact_messages_contact_id_fkey`, `contact_messages_sender_id_fkey`
+- **PRIMARY KEY**: `contact_messages_pkey`
+
+**Indexes**
+
+- `contact_messages_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX contact_messages_pkey ON public.contact_messages USING btree (id)
+  ```
+- `idx_contact_messages_contact_id`
+  
+  ```sql
+  CREATE INDEX idx_contact_messages_contact_id ON public.contact_messages USING btree (contact_id, created_at)
+  ```
+- `idx_contact_messages_sender`
+  
+  ```sql
+  CREATE INDEX idx_contact_messages_sender ON public.contact_messages USING btree (sender_type, sender_id)
+  ```
+
+---
+
 ### `public.contacts`
 
 **Columns**
@@ -212,13 +253,14 @@
 | 10 | `updated_at` | `timestamp with time zone` | NO | now() |  |
 | 11 | `subject` | `text` | YES |  |  |
 | 12 | `category` | `contact_category_enum` *(enum)* | YES | 'other'::contact_category_enum |  |
+| 13 | `user_id` | `uuid` | YES |  |  |
 
 > **Enum `contact_category_enum` values**: `listing_registration`, `ordering_trading`, `site_bug`, `site_request`, `press_partnership`, `other`
 
 **Constraints**
 
 - **CHECK**: `2200_16722_10_not_null`, `2200_16722_1_not_null`, `2200_16722_2_not_null`, `2200_16722_3_not_null`, `2200_16722_4_not_null`, `2200_16722_5_not_null`, `2200_16722_6_not_null`, `2200_16722_9_not_null`, `contacts_status_check`
-- **FOREIGN KEY**: `contacts_handled_by_fkey`
+- **FOREIGN KEY**: `contacts_handled_by_fkey`, `contacts_user_id_fkey`
 - **PRIMARY KEY**: `contacts_pkey`
 
 **Indexes**
@@ -262,6 +304,11 @@
   
   ```sql
   CREATE INDEX idx_contacts_type ON public.contacts USING btree (type)
+  ```
+- `idx_contacts_user_id`
+  
+  ```sql
+  CREATE INDEX idx_contacts_user_id ON public.contacts USING btree (user_id)
   ```
 
 ---
