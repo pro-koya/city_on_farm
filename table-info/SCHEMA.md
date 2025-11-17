@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-11-16T18:30:51.166Z
+> Generated at: 2025-11-17T18:34:10.113Z
 
 ---
 
@@ -409,6 +409,152 @@
   
   ```sql
   CREATE UNIQUE INDEX gmail_tokens_pkey ON public.gmail_tokens USING btree (id)
+  ```
+
+---
+
+### `public.notification_reads`
+
+ユーザーごとの通知既読状態
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `bigint` | NO | nextval('notification_reads_id_seq'::regclass) |  |
+| 2 | `notification_id` | `uuid` | NO |  |  |
+| 3 | `user_id` | `uuid` | NO |  |  |
+| 4 | `read_at` | `timestamp with time zone` | NO | now() | 既読にした日時 |
+
+**Constraints**
+
+- **CHECK**: `2200_17386_1_not_null`, `2200_17386_2_not_null`, `2200_17386_3_not_null`, `2200_17386_4_not_null`
+- **FOREIGN KEY**: `notification_reads_notification_id_fkey`, `notification_reads_user_id_fkey`
+- **PRIMARY KEY**: `notification_reads_pkey`
+- **UNIQUE**: `notification_reads_uniq`
+
+**Indexes**
+
+- `idx_notification_reads_notification`
+  
+  ```sql
+  CREATE INDEX idx_notification_reads_notification ON public.notification_reads USING btree (notification_id)
+  ```
+- `idx_notification_reads_user`
+  
+  ```sql
+  CREATE INDEX idx_notification_reads_user ON public.notification_reads USING btree (user_id, read_at DESC)
+  ```
+- `notification_reads_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX notification_reads_pkey ON public.notification_reads USING btree (id)
+  ```
+- `notification_reads_uniq`
+  
+  ```sql
+  CREATE UNIQUE INDEX notification_reads_uniq ON public.notification_reads USING btree (notification_id, user_id)
+  ```
+
+---
+
+### `public.notification_targets`
+
+通知の配信対象（ユーザー単位 / ロール単位 / 全体）
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `bigint` | NO | nextval('notification_targets_id_seq'::regclass) |  |
+| 2 | `notification_id` | `uuid` | NO |  |  |
+| 3 | `user_id` | `uuid` | YES |  | 個別ユーザー向けの通知対象 |
+| 4 | `role` | `text` | YES |  | ロール向け通知（buyer, seller など） |
+| 5 | `audience` | `text` | YES |  | 全体・特定セグメント向け識別子（all など） |
+| 6 | `created_at` | `timestamp with time zone` | NO | now() |  |
+
+**Constraints**
+
+- **CHECK**: `2200_17361_1_not_null`, `2200_17361_2_not_null`, `2200_17361_6_not_null`, `notification_targets_one_dimension_chk`
+- **FOREIGN KEY**: `notification_targets_notification_id_fkey`, `notification_targets_user_id_fkey`
+- **PRIMARY KEY**: `notification_targets_pkey`
+
+**Indexes**
+
+- `idx_notification_targets_audience`
+  
+  ```sql
+  CREATE INDEX idx_notification_targets_audience ON public.notification_targets USING btree (audience)
+  ```
+- `idx_notification_targets_notification_id`
+  
+  ```sql
+  CREATE INDEX idx_notification_targets_notification_id ON public.notification_targets USING btree (notification_id)
+  ```
+- `idx_notification_targets_role`
+  
+  ```sql
+  CREATE INDEX idx_notification_targets_role ON public.notification_targets USING btree (role)
+  ```
+- `idx_notification_targets_user_id`
+  
+  ```sql
+  CREATE INDEX idx_notification_targets_user_id ON public.notification_targets USING btree (user_id)
+  ```
+- `notification_targets_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX notification_targets_pkey ON public.notification_targets USING btree (id)
+  ```
+
+---
+
+### `public.notifications`
+
+お知らせ（全体・ロール別・個別ユーザー向け）
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | uuid_generate_v4() |  |
+| 2 | `type` | `text` | NO |  | 通知種別（system, contact_reply, campaign など） |
+| 3 | `title` | `text` | NO |  | お知らせタイトル |
+| 4 | `body` | `text` | NO |  | お知らせ本文（テキスト or markdown） |
+| 5 | `link_url` | `text` | YES |  | 詳細ページなどへのリンクURL（任意） |
+| 6 | `visible_from` | `timestamp with time zone` | YES |  | 掲載開始日時（null の場合、常に表示対象） |
+| 7 | `visible_to` | `timestamp with time zone` | YES |  | 掲載終了日時（null の場合、無期限） |
+| 8 | `created_by` | `uuid` | YES |  | 作成した管理ユーザーID |
+| 9 | `created_at` | `timestamp with time zone` | NO | now() |  |
+| 10 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+
+**Constraints**
+
+- **CHECK**: `2200_17342_10_not_null`, `2200_17342_1_not_null`, `2200_17342_2_not_null`, `2200_17342_3_not_null`, `2200_17342_4_not_null`, `2200_17342_9_not_null`
+- **FOREIGN KEY**: `notifications_created_by_fkey`
+- **PRIMARY KEY**: `notifications_pkey`
+
+**Indexes**
+
+- `idx_notifications_created_at`
+  
+  ```sql
+  CREATE INDEX idx_notifications_created_at ON public.notifications USING btree (created_at DESC)
+  ```
+- `idx_notifications_type`
+  
+  ```sql
+  CREATE INDEX idx_notifications_type ON public.notifications USING btree (type)
+  ```
+- `idx_notifications_visible_window`
+  
+  ```sql
+  CREATE INDEX idx_notifications_visible_window ON public.notifications USING btree (visible_from, visible_to)
+  ```
+- `notifications_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX notifications_pkey ON public.notifications USING btree (id)
   ```
 
 ---

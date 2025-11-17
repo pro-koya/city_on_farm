@@ -31,6 +31,19 @@ public,coupons,coupons_pkey,CREATE UNIQUE INDEX coupons_pkey ON public.coupons U
 public,coupons,ix_coupons_active_window,"CREATE INDEX ix_coupons_active_window ON public.coupons USING btree (is_active, starts_at, ends_at, code)",f,f
 public,global_allowed_payment_methods,global_allowed_payment_methods_pkey,CREATE UNIQUE INDEX global_allowed_payment_methods_pkey ON public.global_allowed_payment_methods USING btree (method),t,t
 public,gmail_tokens,gmail_tokens_pkey,CREATE UNIQUE INDEX gmail_tokens_pkey ON public.gmail_tokens USING btree (id),t,t
+public,notification_reads,idx_notification_reads_notification,CREATE INDEX idx_notification_reads_notification ON public.notification_reads USING btree (notification_id),f,f
+public,notification_reads,idx_notification_reads_user,"CREATE INDEX idx_notification_reads_user ON public.notification_reads USING btree (user_id, read_at DESC)",f,f
+public,notification_reads,notification_reads_pkey,CREATE UNIQUE INDEX notification_reads_pkey ON public.notification_reads USING btree (id),t,t
+public,notification_reads,notification_reads_uniq,"CREATE UNIQUE INDEX notification_reads_uniq ON public.notification_reads USING btree (notification_id, user_id)",t,f
+public,notification_targets,idx_notification_targets_audience,CREATE INDEX idx_notification_targets_audience ON public.notification_targets USING btree (audience),f,f
+public,notification_targets,idx_notification_targets_notification_id,CREATE INDEX idx_notification_targets_notification_id ON public.notification_targets USING btree (notification_id),f,f
+public,notification_targets,idx_notification_targets_role,CREATE INDEX idx_notification_targets_role ON public.notification_targets USING btree (role),f,f
+public,notification_targets,idx_notification_targets_user_id,CREATE INDEX idx_notification_targets_user_id ON public.notification_targets USING btree (user_id),f,f
+public,notification_targets,notification_targets_pkey,CREATE UNIQUE INDEX notification_targets_pkey ON public.notification_targets USING btree (id),t,t
+public,notifications,idx_notifications_created_at,CREATE INDEX idx_notifications_created_at ON public.notifications USING btree (created_at DESC),f,f
+public,notifications,idx_notifications_type,CREATE INDEX idx_notifications_type ON public.notifications USING btree (type),f,f
+public,notifications,idx_notifications_visible_window,"CREATE INDEX idx_notifications_visible_window ON public.notifications USING btree (visible_from, visible_to)",f,f
+public,notifications,notifications_pkey,CREATE UNIQUE INDEX notifications_pkey ON public.notifications USING btree (id),t,t
 public,option_labels,option_labels_pkey,"CREATE UNIQUE INDEX option_labels_pkey ON public.option_labels USING btree (category, value)",t,t
 public,option_labels,option_labels_unique,"CREATE UNIQUE INDEX option_labels_unique ON public.option_labels USING btree (category, value)",t,f
 public,option_labels,ux_option_labels_category_value,"CREATE UNIQUE INDEX ux_option_labels_category_value ON public.option_labels USING btree (category, value)",t,f

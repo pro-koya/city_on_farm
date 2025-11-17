@@ -8,6 +8,9 @@ public,contacts,,13
 public,coupons,,17
 public,global_allowed_payment_methods,,1
 public,gmail_tokens,,3
+public,notification_reads,ユーザーごとの通知既読状態,4
+public,notification_targets,通知の配信対象（ユーザー単位 / ロール単位 / 全体）,6
+public,notifications,お知らせ（全体・ロール別・個別ユーザー向け）,10
 public,option_labels,,8
 public,order_addresses,,14
 public,order_groups,,6
