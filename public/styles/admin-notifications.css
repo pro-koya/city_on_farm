@@ -188,10 +188,11 @@ select.pulldown {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  padding: .5rem;
-  margin: 0;
   height: auto;
-  border-top: 1px solid var(--border);
+  padding: .6rem;
+  margin: 0;
+  background: none;
+  border-top: 1px solid var(--muted);
 }
 
 /* pills & status */
