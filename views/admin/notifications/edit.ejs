@@ -3,12 +3,19 @@
   extraCSS: '/styles/admin-notifications.css'
 }) %>
 
+<%
+  const hasErrors = fieldErrors && Object.keys(fieldErrors).length > 0;
+  const isViewMode = !isNew && !hasErrors; // 既存 & エラーなし → 閲覧モードで開始
+%>
+
 <main class="notifications notifications--edit">
   <a class="link back-link" href="/admin/notifications">← お知らせ一覧へ戻る</a>
 
-  <section class="card notify-form">
+  <section class="card notify-form <%= isViewMode ? 'notify-form--readonly' : '' %>">
     <header class="notify-form__head">
-      <h1><%= isNew ? 'お知らせ作成' : 'お知らせ編集' %></h1>
+      <h1>
+        <%= isNew ? 'お知らせ作成' : (isViewMode ? 'お知らせ詳細' : 'お知らせ編集') %>
+      </h1>
       <% if (!isNew && notification && notification.created_at) { %>
         <p class="muted small">
           作成日:
@@ -19,7 +26,13 @@
       <% } %>
     </header>
 
-    <form class="notify-form__body" method="POST" action="<%= isNew ? '/admin/notifications/new' : ('/admin/notifications/' + notification.id) %>">
+    <form
+      class="notify-form__body"
+      method="POST"
+      action="<%= isNew ? '/admin/notifications/new' : ('/admin/notifications/' + notification.id) %>"
+      data-is-new="<%= isNew ? '1' : '0' %>"
+      data-readonly="<%= isViewMode ? '1' : '0' %>"
+    >
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
       <!-- タイトル -->
@@ -105,7 +118,7 @@
         <div class="target-mode">
           <% const tm = targetMode || 'all'; %>
           <label>
-            <input type="radio" name="target_mode" value="all" <%= tm==='all'?'checked':'' %> >
+            <input type="radio" name="target_mode" value="all"   <%= tm==='all'  ?'checked':'' %> >
             全ユーザー
           </label>
           <label>
@@ -113,7 +126,7 @@
             ロール指定
           </label>
           <label>
-            <input type="radio" name="target_mode" value="none" <%= tm==='none'?'checked':'' %> >
+            <input type="radio" name="target_mode" value="none"  <%= tm==='none' ?'checked':'' %> >
             通知本体のみ（ターゲット未設定）
           </label>
         </div>
@@ -137,18 +150,42 @@
       </fieldset>
 
       <div class="notify-form__foot">
-        <button class="btn btn--primary" type="submit">
-          <%= isNew ? '作成する' : '更新する' %>
-        </button>
+        <% if (isNew) { %>
+          <!-- 新規作成：最初から編集モード -->
+          <button class="btn btn--primary" type="submit" id="notifySaveBtn">
+            作成する
+          </button>
+        <% } else { %>
+          <!-- 既存：最初は閲覧モードで編集ボタンのみ表示（エラー時は更新ボタン表示） -->
+          <button
+            class="btn btn--primary"
+            type="button"
+            id="notifyEditBtn"
+            style="<%= isViewMode ? '' : 'display:none' %>">
+            編集する
+          </button>
 
-        <% if (!isNew && notification) { %>
-          <form class="inline-form" method="POST" action="/admin/notifications/<%= notification.id %>/delete" onsubmit="return confirm('本当に削除しますか？');">
-            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <button type="submit" class="btn btn--danger">削除</button>
-          </form>
+          <button
+            class="btn btn--primary"
+            type="submit"
+            id="notifySaveBtn"
+            style="<%= isViewMode ? 'display:none' : '' %>">
+            更新する
+          </button>
         <% } %>
       </div>
     </form>
+
+    <% if (!isNew && notification) { %>
+      <form
+        class="inline-form"
+        method="POST"
+        action="/admin/notifications/<%= notification.id %>/delete"
+        onsubmit="return confirm('本当に削除しますか？');">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="btn btn--danger">削除</button>
+      </form>
+    <% } %>
   </section>
 </main>
 

@@ -437,3 +437,14 @@ select.pulldown {
   white-space: nowrap;
   border: 0;
 }
+
+.notify-form--readonly .notify-form__body {
+  background: #f9fafb;
+}
+
+.notify-form--readonly input:not([type="hidden"]),
+.notify-form--readonly select,
+.notify-form--readonly textarea {
+  background-color: #f3f4f6;
+  cursor: default;
+}

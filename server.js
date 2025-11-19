@@ -3298,9 +3298,11 @@ app.get('/dashboard/seller', requireAuth, requireRole(['seller']), async (req, r
 
 app.get('/dashboard/admin', requireAuth, requireRole(['admin']), async (req, res, next) => {
   try {
-    const uid = req.session.user.id;
+    const user  = req.session.user;
+    const uid   = user.id;
+    const roles = Array.isArray(user.roles) ? user.roles : [];
 
-    const [listings, tradesRecent, tradesCount, revenueSum, revenueCardData] = await Promise.all([
+    const [listings, tradesRecent, tradesCount, revenueSum, revenueCardData, notices] = await Promise.all([
       dbQuery(`
         SELECT p.slug, p.title, p.price, p.stock, p.id,
                (SELECT url FROM product_images WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
@@ -3343,7 +3345,34 @@ app.get('/dashboard/admin', requireAuth, requireRole(['admin']), async (req, res
       `),
 
       // カード用：今月/今週/全期間のバケット
-      getRevenueCardDataAdmin(dbQuery)
+      getRevenueCardDataAdmin(dbQuery),
+      dbQuery(
+        `
+        WITH candidates AS (
+          SELECT DISTINCT notification_id
+            FROM notification_targets
+           WHERE audience = 'all'
+              OR (role IS NOT NULL AND role = ANY($2::text[]))
+              OR (user_id = $1)
+        )
+        SELECT
+          n.id,
+          n.title,
+          n.created_at,
+          (nr.read_at IS NOT NULL) AS is_read
+        FROM notifications n
+        JOIN candidates c
+          ON c.notification_id = n.id
+        LEFT JOIN notification_reads nr
+          ON nr.notification_id = n.id
+         AND nr.user_id = $1
+        WHERE (n.visible_from IS NULL OR n.visible_from <= now())
+          AND (n.visible_to   IS NULL OR n.visible_to   >= now())
+        ORDER BY n.created_at DESC
+        LIMIT 5
+        `,
+        [uid, roles]
+      )
     ]);
 
     const tradesCard = tradesRecent.map(t => ({
@@ -3361,7 +3390,7 @@ app.get('/dashboard/admin', requireAuth, requireRole(['admin']), async (req, res
       trades: tradesCard,
       totalTrades: tradesCount[0]?.cnt || 0,
       revenue: revenueSum[0]?.total || 0,
-      // ← 新カード用データ
+      notices,
       revenueCardData
     });
   } catch (e) { next(e); }
