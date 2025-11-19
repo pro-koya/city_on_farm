@@ -1,0 +1,376 @@
+:root {
+  --bg: #f9fafb;
+  --text: #111827;
+  --muted: #6b7280;
+  --main: #4C6B5C;
+  --accent: #A3C9A8;
+  --hi: #D6EADF;
+  --white: #ffffff;
+  --border: #e5e7eb;
+  --shadow: 0 14px 35px rgba(15, 23, 42, 0.08);
+  --danger: #ef4444;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+* { box-sizing: border-box; }
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.link {
+  color: var(--main);
+  text-decoration: underline;
+}
+
+.small { font-size: .85rem; }
+.muted { color: var(--muted); }
+
+/* ========== 一覧 ========== */
+
+.my-notifications {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 80px 12px;
+}
+
+.my-notifications__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.my-notifications__head h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.my-notifications__filters {
+  display: inline-flex;
+  background: var(--white);
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 3px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, .03);
+}
+
+.tab {
+  padding: .35rem .95rem;
+  border-radius: 999px;
+  font-size: .9rem;
+  color: var(--muted);
+}
+
+.tab.is-active {
+  background: var(--main);
+  color: #fff;
+  font-weight: 700;
+}
+
+.my-notifications__empty {
+  margin-top: 2.4rem;
+  display: grid;
+  place-items: center;
+  gap: .4rem;
+  color: var(--muted);
+}
+
+.my-notifications__empty .icon {
+  font-size: 2rem;
+}
+
+.my-notifications__list {
+  display: grid;
+  gap: 10px;
+  margin-top: 1rem;
+}
+
+/* カード */
+
+.notif-card {
+  display: flex;
+  justify-content: space-between;
+  gap: .8rem;
+  align-items: stretch;
+  padding: .85rem 1rem;
+  border-radius: 16px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform .08s ease, box-shadow .08s ease, background .08s ease;
+}
+
+.notif-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+}
+
+.notif-card--read {
+  opacity: .8;
+}
+
+.notif-card__left {
+  flex: 1;
+  min-width: 0;
+}
+
+.notif-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem .6rem;
+  align-items: baseline;
+  font-size: .85rem;
+  color: var(--muted);
+}
+
+.notif-card__type {
+  font-weight: 600;
+}
+
+.notif-card__time {
+  font-variant-numeric: tabular-nums;
+}
+
+.notif-card__title {
+  margin: .15rem 0 .2rem;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+
+.notif-card__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #f97316;
+  box-shadow: 0 0 0 4px rgba(248, 152, 48, .25);
+}
+
+.notif-card--read .notif-card__dot {
+  display: none;
+}
+
+.notif-card__title-text {
+  font-size: 1rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.notif-card__excerpt {
+  margin: 0;
+  font-size: .9rem;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+.notif-card__right {
+  display: grid;
+  align-items: center;
+  justify-items: flex-end;
+  gap: .4rem;
+  margin-left: .75rem;
+}
+
+.notif-card__badge {
+  padding: .15rem .55rem;
+  border-radius: 999px;
+  font-size: .8rem;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.notif-card--unread .notif-card__badge {
+  border-color: var(--main);
+  background: var(--hi);
+  color: var(--main);
+  font-weight: 600;
+}
+
+.notif-card__arrow {
+  font-size: 1.2rem;
+  color: #9ca3af;
+}
+
+/* pager */
+
+.pager {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 1.3rem 0 .5rem;
+}
+
+.pager .page {
+  min-width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--white);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pager .page.is-active {
+  background: var(--main);
+  border-color: var(--main);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* ========== 詳細 ========== */
+
+.my-notification-detail {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 80px 12px;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: .75rem;
+}
+
+.card {
+  background: var(--white);
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 1.1rem 1.2rem 1.2rem;
+}
+
+.mynd-card__head {
+  display: grid;
+  gap: .5rem;
+}
+
+.mynd-card__type-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .5rem;
+}
+
+.mynd-card__time {
+  font-size: .85rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mynd-card__title {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.4;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: .18rem .7rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: .82rem;
+}
+
+.mynd-card__period {
+  margin-top: .8rem;
+  border-top: 1px dashed var(--border);
+  padding-top: .6rem;
+  display: grid;
+  gap: .25rem;
+}
+
+.mynd-card__period-row {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  font-size: .9rem;
+}
+
+.mynd-card__period-row .label {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.mynd-card__body {
+  margin-top: 1rem;
+}
+
+.mynd-card__message {
+  margin: 0;
+  font-size: .95rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+.mynd-card__foot {
+  margin: 0;
+  margin-top: 1.2rem;
+  display: flex;
+  justify-content: flex-end;
+  height: auto;
+  padding: .6rem 1rem;
+  margin: 0;
+  background: none;
+  border-top: 1px solid var(--muted);
+}
+
+/* buttons */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  padding: .55rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--main);
+  background: var(--main);
+  color: #fff;
+  cursor: pointer;
+  font-size: .9rem;
+}
+
+.btn--primary {
+  background: var(--main);
+  border-color: var(--main);
+}
+
+/* responsive */
+
+@media (max-width: 720px) {
+  .my-notifications,
+  .my-notification-detail {
+    padding: 72px 10px;
+  }
+
+  .my-notifications__head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .notif-card {
+    padding: .8rem .9rem;
+  }
+
+  .notif-card__right {
+    align-self: center;
+  }
+
+  .mynd-card__title {
+    font-size: 1.2rem;
+  }
+}

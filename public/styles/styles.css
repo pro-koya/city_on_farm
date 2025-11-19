@@ -418,7 +418,7 @@ footer nav a:hover {
   padding: .6rem 2.8rem .6rem .9rem !important; 
   /* (アイコンサイズ + アイコンと枠の間のスペース)分を確保 */
   
-  font-size: .95rem;
+  font-size: 16px;
   line-height: 1.2;
   cursor: pointer;
   transition: border-color .15s ease, box-shadow .15s ease, transform .06s ease;
@@ -448,6 +448,10 @@ footer nav a:hover {
 }
 
 input {
+  font-size: 16px;
+}
+
+textarea {
   font-size: 16px;
 }
 

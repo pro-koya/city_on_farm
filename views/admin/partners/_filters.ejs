@@ -1,6 +1,6 @@
 <div class="lv__filter">
   <label class="lv__label" for="fType">種別</label>
-  <select class="lv__select" id="fType" name="type">
+  <select class="lv__select pulldown" id="fType" name="type">
     <option value="">すべて</option>
     <option value="restaurant" <%= typeVal==='restaurant'?'selected':'' %>>飲食店</option>
     <option value="retailer"   <%= typeVal==='retailer'  ?'selected':'' %>>小売</option>
@@ -13,7 +13,7 @@
 
 <div class="lv__filter">
   <label class="lv__label" for="fStatus">状態</label>
-  <select class="lv__select" id="fStatus" name="status">
+  <select class="lv__select pulldown" id="fStatus" name="status">
     <option value="">すべて</option>
     <option value="active"    <%= statusVal==='active'   ?'selected':'' %>>稼働中</option>
     <option value="prospect"  <%= statusVal==='prospect' ?'selected':'' %>>見込み</option>
@@ -24,7 +24,7 @@
 
 <div class="lv__filter">
   <label class="lv__label" for="fSort">並び順</label>
-  <select class="lv__select" id="fSort" name="sort">
+  <select class="lv__select pulldown" id="fSort" name="sort">
     <option value="recent"     <%= sortVal==='recent'    ?'selected':'' %>>新しい順</option>
     <option value="name_asc"   <%= sortVal==='name_asc'  ?'selected':'' %>>名前(昇順)</option>
     <option value="name_desc"  <%= sortVal==='name_desc' ?'selected':'' %>>名前(降順)</option>

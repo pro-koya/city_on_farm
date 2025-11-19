@@ -278,3 +278,80 @@ section {
   flex-wrap: wrap;
   gap: 6px;
 }
+
+/* ===== Notices on dashboard ===== */
+
+.card--notices .card__head {
+  margin-bottom: .4rem;
+}
+
+.card--notices .card__head h2 {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+
+.notices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .4rem 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: .9rem;
+}
+
+.notice:last-child {
+  border-bottom: none;
+}
+
+.notice .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  flex-shrink: 0;
+}
+
+/* 未読ドットを強調 */
+.notice.is-unread .dot {
+  background: #f97316;
+  box-shadow: 0 0 0 4px rgba(248, 196, 113, .35);
+}
+
+.notice__title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notice__title:hover {
+  text-decoration: underline;
+}
+
+.notice__time {
+  flex-shrink: 0;
+  font-size: .78rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 小さいボタン（ヘッダー右上の「すべて見る」） */
+.btn--sm {
+  padding: .28rem .7rem;
+  font-size: .82rem;
+  border-radius: 999px;
+}
+
+.btn--ghost {
+  background-color: var(--white);
+  color: var(--main);
+  border: 1px solid var(--accent);
+}

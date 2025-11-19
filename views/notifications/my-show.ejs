@@ -1,0 +1,78 @@
+<%- include('../partials/header', {
+  title: title || 'お知らせ詳細',
+  extraCSS: '/styles/my-notifications.css'
+}) %>
+
+<main class="my-notification-detail">
+  <a class="link back-link" href="/my/notifications">← お知らせ一覧へ戻る</a>
+
+  <article class="card mynd-card">
+    <header class="mynd-card__head">
+      <div class="mynd-card__type-row">
+        <span class="pill">
+          <%= ({
+            system: 'システム',
+            contact_reply: 'お問い合わせ',
+            campaign: 'キャンペーン',
+            maintenance: 'メンテナンス',
+            other: 'その他'
+          }[notification.type] || notification.type) %>
+        </span>
+        <time
+          class="mynd-card__time"
+          datetime="<%= new Date(notification.created_at).toISOString() %>"
+        >
+          <%= new Date(notification.created_at).toLocaleString('ja-JP', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          }) %>
+        </time>
+      </div>
+
+      <h1 class="mynd-card__title"><%= notification.title %></h1>
+    </header>
+
+    <% if (notification.visible_from || notification.visible_to) { %>
+      <section class="mynd-card__period">
+        <% if (notification.visible_from) { %>
+          <div class="mynd-card__period-row">
+            <span class="label">掲載開始</span>
+            <time datetime="<%= new Date(notification.visible_from).toISOString() %>">
+              <%= new Date(notification.visible_from).toLocaleString('ja-JP') %>
+            </time>
+          </div>
+        <% } %>
+        <% if (notification.visible_to) { %>
+          <div class="mynd-card__period-row">
+            <span class="label">掲載終了</span>
+            <time datetime="<%= new Date(notification.visible_to).toISOString() %>">
+              <%= new Date(notification.visible_to).toLocaleString('ja-JP') %>
+            </time>
+          </div>
+        <% } %>
+      </section>
+    <% } %>
+
+    <section class="mynd-card__body">
+      <pre class="mynd-card__message"><%= notification.body %></pre>
+    </section>
+
+    <% if (notification.link_url) { %>
+      <footer class="mynd-card__foot">
+        <a
+          class="btn btn--primary"
+          href="<%= notification.link_url %>"
+          target="_blank"
+          rel="noopener"
+        >
+          関連リンクを開く
+        </a>
+      </footer>
+    <% } %>
+  </article>
+</main>
+
+<%- include('../partials/footer') %>

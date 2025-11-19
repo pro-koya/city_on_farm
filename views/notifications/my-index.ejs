@@ -1,0 +1,110 @@
+<%- include('../partials/header', {
+  title: title || 'お知らせ',
+  extraCSS: '/styles/my-notifications.css'
+}) %>
+
+<main class="my-notifications">
+  <header class="my-notifications__head">
+    <div>
+      <h1>お知らせ</h1>
+      <p class="muted small">
+        重要なお知らせやキャンペーン情報が届きます。
+      </p>
+    </div>
+
+    <div class="my-notifications__filters">
+      <% const f = filter || 'all'; %>
+      <a
+        href="/my/notifications?filter=all"
+        class="tab <%= f==='all' ? 'is-active' : '' %>"
+      >
+        すべて
+      </a>
+      <a
+        href="/my/notifications?filter=unread"
+        class="tab <%= f==='unread' ? 'is-active' : '' %>"
+      >
+        未読のみ
+      </a>
+    </div>
+  </header>
+
+  <% if (!items || !items.length) { %>
+    <section class="my-notifications__empty">
+      <div class="icon">🔔</div>
+      <p>今は表示するお知らせがありません。</p>
+    </section>
+  <% } else { %>
+    <section class="my-notifications__list" id="notifList">
+      <% items.forEach(function(it){ %>
+        <% const isRead = !!it.is_read; %>
+        <article
+          class="notif-card <%= isRead ? 'notif-card--read' : 'notif-card--unread' %>"
+          data-href="/my/notifications/<%= it.id %>"
+        >
+          <div class="notif-card__left">
+            <div class="notif-card__meta">
+              <span class="notif-card__type">
+                <%= ({
+                  system: 'システム',
+                  contact_reply: 'お問い合わせ',
+                  campaign: 'キャンペーン',
+                  maintenance: 'メンテナンス',
+                  other: 'その他'
+                }[it.type] || it.type) %>
+              </span>
+              <time
+                class="notif-card__time"
+                datetime="<%= new Date(it.created_at).toISOString() %>"
+              >
+                <%= new Date(it.created_at).toLocaleString('ja-JP', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }) %>
+              </time>
+            </div>
+
+            <h2 class="notif-card__title">
+              <% if (!isRead) { %>
+                <span class="notif-card__dot" aria-hidden="true"></span>
+              <% } %>
+              <span class="notif-card__title-text"><%= it.title %></span>
+            </h2>
+
+            <% if (it.body) { %>
+              <p class="notif-card__excerpt">
+                <%= String(it.body).replace(/\s+/g, ' ').slice(0, 80) %><%=
+                  String(it.body).length > 80 ? '…' : ''
+                %>
+              </p>
+            <% } %>
+          </div>
+
+          <div class="notif-card__right">
+            <span class="notif-card__badge">
+              <%= isRead ? '既読' : '未読' %>
+            </span>
+            <span class="notif-card__arrow">›</span>
+          </div>
+        </article>
+      <% }) %>
+    </section>
+
+    <% if (pagination && pagination.pageCount > 1) { %>
+      <nav class="pager" aria-label="ページャ">
+        <% for (let p = 1; p <= pagination.pageCount; p++) { %>
+          <a
+            class="page <%= p === pagination.page ? 'is-active' : '' %>"
+            href="/my/notifications?filter=<%= filter || 'all' %>&page=<%= p %>"
+          ><%= p %></a>
+        <% } %>
+      </nav>
+    <% } %>
+  <% } %>
+</main>
+
+<script src="/js/my-notifications.js" defer></script>
+<%- include('../partials/footer') %>

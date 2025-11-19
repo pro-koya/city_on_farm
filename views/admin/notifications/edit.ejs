@@ -1,0 +1,156 @@
+<%- include('../../partials/header', {
+  title,
+  extraCSS: '/styles/admin-notifications.css'
+}) %>
+
+<main class="notifications notifications--edit">
+  <a class="link back-link" href="/admin/notifications">← お知らせ一覧へ戻る</a>
+
+  <section class="card notify-form">
+    <header class="notify-form__head">
+      <h1><%= isNew ? 'お知らせ作成' : 'お知らせ編集' %></h1>
+      <% if (!isNew && notification && notification.created_at) { %>
+        <p class="muted small">
+          作成日:
+          <time datetime="<%= new Date(notification.created_at).toISOString() %>">
+            <%= new Date(notification.created_at).toLocaleString('ja-JP') %>
+          </time>
+        </p>
+      <% } %>
+    </header>
+
+    <form class="notify-form__body" method="POST" action="<%= isNew ? '/admin/notifications/new' : ('/admin/notifications/' + notification.id) %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <!-- タイトル -->
+      <div class="field">
+        <label for="nf-title">タイトル<span class="req">*</span></label>
+        <input
+          id="nf-title"
+          type="text"
+          name="title"
+          value="<%= notification ? (notification.title || '') : '' %>"
+          required>
+        <% if (fieldErrors && fieldErrors.title) { %>
+          <p class="field-error"><%= fieldErrors.title %></p>
+        <% } %>
+      </div>
+
+      <!-- 種別 -->
+      <div class="field field--row">
+        <div>
+          <label for="nf-type">種別<span class="req">*</span></label>
+          <select id="nf-type" name="type" class="pulldown" required>
+            <% const curType = notification ? notification.type : '' ; %>
+            <option value="system"         <%= curType==='system'?'selected':'' %>>システム</option>
+            <option value="contact_reply"  <%= curType==='contact_reply'?'selected':'' %>>お問い合わせ返信</option>
+            <option value="campaign"       <%= curType==='campaign'?'selected':'' %>>キャンペーン</option>
+            <option value="maintenance"    <%= curType==='maintenance'?'selected':'' %>>メンテナンス</option>
+            <option value="other"          <%= curType==='other'?'selected':'' %>>その他</option>
+          </select>
+          <% if (fieldErrors && fieldErrors.type) { %>
+            <p class="field-error"><%= fieldErrors.type %></p>
+          <% } %>
+        </div>
+        <div>
+          <label for="nf-link">リンクURL（任意）</label>
+          <input
+            id="nf-link"
+            type="url"
+            name="link_url"
+            placeholder="https://example.com/..."
+            value="<%= notification ? (notification.link_url || '') : '' %>">
+        </div>
+      </div>
+
+      <!-- 掲載期間 -->
+      <div class="field field--row">
+        <div>
+          <label for="nf-from">掲載開始（任意）</label>
+          <input
+            id="nf-from"
+            type="datetime-local"
+            name="visible_from"
+            value="<%= notification && notification.visible_from ? new Date(notification.visible_from).toISOString().slice(0,16) : '' %>">
+          <p class="field-hint">未設定の場合は即時表示</p>
+        </div>
+        <div>
+          <label for="nf-to">掲載終了（任意）</label>
+          <input
+            id="nf-to"
+            type="datetime-local"
+            name="visible_to"
+            value="<%= notification && notification.visible_to ? new Date(notification.visible_to).toISOString().slice(0,16) : '' %>">
+          <p class="field-hint">未設定の場合は無期限</p>
+        </div>
+      </div>
+
+      <!-- 本文 -->
+      <div class="field">
+        <label for="nf-body">本文<span class="req">*</span></label>
+        <textarea
+          id="nf-body"
+          name="body"
+          rows="10"
+          placeholder="お知らせの本文を入力してください（必要に応じて改行や箇条書きをご利用ください）"
+          required><%= notification ? (notification.body || '') : '' %></textarea>
+        <% if (fieldErrors && fieldErrors.body) { %>
+          <p class="field-error"><%= fieldErrors.body %></p>
+        <% } %>
+      </div>
+
+      <!-- 配信対象 -->
+      <fieldset class="field target-field">
+        <legend>配信対象</legend>
+        <div class="target-mode">
+          <% const tm = targetMode || 'all'; %>
+          <label>
+            <input type="radio" name="target_mode" value="all" <%= tm==='all'?'checked':'' %> >
+            全ユーザー
+          </label>
+          <label>
+            <input type="radio" name="target_mode" value="roles" <%= tm==='roles'?'checked':'' %> >
+            ロール指定
+          </label>
+          <label>
+            <input type="radio" name="target_mode" value="none" <%= tm==='none'?'checked':'' %> >
+            通知本体のみ（ターゲット未設定）
+          </label>
+        </div>
+
+        <div class="target-roles" data-target-mode="roles">
+          <p class="field-hint">※ ロール指定を選んだ場合に有効です。</p>
+          <% const roleSet = new Set(targetRoles || []); %>
+          <label class="pill-check">
+            <input type="checkbox" name="target_roles" value="buyer"  <%= roleSet.has('buyer')  ? 'checked' : '' %> >
+            購入者
+          </label>
+          <label class="pill-check">
+            <input type="checkbox" name="target_roles" value="seller" <%= roleSet.has('seller') ? 'checked' : '' %> >
+            出品者
+          </label>
+          <label class="pill-check">
+            <input type="checkbox" name="target_roles" value="admin"  <%= roleSet.has('admin')  ? 'checked' : '' %> >
+            管理者
+          </label>
+        </div>
+      </fieldset>
+
+      <div class="notify-form__foot">
+        <button class="btn btn--primary" type="submit">
+          <%= isNew ? '作成する' : '更新する' %>
+        </button>
+
+        <% if (!isNew && notification) { %>
+          <form class="inline-form" method="POST" action="/admin/notifications/<%= notification.id %>/delete" onsubmit="return confirm('本当に削除しますか？');">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button type="submit" class="btn btn--danger">削除</button>
+          </form>
+        <% } %>
+      </div>
+    </form>
+  </section>
+</main>
+
+<script src="/js/admin-notifications.js" defer></script>
+<%- include('../../partials/footer') %>

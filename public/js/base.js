@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', function () {
         locale: 'ja',
         dateFormat: 'Y-m-d',
         disableMobile: true,
-        allowInput: true
+        allowInput: false
     };
 
     // --- 日付レンジ（日単位） ---

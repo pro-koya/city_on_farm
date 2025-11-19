@@ -3130,8 +3130,11 @@ app.get('/dashboard', requireAuth, (req, res) => {
 
 app.get('/dashboard/buyer', requireAuth, async (req, res, next) => {
   try {
-    const uid = req.session.user.id;
-    const [recentOrders, count] = await Promise.all([
+    const user  = req.session.user;
+    const uid   = user.id;
+    const roles = Array.isArray(user.roles) ? user.roles : [];
+
+    const [recentOrders, count, notices] = await Promise.all([
       dbQuery(`
         SELECT o.id, o.total, o.status, o.created_at, COALESCE(o.order_number, o.id::text) AS order_no
           FROM orders o
@@ -3139,7 +3142,34 @@ app.get('/dashboard/buyer', requireAuth, async (req, res, next) => {
          ORDER BY o.created_at DESC
          LIMIT 10
       `, [uid]),
-      dbQuery(`SELECT COUNT(*)::int AS cnt FROM orders WHERE buyer_id = $1`, [uid])
+      dbQuery(`SELECT COUNT(*)::int AS cnt FROM orders WHERE buyer_id = $1`, [uid]),
+      dbQuery(
+        `
+        WITH candidates AS (
+          SELECT DISTINCT notification_id
+            FROM notification_targets
+           WHERE audience = 'all'
+              OR (role IS NOT NULL AND role = ANY($2::text[]))
+              OR (user_id = $1)
+        )
+        SELECT
+          n.id,
+          n.title,
+          n.created_at,
+          (nr.read_at IS NOT NULL) AS is_read
+        FROM notifications n
+        JOIN candidates c
+          ON c.notification_id = n.id
+        LEFT JOIN notification_reads nr
+          ON nr.notification_id = n.id
+         AND nr.user_id = $1
+        WHERE (n.visible_from IS NULL OR n.visible_from <= now())
+          AND (n.visible_to   IS NULL OR n.visible_to   >= now())
+        ORDER BY n.created_at DESC
+        LIMIT 5
+        `,
+        [uid, roles]
+      )
     ]);
 
     const recentProducts = await fetchRecentProducts(req, 12);
@@ -3155,7 +3185,7 @@ app.get('/dashboard/buyer', requireAuth, async (req, res, next) => {
       currentUser: req.session.user,
       orders: ordersWithJa,
       recent: recentProducts,
-      notices: [],
+      notices,
       totalOrders: count[0]?.cnt || 0
     });
   } catch (e) { next(e); }
@@ -3163,9 +3193,11 @@ app.get('/dashboard/buyer', requireAuth, async (req, res, next) => {
 
 app.get('/dashboard/seller', requireAuth, requireRole(['seller']), async (req, res, next) => {
   try {
-    const uid = req.session.user.id;
+    const user  = req.session.user;
+    const uid   = user.id;
+    const roles = Array.isArray(user.roles) ? user.roles : [];
 
-    const [listings, tradesRecent, tradesCount, revenueSum, revenueCardData] = await Promise.all([
+    const [listings, tradesRecent, tradesCount, revenueSum, revenueCardData, notices] = await Promise.all([
       dbQuery(`
         SELECT p.slug, p.title, p.price, p.stock, p.id,
                (SELECT url FROM product_images WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
@@ -3212,7 +3244,34 @@ app.get('/dashboard/seller', requireAuth, requireRole(['seller']), async (req, r
       `, [uid]),
 
       // カード用：今月/今週/全期間のバケット
-      getRevenueCardData(dbQuery, uid)
+      getRevenueCardData(dbQuery, uid),
+      dbQuery(
+        `
+        WITH candidates AS (
+          SELECT DISTINCT notification_id
+            FROM notification_targets
+           WHERE audience = 'all'
+              OR (role IS NOT NULL AND role = ANY($2::text[]))
+              OR (user_id = $1)
+        )
+        SELECT
+          n.id,
+          n.title,
+          n.created_at,
+          (nr.read_at IS NOT NULL) AS is_read
+        FROM notifications n
+        JOIN candidates c
+          ON c.notification_id = n.id
+        LEFT JOIN notification_reads nr
+          ON nr.notification_id = n.id
+         AND nr.user_id = $1
+        WHERE (n.visible_from IS NULL OR n.visible_from <= now())
+          AND (n.visible_to   IS NULL OR n.visible_to   >= now())
+        ORDER BY n.created_at DESC
+        LIMIT 5
+        `,
+        [uid, roles]
+      )
     ]);
 
     const tradesCard = tradesRecent.map(t => ({
@@ -3227,6 +3286,7 @@ app.get('/dashboard/seller', requireAuth, requireRole(['seller']), async (req, r
       title: 'ダッシュボード（出品者）',
       currentUser: req.session.user,
       listings,
+      notices,
       trades: tradesCard,
       totalTrades: tradesCount[0]?.cnt || 0,
       revenue: revenueSum[0]?.total || 0,
@@ -7237,6 +7297,629 @@ app.post('/admin/users/:id/partner/create', requireAuth, csrfProtect, async (req
   );
   await dbQuery(`UPDATE users SET partner_id=$2, updated_at=now() WHERE id=$1`, [uid, ins[0].id]);
   res.json({ok:true, partner_id: ins[0].id});
+});
+
+// =========================================================
+// 管理：お知らせ一覧
+// GET /admin/notifications?q=&type=&scope=&page=
+// =========================================================
+app.get(
+  '/admin/notifications',
+  requireAuth,
+  requireRole(['admin']),
+  async (req, res, next) => {
+    try {
+      const { q = '', type = 'all', scope = 'all', page = 1 } = req.query;
+      const pageNum = Math.max(1, parseInt(page, 10) || 1);
+      const pageSize = 20;
+      const offset = (pageNum - 1) * pageSize;
+
+      const where = ['1=1'];
+      const params = [];
+
+      if (q) {
+        params.push(`%${q}%`);
+        where.push(`(n.title ILIKE $${params.length} OR n.body ILIKE $${params.length})`);
+      }
+
+      if (type !== 'all') {
+        params.push(type);
+        where.push(`n.type = $${params.length}`);
+      }
+
+      if (scope === 'active') {
+        // 現在表示中のみ
+        where.push(`
+          (
+            (n.visible_from IS NULL OR n.visible_from <= now())
+            AND (n.visible_to IS NULL OR n.visible_to >= now())
+          )
+        `);
+      }
+
+      const whereSql = where.join(' AND ');
+
+      const totalRow = await dbQuery(
+        `SELECT COUNT(*)::int AS cnt FROM notifications n WHERE ${whereSql}`,
+        params
+      );
+      const total = totalRow[0]?.cnt || 0;
+
+      const paramsWithPage = [...params, pageSize, offset];
+
+      const items = await dbQuery(
+        `
+        SELECT
+          n.*,
+          -- 全体配信フラグ
+          EXISTS (
+            SELECT 1 FROM notification_targets nt
+             WHERE nt.notification_id = n.id AND nt.audience = 'all'
+          ) AS for_all,
+          -- ロール配信一覧
+          (
+            SELECT array_agg(DISTINCT nt.role)
+              FROM notification_targets nt
+             WHERE nt.notification_id = n.id AND nt.role IS NOT NULL
+          ) AS roles,
+          -- 個別ユーザー配信数
+          (
+            SELECT COUNT(*)
+              FROM notification_targets nt
+             WHERE nt.notification_id = n.id AND nt.user_id IS NOT NULL
+          ) AS user_target_count
+        FROM notifications n
+        WHERE ${whereSql}
+        ORDER BY n.created_at DESC
+        LIMIT $${paramsWithPage.length - 1} OFFSET $${paramsWithPage.length}
+        `,
+        paramsWithPage
+      );
+
+      const pagination = {
+        page: pageNum,
+        pageCount: Math.max(1, Math.ceil(total / pageSize)),
+      };
+
+      const buildQuery = buildQueryPath('/admin/notifications', { q, type, scope });
+
+      res.render('admin/notifications/index', {
+        title: 'お知らせ一覧',
+        items,
+        total,
+        q,
+        type,
+        scope,
+        pagination,
+        buildQuery,
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+
+// =========================================================
+// 管理：お知らせ作成フォーム
+// GET /admin/notifications/new
+// =========================================================
+app.get(
+  '/admin/notifications/new',
+  requireAuth,
+  requireRole(['admin']),
+  (req, res) => {
+    res.render('admin/notifications/edit', {
+      title: 'お知らせ作成',
+      csrfToken: req.csrfToken(),
+      notification: null,
+      targetMode: 'all',      // 'all' / 'roles' / 'none'
+      targetRoles: [],        // ['buyer', 'seller'] など
+      targetUsers: [],        // ひとまず未使用
+      fieldErrors: {},
+      isNew: true,
+    });
+  }
+);
+
+
+// =========================================================
+// 管理：お知らせ作成 POST
+// POST /admin/notifications/new
+// =========================================================
+app.post(
+  '/admin/notifications/new',
+  requireAuth,
+  requireRole(['admin']),
+  [
+    body('title').trim().notEmpty().withMessage('タイトルを入力してください'),
+    body('type').trim().notEmpty().withMessage('種別を選択してください'),
+    body('body').trim().notEmpty().withMessage('本文を入力してください'),
+  ],
+  async (req, res, next) => {
+    try {
+      const errors = validationResult(req);
+      const {
+        title,
+        type,
+        body: bodyText,
+        link_url,
+        visible_from,
+        visible_to,
+        target_mode,
+      } = req.body;
+
+      const fieldErrors = {};
+      if (!errors.isEmpty()) {
+        for (const e of errors.array()) {
+          if (!fieldErrors[e.path]) fieldErrors[e.path] = e.msg;
+        }
+      }
+
+      const targetRoles = Array.isArray(req.body.target_roles)
+        ? req.body.target_roles
+        : (req.body.target_roles ? [req.body.target_roles] : []);
+      const targetMode = target_mode || 'all';
+
+      // 入力値を再表示用にまとめる
+      const notificationDraft = {
+        title,
+        type,
+        body: bodyText,
+        link_url,
+        visible_from,
+        visible_to,
+      };
+
+      if (!errors.isEmpty()) {
+        return res.status(422).render('admin/notifications/edit', {
+          title: 'お知らせ作成',
+          csrfToken: req.csrfToken(),
+          notification: notificationDraft,
+          targetMode,
+          targetRoles,
+          targetUsers: [],
+          fieldErrors,
+          isNew: true,
+        });
+      }
+
+      // 日付パース（空文字は NULL に）
+      const visFrom = visible_from ? new Date(visible_from) : null;
+      const visTo   = visible_to ? new Date(visible_to) : null;
+
+      // notifications 挿入
+      const rows = await dbQuery(
+        `INSERT INTO notifications
+          (type, title, body, link_url, visible_from, visible_to, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)
+         RETURNING id`,
+        [
+          type,
+          title,
+          bodyText,
+          link_url || null,
+          visFrom,
+          visTo,
+          req.session.user.id,
+        ]
+      );
+      const notifId = rows[0].id;
+
+      // 配信対象の登録
+      if (targetMode === 'all') {
+        await dbQuery(
+          `INSERT INTO notification_targets (notification_id, audience)
+           VALUES ($1, 'all')`,
+          [notifId]
+        );
+      } else if (targetMode === 'roles' && targetRoles.length > 0) {
+        const values = [];
+        const params = [];
+        targetRoles.forEach((r, i) => {
+          params.push(notifId, r);
+          values.push(`($${params.length - 1}, $${params.length})`);
+        });
+        await dbQuery(
+          `INSERT INTO notification_targets (notification_id, role)
+           VALUES ${values.join(',')}`,
+          params
+        );
+      }
+      // targetMode === 'none' の場合は notification_targets なし
+
+      res.redirect('/admin/notifications');
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+
+// =========================================================
+// 管理：お知らせ詳細 + 編集フォーム
+// GET /admin/notifications/:id
+// =========================================================
+app.get(
+  '/admin/notifications/:id',
+  requireAuth,
+  requireRole(['admin']),
+  async (req, res, next) => {
+    try {
+      const id = String(req.params.id || '').trim();
+      const rows = await dbQuery(
+        `SELECT n.*, u.name AS created_by_name
+           FROM notifications n
+           LEFT JOIN users u ON u.id = n.created_by
+          WHERE n.id = $1::uuid
+          LIMIT 1`,
+        [id]
+      );
+      const n = rows[0];
+      if (!n) {
+        return res.status(404).render('errors/404', { title: 'お知らせが見つかりません' });
+      }
+
+      const targets = await dbQuery(
+        `SELECT nt.*, u.name AS user_name, u.email AS user_email
+           FROM notification_targets nt
+           LEFT JOIN users u ON u.id = nt.user_id
+          WHERE nt.notification_id = $1
+          ORDER BY nt.id`,
+        [id]
+      );
+
+      // UI 用に targetMode / targetRoles を判定
+      let targetMode = 'none';
+      const targetRoles = [];
+      const targetUsers = [];
+
+      if (targets.some(t => t.audience === 'all')) {
+        targetMode = 'all';
+      } else if (targets.some(t => t.role)) {
+        targetMode = 'roles';
+        targets.forEach(t => {
+          if (t.role && !targetRoles.includes(t.role)) {
+            targetRoles.push(t.role);
+          }
+        });
+      } else if (targets.some(t => t.user_id)) {
+        targetMode = 'users';
+        targets.forEach(t => {
+          if (t.user_id) {
+            targetUsers.push({
+              id: t.user_id,
+              name: t.user_name,
+              email: t.user_email,
+            });
+          }
+        });
+      }
+
+      res.render('admin/notifications/edit', {
+        title: `お知らせ編集`,
+        csrfToken: req.csrfToken(),
+        notification: n,
+        targetMode,
+        targetRoles,
+        targetUsers,
+        fieldErrors: {},
+        isNew: false,
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+
+// =========================================================
+// 管理：お知らせ更新 POST
+// POST /admin/notifications/:id
+// =========================================================
+app.post(
+  '/admin/notifications/:id',
+  requireAuth,
+  requireRole(['admin']),
+  [
+    body('title').trim().notEmpty().withMessage('タイトルを入力してください'),
+    body('type').trim().notEmpty().withMessage('種別を選択してください'),
+    body('body').trim().notEmpty().withMessage('本文を入力してください'),
+  ],
+  async (req, res, next) => {
+    try {
+      const id = String(req.params.id || '').trim();
+      const errors = validationResult(req);
+
+      const {
+        title,
+        type,
+        body: bodyText,
+        link_url,
+        visible_from,
+        visible_to,
+        target_mode,
+      } = req.body;
+
+      const targetRoles = Array.isArray(req.body.target_roles)
+        ? req.body.target_roles
+        : (req.body.target_roles ? [req.body.target_roles] : []);
+      const targetMode = target_mode || 'all';
+
+      const fieldErrors = {};
+      if (!errors.isEmpty()) {
+        for (const e of errors.array()) {
+          if (!fieldErrors[e.path]) fieldErrors[e.path] = e.msg;
+        }
+      }
+
+      // DB から元のレコードを拾う（なければ404）
+      const curRows = await dbQuery(
+        `SELECT * FROM notifications WHERE id = $1::uuid LIMIT 1`,
+        [id]
+      );
+      const current = curRows[0];
+      if (!current) {
+        return res.status(404).render('errors/404', { title: 'お知らせが見つかりません' });
+      }
+
+      const draft = {
+        ...current,
+        title,
+        type,
+        body: bodyText,
+        link_url,
+        visible_from,
+        visible_to,
+      };
+
+      if (!errors.isEmpty()) {
+        return res.status(422).render('admin/notifications/edit', {
+          title: 'お知らせ編集',
+          csrfToken: req.csrfToken(),
+          notification: draft,
+          targetMode,
+          targetRoles,
+          targetUsers: [],
+          fieldErrors,
+          isNew: false,
+        });
+      }
+
+      const visFrom = visible_from ? new Date(visible_from) : null;
+      const visTo   = visible_to ? new Date(visible_to) : null;
+
+      // 更新
+      await dbQuery(
+        `UPDATE notifications
+            SET type         = $1,
+                title        = $2,
+                body         = $3,
+                link_url     = $4,
+                visible_from = $5,
+                visible_to   = $6,
+                updated_at   = now()
+          WHERE id = $7::uuid`,
+        [
+          type,
+          title,
+          bodyText,
+          link_url || null,
+          visFrom,
+          visTo,
+          id,
+        ]
+      );
+
+      // 既存ターゲットを一旦削除して再作成
+      await dbQuery(
+        `DELETE FROM notification_targets WHERE notification_id = $1`,
+        [id]
+      );
+
+      if (targetMode === 'all') {
+        await dbQuery(
+          `INSERT INTO notification_targets (notification_id, audience)
+           VALUES ($1, 'all')`,
+          [id]
+        );
+      } else if (targetMode === 'roles' && targetRoles.length > 0) {
+        const values = [];
+        const params = [];
+        targetRoles.forEach((r, i) => {
+          params.push(id, r);
+          values.push(`($${params.length - 1}, $${params.length})`);
+        });
+        await dbQuery(
+          `INSERT INTO notification_targets (notification_id, role)
+           VALUES ${values.join(',')}`,
+          params
+        );
+      }
+
+      res.redirect(`/admin/notifications/${id}`);
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+
+// =========================================================
+// 管理：お知らせ削除（任意）
+// POST /admin/notifications/:id/delete
+// =========================================================
+app.post(
+  '/admin/notifications/:id/delete',
+  requireAuth,
+  requireRole(['admin']),
+  async (req, res, next) => {
+    try {
+      const id = String(req.params.id || '').trim();
+      await dbQuery(`DELETE FROM notifications WHERE id = $1::uuid`, [id]);
+      // CASCADE により targets / reads も削除される
+      res.redirect('/admin/notifications');
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+// =========================================================
+// マイページ：お知らせ一覧
+// GET /my/notifications?filter=all|unread&page=
+// =========================================================
+app.get('/my/notifications', requireAuth, async (req, res, next) => {
+  try {
+    const user = req.session.user;
+    const uid = user.id;
+    const roles = Array.isArray(user.roles) ? user.roles : [];
+
+    const { filter = 'all', page = 1 } = req.query;
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const pageSize = 20;
+    const offset = (pageNum - 1) * pageSize;
+
+    const baseParams = [uid, roles];
+    const whereExtra = [];
+
+    if (filter === 'unread') {
+      // 未読のみ：read_at が NULL
+      whereExtra.push('nr.read_at IS NULL');
+    }
+
+    const extraSql = whereExtra.length ? `AND ${whereExtra.join(' AND ')}` : '';
+
+    // 件数
+    const totalRow = await dbQuery(
+      `
+      WITH candidates AS (
+        SELECT DISTINCT notification_id
+          FROM notification_targets
+         WHERE audience = 'all'
+            OR (role IS NOT NULL AND role = ANY($2::text[]))
+            OR (user_id = $1)
+      )
+      SELECT COUNT(*)::int AS cnt
+        FROM notifications n
+        JOIN candidates c ON c.notification_id = n.id
+        LEFT JOIN notification_reads nr
+          ON nr.notification_id = n.id
+         AND nr.user_id = $1
+       WHERE (n.visible_from IS NULL OR n.visible_from <= now())
+         AND (n.visible_to   IS NULL OR n.visible_to   >= now())
+         ${extraSql}
+      `,
+      baseParams
+    );
+    const total = totalRow[0]?.cnt || 0;
+
+    const items = await dbQuery(
+      `
+      WITH candidates AS (
+        SELECT DISTINCT notification_id
+          FROM notification_targets
+         WHERE audience = 'all'
+            OR (role IS NOT NULL AND role = ANY($2::text[]))
+            OR (user_id = $1)
+      )
+      SELECT
+        n.*,
+        (nr.read_at IS NOT NULL) AS is_read
+        -- ここで必要なら type ごとの日本語ラベルを CASE で付けてもOK
+      FROM notifications n
+      JOIN candidates c ON c.notification_id = n.id
+      LEFT JOIN notification_reads nr
+        ON nr.notification_id = n.id
+       AND nr.user_id = $1
+      WHERE (n.visible_from IS NULL OR n.visible_from <= now())
+        AND (n.visible_to   IS NULL OR n.visible_to   >= now())
+        ${extraSql}
+      ORDER BY n.created_at DESC
+      LIMIT $3 OFFSET $4
+      `,
+      [...baseParams, pageSize, offset]
+    );
+
+    const pagination = {
+      page: pageNum,
+      pageCount: Math.max(1, Math.ceil(total / pageSize)),
+    };
+
+    res.render('notifications/my-index', {
+      title: 'お知らせ',
+      items,
+      total,
+      filter,
+      pagination,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// =========================================================
+// マイページ：お知らせ詳細
+// GET /my/notifications/:id
+// =========================================================
+app.get('/my/notifications/:id', requireAuth, async (req, res, next) => {
+  try {
+    const user = req.session.user;
+    const uid = user.id;
+    const roles = Array.isArray(user.roles) ? user.roles : [];
+    const id = String(req.params.id || '').trim();
+
+    // このユーザーが閲覧できる通知かチェック
+    const rows = await dbQuery(
+      `
+      WITH candidates AS (
+        SELECT DISTINCT notification_id
+          FROM notification_targets
+         WHERE audience = 'all'
+            OR (role IS NOT NULL AND role = ANY($2::text[]))
+            OR (user_id = $1)
+      )
+      SELECT
+        n.*,
+        (nr.read_at IS NOT NULL) AS is_read
+      FROM notifications n
+      JOIN candidates c ON c.notification_id = n.id
+      LEFT JOIN notification_reads nr
+        ON nr.notification_id = n.id
+       AND nr.user_id = $1
+      WHERE n.id = $3::uuid
+        AND (n.visible_from IS NULL OR n.visible_from <= now())
+        AND (n.visible_to   IS NULL OR n.visible_to   >= now())
+      LIMIT 1
+      `,
+      [uid, roles, id]
+    );
+
+    const n = rows[0];
+    if (!n) {
+      return res
+        .status(404)
+        .render('errors/404', { title: 'お知らせが見つかりません' });
+    }
+
+    // 既読登録（無ければ INSERT、あれば UPDATE）
+    await dbQuery(
+      `
+      INSERT INTO notification_reads (notification_id, user_id, read_at)
+      VALUES ($1::uuid, $2, now())
+      ON CONFLICT (notification_id, user_id)
+      DO UPDATE SET read_at = EXCLUDED.read_at
+      `,
+      [id, uid]
+    );
+
+    res.render('notifications/my-show', {
+      title: n.title || 'お知らせ',
+      notification: n,
+    });
+  } catch (e) {
+    next(e);
+  }
 });
 
 // 開発支援：CSRFエラーの見やすい応答

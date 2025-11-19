@@ -1,15 +1,27 @@
-<section class="card">
+<section class="card card--notices">
   <div class="card__head">
     <h2>お知らせ</h2>
-    <a class="link" href="/notifications">すべて見る →</a>
+    <a class="btn btn--sm btn--ghost" href="/my/notifications">
+      すべて見る
+    </a>
   </div>
+
   <ul class="notices">
     <% if (notices && notices.length) { %>
       <% notices.slice(0,5).forEach(function(n){ %>
-        <li class="notice <%= n.read ? '' : 'is-unread' %>">
-          <span class="dot"></span>
-          <a href="/notifications/<%= n.id %>"><%= n.title %></a>
-          <time class="muted"><%= n.date %></time>
+        <% const isRead = !!n.is_read; %>
+        <li class="notice <%= isRead ? 'is-read' : 'is-unread' %>">
+          <span class="dot" aria-hidden="true"></span>
+          <a class="notice__title" href="/my/notifications/<%= n.id %>">
+            <%= n.title %>
+          </a>
+          <time class="muted notice__time"
+                datetime="<%= new Date(n.created_at).toISOString() %>">
+            <%= new Date(n.created_at).toLocaleDateString('ja-JP', {
+                  month: '2-digit',
+                  day: '2-digit'
+                }) %>
+          </time>
         </li>
       <% }) %>
     <% } else { %>

@@ -1,0 +1,167 @@
+<%- include('../../partials/header', {
+  title,
+  extraCSS: '/styles/admin-notifications.css'
+}) %>
+
+<main class="notifications">
+  <!-- ツールバー -->
+  <form class="toolbar" method="GET" action="/admin/notifications">
+    <div class="toolbar__row">
+      <h1>お知らせ一覧</h1>
+      <p class="muted total"><%= total || 0 %> 件</p>
+      <a class="btn btn--primary open-form" href="/admin/notifications/new">新規作成</a>
+    </div>
+
+    <div class="toolbar__row toolbar__filters">
+      <div class="search">
+        <input
+          type="search"
+          name="q"
+          value="<%= q || '' %>"
+          placeholder="タイトル・本文で検索"
+          aria-label="検索">
+        <button class="icon-btn" type="submit" aria-label="検索">🔍</button>
+        <% if (q) { %>
+          <a class="clear" href="<%= buildQuery ? buildQuery({ q:'', page:1 }) : '?q=' %>" aria-label="条件クリア">×</a>
+        <% } %>
+      </div>
+
+      <div class="selects">
+        <label class="sr-only" for="sType">種別</label>
+        <select id="sType" name="type" class="pulldown">
+          <option value="all"        <%= (type||'all')==='all'?'selected':'' %>>種別: すべて</option>
+          <option value="system"     <%= type==='system'?'selected':'' %>>システム</option>
+          <option value="contact_reply" <%= type==='contact_reply'?'selected':'' %>>お問い合わせ返信</option>
+          <option value="campaign"   <%= type==='campaign'?'selected':'' %>>キャンペーン</option>
+          <option value="maintenance"<%= type==='maintenance'?'selected':'' %>>メンテナンス</option>
+          <option value="other"      <%= type==='other'?'selected':'' %>>その他</option>
+        </select>
+
+        <label class="sr-only" for="sScope">表示期間</label>
+        <select id="sScope" name="scope" class="pulldown">
+          <option value="all"    <%= (scope||'all')==='all'?'selected':'' %>>表示期間: すべて</option>
+          <option value="active" <%= scope==='active'?'selected':'' %>>現在表示中のみ</option>
+        </select>
+
+        <button class="btn only-pc" type="submit">絞り込む</button>
+      </div>
+    </div>
+  </form>
+
+  <% if (!items || !items.length) { %>
+    <section class="empty">
+      <div class="empty__icon">🔔</div>
+      <h2>該当するお知らせはありません</h2>
+    </section>
+  <% } else { %>
+
+    <!-- PC: テーブル -->
+    <div class="table-wrap only-pc">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>日時</th>
+            <th>種別</th>
+            <th>タイトル</th>
+            <th>対象</th>
+            <th>期間</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% items.forEach(function(it){ %>
+            <tr>
+              <td>
+                <time datetime="<%= new Date(it.created_at).toISOString() %>">
+                  <%= new Date(it.created_at).toLocaleString('ja-JP', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) %>
+                </time>
+              </td>
+              <td><span class="pill"><%= it.type %></span></td>
+              <td><%= it.title %></td>
+              <td>
+                <% if (it.for_all) { %>
+                  <span class="pill pill--green">全ユーザー</span>
+                <% } %>
+                <% if (it.roles && it.roles.length) { %>
+                  <% it.roles.forEach(function(r){ %>
+                    <span class="pill pill--role"><%= r %></span>
+                  <% }) %>
+                <% } %>
+                <% if (!it.for_all && (!it.roles || !it.roles.length) && (it.user_target_count > 0)) { %>
+                  <span class="pill pill--small">個別: <%= it.user_target_count %>人</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (!it.visible_from && !it.visible_to) { %>
+                  常に表示
+                <% } else { %>
+                  <% if (it.visible_from) { %>
+                    <div>From: <%= new Date(it.visible_from).toLocaleString('ja-JP') %></div>
+                  <% } %>
+                  <% if (it.visible_to) { %>
+                    <div>To:&nbsp;&nbsp;<%= new Date(it.visible_to).toLocaleString('ja-JP') %></div>
+                  <% } %>
+                <% } %>
+              </td>
+              <td>
+                <a class="link" href="/admin/notifications/<%= it.id %>">詳細・編集 →</a>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SP: カード -->
+    <section class="cards only-sp">
+      <% items.forEach(function(it){ %>
+        <article class="card">
+          <header class="card__head">
+            <span class="pill"><%= it.type %></span>
+            <time datetime="<%= new Date(it.created_at).toISOString() %>">
+              <%= new Date(it.created_at).toLocaleString('ja-JP', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) %>
+            </time>
+          </header>
+          <div class="card__body">
+            <h2 class="card__title"><%= it.title %></h2>
+            <p class="card__targets">
+              <% if (it.for_all) { %>
+                <span class="pill pill--green">全ユーザー</span>
+              <% } %>
+              <% if (it.roles && it.roles.length) { %>
+                <% it.roles.forEach(function(r){ %>
+                  <span class="pill pill--role"><%= r %></span>
+                <% }) %>
+              <% } %>
+              <% if (!it.for_all && (!it.roles || !it.roles.length) && (it.user_target_count > 0)) { %>
+                <span class="pill pill--small">個別: <%= it.user_target_count %>人</span>
+              <% } %>
+            </p>
+            <% if (it.body) { %>
+              <p class="card__excerpt">
+                <%= String(it.body).replace(/\s+/g, ' ').slice(0, 80) %><%= String(it.body).length > 80 ? '…' : '' %>
+              </p>
+            <% } %>
+          </div>
+          <footer class="card__foot">
+            <a class="btn btn--primary" href="/admin/notifications/<%= it.id %>">詳細・編集</a>
+          </footer>
+        </article>
+      <% }) %>
+    </section>
+
+    <% if (pagination) { %>
+      <nav class="pager" aria-label="ページャ">
+        <% for (let p = 1; p <= pagination.pageCount; p++) { %>
+          <a class="page <%= p === pagination.page ? 'is-active' : '' %>"
+             href="<%= buildQuery ? buildQuery({ page: p }) : ('?page=' + p) %>">
+            <%= p %>
+          </a>
+        <% } %>
+      </nav>
+    <% } %>
+  <% } %>
+</main>
+
+<script src="/js/admin-notifications.js" defer></script>
+<%- include('../../partials/footer') %>
