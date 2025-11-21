@@ -4,10 +4,12 @@
       <h3 id="addrModalTitle">住所</h3>
       <button type="button" class="icon-btn" id="closeAddressModal" aria-label="閉じる">✕</button>
     </div>
-    <form id="addressForm" novalidate>
+    <form id="addressForm" class="h-adr" novalidate>
       <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
       <input type="hidden" id="addr_id" name="id" value="">
       <input type="hidden" id="addr_type" name="address_type" value="shipping">
+      
+      <span class="p-country-name" style="display: none;">Japan</span>
 
       <div class="grid2">
         <div class="field">
@@ -23,25 +25,25 @@
       <div class="grid3">
         <div class="field">
           <label for="addr_postal">郵便番号 *</label>
-          <input id="addr_postal" name="postal_code" type="text" required placeholder="例）1000001">
+          <input id="addr_postal" name="postal_code" type="text" class="p-postal-code" required placeholder="例）1000001">
         </div>
         <div class="field">
           <label for="addr_pref">都道府県 *</label>
-          <input id="addr_pref" name="prefecture" type="text" required>
+          <input id="addr_pref" name="prefecture" type="text" required class="p-region" readonly>
         </div>
         <div class="field">
           <label for="addr_city">市区町村 *</label>
-          <input id="addr_city" name="city" type="text" required>
+          <input id="addr_city" name="city" type="text" required class="p-locality" readonly>
         </div>
       </div>
 
       <div class="field">
         <label for="addr_line1">番地・丁目 *</label>
-        <input id="addr_line1" name="address_line1" type="text" required>
+        <input id="addr_line1" name="address_line1" type="text" required class="p-street-address">
       </div>
       <div class="field">
         <label for="addr_line2">建物名・部屋番号（任意）</label>
-        <input id="addr_line2" name="address_line2" type="text">
+        <input id="addr_line2" name="address_line2" type="text" class="p-extended-address">
       </div>
 
       <label class="check">

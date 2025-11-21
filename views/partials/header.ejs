@@ -31,6 +31,24 @@
               <%= currentUser.name %>
             </strong> さんとしてログイン中
           </span>
+
+          <!-- ✅ お知らせベル -->
+          <% const unread = (typeof unreadNoticeCount !== 'undefined' ? unreadNoticeCount : 0); %>
+            <a href="/my/notifications" class="navbar-notice" aria-label="お知らせ">
+              <!-- ベルアイコン（シンプルなSVG） -->
+              <svg class="notice-icon" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor"
+                  d="M12 2a4 4 0 0 0-4 4v1.1C6.3 8.3 5 10.1 5 12v4l-1 1v1h16v-1l-1-1v-4c0-1.9-1.3-3.7-3-4.9V6a4 4 0 0 0-4-4zm0 2a2 2 0 0 1 2 2v1h-4V6a2 2 0 0 1 2-2zm0 16a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 20z" />
+              </svg>
+              <% if (unread > 0) { %>
+                <span class="notice-badge" aria-live="polite">
+                  <%= unread > 99 ? '99+' : unread %>
+                </span>
+              <% } else { %>
+                <!-- 未読0のときは小さなドットだけ（任意） -->
+                <span class="notice-dot" aria-hidden="true"></span>
+              <% } %>
+            </a>
           <% } %>
 
             <!-- ✅ カートボタン -->
@@ -61,6 +79,15 @@
       <li role="none"><a role="menuitem" href="/cart">カート（<%= (typeof cartCount!=='undefined' ? cartCount : 0) %>）</a>
       </li>
       <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+        <% const unread = (typeof unreadNoticeCount !== 'undefined' ? unreadNoticeCount : 0); %>
+        <li role="none">
+          <a role="menuitem" href="/my/notifications">
+            お知らせ
+            <% if (unread > 0) { %>
+              （<%= unread > 99 ? '99+' : unread %>）
+            <% } %>
+          </a>
+        </li>
         <li role="none"><a role="menuitem"
             href="/dashboard/<%= (currentUser.roles?.includes('seller') ? 'seller' : 'buyer') %>">ダッシュボード</a></li>
         <li><a href="/admin/users/<%= currentUser.id %>">アカウント情報</a></li>

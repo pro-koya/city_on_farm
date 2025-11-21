@@ -82,40 +82,95 @@ app.use(csrfBrowseOnly);
 // ルート単位で multer 後に検証したい場合のハンドラ
 const csrfProtect = csrf();
 
-/* ========== 共通locals ========== */
+/* ========== 共通locals（ログイン情報 / CSRF / カート件数 / 未読お知らせ数） ========== */
 app.use(async (req, res, next) => {
-  res.locals.currentUser = req.session.user || null;
-  if (typeof req.csrfToken === 'function') {
-    try { res.locals.csrfToken = req.csrfToken(); } catch {}
-  }
-  if (req.path.endsWith('.woff2')) res.type('font/woff2');
-
-  // デフォルトはセッション内カート件数（未ログイン時や障害時のフォールバック）
-  const sessItems = req.session?.cart?.items || [];
-  res.locals.cartCount = sessItems.length;
-
-  // ログイン時はDBの件数で上書き
-  const uid = req.session?.user?.id;
-  if (!uid) return next();
-
   try {
-    // carts / cart_items 構成（saved_for_later は集計に含めない想定）
-    const rows = await dbQuery(
-      `
-      SELECT COUNT(DISTINCT ci.product_id)::int AS cnt
-        FROM carts c
-        LEFT JOIN cart_items ci
-          ON ci.cart_id = c.id
-        AND ci.saved_for_later = false
-      WHERE c.user_id = $1
-      `,
-      [uid]
-    );
-    res.locals.cartCount = rows[0]?.cnt ?? 0;
+    // ログインユーザー
+    const user = req.session?.user || null;
+    res.locals.currentUser = user;
+
+    // CSRF トークン（あれば）
+    if (typeof req.csrfToken === 'function') {
+      try {
+        res.locals.csrfToken = req.csrfToken();
+      } catch {
+        // トークン未生成時などは無視
+      }
+    }
+
+    // フォント配信（既存処理）
+    if (req.path.endsWith('.woff2')) res.type('font/woff2');
+
+    // カート件数：デフォルトはセッション内（未ログイン / エラー時フォールバック）
+    const sessItems = req.session?.cart?.items || [];
+    res.locals.cartCount = sessItems.length;
+
+    // 未読お知らせ数：デフォルト 0
+    res.locals.unreadNoticeCount = 0;
+
+    // ログインしていない場合はここで終了
+    if (!user || !user.id) {
+      return next();
+    }
+
+    const uid   = user.id;
+    const roles = Array.isArray(user.roles) ? user.roles : [];
+
+    // DB からカート件数 & 未読お知らせ数をまとめて取得
+    const [cartRows, noticeRows] = await Promise.all([
+      // carts / cart_items 構成（saved_for_later は集計に含めない想定）
+      dbQuery(
+        `
+        SELECT COUNT(DISTINCT ci.product_id)::int AS cnt
+          FROM carts c
+          LEFT JOIN cart_items ci
+            ON ci.cart_id = c.id
+           AND ci.saved_for_later = false
+         WHERE c.user_id = $1
+        `,
+        [uid]
+      ),
+      // ログインユーザー向けの「未読お知らせ数」
+      dbQuery(
+        `
+        SELECT COUNT(DISTINCT n.id)::int AS cnt
+          FROM notifications n
+          JOIN notification_targets t
+            ON t.notification_id = n.id
+          LEFT JOIN notification_reads r
+            ON r.notification_id = n.id
+           AND r.user_id = $1
+         WHERE
+           (
+             t.audience = 'all'
+             OR t.user_id = $1
+             OR (t.role IS NOT NULL AND t.role = ANY($2::text[]))
+           )
+           AND (n.visible_from IS NULL OR n.visible_from <= now())
+           AND (n.visible_to   IS NULL OR n.visible_to   >= now())
+           AND (r.read_at IS NULL)
+        `,
+        [uid, roles]
+      )
+    ]);
+
+    // カート件数を DB 結果で上書き
+    res.locals.cartCount = cartRows[0]?.cnt ?? res.locals.cartCount;
+
+    // 未読お知らせ数
+    res.locals.unreadNoticeCount = noticeRows[0]?.cnt ?? 0;
+
+    next();
   } catch (e) {
-    // 失敗してもフォールバックのセッション件数を表示
-    console.warn('cartCount fetch failed:', e.message);
-  } finally {
+    console.warn('locals middleware error:', e.message);
+    // 失敗してもフォールバック値のまま進める
+    if (typeof res.locals.cartCount === 'undefined') {
+      const sessItems = req.session?.cart?.items || [];
+      res.locals.cartCount = sessItems.length;
+    }
+    if (typeof res.locals.unreadNoticeCount === 'undefined') {
+      res.locals.unreadNoticeCount = 0;
+    }
     next();
   }
 });
@@ -6782,7 +6837,18 @@ app.post(
 
       // 対象のお問い合わせが存在するかチェック
       const contacts = await dbQuery(
-        `SELECT id, status FROM contacts WHERE id = $1::uuid LIMIT 1`,
+        `
+        SELECT
+          id,
+          status,
+          subject,
+          category,
+          email,
+          user_id
+        FROM contacts
+        WHERE id = $1::uuid
+        LIMIT 1
+        `,
         [id]
       );
       const contact = contacts[0];
@@ -6819,11 +6885,59 @@ app.post(
           [adminUserId, id]
         );
       } else {
-        // 返信があったので最終更新のみ更新（任意）
+        // 返信があったので最終更新のみ更新
         await dbQuery(
           `UPDATE contacts SET updated_at = now() WHERE id = $1::uuid`,
           [id]
         );
+      }
+
+      try {
+        // ログインユーザーに紐づく問い合わせでない場合は通知不要
+        if (contact.user_id) {
+          const subject = contact.subject || 'お問い合わせ';
+          const categoryJa = jaLabel
+            ? (jaLabel('contact_category', contact.category) || contact.category)
+            : contact.category;
+
+          const title = `「${subject}」への返信があります`;
+          const bodyText =
+`お問い合わせ「${subject}」に対して、サポートより返信が届いています。
+
+カテゴリ: ${categoryJa}
+最新メッセージ:
+${body.length > 120 ? body.slice(0, 120) + '…' : body}
+
+詳細はマイページのお問い合わせ履歴からご確認ください。`;
+
+          const linkUrl = `/my/contacts/${contact.id}`;
+
+          // notifications に1件作成
+          const nRows = await dbQuery(
+            `
+            INSERT INTO notifications (type, title, body, link_url, visible_from)
+            VALUES ($1, $2, $3, $4, now())
+            RETURNING id
+            `,
+            ['contact_reply', title, bodyText, linkUrl]
+          );
+          const notificationId = nRows[0]?.id;
+          console.log(notificationId);
+          console.log(contact.user_id);
+          if (notificationId) {
+            // 対象ユーザー用ターゲットを作成
+            await dbQuery(
+              `
+              INSERT INTO notification_targets (notification_id, user_id)
+              VALUES ($1::uuid, $2::uuid)
+              `,
+              [notificationId, contact.user_id]
+            );
+          }
+        }
+      } catch (notifyErr) {
+        // 通知に失敗してもチャット自体は成功扱いにする
+        console.warn('contact reply notification failed:', notifyErr.message);
       }
 
       return res.json({ ok: true, message });
