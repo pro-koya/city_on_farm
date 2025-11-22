@@ -118,6 +118,12 @@ public,r2_assets,r2_assets_key_uidx,CREATE UNIQUE INDEX r2_assets_key_uidx ON pu
 public,r2_assets,r2_assets_pkey,CREATE UNIQUE INDEX r2_assets_pkey ON public.r2_assets USING btree (key),t,t
 public,r2_assets,r2_assets_seller_idx,CREATE INDEX r2_assets_seller_idx ON public.r2_assets USING btree (seller_id),f,f
 public,r2_assets,r2_assets_sha256_idx,CREATE INDEX r2_assets_sha256_idx ON public.r2_assets USING btree (sha256),f,f
+public,seller_profile_values,seller_profile_values_pkey,"CREATE UNIQUE INDEX seller_profile_values_pkey ON public.seller_profile_values USING btree (seller_profile_id, value_code)",t,t
+public,seller_profiles,idx_seller_profiles_partner_id,CREATE INDEX idx_seller_profiles_partner_id ON public.seller_profiles USING btree (partner_id),f,f
+public,seller_profiles,seller_profiles_pkey,CREATE UNIQUE INDEX seller_profiles_pkey ON public.seller_profiles USING btree (id),t,t
+public,seller_profiles,seller_profiles_user_id_idx,CREATE UNIQUE INDEX seller_profiles_user_id_idx ON public.seller_profiles USING btree (last_updated_by_user_id),t,f
+public,seller_profiles,ux_seller_profiles_partner,CREATE UNIQUE INDEX ux_seller_profiles_partner ON public.seller_profiles USING btree (partner_id),t,f
+public,seller_value_tags,seller_value_tags_pkey,CREATE UNIQUE INDEX seller_value_tags_pkey ON public.seller_value_tags USING btree (code),t,t
 public,shipments,idx_shipments_created,CREATE INDEX idx_shipments_created ON public.shipments USING btree (created_at DESC),f,f
 public,shipments,idx_shipments_order,CREATE INDEX idx_shipments_order ON public.shipments USING btree (order_id),f,f
 public,shipments,idx_shipments_order_updated,"CREATE INDEX idx_shipments_order_updated ON public.shipments USING btree (order_id, updated_at DESC)",f,f

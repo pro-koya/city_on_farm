@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-11-21T18:31:09.568Z
+> Generated at: 2025-11-22T18:31:37.098Z
 
 ---
 
@@ -1472,6 +1472,108 @@ _No indexes_
 
 ---
 
+### `public.seller_profile_values`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `seller_profile_id` | `uuid` | NO |  |  |
+| 2 | `value_code` | `text` | NO |  |  |
+
+**Constraints**
+
+- **CHECK**: `2200_17431_1_not_null`, `2200_17431_2_not_null`
+- **FOREIGN KEY**: `seller_profile_values_seller_profile_id_fkey`, `seller_profile_values_value_code_fkey`
+- **PRIMARY KEY**: `seller_profile_values_pkey`
+
+**Indexes**
+
+- `seller_profile_values_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX seller_profile_values_pkey ON public.seller_profile_values USING btree (seller_profile_id, value_code)
+  ```
+
+---
+
+### `public.seller_profiles`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | uuid_generate_v4() |  |
+| 2 | `last_updated_by_user_id` | `uuid` | NO |  |  |
+| 3 | `title` | `text` | YES |  |  |
+| 4 | `body_html` | `text` | YES |  |  |
+| 5 | `hero_image` | `text` | YES |  |  |
+| 6 | `created_at` | `timestamp with time zone` | NO | now() |  |
+| 7 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+| 8 | `partner_id` | `uuid` | NO |  |  |
+| 9 | `headline` | `text` | YES |  |  |
+| 10 | `summary` | `text` | YES |  |  |
+| 11 | `intro_html` | `text` | YES |  |  |
+| 12 | `hero_image_url` | `text` | YES |  |  |
+| 13 | `hashtags` | `ARRAY` | YES |  |  |
+
+**Constraints**
+
+- **CHECK**: `2200_17407_1_not_null`, `2200_17407_2_not_null`, `2200_17407_6_not_null`, `2200_17407_7_not_null`, `2200_17407_8_not_null`
+- **FOREIGN KEY**: `fk_seller_profiles_partner`, `seller_profiles_user_id_fkey`
+- **PRIMARY KEY**: `seller_profiles_pkey`
+- **UNIQUE**: `ux_seller_profiles_partner`
+
+**Indexes**
+
+- `idx_seller_profiles_partner_id`
+  
+  ```sql
+  CREATE INDEX idx_seller_profiles_partner_id ON public.seller_profiles USING btree (partner_id)
+  ```
+- `seller_profiles_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX seller_profiles_pkey ON public.seller_profiles USING btree (id)
+  ```
+- `seller_profiles_user_id_idx`
+  
+  ```sql
+  CREATE UNIQUE INDEX seller_profiles_user_id_idx ON public.seller_profiles USING btree (last_updated_by_user_id)
+  ```
+- `ux_seller_profiles_partner`
+  
+  ```sql
+  CREATE UNIQUE INDEX ux_seller_profiles_partner ON public.seller_profiles USING btree (partner_id)
+  ```
+
+---
+
+### `public.seller_value_tags`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `code` | `text` | NO |  |  |
+| 2 | `label_ja` | `text` | NO |  |  |
+| 3 | `sort_order` | `integer` | NO | 100 |  |
+
+**Constraints**
+
+- **CHECK**: `2200_17423_1_not_null`, `2200_17423_2_not_null`, `2200_17423_3_not_null`
+- **PRIMARY KEY**: `seller_value_tags_pkey`
+
+**Indexes**
+
+- `seller_value_tags_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX seller_value_tags_pkey ON public.seller_value_tags USING btree (code)
+  ```
+
+---
+
 ### `public.shipments`
 
 **Columns**
@@ -1673,6 +1775,7 @@ _No indexes_
 | 14 | `postal_norm` | `text` | YES |  | 郵便番号（数字のみ7桁など） |
 | 15 | `phone` | `text` | YES |  | 電話番号（ハイフン付き可） |
 | 16 | `phone_norm` | `text` | YES |  | 電話番号（数字のみ） |
+| 17 | `seller_intro_summary` | `text` | YES |  | 商品ページなどに表示する出品者紹介の概要テキスト |
 
 **Constraints**
 

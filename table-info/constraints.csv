@@ -273,6 +273,24 @@ public,products,products_stock_check,CHECK
 public,r2_assets,2200_16895_1_not_null,CHECK
 public,r2_assets,2200_16895_8_not_null,CHECK
 public,r2_assets,r2_assets_pkey,PRIMARY KEY
+public,seller_profile_values,2200_17431_1_not_null,CHECK
+public,seller_profile_values,2200_17431_2_not_null,CHECK
+public,seller_profile_values,seller_profile_values_pkey,PRIMARY KEY
+public,seller_profile_values,seller_profile_values_seller_profile_id_fkey,FOREIGN KEY
+public,seller_profile_values,seller_profile_values_value_code_fkey,FOREIGN KEY
+public,seller_profiles,2200_17407_1_not_null,CHECK
+public,seller_profiles,2200_17407_2_not_null,CHECK
+public,seller_profiles,2200_17407_6_not_null,CHECK
+public,seller_profiles,2200_17407_7_not_null,CHECK
+public,seller_profiles,2200_17407_8_not_null,CHECK
+public,seller_profiles,fk_seller_profiles_partner,FOREIGN KEY
+public,seller_profiles,seller_profiles_pkey,PRIMARY KEY
+public,seller_profiles,seller_profiles_user_id_fkey,FOREIGN KEY
+public,seller_profiles,ux_seller_profiles_partner,UNIQUE
+public,seller_value_tags,2200_17423_1_not_null,CHECK
+public,seller_value_tags,2200_17423_2_not_null,CHECK
+public,seller_value_tags,2200_17423_3_not_null,CHECK
+public,seller_value_tags,seller_value_tags_pkey,PRIMARY KEY
 public,shipments,2200_16901_1_not_null,CHECK
 public,shipments,2200_16901_2_not_null,CHECK
 public,shipments,2200_16901_3_not_null,CHECK

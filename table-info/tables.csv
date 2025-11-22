@@ -26,8 +26,11 @@ public,product_specs,,6
 public,product_tags,,2
 public,products,,19
 public,r2_assets,,8
+public,seller_profile_values,,2
+public,seller_profiles,,13
+public,seller_value_tags,,3
 public,shipments,,9
 public,tags,,5
 public,user_allowed_payment_methods,,5
 public,user_recent_products,,3
-public,users,,16
+public,users,,17
