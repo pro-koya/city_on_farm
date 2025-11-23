@@ -7056,7 +7056,8 @@ app.get(
       }
 
       // 権限：管理者 or その取引先メンバー
-      if (!isAdmin(req) && !(await isMemberOfPartner(req, id))) {
+      const isMember = await isMemberOfPartner(req, id);
+      if (!isAdmin(req) && !isMember) {
         return res.status(403).send('forbidden');
       }
 
@@ -7096,6 +7097,7 @@ app.get(
         partner,
         users,
         user,
+        isMember,
         paymentMethods: partnerMethods,
         allPaymentMethods: allMethod,
         csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null

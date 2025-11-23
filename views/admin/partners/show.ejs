@@ -30,7 +30,7 @@
     </div>
     <% } %>
 
-    <% if (user.roles.includes('seller')) { %>
+    <% if (user.roles.includes('seller') && isMember) { %>
     <!-- 出品者向け：紹介ページ管理への導線 -->
     <div class="ps__actions ps__actions--seller">
       <a class="btn btn--toggle" href="/seller/profile/edit">

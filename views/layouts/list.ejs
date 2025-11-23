@@ -1,13 +1,8 @@
 <%- include('../partials/header', {
   title,
-  // 既存の extraCSS2: '',
-  extraCSS / extraJS が未定義でも動くように安全に連結します
   extraCSS2: '',
-  extraCSS: ((typeof extraCSS2: '',
-  extraCSS!=='undefined' && extraCSS2: '',
-  extraCSS) ? extraCSS2: '',
-  extraCSS + ',' : '') + '/styles/listview.css',
-  extraJS:  ((typeof extraJS!=='undefined' && extraJS) ? extraJS + ',' : '') + '/js/listview.js'
+  extraCSS: '/styles/listview.css',
+  extraJS: '/js/listview.js'
 }) %>
 
 <main class="lv">
