@@ -1,150 +1,165 @@
-<%- include('../partials/header', { title: 'カート', extraCSS: '/styles/cart.css' }) %>
+<%- include('../partials/header', { title: 'カート' , extraCSS2: '',
+  extraCSS: '/styles/cart.css' }) %>
 
-<main class="cart">
-  <div id="cart-form" class="cart__wrap">
-    <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <% } %>
-
-    <% if (!items || !items.length) { %>
-      <!-- 空カート -->
-      <section class="cart-empty" role="region" aria-live="polite">
-        <div class="cart-empty__icon" aria-hidden="true">🛒</div>
-        <h1>カートは空です</h1>
-        <p>気になる商品を見つけにいきましょう。</p>
-        <a class="btn" href="/products">商品を探す</a>
-      </section>
-    <% } else { %>
-
-    <!-- 画面ヘッダ -->
-    <div class="cart-head">
-      <h1>ショッピングカート</h1>
-      <p class="cart-head__meta"><span id="itemCount"><%= items.length %></span> 件の商品</p>
-    </div>
-
-    <section class="cart-grid">
-      <!-- 左：アイテム一覧 -->
-      <div class="cart-items" id="allList">
-        <!-- 一括操作
-        <div class="cart-tools">
-          <label class="check">
-            <input type="checkbox" id="selectAll" checked aria-label="すべて選択">
-            すべて選択
-          </label>
-          <button class="link danger" type="button" id="removeSelected">選択した商品を削除</button>
-        </div> -->
-
-        <% for (const partnerId in groupedBySeller) { %>
-        <div class="partner-group" id="seller-<%= partnerId %>">
-            <div class="partner-info">
-              <p>出品者：<%= groupedBySeller[partnerId][0].seller_partner_name || groupedBySeller[partnerId][0].seller_name %></p>
-            </div>
-            <ul class="cart-list" id="cartList-<%= partnerId %>" aria-live="polite">
-            <% groupedBySeller[partnerId].forEach(function(it){ %>
-            <li class="cart-item" data-id="<%= it.id %>" data-price="<%= it.price %>" data-stock="<%= it.stock %>" data-seller="<%= partnerId %>">
-              <!-- 左端：チェック＋サムネ -->
-              <div class="cart-col cart-col--left order1">
-                <label class="cart-item__select" aria-label="商品を選択">
-                  <input type="checkbox" class="rowCheck rowCheck-<%= partnerId %>" checked>
-                </label>
-              </div>
-  
-              <!-- 中央：商品情報 -->
-              <div class="cart-col cart-col--main order3">
-                <a class="cart-item__title" href="/products/<%= it.slug %>"><%= it.title %></a>
-                <div class="cart-item__meta">
-                  <span class="badge <%= it.is_organic ? 'is-green' : '' %>"><%= it.is_organic ? '有機' : '通常' %></span>
-                  <% if (it.is_seasonal) { %><span class="badge">旬</span><% } %>
-                  <% if (it.unit) { %><span class="muted">単位：<%= it.unit %></span><% } %>
-                  <% if (it.stock <= 10 && it.stock > 0) { %><span class="warn">在庫わずか</span><% } %>
-                  <% if (it.stock === 0) { %><span class="danger">在庫なし</span><% } %>
-                </div>
-                <div class="price">
-                  <span class="price__unit"><%= it.price.toLocaleString() %></span><span class="price__yen">円</span>
-                </div>
-              </div>
-  
-              <div class="cart-col cart-col--left order2">
-                <a class="cart-item__thumb" href="/products/<%= it.id %>" aria-label="<%= it.title %> の商品ページへ移動">
-                  <img src="<%= it.image_url || '/images/placeholder.png' %>" alt="">
-                </a>
-              </div>
-  
-              <!-- 右：数量・小計・操作 -->
-              <div class="cart-col cart-col--ctrl order4">
-                <div class="cart-item__controls">
-                  <div class="qty" role="group" aria-label="数量を変更">
-                    <button class="qty__btn" type="button" data-act="dec" aria-label="数量を1減らす">−</button>
-                    <input class="qty__input" type="number" min="1" step="1"
-                           value="<%= it.quantity || 1 %>" inputmode="numeric" pattern="[0-9]*" aria-label="数量">
-                    <button class="qty__btn" type="button" data-act="inc" aria-label="数量を1増やす">＋</button>
-                  </div>
-                  <div class="subtotal">
-                    小計：<strong class="subtotal__val"><%= (it.price * (it.quantity||1)).toLocaleString() %></strong><span>円</span>
-                  </div>
-                  <div class="switch-buy">
-                    <button class="link danger" type="button" data-act="remove">削除</button>
-                  </div>
-                </div>
-              </div>
-            </li>
-            <% }) %>
-          </ul>
-          <div class="summary__card">
-            <h2>ご注文内容</h2>
-            <div class="summary__row">
-              <span>小計</span><span id="sumSubtotal-<%= partnerId %>">-</span>
-            </div>
-            <div class="summary__row">
-              <span>割引</span><span id="sumDiscount-<%= partnerId %>">-</span>
-            </div>
-            <div class="summary__row">
-              <span>送料</span><span id="sumShipping-<%= partnerId %>">-</span>
-            </div>
-            <hr>
-            <div class="summary__total">
-              <span>合計（税込）</span><span id="sumTotal-<%= partnerId %>">-</span>
-            </div>
-
-            <a class="btn btn--lg btn--primary checkoutBtn" data-seller="<%= partnerId %>" href="/checkout?seller=<%= encodeURIComponent(partnerId) %>">購入手続きへ</a>
-            <% const errMsg = (typeof errorsBySeller !== 'undefined' && errorsBySeller && errorsBySeller[partnerId]) ? errorsBySeller[partnerId] : null; %>
-            <p id="checkoutError-<%= partnerId %>"
-              class="checkout-error"
-              aria-live="polite"
-              role="alert"
-              <%= errMsg ? '' : 'hidden' %>><%= errMsg || '' %></p>
-            <p class="summary__note">お支払いは安全に処理されます</p>
-          </div>
-          <div class="freeship card" id="freeShip">
-            <p class="freeship__label" id="freeShipLabel-<%= partnerId %>">あと <span id="freeShipRemain-<%= partnerId %>">-</span> 円で送料無料</p>
-            <div class="freeship__track">
-              <div class="freeship__bar" id="freeShipBar-<%= partnerId %>" style="width:0"></div>
-            </div>
-          </div>
-        </div>
+  <main class="cart">
+    <div id="cart-form" class="cart__wrap">
+      <% if (typeof csrfToken !=='undefined' && csrfToken) { %>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <% } %>
 
-        <!-- クーポン -->
-        <!-- <div class="coupon card">
-          <h2>クーポン</h2>
-          <div class="coupon__row">
-            <input id="couponCode" type="text" inputmode="text" placeholder="クーポンコードを入力" aria-label="クーポンコード">
-            <button class="btn btn--ghost" type="button" id="applyCoupon">適用</button>
-          </div>
-          <p class="coupon__msg" id="couponMsg" aria-live="polite"></p>
-        </div> -->
+          <% if (!items || !items.length) { %>
+            <!-- 空カート -->
+            <section class="cart-empty" role="region" aria-live="polite">
+              <div class="cart-empty__icon" aria-hidden="true">🛒</div>
+              <h1>カートは空です</h1>
+              <p>気になる商品を見つけにいきましょう。</p>
+              <a class="btn" href="/products">商品を探す</a>
+            </section>
+            <% } else { %>
 
-        <!-- 送料の目安 -->
-        <div class="shipping-hint card">
-          <h2>配送の目安</h2>
-          <p>ご注文確定から <strong>1〜3営業日</strong> で発送予定（商品や在庫状況により前後します）。</p>
-        </div>
-      </div>
-    </section>
+              <!-- 画面ヘッダ -->
+              <div class="cart-head">
+                <h1>ショッピングカート</h1>
+                <p class="cart-head__meta"><span id="itemCount">
+                    <%= items.length %>
+                  </span> 件の商品</p>
+              </div>
 
-    <% } %>
-  </div>
-</main>
+              <section class="cart-grid">
+                <!-- 左：アイテム一覧 -->
+                <div class="cart-items" id="allList">
 
-<script src="/js/cart.js"></script>
-<%- include('../partials/footer') %>
+                  <% for (const partnerId in groupedBySeller) { %>
+                    <% const errMsg=(typeof errorsBySeller !=='undefined' && errorsBySeller &&
+                      errorsBySeller[partnerId]) ? errorsBySeller[partnerId] : null; %>
+                      <!-- SP -->
+                      <div class="partner-group" id="seller-<%= partnerId %>">
+                        <div class="partner-info">
+                          <p>出品者：<%= groupedBySeller[partnerId][0].seller_partner_name ||
+                              groupedBySeller[partnerId][0].seller_name %>
+                          </p>
+                        </div>
+
+                        <div class="partner-group-main">
+                          <div class="partner-group-left">
+                            <ul class="cart-list" id="cartList-<%= partnerId %>" aria-live="polite">
+                              <% groupedBySeller[partnerId].forEach(function(it){ %>
+                                <li class="cart-item" data-id="<%= it.id %>" data-price="<%= it.price %>"
+                                  data-stock="<%= it.stock %>" data-seller="<%= partnerId %>">
+                                  <!-- 左端：チェック＋サムネ -->
+                                  <div class="cart-col cart-col--left order1">
+                                    <label class="cart-item__select" aria-label="商品を選択">
+                                      <input type="checkbox" class="rowCheck rowCheck-<%= partnerId %>" checked>
+                                    </label>
+                                  </div>
+    
+                                  <!-- 中央：商品情報 -->
+                                  <div class="cart-col cart-col--main order3">
+                                    <a class="cart-item__title" href="/products/<%= it.id %>">
+                                      <%= it.title %>
+                                    </a>
+                                    <div class="cart-item__meta">
+                                      <span class="badge <%= it.is_organic ? 'is-green' : '' %>">
+                                        <%= it.is_organic ? '有機' : '通常' %>
+                                      </span>
+                                      <% if (it.is_seasonal) { %><span class="badge">旬</span>
+                                        <% } %>
+                                          <% if (it.unit) { %><span class="muted">単位：<%= it.unit %></span>
+                                            <% } %>
+                                              <% if (it.stock <=10 && it.stock> 0) { %><span class="warn">在庫わずか</span>
+                                                <% } %>
+                                                  <% if (it.stock===0) { %><span class="danger">在庫なし</span>
+                                                    <% } %>
+                                    </div>
+                                    <div class="price">
+                                      <span class="price__unit">
+                                        <%= it.price.toLocaleString() %>
+                                      </span><span class="price__yen">円</span>
+                                    </div>
+                                  </div>
+    
+                                  <div class="cart-col cart-col--left order2">
+                                    <a class="cart-item__thumb" href="/products/<%= it.id %>"
+                                      aria-label="<%= it.title %> の商品ページへ移動">
+                                      <img src="<%= it.image_url || '/images/placeholder.png' %>" alt="">
+                                    </a>
+                                  </div>
+    
+                                  <!-- 右：数量・小計・操作 -->
+                                  <div class="cart-col cart-col--ctrl order4">
+                                    <div class="cart-item__controls">
+                                      <div class="qty" role="group" aria-label="数量を変更">
+                                        <button class="qty__btn" type="button" data-act="dec"
+                                          aria-label="数量を1減らす">−</button>
+                                        <input class="qty__input" type="number" min="1" step="1"
+                                          value="<%= it.quantity || 1 %>" inputmode="numeric" pattern="[0-9]*"
+                                          aria-label="数量">
+                                        <button class="qty__btn" type="button" data-act="inc"
+                                          aria-label="数量を1増やす">＋</button>
+                                      </div>
+                                      <div class="subtotal">
+                                        小計：<strong class="subtotal__val">
+                                          <%= (it.price * (it.quantity||1)).toLocaleString() %>
+                                        </strong><span>円</span>
+                                      </div>
+                                      <div class="switch-buy">
+                                        <button class="link danger" type="button" data-act="remove">削除</button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </li>
+                                <% }) %>
+                            </ul>
+                          </div>
+  
+                          <div class="partner-group-right">
+  
+                            <div class="summary__card">
+                              <h2>ご注文内容</h2>
+                              <div class="summary__row">
+                                <span>小計</span><span id="sumSubtotal-<%= partnerId %>">-</span>
+                              </div>
+                              <div class="summary__row">
+                                <span>割引</span><span id="sumDiscount-<%= partnerId %>">-</span>
+                              </div>
+                              <div class="summary__row">
+                                <span>送料</span><span id="sumShipping-<%= partnerId %>">-</span>
+                              </div>
+                              <hr>
+                              <div class="summary__total">
+                                <span>合計（税込）</span><span id="sumTotal-<%= partnerId %>">-</span>
+                              </div>
+    
+                              <a class="btn btn--lg btn--primary checkoutBtn" data-seller="<%= partnerId %>"
+                                href="/checkout?seller=<%= encodeURIComponent(partnerId) %>">購入手続きへ</a>
+                              <p id="checkoutError-<%= partnerId %>" class="checkout-error" aria-live="polite"
+                                role="alert" <%=errMsg ? '' : 'hidden' %>><%= errMsg || '' %>
+                              </p>
+                              <p class="summary__note">お支払いは安全に処理されます</p>
+                            </div>
+                            <div class="freeship card" id="freeShip">
+                              <p class="freeship__label" id="freeShipLabel-<%= partnerId %>">あと <span
+                                  id="freeShipRemain-<%= partnerId %>">-</span> 円で送料無料</p>
+                              <div class="freeship__track">
+                                <div class="freeship__bar" id="freeShipBar-<%= partnerId %>" style="width:0"></div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <% } %>
+
+
+                        <!-- 送料の目安 -->
+                        <div class="shipping-hint card">
+                          <h2>配送の目安</h2>
+                          <p>ご注文確定から <strong>1〜3営業日</strong> で発送予定（商品や在庫状況により前後します）。</p>
+                        </div>
+                </div>
+              </section>
+              <% } %>
+    </div>
+  </main>
+
+  <script src="/js/cart.js"></script>
+  <%- include('../partials/footer') %>

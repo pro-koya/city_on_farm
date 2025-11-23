@@ -1,0 +1,138 @@
+<% if (!isEmbed) { %>
+    <%- include('../partials/header', {
+    title,
+    extraCSS: '/styles/products.css',
+    extraCSS2: '/styles/seller-profile.css'
+    }) %>
+<% } else { %>
+  <!-- 埋め込みモード：header は読み込まないが CSS は適用 -->
+  <!DOCTYPE html>
+  <html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <title><%= title %></title>
+
+    <!-- ここで CSS を直接読み込む -->
+    <link rel="stylesheet" href="/styles/seller-profile.css">
+  </head>
+  <body class="seller-embed">
+<% } %>
+
+<main class="seller-page <%= isEmbed ? 'seller-profile--embed' : '' %>">
+  <a href="/products" class="seller-back <%= isEmbed ? 'embed-none' : '' %>">← 農作物一覧へ戻る</a>
+
+  <!-- ===== HERO（出品者の顔） ===== -->
+  <section class="seller-hero">
+    <div class="seller-hero__media">
+      <img
+        src="<%= (profile && profile.hero_image_url) || '/images/placeholder.png' %>"
+        alt="<%= seller.partner_name || seller.name %> さんのイメージ"
+        loading="lazy">
+    </div>
+
+    <div class="seller-hero__body">
+      <p class="seller-hero__label">生産者</p>
+      <h1 class="seller-hero__name"><%= seller.partner_name || seller.name %> さん</h1>
+
+      <% if (profile && profile.headline) { %>
+        <p class="seller-hero__headline"><%= profile.headline %></p>
+      <% } %>
+
+      <p class="seller-hero__summary">
+        <%= seller.intro_summary || 'この生産者さんの紹介文は現在準備中です。' %>
+      </p>
+
+      <% if (tags && tags.length) { %>
+        <div class="seller-hero__tags">
+          <p class="seller-hero__tags-label">この農家さんが大事にしていること</p>
+          <ul class="seller-taglist">
+            <% tags.forEach(function(t){ %>
+              <li class="seller-tag">#<%= t %></li>
+            <% }) %>
+          </ul>
+        </div>
+      <% } %>
+    </div>
+  </section>
+
+  <!-- ===== メイン：タブ（紹介 / 商品一覧） ===== -->
+  <section class="seller-main">
+    <div class="seller-tabs" role="tablist" aria-label="出品者情報の切り替え">
+      <button
+        type="button"
+        class="seller-tab is-active"
+        role="tab"
+        aria-selected="true"
+        aria-controls="seller-pane-intro"
+        data-tab="intro">
+        紹介
+      </button>
+      <button
+        type="button"
+        class="seller-tab"
+        role="tab"
+        aria-selected="false"
+        aria-controls="seller-pane-products"
+        data-tab="products">
+        商品一覧
+      </button>
+    </div>
+
+    <div class="seller-panes">
+      <!-- 紹介タブ -->
+      <article
+        id="seller-pane-intro"
+        class="seller-pane is-active"
+        role="tabpanel"
+        aria-labelledby="tab-intro">
+        <div class="seller-pane__inner">
+          <h2 class="seller-pane__title">生産者の想い</h2>
+          <div class="seller-intro prose">
+            <% if (profile && profile.intro_html) { %>
+              <%- profile.intro_html %>
+            <% } else { %>
+              <p>この生産者さんの詳しい紹介は、現在準備中です。</p>
+            <% } %>
+          </div>
+        </div>
+      </article>
+
+      <!-- 商品一覧タブ -->
+      <article
+        id="seller-pane-products"
+        class="seller-pane"
+        role="tabpanel"
+        aria-labelledby="tab-products"
+        hidden>
+        <div class="seller-pane__inner">
+          <div class="seller-products__head">
+            <h2 class="seller-pane__title">この生産者さんの商品</h2>
+            <a
+              class="seller-products__link link"
+              href="/products/list?seller=<%= encodeURIComponent(seller.name) %>">
+              すべての商品を一覧で見る →
+            </a>
+          </div>
+
+          <% if (products && products.length) { %>
+            <div class="grid">
+              <% products.forEach(function(p){ %>
+                <%- include('../partials/productCard', { p }) %>
+              <% }) %>
+            </div>
+          <% } else { %>
+            <p class="seller-products__empty">
+              まだ公開中の商品はありません。
+            </p>
+          <% } %>
+        </div>
+      </article>
+    </div>
+  </section>
+</main>
+
+<script src="/js/products.js"></script>
+<script src="/js/seller-profile.js" defer></script>
+<% if (!isEmbed) { %>
+  <%- include('../partials/footer') %>
+<% } %>

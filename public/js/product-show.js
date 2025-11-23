@@ -294,136 +294,200 @@
     });
   })();
 
-  const openBtn = document.getElementById('openReviewModal');
-  const modal   = document.getElementById('reviewModal');
-  const closeBtn= document.getElementById('closeReviewModal');
-  const cancel  = document.getElementById('cancelReview');
+    // ===== レビュー投稿モーダル =====
+  (function initReviewModal(){
+    const openBtn = document.getElementById('openReviewModal');
+    const modal   = document.getElementById('reviewModal');
+    const closeBtn= document.getElementById('closeReviewModal');
+    const cancel  = document.getElementById('cancelReview');
 
-  const reviewForm    = document.getElementById('reviewForm');
-  const starsRow= document.getElementById('starsRow');
-  const starsIn = document.getElementById('rv_stars');
-  const bodyEl  = document.getElementById('rv_body');
-  const idEl    = document.getElementById('rv_id');
-  const errP    = document.getElementById('rv_error');
-  const titleEl = document.getElementById('reviewModalTitle');
+    const reviewForm    = document.getElementById('reviewForm');
+    const starsRow= document.getElementById('starsRow');
+    const starsIn = document.getElementById('rv_stars');
+    const bodyEl  = document.getElementById('rv_body');
+    const idEl    = document.getElementById('rv_id');
+    const errP    = document.getElementById('rv_error');
+    const titleEl = document.getElementById('reviewModalTitle');
 
-  if (!openBtn || !modal) return;
+    // ★ここは「レビューUIがないなら何もしない」で OK（他の処理は継続）
+    if (!openBtn || !modal || !reviewForm || !starsRow || !starsIn || !bodyEl || !idEl || !errP || !titleEl) return;
 
-  const open = () => { modal.classList.add('is-open'); modal.removeAttribute('aria-hidden'); bodyEl.focus(); };
-  const close= () => { modal.classList.remove('is-open'); modal.setAttribute('aria-hidden','true'); errP.textContent=''; };
+    const open = () => {
+      modal.classList.add('is-open');
+      modal.removeAttribute('aria-hidden');
+      bodyEl.focus();
+    };
+    const close= () => {
+      modal.classList.remove('is-open');
+      modal.setAttribute('aria-hidden','true');
+      errP.textContent='';
+    };
 
-  // 既存レビューで初期化
-  function initFromBtn(){
-    const has = openBtn.dataset.hasReview === '1';
-    const stars = parseInt(openBtn.dataset.stars||'5',10);
-    const body  = openBtn.dataset.body || '';
-    const rid   = openBtn.dataset.reviewId || '';
-
-    idEl.value = rid;
-    starsIn.value = String(stars);
-    starsRow.dataset.value = String(stars);
-    setStars(stars);
-    bodyEl.value = body;
-    titleEl.textContent = has ? 'レビューを編集' : 'レビューを書く';
-  }
-
-  function setStars(n){
-    starsRow.querySelectorAll('.star').forEach(btn=>{
-      const v = parseInt(btn.dataset.v,10);
-      btn.classList.toggle('is-active', v <= n);
-    });
-  }
-
-  // 星クリック
-  starsRow.querySelectorAll('.star').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const v = parseInt(btn.dataset.v,10);
-      starsIn.value = String(v);
-      setStars(v);
-    });
-  });
-
-  openBtn.addEventListener('click', ()=>{ initFromBtn(); open(); });
-  closeBtn.addEventListener('click', close);
-  cancel.addEventListener('click', close);
-  modal.addEventListener('click', (e)=>{ if (e.target === modal) close(); });
-
-  // 送信
-  reviewForm.addEventListener('submit', async (e)=>{
-    e.preventDefault();
-    errP.textContent = '';
-
-    // 軽いクライアント検証
-    const s = parseInt(starsIn.value||'0',10);
-    const b = bodyEl.value.trim();
-    if (!(s>=1 && s<=5)) { errP.textContent='評価（星）を選択してください。'; return; }
-    if (!b) { errP.textContent='本文を入力してください。'; return; }
-
-    // URL エンコードで送信（CSRF/Expressに優しい）
-    const fd = new FormData(reviewForm);
-    const usp = new URLSearchParams();
-    for (const [k,v] of fd.entries()) usp.append(k, v);
-
-    try{
-      const res = await fetch(reviewForm.action, {
-        method:'POST',
-        headers:{
-          'Accept':'application/json',
-          'Content-Type':'application/x-www-form-urlencoded',
-          // 追加ヘッダでのCSRFも（csurfはヘッダも読める）
-          'CSRF-Token': fd.get('_csrf') || ''
-        },
-        body: usp
+    function setStars(n){
+      starsRow.querySelectorAll('.star').forEach(btn=>{
+        const v = parseInt(btn.dataset.v,10);
+        btn.classList.toggle('is-active', v <= n);
       });
-
-      const text = await res.text();
-      let json; try { json = JSON.parse(text); } catch { throw new Error(`non-json:${res.status}`); }
-      if (!json.ok){
-        errP.textContent = json.message || '入力内容をご確認ください。';
-        return;
-      }
-
-      // 成功：ヘッダの数値や本文を差し替え（サーバから返す最新集計を使用）
-      document.querySelector('.review-head .score strong').textContent = (json.rating || 0).toFixed(1);
-      document.querySelector('.review-head .score').lastChild.textContent = ` / 5（${json.count||0}件）`;
-
-      // 自分のレビュー要素を更新 or 先頭に追加
-      const list = document.getElementById('reviewList') || document.createElement('ul');
-      if (!list.id) { list.id='reviewList'; list.className='review-list'; document.getElementById('reviews').appendChild(list); }
-
-      const liId = `rev-${json.review.id}`;
-      let li = document.getElementById(liId);
-      const html = `
-        <div class="review__meta">
-          <span class="review__stars">${'★'.repeat(json.review.rating)}${'☆'.repeat(5-json.review.rating)}</span>
-          <span class="review__author">${json.review.user_name || 'あなた'}</span>
-          <span class="review__date">${new Date(json.review.updated_at||json.review.created_at).toLocaleDateString('ja-JP')}</span>
-          <span class="badge mine">あなたのレビュー</span>
-        </div>
-        <h4 class="review__title">${json.review.title}</h4>
-        <p class="review__body">${json.review.body}</p>
-      `;
-      if (!li){
-        li = document.createElement('li');
-        li.className='review';
-        li.id = liId;
-        li.innerHTML = html;
-        list.prepend(li);
-      } else {
-        li.innerHTML = html;
-      }
-      // 本文はテキストノードで入れて pre-wrap 表示
-      li.querySelector('.review__body').textContent = json.review.body || '';
-
-      // ボタン側のデータも更新（次回編集の初期値）
-      openBtn.dataset.hasReview = '1';
-      openBtn.dataset.stars = String(json.review.stars);
-      openBtn.dataset.body = json.review.body || '';
-      openBtn.dataset.reviewId = json.review.id;
-
-      close();
-    }catch(err){
-      errP.textContent = '通信に失敗しました。時間をおいて再度お試しください。';
     }
-  });
+
+    function initFromBtn(){
+      const has   = openBtn.dataset.hasReview === '1';
+      const stars = parseInt(openBtn.dataset.stars||'5',10);
+      const body  = openBtn.dataset.body || '';
+      const rid   = openBtn.dataset.reviewId || '';
+
+      idEl.value     = rid;
+      starsIn.value  = String(stars);
+      starsRow.dataset.value = String(stars);
+      setStars(stars);
+      bodyEl.value   = body;
+      titleEl.textContent = has ? 'レビューを編集' : 'レビューを書く';
+    }
+
+    // 星クリック
+    starsRow.querySelectorAll('.star').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const v = parseInt(btn.dataset.v,10);
+        starsIn.value = String(v);
+        setStars(v);
+      });
+    });
+
+    openBtn.addEventListener('click', ()=>{ initFromBtn(); open(); });
+    closeBtn?.addEventListener('click', close);
+    cancel?.addEventListener('click', close);
+    modal.addEventListener('click', (e)=>{ if (e.target === modal) close(); });
+
+    // 送信
+    reviewForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      errP.textContent = '';
+
+      const s = parseInt(starsIn.value||'0',10);
+      const b = bodyEl.value.trim();
+      if (!(s>=1 && s<=5)) { errP.textContent='評価（星）を選択してください。'; return; }
+      if (!b) { errP.textContent='本文を入力してください。'; return; }
+
+      const fd = new FormData(reviewForm);
+      const usp = new URLSearchParams();
+      for (const [k,v] of fd.entries()) usp.append(k, v);
+
+      try{
+        const res = await fetch(reviewForm.action, {
+          method:'POST',
+          headers:{
+            'Accept':'application/json',
+            'Content-Type':'application/x-www-form-urlencoded',
+            'CSRF-Token': fd.get('_csrf') || ''
+          },
+          body: usp
+        });
+
+        const text = await res.text();
+        let json; try { json = JSON.parse(text); } catch { throw new Error(`non-json:${res.status}`); }
+        if (!json.ok){
+          errP.textContent = json.message || '入力内容をご確認ください。';
+          return;
+        }
+
+        document.querySelector('.review-head .score strong').textContent = (json.rating || 0).toFixed(1);
+        document.querySelector('.review-head .score').lastChild.textContent = ` / 5（${json.count||0}件）`;
+        openBtn.textContent = 'レビューを編集';
+
+        const list = document.getElementById('reviewList') || (function(){
+          const ul = document.createElement('ul');
+          ul.id='reviewList'; ul.className='review-list';
+          document.getElementById('reviews').appendChild(ul);
+          return ul;
+        })();
+
+        const liId = `rev-${json.review.id}`;
+        let li = document.getElementById(liId);
+        const html = `
+          <div class="review__meta">
+            <span class="review__stars">${'★'.repeat(json.review.rating)}${'☆'.repeat(5-json.review.rating)}</span>
+            <span class="review__author badge mine">${json.review.user_name || 'あなた'}</span>
+            <span class="review__date">${new Date(json.review.updated_at||json.review.created_at).toLocaleDateString('ja-JP')}</span>
+          </div>
+          ${json.review.title ? `<h4 class="review__title">${json.review.title}</h4>` : ''}
+          <p class="review__body"></p>
+        `;
+        if (!li){
+          li = document.createElement('li');
+          li.className='review';
+          li.id = liId;
+          li.innerHTML = html;
+          list.prepend(li);
+        } else {
+          li.innerHTML = html;
+        }
+        li.querySelector('.review__body').textContent = json.review.body || '';
+
+        openBtn.dataset.hasReview = '1';
+        openBtn.dataset.stars     = String(json.review.rating);
+        openBtn.dataset.body      = json.review.body || '';
+        openBtn.dataset.reviewId  = json.review.id;
+
+        close();
+      }catch(err){
+        errP.textContent = '通信に失敗しました。時間をおいて再度お試しください。';
+      }
+    });
+  })();
+
+  // ===== 生産者紹介ポップアップ（/sellers/:userId を iframe で表示） =====
+  (function initSellerProfileModal() {
+    const link  = document.querySelector('.js-seller-modal-link');
+    const modal = document.getElementById('sellerProfileModal');
+    const frame = document.getElementById('sellerProfileFrame');
+
+    if (!link || !modal || !frame) return;
+
+    const lockKey = 'seller-modal-scroll-lock';
+
+    function openSellerModal() {
+      const url = link.href;
+      frame.src = url;
+
+      modal.classList.add('is-open');
+      modal.removeAttribute('aria-hidden');
+
+      if (!document.body.dataset[lockKey]) {
+        document.body.dataset[lockKey] = '1';
+        document.body.style.overflow = 'hidden';
+      }
+    }
+
+    function closeSellerModal() {
+      modal.classList.remove('is-open');
+      modal.setAttribute('aria-hidden', 'true');
+      frame.src = '';
+
+      if (document.body.dataset[lockKey]) {
+        delete document.body.dataset[lockKey];
+        document.body.style.overflow = '';
+      }
+    }
+
+    // クリックで通常遷移を止めてモーダル
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      openSellerModal();
+    });
+
+    // 背景クリック or × で閉じる
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal || e.target.closest('[data-seller-modal-close]')) {
+        closeSellerModal();
+      }
+    });
+
+    // Esc キーでも閉じる
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal.classList.contains('is-open')) {
+        closeSellerModal();
+      }
+    });
+  })();
+
 })();

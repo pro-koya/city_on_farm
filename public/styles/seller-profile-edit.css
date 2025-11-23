@@ -1,0 +1,259 @@
+:root {
+  --bg: #F9F9F6;
+  --text: #2B2B2B;
+  --main: #4C6B5C;
+  --accent: #A3C9A8;
+  --hi: #D6EADF;
+  --white: #fff;
+  --color-error: #D9534F;
+  --muted: #6b7280;
+  --radius: 14px;
+  --shadow: 0 10px 30px rgba(0, 0, 0, .08);
+  --border: #e5e7eb;
+}
+
+.sp-edit {
+  max-width: 960px;
+  margin: 80px auto 40px;
+  padding: 0 1rem 2rem;
+}
+
+.sp-edit__head h1 {
+  margin: 0 0 .4rem;
+  font-size: 1.6rem;
+}
+
+.sp-edit__head .muted {
+  color: var(--muted);
+  font-size: .95rem;
+  margin: 0 0 1.2rem;
+}
+
+.br-sp {
+  display: none;
+}
+
+.card.sp-edit__card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.4rem 1.6rem 1.6rem;
+  border: 1px solid var(--border);
+}
+
+.sp-form {
+  display: block;
+}
+
+.field {
+  display: grid;
+  gap: .4rem;
+  margin-bottom: 1rem;
+}
+
+.field label {
+  font-weight: 700;
+}
+
+.req {
+  color: #e11d48;
+  margin-left: .25rem;
+}
+
+.hint {
+  margin: 0;
+  font-size: .85rem;
+  color: var(--muted);
+}
+
+.field input[type="text"],
+.field input[type="url"],
+.field textarea {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: .6rem .75rem;
+  outline: none;
+  background: #fff;
+}
+
+.field textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.field input:focus,
+.field textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(76, 107, 92, .18);
+}
+
+/* 行レイアウト */
+.field--row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.field__col {
+  display: grid;
+  gap: .4rem;
+}
+
+.appload-clear {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* プレビュー */
+.sp-edit__hero-preview .hero-preview {
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  background: #f9fafb;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: .5rem;
+}
+
+.hero-preview img {
+  max-width: 100%;
+  max-height: 180px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.hero-preview__placeholder {
+  font-size: .85rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* タグ入力 */
+.tag-input {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: .45rem .5rem;
+  background: #fff;
+}
+
+.tag-input__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin-bottom: .25rem;
+}
+
+.tag-input__field {
+  border: none;
+  outline: none;
+  min-width: 140px;
+  font-size: .9rem;
+  padding: .25rem .2rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .2rem .55rem;
+  background: var(--hi);
+  color: var(--main);
+  border-radius: 999px;
+  font-size: .85rem;
+  border: 1px solid rgba(76, 107, 92, .18);
+}
+
+.chip__remove {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--muted);
+}
+
+/* Quill エディタ */
+#editorToolbar {
+  border-radius: 10px 10px 0 0;
+  border: 1px solid var(--border);
+  border-bottom: none;
+}
+
+.sp-editor {
+  border-radius: 0 0 10px 10px;
+  border: 1px solid var(--border);
+  min-height: 240px;
+  background: #fff;
+}
+
+.sp-editor .ql-editor {
+  min-height: 200px;
+}
+
+.sp-form__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: .6rem;
+  margin-top: 1.2rem;
+}
+
+/* ボタン */
+.btn {
+  border-radius: 999px;
+  border: none;
+  padding: .6rem .8rem;
+  font-size: .95rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.btn--primary {
+  background: var(--main);
+  color: #fff;
+}
+
+.btn--primary:hover {
+  opacity: .9;
+}
+
+.btn--ghost {
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.btn--clear {
+    background: var(--color-error);
+    color: var(--white);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.safe-alert {
+  margin-top: .5rem;
+  color: var(--accent);
+}
+
+/* SP */
+@media (max-width: 768px) {
+  .sp-edit {
+    padding: 0 .8rem 2rem;
+  }
+
+  .field--row {
+    grid-template-columns: 1fr;
+  }
+
+  .br-sp {
+    display: inline;
+  }
+
+  .card.sp-edit__card {
+    padding: 1rem .9rem 1.2rem;
+  }
+}

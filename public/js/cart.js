@@ -71,12 +71,11 @@
       const sumDiscount = document.getElementById('sumDiscount-' + partnerId);
       const sumShipping = document.getElementById('sumShipping-' + partnerId);
       const sumTotal    = document.getElementById('sumTotal-' + partnerId);
-      console.log(subtotal);
+
       if (sumSubtotal) sumSubtotal.textContent = yen(subtotal);
       if (sumDiscount) sumDiscount.textContent = `-${yen(discount)}`;
       if (sumShipping) sumShipping.textContent = yen(shipping);
       if (sumTotal)    sumTotal.textContent    = yen(total);
-      console.log(sumSubtotal + ':' + sumTotal);
 
       // 送料無料メーター
       const freeShipBar    = document.getElementById('freeShipBar-' + partnerId);

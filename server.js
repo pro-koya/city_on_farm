@@ -485,7 +485,7 @@ app.post(
         });
       }
 
-      const rows = await dbQuery(`SELECT id, name, email, password_hash, roles FROM users WHERE email = $1 LIMIT 1`, [email]);
+      const rows = await dbQuery(`SELECT id, name, email, password_hash, roles, seller_intro_summary FROM users WHERE email = $1 LIMIT 1`, [email]);
       const user = rows[0];
       const ok = user ? await bcrypt.compare(password, user.password_hash) : false;
 
@@ -500,7 +500,7 @@ app.post(
         });
       }
 
-      req.session.user = { id: user.id, name: user.name, email: user.email, roles: user.roles || [] };
+      req.session.user = { id: user.id, name: user.name, email: user.email, roles: user.roles || [], seller_intro_summary: user.seller_intro_summary };
       await mergeSessionCartToDb(req, user.id);
       await mergeSessionRecentToDb(req);
       await attachContactsToUserAfterLogin(user);
@@ -1072,11 +1072,12 @@ app.get('/', async (req, res, next) => {
     } catch {}
 
     res.render('home/index', {
-      title: '地域の野菜お届け便',
+      title: 'セッツマルシェ',
       featuredProducts,
       campaigns,
       latestPosts,
-      extraCSS: '/styles/home.css',
+      extraCSS2: '',
+  extraCSS: '/styles/home.css',
       extraJS: '/js/home.js'
     });
   } catch (e) { next(e); }
@@ -1088,7 +1089,8 @@ app.get('/about', async (req, res, next) => {
     // 将来CMS化するならここで取得。今は静的。
     res.render('home/about', {
       title: 'わたしたちについて',
-      extraCSS: '/styles/about.css',
+      extraCSS2: '',
+  extraCSS: '/styles/about.css',
       extraJS: '/js/about.js'
     });
   } catch (e) { next(e); }
@@ -1253,7 +1255,7 @@ ${message}
         const autoText =
 `${name} 様
 
-この度は「野菜お届け便」にお問い合わせありがとうございます。
+この度は「セッツマルシェ」にお問い合わせありがとうございます。
 担当者が内容を確認のうえ、通常1〜2営業日以内にご返信いたします。
 
 --- お問い合わせ控え ---
@@ -1270,7 +1272,7 @@ ${message}
 
         const autoHtml =
 `<p>${escapeHtml(name)} 様</p>
-<p>この度は「野菜お届け便」にお問い合わせありがとうございます。<br>
+<p>この度は「セッツマルシェ」にお問い合わせありがとうございます。<br>
 担当者が内容を確認のうえ、通常1〜2営業日以内にご返信いたします。</p>
 <hr>
 <p><b>— お問い合わせ控え —</b></p>
@@ -1463,7 +1465,8 @@ app.get('/blog', async (req, res, next) => {
       posts,
       pagination: { page, pageCount, total },
       q, category, sort, categories,
-      extraCSS: '/styles/blog-modern.css',
+      extraCSS2: '',
+  extraCSS: '/styles/blog-modern.css',
       extraJS: '/js/blog-modern.js'
     });
   } catch (e) {
@@ -1503,7 +1506,8 @@ app.get('/blog/:id', async (req, res, next) => {
         tags: []
       },
       related: posts.filter(p => p.id !== id).slice(0, 4),
-      extraCSS: '/styles/blog-post-modern.css',
+      extraCSS2: '',
+  extraCSS: '/styles/blog-post-modern.css',
       extraJS: '/js/blog-post-modern.js'
     });
   } catch (e) {
@@ -1654,6 +1658,18 @@ if (!process.env.LABELS_NO_REFRESH) {
   }, 5 * 60 * 1000);
 }
 
+const {
+  getProfileForUser,
+  upsertProfileForUser,
+  getPublicProfileByUserId,
+  getPublicProfileWithProducts,
+  getSellerHighlightByUserId,
+  getProfileByUserId,
+  upsertSellerProfile,
+  updateSellerIntroSummary,
+  getPublicSellerProfile,
+} = require('./services/sellerProfileService');
+
 /* =========================================================
  *  商品一覧 / 詳細（DB）
  * =======================================================*/
@@ -1771,7 +1787,7 @@ app.get('/products/:id', async (req, res, next) => {
 
     // レビュー（公開のみ・新しい順・最大 20 件）
     const reviews = await dbQuery(`
-      SELECT r.id, r.rating AS stars, r.title, r.body AS text, r.created_at,
+      SELECT r.id, r.rating AS stars, r.title, r.body AS text, r.created_at, r.user_id,
              u.name AS author
         FROM product_reviews r
         JOIN users u ON u.id = r.user_id
@@ -1807,11 +1823,21 @@ app.get('/products/:id', async (req, res, next) => {
     await recordProductView(req, product.id);
     const recentlyViewed = await fetchRecentProducts(req, 8);
 
+    let sellerHighlight = null;
+    const sellerUserId =
+      product?.seller?.id ||
+      product?.seller_id ||
+      null;
+
+    if (sellerUserId) {
+      sellerHighlight = await getSellerHighlightByUserId(sellerUserId);
+    }
+
     res.set('Cache-Control', 'no-store');
     res.render('products/show', {
       title: product.title,
       product, specs, tags, related, reviews, myReview,
-      recentlyViewed, currentUser
+      recentlyViewed, currentUser, sellerHighlight
     });
   } catch (e) {
     console.log(e);
@@ -5816,7 +5842,7 @@ app.get('/checkout/complete', async (req, res, next) => {
 
     // 明細
     const items = await dbQuery(
-      `SELECT p.slug, p.title, p.unit, oi.price, oi.quantity,
+      `SELECT p.slug, p.title, p.unit, oi.price, oi.quantity, p.id,
               (SELECT url FROM product_images i
                  WHERE i.product_id = p.id
                  ORDER BY position ASC
@@ -7018,13 +7044,17 @@ app.get('/admin/partners', requireAuth, requireRole(['admin']), async (req, res,
 });
 
 // 取引先詳細
+// 取引先詳細
 app.get(
   '/admin/partners/:id',
   requireAuth,
   async (req, res, next) => {
     try {
       const id = String(req.params.id || '').trim();
-      if (!isUuid(id)) return res.status(400).render('errors/404', { title: '不正なID' });
+      if (!isUuid(id)) {
+        return res.status(400).render('errors/404', { title: '不正なID' });
+      }
+
       // 権限：管理者 or その取引先メンバー
       if (!isAdmin(req) && !(await isMemberOfPartner(req, id))) {
         return res.status(403).send('forbidden');
@@ -7043,7 +7073,9 @@ app.get(
         [id]
       );
       const partner = partners[0];
-      if (!partner) return res.status(404).render('errors/404', { title: '取引先が見つかりません' });
+      if (!partner) {
+        return res.status(404).render('errors/404', { title: '取引先が見つかりません' });
+      }
 
       // 紐づくユーザー
       const users = await dbQuery(
@@ -7054,17 +7086,23 @@ app.get(
         [id]
       );
 
-      const user = req.session.user;
+      const user = req.session.user; // ログイン中ユーザー（admin / seller 両対応）
+
       const allMethod = await loadAllPaymentMethods('payment_method', 'payment_method');
       const partnerMethods = await getAllowedMethodsForPartner(id);
+
       res.render('admin/partners/show', {
         title: `取引先詳細 | ${partner.name}`,
-        partner, users, user,
+        partner,
+        users,
+        user,
         paymentMethods: partnerMethods,
         allPaymentMethods: allMethod,
         csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
       });
-    } catch (e) { next(e); }
+    } catch (e) {
+      next(e);
+    }
   }
 );
 
@@ -8064,6 +8102,123 @@ app.get('/my/notifications/:id', requireAuth, async (req, res, next) => {
     next(e);
   }
 });
+
+// 公開：出品者紹介ページ（URL は userId 起点だが中身は partner 単位）
+app.get('/sellers/:userId', async (req, res, next) => {
+  try {
+    const userId = String(req.params.userId || '').trim();
+    if (!userId) {
+      return res
+        .status(404)
+        .render('errors/404', { title: '出品者が見つかりません' });
+    }
+
+    const data = await getPublicProfileWithProducts(userId);
+    if (!data) {
+      return res
+        .status(404)
+        .render('errors/404', { title: '出品者が見つかりません' });
+    }
+
+    const { profile, seller, tags, products } = data;
+    const isEmbed = req.query.embed === '1';
+
+    res.render('seller/profile-show', {
+      title: (seller.partner_name || seller.name || '出品者') + 'さんの紹介',
+      profile,
+      seller,
+      tags,
+      products,
+      isEmbed
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ============================
+// 出品者紹介ページ 編集画面（GET）
+// ============================
+app.get(
+  '/seller/profile/edit',
+  requireAuth,
+  requireRole(['seller', 'admin']),
+  async (req, res, next) => {
+    try {
+      const user = req.session.user;
+
+      // user.id から partner 単位の profile を取得
+      const profile = await getProfileByUserId(user.id);
+
+      res.render('seller/profile-edit', {
+        title: '出品者紹介ページ編集',
+        currentUser: user,
+        profile,
+        csrfToken: typeof req.csrfToken === 'function' ? req.csrfToken() : null,
+        // 初期表示用（短い紹介文）
+        sellerIntroSummary: user.seller_intro_summary || '',
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+// 出品者紹介ページ 保存（POST）
+app.post(
+  '/seller/profile/edit',
+  requireAuth,
+  requireRole(['seller', 'admin']),
+  async (req, res, next) => {
+    try {
+      const user = req.session.user;
+      const {
+        headline,
+        hero_image_url,
+        intro_html,
+        seller_intro_summary,
+        hashtag_input, // hidden で送る "無農薬,減農薬" 形式
+      } = req.body;
+
+      // ハッシュタグ文字列を配列化（カンマ or 改行区切り）
+      const hashtags = (() => {
+        if (!hashtag_input) return [];
+        const raw = Array.isArray(hashtag_input)
+          ? hashtag_input.join(',')
+          : String(hashtag_input);
+        return Array.from(
+          new Set(
+            raw
+              .split(/[,、\s\n]+/)
+              .map((t) => t.replace(/^#/, '').trim())
+              .filter(Boolean)
+          )
+        );
+      })();
+
+      // partner 単位でプロフィールを upsert（user.id から partner に変換される）
+      await upsertSellerProfile(user.id, {
+        headline,
+        intro_html,
+        hero_image_url,
+        hashtags,
+        hashtag_input, // 念のため渡してもOK
+      });
+
+      // 概要（商品ページの短い紹介文）はユーザー毎
+      await updateSellerIntroSummary(user.id, seller_intro_summary);
+
+      // セッションの currentUser にも反映
+      if (req.session.user) {
+        req.session.user.seller_intro_summary = seller_intro_summary || null;
+      }
+
+      res.redirect('/seller/profile/edit?saved=1');
+    } catch (e) {
+      next(e);
+    }
+  }
+);
 
 // 開発支援：CSRFエラーの見やすい応答
 app.use((err, req, res, next) => {

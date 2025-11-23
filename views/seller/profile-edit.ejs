@@ -1,0 +1,225 @@
+<%- include('../partials/header', {
+  title,
+  extraCSS2: '',
+  extraCSS: '/styles/seller-profile-edit.css'
+}) %>
+
+<!-- Quill のスタイル -->
+<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+
+<main class="sp-edit">
+  <header class="sp-edit__head">
+    <h1>出品者紹介ページ</h1>
+    <p class="muted">
+      あなたのこだわりや畑の風景、栽培のスタイルなどを自由に表現できます。
+      <br class="br-sp">
+      購入者さんが「この人から買いたい」と思えるページを作りましょう。
+    </p>
+  </header>
+
+  <section class="card sp-edit__card">
+    <form class="sp-form" method="POST" action="/seller/profile/edit">
+      <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <% } %>
+
+      <!-- ① ページタイトル / キャッチコピー -->
+      <div class="field">
+        <label for="headline">
+          ページタイトル / キャッチコピー
+          <span class="req">*</span>
+        </label>
+        <input
+          type="text"
+          id="headline"
+          name="headline"
+          maxlength="120"
+          placeholder="例）土と対話する、鳥飼ナス農家です。"
+          value="<%= (profile && profile.headline) || '' %>">
+        <p class="hint">
+          ページ上部に大きく表示される見出しです（例：◯◯農園の紹介、など）。
+        </p>
+      </div>
+
+      <!-- ② 概要（商品ページに表示） -->
+      <div class="field">
+        <label for="seller_intro_summary">
+          出品者の概要（商品ページに表示）
+          <span class="req">*</span>
+        </label>
+        <textarea
+          id="seller_intro_summary"
+          name="seller_intro_summary"
+          rows="3"
+          maxlength="200"
+          placeholder="例）大阪・鳥飼で◯◯年、土づくりからこだわった減農薬栽培を続けています。"><%= (sellerIntroSummary || '').replace(/<\/textarea>/g, '&lt;/textarea&gt;') %></textarea>
+        <p class="hint">
+          商品詳細ページ上部の「出品者情報」に短く表示される紹介文です（200文字以内推奨）。
+        </p>
+      </div>
+
+      <!-- ③ ヘッダー画像（R2アップロード＋ライブラリ） -->
+      <div class="field field--row">
+        <div class="field__col">
+          <label for="hero_image_url">
+            ヘッダー画像（R2 に保存された画像を利用）
+          </label>
+
+          <!-- URL 入力（従来どおり） -->
+          <input
+            type="url"
+            id="hero_image_url"
+            name="hero_image_url"
+            placeholder="https://example.com/field.jpg"
+            value="<%= (profile && profile.hero_image_url) || '' %>">
+          <p class="hint">
+            R2 にアップロードされた画像の URL を自動でセットします。手動入力も可能です。
+          </p>
+
+          <!-- アップロード / ライブラリ / クリア -->
+          <div class="hero-uploader">
+            <input id="heroImageFile" type="file" accept="image/*" hidden>
+
+            <div class="hero-uploader__buttons">
+              <button type="button" class="btn btn--primary" id="heroUploadBtn">
+                画像をアップロード
+              </button>
+              <button type="button" class="btn btn--ghost" id="heroOpenLibrary">
+                ライブラリから選ぶ
+              </button>
+            </div>
+
+            <!-- uploader-r2 用のダミー DOM -->
+            <textarea id="heroImageUrlsTmp" hidden></textarea>
+            <ul id="heroPreviewList" class="uploader__list" hidden></ul>
+            <p id="heroUploadMsg" class="hint"></p>
+          </div>
+        </div>
+
+        <div class="field__col sp-edit__hero-preview">
+            <div class="appload-clear">
+                <p class="hint">プレビュー</p>
+                <button type="button" class="btn btn--clear" id="heroClearBtn">×</button>
+            </div>
+          <div class="hero-preview">
+            <% if (profile && profile.hero_image_url) { %>
+              <img
+                id="heroPreviewImg"
+                src="<%= profile.hero_image_url %>"
+                alt="ヘッダー画像プレビュー">
+            <% } else { %>
+              <span class="hero-preview__placeholder" id="heroPreviewPlaceholder">
+                画像を選ぶとここにプレビューが表示されます
+              </span>
+            <% } %>
+          </div>
+        </div>
+      </div>
+
+      <!-- ④ この農家さんが大事にしていること（ハッシュタグ） -->
+      <div class="field">
+        <label>
+          この農家さんが大事にしていること（ハッシュタグ）
+        </label>
+        <p class="hint">
+          例）#無農薬 #減農薬 #有機栽培 #旬の野菜 など。
+          Enterキーでタグを追加できます。
+        </p>
+
+        <div class="tag-input" data-tag-input>
+          <div class="tag-input__chips" id="tagChips">
+            <% if (profile && Array.isArray(profile.hashtags) && profile.hashtags.length) { %>
+              <% profile.hashtags.forEach(function(tag){ %>
+                <span class="chip" data-tag="<%= tag %>">
+                  #<%= tag %>
+                  <button type="button" class="chip__remove" aria-label="削除">&times;</button>
+                </span>
+              <% }) %>
+            <% } %>
+          </div>
+          <input
+            type="text"
+            id="tagInput"
+            class="tag-input__field"
+            placeholder="例）無農薬, 減農薬, 有機JAS などを入力して Enter">
+          <input
+            type="hidden"
+            name="hashtag_input"
+            id="hashtag_input"
+            value="<%= profile && Array.isArray(profile.hashtags) ? profile.hashtags.join(',') : '' %>">
+        </div>
+      </div>
+
+      <!-- ⑤ 本文（リッチテキスト） -->
+            <!-- ⑤ 本文（リッチテキスト） -->
+      <div class="field">
+        <label for="editor">
+          農園・出品者のストーリー（リッチテキスト）
+        </label>
+        <p class="hint">
+          自己紹介、栽培のこだわり、土・水・環境への想い、栽培方法の工夫などを自由に記載できます。
+          画像挿入や箇条書きもご利用いただけます。
+        </p>
+
+        <div id="editorToolbar">
+          <!-- Quill 標準の簡易ツールバー -->
+          <span class="ql-formats">
+            <button class="ql-bold"></button>
+            <button class="ql-italic"></button>
+            <button class="ql-underline"></button>
+          </span>
+          <span class="ql-formats">
+            <button class="ql-list" value="ordered"></button>
+            <button class="ql-list" value="bullet"></button>
+          </span>
+          <span class="ql-formats">
+            <button class="ql-link"></button>
+            <button class="ql-image"></button>
+          </span>
+          <span class="ql-formats">
+            <button class="ql-header" value="2"></button>
+            <button class="ql-header" value="3"></button>
+          </span>
+        </div>
+
+        <div id="editor" class="sp-editor">
+          <% if (profile && profile.intro_html) { %>
+            <%- profile.intro_html %>
+          <% } else { %>
+            <p>はじめまして。◯◯農園です。ここに自己紹介やこだわりを書いていきましょう。</p>
+          <% } %>
+        </div>
+
+        <!-- サーバに送るための hidden -->
+        <input type="hidden" name="intro_html" id="intro_html">
+
+        <!-- ★ Quill 画像用：R2アップローダの隠しDOM（画面には出ません） -->
+        <div id="quill-image-hidden" hidden>
+          <input type="file" id="editorImgFile" accept="image/*" hidden>
+          <ul id="editorImgList" hidden></ul>
+          <textarea id="editorImgUrls" hidden></textarea>
+          <p id="editorImgMsg" hidden></p>
+        </div>
+      </div>
+
+      <div class="sp-form__foot">
+        <a href="/dashboard/seller" class="btn btn--ghost">キャンセル</a>
+        <button type="submit" class="btn btn--primary">保存する</button>
+      </div>
+
+      <% if (typeof req !== 'undefined' && req.query && req.query.saved) { %>
+        <p class="safe-alert">保存しました。</p>
+      <% } %>
+    </form>
+  </section>
+</main>
+
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+<!-- 画像リサイズ用モジュール（Quillプラグイン） -->
+<script src="https://cdn.jsdelivr.net/npm/johnny-quill-image-resize-module@3.0.2/image-resize.min.js"></script>
+<!-- 既存の R2 アップローダ共通ロジック -->
+<script src="/js/uploader-r2.js"></script>
+<!-- このページ専用のJS -->
+<script src="/js/seller-profile-edit.js" defer></script>
+
+<%- include('../partials/footer') %>

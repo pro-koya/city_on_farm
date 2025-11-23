@@ -1,4 +1,5 @@
-<%- include('../partials/header', { title: product.title, extraCSS: '/styles/product-show.css' }) %>
+<%- include('../partials/header', { title: product.title, extraCSS2: '',
+  extraCSS: '/styles/product-show.css' }) %>
 
 <main class="product-page" itemscope itemtype="https://schema.org/Product">
   <a href="/products">←商品一覧へ</a>
@@ -95,10 +96,9 @@
   <!-- ===== 詳細タブ / SPはアコーディオン風 ===== -->
   <section class="details">
     <div class="tabs" role="tablist">
-      <button class="tab is-active" role="tab" data-tab="desc">商品説明</button>
-      <button class="tab" role="tab" data-tab="seller">出品者情報</button>
-      <button class="tab" role="tab" data-tab="specs">サイズ・選定基準</button>
-      <button class="tab" role="tab" data-tab="reviews">レビュー</button>
+      <button class="tab is-active tab1" role="tab" data-tab="desc">商品説明</button>
+      <button class="tab tab2" role="tab" data-tab="specs">サイズ・選定基準</button>
+      <button class="tab tab3" role="tab" data-tab="reviews">レビュー</button>
     </div>
 
     <div class="panes">
@@ -109,23 +109,6 @@
           <% } else { %>
             <p><%- product.description_html || '商品の詳細説明が入ります。' %></p>
           <% } %>
-        </div>
-      </article>
-
-      <article id="pane-seller" class="pane" role="tabpanel">
-        <div class="seller">
-          <img class="seller__avatar" src="<%= (product.seller && product.seller.avatar) || '/images/test-image.jpeg' %>" alt="<%= product.seller_name || '生産者' %>">
-          <div class="seller__meta">
-            <% if (product.seller_partner_name) { %>
-              <h3><%= product.seller_partner_name || '生産社名' %></h3>
-              <small><%= product.seller_name || '生産者名' %> さん</small>
-            <% } else { %>
-              <h3><%= product.seller_name || '生産者名' %>さん</h3>
-            <% } %>
-            <p><%= product.seller?.bio || '生産者紹介文が入ります。' %></p>
-            <% if (product.seller && product.seller.location){ %><p class="muted">所在地：<%= product.seller.location %></p><% } %>
-            <a class="link" href="/products/list?producer=<%= encodeURIComponent(product.seller?.name||'') %>">この出品者の他商品 →</a>
-          </div>
         </div>
       </article>
 
@@ -176,13 +159,11 @@
             <ul class="review-list" id="reviewList">
               <% reviews.forEach(function(r){ %>
                 <li class="review" id="rev-<%= r.id %>">
+                  <% const isMine = !currentUser ? false : r.user_id === currentUser.id; %>
                   <div class="review__meta">
                     <span class="review__stars" aria-label="<%= r.stars %>点"><%= '★'.repeat(r.stars) %><%= '☆'.repeat(5-r.stars) %></span>
-                    <span class="review__author"><%= r.author %></span>
+                    <span class="review__author <%= isMine ? 'badge mine' : '' %>"><%= isMine ? 'あなた' : r.author %></span>
                     <span class="review__date"><%= new Date(r.created_at).toLocaleDateString('ja-JP') %></span>
-                    <% if (currentUser && r.user_id === currentUser.id) { %>
-                      <span class="badge mine">あなたのレビュー</span>
-                    <% } %>
                   </div>
                   <% if (r.title) { %><h4 class="review__title"><%= r.title %></h4><% } %>
                   <!-- ★ 改行を尊重して表示（CSSで pre-wrap） -->
@@ -245,6 +226,48 @@
     </div>
   </section>
 
+  <!-- ===== 出品者ハイライト ===== -->
+  <% if (sellerHighlight) { %>
+  <section class="seller-highlight">
+    <div class="seller-highlight__head">
+      <p class="seller-highlight__label sp">この商品を育てた生産者</p>
+      <h2 class="seller-highlight__name sp"><%= sellerHighlight.name %> さん</h2>
+      <div class="seller-highlight-grid">
+        <div class="seller-img">
+          <img src="<%= sellerHighlight.hero_image_url || '' %>" alt="<%= sellerHighlight.name + 'さんのイメージ画像' %>">
+        </div>
+        <div class="seller-highlight-detail">
+          <p class="seller-highlight__label pc">この商品を育てた生産者</p>
+          <h2 class="seller-highlight__name pc"><%= sellerHighlight.name %> さん</h2>
+          <% if (sellerHighlight.tags && sellerHighlight.tags.length) { %>
+            <div class="seller-highlight__tags">
+              <p class="seller-highlight__tags-label">この農家さんが大事にしていること</p>
+              <ul class="seller-highlight__taglist">
+                <% sellerHighlight.tags.forEach(function(t){ %>
+                  <li>#<%= t %></li>
+                <% }) %>
+              </ul>
+            </div>
+          <% } %>
+          <a class="seller-highlight__more link js-seller-modal-link" href="/sellers/<%= sellerHighlight.user_id %>?embed=1">生産者の詳しい紹介を見る→</a>
+        </div>
+      </div>
+    </div>
+
+    <p class="seller-highlight__summary">
+      <%= sellerHighlight.intro_summary || 'この生産者さんの紹介文は現在準備中です。' %>
+    </p>
+
+    <div class="seller-highlight__actions">
+      <a
+        class="btn btn--seller"
+        href="/products/list?seller=<%= encodeURIComponent(sellerHighlight.name) %>">
+        この生産者さんの他の商品
+      </a>
+    </div>
+  </section>
+  <% } %>
+
   <!-- ===== 関連商品 ===== -->
   <% if (related && related.length) { %>
   <section class="rail">
@@ -260,6 +283,33 @@
   </section>
   <% } %>
 </main>
+
+<!-- ▼ 生産者紹介モーダル（ポップアップ） -->
+<div
+  class="modal seller-modal"
+  id="sellerProfileModal"
+  role="dialog"
+  aria-modal="true"
+  aria-hidden="true">
+  <div class="modal__content seller-modal__content" role="document">
+    <div class="seller-modal__head">
+      <h3 class="seller-modal__title">生産者の詳しい紹介</h3>
+      <button
+        type="button"
+        class="icon-btn seller-modal__close"
+        data-seller-modal-close
+        aria-label="閉じる">
+        ✕
+      </button>
+    </div>
+    <div class="seller-modal__body">
+      <iframe
+        id="sellerProfileFrame"
+        title="生産者紹介"
+        loading="lazy"></iframe>
+    </div>
+  </div>
+</div>
 
 <script src="/js/product-show.js"></script>
 <%- include('../partials/footer') %>

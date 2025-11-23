@@ -78,14 +78,6 @@ section {
   gap: 16px;
 }
 
-@media (min-width: 980px) {
-  .cart-grid {
-    grid-template-columns: minmax(0, 1fr) 360px;
-    /* 左可変 / 右固定 */
-    align-items: start;
-  }
-}
-
 /* ============= 空カート ============= */
 .cart-empty {
   max-width: 720px;
@@ -136,12 +128,34 @@ section {
   user-select: none
 }
 
+.sp-cart {
+  display: none;
+}
+
 .partner-group {
   background-color: #fff;
   padding: 5px 15px 20px 15px;
   margin-bottom: 12px;
   border-radius: 18px;
   border: 1px solid var(--border);
+}
+
+.partner-group-main {
+  display: grid;
+  grid-template-columns: 60% auto;
+  gap: .8rem;
+}
+
+.pc-cart {
+  display: grid;
+  grid-template-columns: 60% auto;
+  gap: 16px;
+}
+
+@media (max-width: 720px) {
+  .partner-group-main {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* アイテムリスト */
@@ -344,13 +358,9 @@ section {
   width: 200px;
 }
 
-@media (max-width: 720px) {
-  .cart__wrap {
-    padding: 8px 2px;
-  }
+@media (max-width: 1024px) {
   .cart-item {
     grid-template-columns: 40% 1fr;
-    /* 左：サムネ ／ 右：本文+操作 */
     grid-auto-rows: auto;
     align-items: start;
   }
@@ -390,6 +400,19 @@ section {
 
   .cart-item__meta {
     justify-content: center;
+  }
+}
+
+@media (max-width: 720px) {
+  .pc-cart {
+    display: none;
+  }
+
+  .sp-cart {
+    display: block;
+  }
+  .cart__wrap {
+    padding: 8px 2px;
   }
 }
 
@@ -510,6 +533,8 @@ section {
 .summary__card {
   padding: 16px;
   background: var(--c-white);
+  border: 1px solid var(--c-border);
+  border-radius: 16px;
 }
 
 .summary__card h2 {

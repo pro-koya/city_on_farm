@@ -1,5 +1,6 @@
 <%- include('../../partials/header', {
   title,
+  extraCSS2: '',
   extraCSS: '/styles/partner-show.css'
 }) %>
 
@@ -26,6 +27,18 @@
         </button>
       </form>
       <a class="btn btn--ghost" href="/admin/partners">一覧へ戻る</a>
+    </div>
+    <% } %>
+
+    <% if (user.roles.includes('seller')) { %>
+    <!-- 出品者向け：紹介ページ管理への導線 -->
+    <div class="ps__actions ps__actions--seller">
+      <a class="btn btn--toggle" href="/seller/profile/edit">
+        出品者紹介ページを編集
+      </a>
+      <a class="link" href="/sellers/<%= user.id %>" target="_blank" rel="noopener">
+        公開中の紹介ページを確認 →
+      </a>
     </div>
     <% } %>
   </header>
