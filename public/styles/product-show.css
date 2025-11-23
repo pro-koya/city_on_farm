@@ -945,7 +945,7 @@ table td {
 .seller-highlight-detail {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 12px;
 }
 
 .sp {

@@ -62,19 +62,16 @@
       <div class="field field--row">
         <div class="field__col">
           <label for="hero_image_url">
-            ヘッダー画像（R2 に保存された画像を利用）
+            ヘッダー画像
           </label>
 
           <!-- URL 入力（従来どおり） -->
           <input
-            type="url"
+            type="hidden"
             id="hero_image_url"
             name="hero_image_url"
             placeholder="https://example.com/field.jpg"
             value="<%= (profile && profile.hero_image_url) || '' %>">
-          <p class="hint">
-            R2 にアップロードされた画像の URL を自動でセットします。手動入力も可能です。
-          </p>
 
           <!-- アップロード / ライブラリ / クリア -->
           <div class="hero-uploader">
@@ -119,7 +116,7 @@
       <!-- ④ この農家さんが大事にしていること（ハッシュタグ） -->
       <div class="field">
         <label>
-          この農家さんが大事にしていること（ハッシュタグ）
+          この農家さんが大事にしていること
         </label>
         <p class="hint">
           例）#無農薬 #減農薬 #有機栽培 #旬の野菜 など。
@@ -154,51 +151,66 @@
             <!-- ⑤ 本文（リッチテキスト） -->
       <div class="field">
         <label for="editor">
-          農園・出品者のストーリー（リッチテキスト）
+          農園・出品者のストーリー
         </label>
         <p class="hint">
           自己紹介、栽培のこだわり、土・水・環境への想い、栽培方法の工夫などを自由に記載できます。
           画像挿入や箇条書きもご利用いただけます。
         </p>
 
-        <div id="editorToolbar">
-          <!-- Quill 標準の簡易ツールバー -->
-          <span class="ql-formats">
-            <button class="ql-bold"></button>
-            <button class="ql-italic"></button>
-            <button class="ql-underline"></button>
-          </span>
-          <span class="ql-formats">
-            <button class="ql-list" value="ordered"></button>
-            <button class="ql-list" value="bullet"></button>
-          </span>
-          <span class="ql-formats">
-            <button class="ql-link"></button>
-            <button class="ql-image"></button>
-          </span>
-          <span class="ql-formats">
-            <button class="ql-header" value="2"></button>
-            <button class="ql-header" value="3"></button>
-          </span>
-        </div>
+        <div class="ql-editer-group">
+            <div id="editorToolbar">
+                <!-- 文字装飾 -->
+                <span class="ql-formats">
+                <button class="ql-bold"></button>
+                <button class="ql-italic"></button>
+                <button class="ql-underline"></button>
+                </span>
 
-        <div id="editor" class="sp-editor">
-          <% if (profile && profile.intro_html) { %>
-            <%- profile.intro_html %>
-          <% } else { %>
-            <p>はじめまして。◯◯農園です。ここに自己紹介やこだわりを書いていきましょう。</p>
-          <% } %>
-        </div>
+                <!-- リスト -->
+                <span class="ql-formats">
+                <button class="ql-list" value="ordered"></button>
+                <button class="ql-list" value="bullet"></button>
+                </span>
 
-        <!-- サーバに送るための hidden -->
-        <input type="hidden" name="intro_html" id="intro_html">
+                <!-- リンク & 画像（画像はカスタムハンドラに差し替え済み） -->
+                <span class="ql-formats">
+                <button class="ql-link"></button>
+                <button class="ql-image"></button>
+                </span>
 
-        <!-- ★ Quill 画像用：R2アップローダの隠しDOM（画面には出ません） -->
-        <div id="quill-image-hidden" hidden>
-          <input type="file" id="editorImgFile" accept="image/*" hidden>
-          <ul id="editorImgList" hidden></ul>
-          <textarea id="editorImgUrls" hidden></textarea>
-          <p id="editorImgMsg" hidden></p>
+                <!-- 見出し（h2/h3） -->
+                <span class="ql-formats">
+                <button class="ql-header" value="2"></button>
+                <button class="ql-header" value="3"></button>
+                </span>
+
+                <!-- ★ カスタムコンポーネント群 -->
+                <span class="ql-formats">
+                <button type="button" class="ql-insertTable">表</button>
+                <button type="button" class="ql-insertImageGrid">画像グリッド</button>
+                <button type="button" class="ql-insertSlider">画像スライド</button>
+                </span>
+            </div>
+
+            <div id="editor" class="sp-editor">
+                <% if (profile && profile.intro_html) { %>
+                <%- profile.intro_html %>
+                <% } else { %>
+                <p>はじめまして。◯◯農園です。ここに自己紹介やこだわりを書いていきましょう。</p>
+                <% } %>
+            </div>
+    
+            <!-- サーバに送るための hidden -->
+            <input type="hidden" name="intro_html" id="intro_html">
+    
+            <!-- ★ Quill 画像用：R2アップローダの隠しDOM（画面には出ません） -->
+            <div id="quill-image-hidden" hidden>
+              <input type="file" id="editorImgFile" accept="image/*" hidden>
+              <ul id="editorImgList" hidden></ul>
+              <textarea id="editorImgUrls" hidden></textarea>
+              <p id="editorImgMsg" hidden></p>
+            </div>
         </div>
       </div>
 

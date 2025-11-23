@@ -266,7 +266,7 @@ html, body {
   font-weight:800;
   letter-spacing:.2px;
   color:#0f172a;
-  padding-left: .6rem;
+  padding-left: 1rem;
 }
 
 .seller-intro h2{
@@ -309,7 +309,7 @@ html, body {
   position:relative; padding-left:.35rem;
 }
 .seller-intro ul > li::before{
-  content:""; position:absolute; left:-1.05rem; top:.65em;
+  content:""; position:absolute; left:-1.05rem; top:.93em;
   width:.45rem; height:.45rem; border-radius:50%;
   background:linear-gradient(135deg,var(--grad-a),var(--grad-b));
   box-shadow:0 0 0 2px rgba(20,184,166,.15);
