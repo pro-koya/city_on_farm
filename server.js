@@ -5326,6 +5326,7 @@ app.get('/checkout/confirm', async (req, res, next) => {
     const shipMethod_ja = jaLabel('ship_method', draft.shipMethod) || draft.shipMethod;
     const paymentMethod_ja = jaLabel('payment_method', draft.paymentMethod) || draft.paymentMethod;
 
+    req.session.flash = null;
     res.render('checkout/confirm', {
       title: 'ご注文内容の確認',
       items,
@@ -8371,14 +8372,14 @@ app.get(
   requireRole(['seller', 'admin']),
   async (req, res, next) => {
     try {
-      const user = req.session.user;
+      const loginUser = req.session.user;
 
       // user.id から partner 単位の profile を取得
-      const profile = await getProfileByUserId(user.id);
+      const {profile, user} = await getProfileByUserId(loginUser.id);
 
       res.render('seller/profile-edit', {
         title: '出品者紹介ページ編集',
-        currentUser: user,
+        currentUser: loginUser,
         profile,
         csrfToken: typeof req.csrfToken === 'function' ? req.csrfToken() : null,
         // 初期表示用（短い紹介文）
@@ -8435,9 +8436,9 @@ app.post(
       await updateSellerIntroSummary(user.id, seller_intro_summary);
 
       // セッションの currentUser にも反映
-      if (req.session.user) {
-        req.session.user.seller_intro_summary = seller_intro_summary || null;
-      }
+      // if (req.session.user) {
+      //   req.session.user.seller_intro_summary = seller_intro_summary || null;
+      // }
 
       res.redirect('/seller/profile/edit?saved=1');
     } catch (e) {

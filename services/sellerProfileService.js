@@ -28,7 +28,7 @@ async function getUserAndPartner(userId) {
       SELECT
         u.id    AS user_id,
         u.name  AS user_name,
-        u.seller_intro_summary,
+        p.seller_intro_summary AS seller_intro_summary,
         u.partner_id,
         p.name  AS partner_name
       FROM users u
@@ -262,8 +262,8 @@ async function getPublicProfileWithProducts(userId) {
  * 旧API互換：user_id から profile だけ返す
  */
 async function getProfileByUserId(userId) {
-  const { profile } = await getProfileForUser(userId);
-  return profile;
+  const { profile, user } = await getProfileForUser(userId);
+  return { profile, user };
 }
 
 /**
@@ -291,14 +291,25 @@ async function upsertSellerProfile(userId, payload) {
  * 出品者概要（users.seller_intro_summary）を更新
  */
 async function updateSellerIntroSummary(userId, summary) {
+  const rows = await dbQuery(
+    `
+      SELECT
+        partner_id
+      FROM users
+      WHERE id = $1::uuid
+      LIMIT 1
+    `,
+    [userId]
+  );
+
   await dbQuery(
     `
-      UPDATE users
+      UPDATE partners
          SET seller_intro_summary = $1,
              updated_at = now()
        WHERE id = $2::uuid
     `,
-    [summary || null, userId]
+    [summary || null, rows[0].partner_id]
   );
 }
 

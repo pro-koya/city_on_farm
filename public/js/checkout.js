@@ -325,8 +325,13 @@
         datePicker = fp(evDateInput, options);
 
         // 既に shipDateHidden に値があれば、初期値として反映
-        if (shipDateHidden?.value) {
+        if (shipDateHidden?.value && availList.includes(shipDateHidden?.value)) {
             datePicker.setDate(shipDateHidden.value, false);
+        } else {
+            datePicker.setDate('', false);
+            if (shipDateHidden) {
+              shipDateHidden.value = '';
+            }
         }
     }
 
