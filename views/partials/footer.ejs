@@ -1,18 +1,70 @@
-    </main>
-    <footer>
-        <p>&copy; 2025 City on Farm. All rights reserved.</p>
-        <nav>
-            <a href="#">ホーム</a> |
-            <a href="/products">商品一覧</a> |
-            <a href="/contact">お問い合わせ</a> |
-            <a href="/login">ログイン</a>
-        </nav>
-    </footer>
+  </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/weekSelect/weekSelect.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
-    <script src="/js/base.js"></script>
+  <footer class="site-footer">
+    <div class="site-footer__inner">
+      <!-- ブランド / コンセプト -->
+      <div class="site-footer__brand">
+        <div class="site-footer__logo">
+          <span class="site-footer__logo-mark"><img src="/images/setsumaru-logo.png" alt="セッツマルシェ"></span>
+          <span class="site-footer__logo-text">セッツマルシェ</span>
+        </div>
+        <p class="site-footer__copytext">
+          地域でつくり、地域で味わい、地域でつながる。<br>この循環の輪が、まちの豊かさを育んでいく。
+        </p>
+      </div>
+
+      <!-- ナビゲーション -->
+      <nav class="site-footer__nav" aria-label="フッターナビゲーション">
+        <div class="site-footer__nav-group">
+          <h3 class="site-footer__nav-title">メニュー</h3>
+          <ul>
+            <li><a href="/">ホーム</a></li>
+            <li><a href="/products">農作物一覧</a></li>
+            <li><a href="/blog">ブログ</a></li>
+            <li><a href="/contact">お問い合わせ</a></li>
+          </ul>
+        </div>
+
+        <div class="site-footer__nav-group">
+          <h3 class="site-footer__nav-title">ご利用ガイド</h3>
+          <ul>
+            <li><a href="/about">セッツマルシェについて</a></li>
+            <!-- <li><a href="/guide">ご利用方法</a></li>
+            <li><a href="/faq">よくあるご質問</a></li> -->
+          </ul>
+        </div>
+
+        <div class="site-footer__nav-group">
+          <h3 class="site-footer__nav-title">アカウント</h3>
+          <ul>
+            <li><a href="/login">ログイン</a></li>
+            <li><a href="/signup">新規登録</a></li>
+            <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+                <li><a href="/dashboard">ダッシュボード</a></li>
+            <% } %>
+          </ul>
+        </div>
+      </nav>
+    </div>
+
+    <div class="site-footer__bottom">
+      <p class="site-footer__bottom-copy">
+        &copy; 2025 City on Farm / セッツマルシェ. All rights reserved.
+      </p>
+      <div class="site-footer__bottom-links">
+        <a href="/terms">利用規約</a>
+        <span aria-hidden="true">／</span>
+        <a href="/privacy">プライバシーポリシー</a>
+        <span aria-hidden="true">／</span>
+        <a href="/contact">お問い合わせ</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/weekSelect/weekSelect.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
+  <script src="/js/base.js"></script>
 </body>
 </html>

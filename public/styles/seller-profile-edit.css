@@ -357,3 +357,70 @@
   object-fit: cover;
   border-radius: 10px;
 }
+
+/* Quill 見出しボタンのラベル */
+.ql-snow .ql-toolbar button.ql-header[value="2"]::before {
+  content: 'H2';
+  font-size: 13px;
+}
+
+.ql-snow .ql-toolbar button.ql-header[value="3"]::before {
+  content: 'H3';
+  font-size: 13px;
+}
+
+/* 栽培ポイント（表形式） */
+.sp-table-editor {
+  display: grid;
+  gap: .6rem;
+  margin-top: .3rem;
+}
+
+.sp-table-editor__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr);
+  gap: .4rem;
+}
+
+.sp-table-editor__row input,
+.sp-table-editor__row textarea {
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  padding: .5rem .65rem;
+  font-size: .9rem;
+  outline: none;
+  background: #fff;
+}
+
+.sp-table-editor__row input:focus,
+.sp-table-editor__row textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(76, 107, 92, .16);
+}
+
+/* スライドショー用エディタ */
+.sp-slider-editor {
+  display: grid;
+  gap: .5rem;
+  margin-top: .3rem;
+}
+
+.sp-slider-editor__row input[type="text"] {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  padding: .5rem .65rem;
+  font-size: .9rem;
+  outline: none;
+}
+
+.sp-slider-editor__row input[type="text"]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(76, 107, 92, .16);
+}
+
+@media (max-width: 768px) {
+  .sp-table-editor__row {
+    grid-template-columns: 1fr;
+  }
+}

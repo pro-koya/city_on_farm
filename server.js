@@ -3221,7 +3221,7 @@ app.get('/dashboard/buyer', requireAuth, async (req, res, next) => {
           FROM orders o
          WHERE o.buyer_id = $1
          ORDER BY o.created_at DESC
-         LIMIT 10
+         LIMIT 3
       `, [uid]),
       dbQuery(`SELECT COUNT(*)::int AS cnt FROM orders WHERE buyer_id = $1`, [uid]),
       dbQuery(

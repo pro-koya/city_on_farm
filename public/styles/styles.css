@@ -212,32 +212,181 @@ section {
 }
 
 /* --- FOOTER --- */
-footer {
-  background-color: var(--color-highlight);
-  padding: 2rem;
-  height: 160px;
-  text-align: center;
-  font-size: 0.9rem;
-  color: #777;
+.site-footer {
   margin-top: 3rem;
-  margin-bottom: 0 !important;
-  white-space: nowrap;
+  padding: 2.5rem 1.5rem 1.8rem;
+  background: linear-gradient(135deg, #f0f4f1 0%, #e2ebe4 40%, #f9f9f6 100%);
+  border-top: 1px solid rgba(0,0,0,.04);
 }
 
-footer nav a {
-  color: var(--color-text);
-  margin: 0 0.5rem;
+.site-footer__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 2fr);
+  gap: 2.5rem;
+  align-items: flex-start;
+}
+
+/* ブランドブロック */
+.site-footer__brand {
+  min-width: 0;
+}
+
+.site-footer__logo {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  margin-bottom: .8rem;
+  border-bottom: 1px solid #c4c5c7;
+  padding-bottom: .8rem;
+  width: 80%;
+}
+
+.site-footer__logo-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  border-radius: 999px;
+  color: var(--color-white);
+  font-size: 0.9rem;
+  letter-spacing: .12em;
+}
+
+.site-footer__logo-mark img {
+  width: 100%;
+}
+
+.site-footer__logo-text {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--color-link);
+}
+
+.site-footer__copytext {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: #6b7280;
+}
+
+/* ナビゲーションブロック */
+.site-footer__nav {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.site-footer__nav-group {
+  min-width: 0;
+}
+
+.site-footer__nav-title {
+  margin: 0 0 .6rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #4b5563;
+}
+
+.site-footer__nav-group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.site-footer__nav-group li + li {
+  margin-top: .3rem;
+}
+
+.site-footer__nav-group a {
+  font-size: 0.9rem;
+  color: #374151;
+  text-decoration: none;
+  position: relative;
+  padding-bottom: 1px;
+}
+
+.site-footer__nav-group a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 0;
+  height: 1px;
+  background: var(--color-main);
+  transition: width 0.2s ease;
+}
+
+.site-footer__nav-group a:hover::after {
+  width: 100%;
+}
+
+/* ボトムバー */
+.site-footer__bottom {
+  max-width: 1200px;
+  margin: 1.8rem auto 0;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(0,0,0,.05);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+}
+
+.site-footer__bottom-copy {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
+.site-footer__bottom-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem .8rem;
+  font-size: 0.8rem;
+}
+
+.site-footer__bottom-links a {
+  color: #6b7280;
   text-decoration: none;
 }
 
-footer nav a:hover {
+.site-footer__bottom-links a:hover {
   text-decoration: underline;
+}
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+  .site-footer {
+    padding: 2rem 1rem 1.6rem;
+  }
+
+  .site-footer__inner {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.8rem;
+  }
+
+  .site-footer__nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.2rem;
+  }
+
+  .site-footer__bottom {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 /* --- NAVBAR 共通 --- */
 .navbar {
-  background-color: var(--color-main);
-  color: var(--color-white);
+  background-color: var(--color-white);
+  color: var(--color-main);
   position: fixed;
   top: 0; left: 0;
   z-index: 999;
@@ -258,9 +407,16 @@ footer nav a:hover {
 
 .navbar-logo {
   font-size: 1.3rem;
+  height: 50px;
+  padding-top: 2px;
   font-weight: bold;
   color: var(--color-white);
   text-decoration: none;
+}
+
+.navbar-logo img {
+  width: 100%;
+  height: 100%;
 }
 
 /* 右側：トグル＋（PC専用）ログインピル */
@@ -274,7 +430,7 @@ footer nav a:hover {
 .navbar-toggle {
   font-size: 1.6rem;
   background: none;
-  color: var(--color-white);
+  color: var(--color-main);
   border: none;
   cursor: pointer;
   transition: transform var(--transition-speed) ease;
@@ -348,7 +504,7 @@ footer nav a:hover {
   align-items: center;
   justify-content: center;
   gap: .4rem;
-  color: var(--color-white);
+  color: var(--color-main);
   text-decoration: none;
   padding: .2rem .4rem;
   border-radius: 8px;
@@ -509,6 +665,7 @@ textarea {
 .notice-icon {
   display: block;
   line-height: 0;
+  color: var(--color-main);
 }
 
 /* 未読バッジ */
@@ -521,7 +678,7 @@ textarea {
   padding: 0 .35rem;
   border-radius: 999px;
   background: #FF6B6B; /* cartより少し明るめ */
-  color: #fff;
+  color: var(--color-main);
   font-size: 11px;
   line-height: 18px;
   text-align: center;
@@ -538,7 +695,7 @@ textarea {
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: rgba(255,255,255,.45);
+  background: var(--color-accent);
 }
 
 /* さりげない鼓動アニメーション */

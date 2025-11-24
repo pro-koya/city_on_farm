@@ -57,22 +57,6 @@
     if (toolbar) {
       toolbar.addHandler('image', handleQuillImageClick);
     }
-
-    // ★ カスタムボタン（表・画像グリッド・スライド）
-    const tableBtn = document.querySelector('.ql-insertTable');
-    if (tableBtn) {
-      tableBtn.addEventListener('click', insertTableTemplate);
-    }
-
-    const gridBtn = document.querySelector('.ql-insertImageGrid');
-    if (gridBtn) {
-      gridBtn.addEventListener('click', insertImageGridTemplate);
-    }
-
-    const sliderBtn = document.querySelector('.ql-insertSlider');
-    if (sliderBtn) {
-      sliderBtn.addEventListener('click', insertSliderTemplate);
-    }
   }
 
   // Quill の画像ボタンを押した時の挙動

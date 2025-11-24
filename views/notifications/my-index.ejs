@@ -77,8 +77,8 @@
 
             <% if (it.body) { %>
               <p class="notif-card__excerpt">
-                <%= String(it.body).replace(/\s+/g, ' ').slice(0, 80) %><%=
-                  String(it.body).length > 80 ? '…' : ''
+                <%= String(it.body).replace(/\s+/g, ' ').slice(0, 50) %><%=
+                  String(it.body).length > 50 ? '…' : ''
                 %>
               </p>
             <% } %>

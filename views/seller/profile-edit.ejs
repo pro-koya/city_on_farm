@@ -147,81 +147,145 @@
         </div>
       </div>
 
-      <!-- ⑤ 本文（リッチテキスト） -->
-            <!-- ⑤ 本文（リッチテキスト） -->
-      <div class="field">
-        <label for="editor">
-          農園・出品者のストーリー
-        </label>
-        <p class="hint">
-          自己紹介、栽培のこだわり、土・水・環境への想い、栽培方法の工夫などを自由に記載できます。
-          画像挿入や箇条書きもご利用いただけます。
-        </p>
+        <!-- ⑤ 本文（リッチテキスト） -->
+        <div class="field">
+            <label for="editor">
+            農園・出品者のストーリー
+            </label>
+            <p class="hint">
+            自己紹介、栽培のこだわり、土・水・環境への想い、栽培方法の工夫などを自由に記載できます。
+            画像挿入や箇条書きもご利用いただけます。
+            </p>
 
-        <div class="ql-editer-group">
-            <div id="editorToolbar">
-                <!-- 文字装飾 -->
-                <span class="ql-formats">
-                <button class="ql-bold"></button>
-                <button class="ql-italic"></button>
-                <button class="ql-underline"></button>
-                </span>
+            <div class="ql-editer-group">
+                <div id="editorToolbar">
+                    <!-- 文字装飾 -->
+                    <span class="ql-formats">
+                        <button class="ql-bold"></button>
+                        <button class="ql-italic"></button>
+                        <button class="ql-underline"></button>
+                    </span>
 
-                <!-- リスト -->
-                <span class="ql-formats">
-                <button class="ql-list" value="ordered"></button>
-                <button class="ql-list" value="bullet"></button>
-                </span>
+                    <!-- リスト -->
+                    <span class="ql-formats">
+                        <button class="ql-list" value="ordered"></button>
+                        <button class="ql-list" value="bullet"></button>
+                    </span>
 
-                <!-- リンク & 画像（画像はカスタムハンドラに差し替え済み） -->
-                <span class="ql-formats">
-                <button class="ql-link"></button>
-                <button class="ql-image"></button>
-                </span>
+                    <!-- リンク & 画像 -->
+                    <span class="ql-formats">
+                        <button class="ql-link"></button>
+                        <button class="ql-image"></button>
+                    </span>
 
-                <!-- 見出し（h2/h3） -->
-                <span class="ql-formats">
-                <button class="ql-header" value="2"></button>
-                <button class="ql-header" value="3"></button>
-                </span>
+                    <!-- 見出し（h2/h3） -->
+                    <span class="ql-formats">
+                        <button class="ql-header" value="2"></button>
+                        <button class="ql-header" value="3"></button>
+                    </span>
+                </div>
 
-                <!-- ★ カスタムコンポーネント群 -->
-                <span class="ql-formats">
-                <button type="button" class="ql-insertTable">表</button>
-                <button type="button" class="ql-insertImageGrid">画像グリッド</button>
-                <button type="button" class="ql-insertSlider">画像スライド</button>
-                </span>
-            </div>
-
-            <div id="editor" class="sp-editor">
-                <% if (profile && profile.intro_html) { %>
-                <%- profile.intro_html %>
-                <% } else { %>
-                <p>はじめまして。◯◯農園です。ここに自己紹介やこだわりを書いていきましょう。</p>
-                <% } %>
-            </div>
-    
-            <!-- サーバに送るための hidden -->
-            <input type="hidden" name="intro_html" id="intro_html">
-    
-            <!-- ★ Quill 画像用：R2アップローダの隠しDOM（画面には出ません） -->
-            <div id="quill-image-hidden" hidden>
-              <input type="file" id="editorImgFile" accept="image/*" hidden>
-              <ul id="editorImgList" hidden></ul>
-              <textarea id="editorImgUrls" hidden></textarea>
-              <p id="editorImgMsg" hidden></p>
+                <div id="editor" class="sp-editor">
+                    <% if (profile && profile.intro_html) { %>
+                    <%- profile.intro_html %>
+                    <% } else { %>
+                    <p>はじめまして。◯◯農園です。ここに自己紹介やこだわりを書いていきましょう。</p>
+                    <% } %>
+                </div>
+        
+                <!-- サーバに送るための hidden -->
+                <input type="hidden" name="intro_html" id="intro_html">
+        
+                <!-- ★ Quill 画像用：R2アップローダの隠しDOM（画面には出ません） -->
+                <div id="quill-image-hidden" hidden>
+                <input type="file" id="editorImgFile" accept="image/*" hidden>
+                <ul id="editorImgList" hidden></ul>
+                <textarea id="editorImgUrls" hidden></textarea>
+                <p id="editorImgMsg" hidden></p>
+                </div>
             </div>
         </div>
-      </div>
 
-      <div class="sp-form__foot">
-        <a href="/dashboard/seller" class="btn btn--ghost">キャンセル</a>
-        <button type="submit" class="btn btn--primary">保存する</button>
-      </div>
+        <!-- ⑥ 栽培のポイント（表形式・任意） -->
+        <div class="field">
+            <label>
+                栽培のポイント（表形式・任意）
+            </label>
+            <p class="hint">
+                商品ページの下部で、栽培方法やこだわりを表形式で整理して表示できます。
+                未入力の場合、この表は表示されません。
+            </p>
 
-      <% if (typeof req !== 'undefined' && req.query && req.query.saved) { %>
-        <p class="safe-alert">保存しました。</p>
-      <% } %>
+            <div class="sp-table-editor">
+                <div class="sp-table-editor__row">
+                <input
+                    type="text"
+                    name="fact_labels[]"
+                    placeholder="例）栽培方法">
+                <textarea
+                    name="fact_values[]"
+                    rows="2"
+                    placeholder="例）減農薬・有機肥料を中心に栽培しています。"></textarea>
+                </div>
+
+                <div class="sp-table-editor__row">
+                <input
+                    type="text"
+                    name="fact_labels[]"
+                    placeholder="例）こだわり">
+                <textarea
+                    name="fact_values[]"
+                    rows="2"
+                    placeholder="例）収穫のタイミングを厳密に見極めています。"></textarea>
+                </div>
+
+                <div class="sp-table-editor__row">
+                <input
+                    type="text"
+                    name="fact_labels[]"
+                    placeholder="任意の項目">
+                <textarea
+                    name="fact_values[]"
+                    rows="2"
+                    placeholder="任意の説明"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- ⑧ 画像スライドショー（任意・1つまで） -->
+        <div class="field">
+        <label>
+            画像スライドショー（任意）
+        </label>
+        <p class="hint">
+            畑の1年間の移り変わりや、作業の様子をスライドショーで見せることができます。
+            最大5枚まで入力できます。1枚も入力しない場合、このスライドショーは表示されません。
+        </p>
+
+        <div class="sp-slider-editor">
+            <% const sliderUrls = (profile && profile.slider_image_urls) || []; %>
+
+            <% for (let i = 0; i < 5; i++) { %>
+            <div class="sp-slider-editor__row">
+                <p class="hint">スライド <%= i + 1 %></p>
+                <input
+                type="text"
+                name="slider_image_urls[]"
+                placeholder="https://example.com/slide<%= i + 1 %>.jpg"
+                value="<%= sliderUrls[i] || '' %>">
+            </div>
+            <% } %>
+        </div>
+        </div>
+
+        <div class="sp-form__foot">
+            <a href="/dashboard/seller" class="btn btn--ghost">キャンセル</a>
+            <button type="submit" class="btn btn--primary">保存する</button>
+        </div>
+
+        <% if (typeof req !== 'undefined' && req.query && req.query.saved) { %>
+            <p class="safe-alert">保存しました。</p>
+        <% } %>
     </form>
   </section>
 </main>

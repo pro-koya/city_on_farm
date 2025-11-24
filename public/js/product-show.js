@@ -443,7 +443,25 @@
 
     if (!link || !modal || !frame) return;
 
-    const lockKey = 'seller-modal-scroll-lock';
+    // --- スクロールロック用 ---
+    let scrollY = 0;
+    function lockScroll() {
+      scrollY = window.scrollY || document.documentElement.scrollTop;
+      // body を固定して背景スクロールを止める
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+    }
+    function unlockScroll() {
+      // 固定解除
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      // 元の位置へ戻す
+      window.scrollTo(0, scrollY);
+    }
 
     function openSellerModal() {
       const url = link.href;
@@ -452,10 +470,8 @@
       modal.classList.add('is-open');
       modal.removeAttribute('aria-hidden');
 
-      if (!document.body.dataset[lockKey]) {
-        document.body.dataset[lockKey] = '1';
-        document.body.style.overflow = 'hidden';
-      }
+      // ★ 背景スクロールをロック
+      lockScroll();
     }
 
     function closeSellerModal() {
@@ -463,10 +479,8 @@
       modal.setAttribute('aria-hidden', 'true');
       frame.src = '';
 
-      if (document.body.dataset[lockKey]) {
-        delete document.body.dataset[lockKey];
-        document.body.style.overflow = '';
-      }
+      // ★ ロック解除
+      unlockScroll();
     }
 
     // クリックで通常遷移を止めてモーダル
