@@ -3,8 +3,17 @@
     const qsa = (s, r=document) => r.querySelectorAll(s);
 
     const csrf = window.__CK__?.csrfToken || '';
-    const applyCouponUrl = window.__CK__?.applyCouponUrl || '/checkout/apply-coupon';
+    const applyCouponUrl = '/checkout/apply-coupon';
     const createAddressUrl = window.__CK__?.createAddressUrl || '/addresses';
+
+    function getShipAvailability() {
+        const raw = window.__CK__?.shipAvailability;
+        console.log(raw);
+        if (!raw || typeof raw !== 'object') {
+            return { delivery: [], pickup: [] };
+        }
+        return raw;
+    }
 
     // ====== 請求先：配送先と同じ ======
     const billSame = qs('#billSame');
@@ -260,6 +269,66 @@
     const noShipMsg     = qs('#shippingAddrInv');
     const shipAddrList  = qs('#shippingAddrList');
     const billSameCheck = qs('#billSameCheck');
+    const evDateInput   = qs('#ev_date');
+    const shipDateHidden = qs('#shipDate');
+
+    let datePicker = null;
+
+    function setupDatepickerForCurrentMethod() {
+        const fp = window.flatpickr;
+        if (!evDateInput || typeof fp !== 'function') {
+          console.warn('flatpickr not ready');
+          return;
+        }
+
+        const method = shipMethodSel?.value || 'delivery';
+        const shipAvailability = getShipAvailability();
+        const availList = Array.isArray(shipAvailability[method])
+          ? shipAvailability[method]
+          : [];
+
+        console.log('[CK] shipAvailability for', method, availList);
+
+        // 明日以降しか指定できない
+        const today = new Date();
+        const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+        const minYmd = tomorrow.toISOString().slice(0, 10); // 'YYYY-MM-DD'
+
+        // 既存インスタンスがあれば破棄
+
+        if (datePicker) {
+            datePicker.destroy();
+            datePicker = null;
+        }
+
+        const options = {
+          dateFormat: 'Y-m-d',
+          minDate: minYmd,
+          // ロケールは script で ja.js を読み込んでいるので、オブジェクトでも指定しておくと確実
+          locale: (window.flatpickr && window.flatpickr.l10ns && window.flatpickr.l10ns.ja) || 'ja',
+          onChange: (selectedDates, dateStr) => {
+            if (shipDateHidden) {
+              shipDateHidden.value = dateStr || '';
+            }
+          }
+        };
+
+        // ✅ availability があるときだけ「それ以外を disable」
+        if (availList.length > 0) {
+          options.enable = availList.slice(); // flatpickr は 'YYYY-MM-DD' 文字列配列を受け取れる
+        } else {
+          // availability が空の時は、「明日以降ならどこでも選べる」挙動
+          // options.enable を渡さなければ OK
+          console.warn('[CK] no availability for method:', method);
+        }
+
+        datePicker = fp(evDateInput, options);
+
+        // 既に shipDateHidden に値があれば、初期値として反映
+        if (shipDateHidden?.value) {
+            datePicker.setDate(shipDateHidden.value, false);
+        }
+    }
 
     function applyShipMethodUI() {
       const m = shipMethodSel?.value || 'delivery';
@@ -320,6 +389,8 @@
     shipMethodSel?.addEventListener('change', () => {
         applyShipMethodUI();
         recalcTotalsForShipMethod();
+        setupDatepickerForCurrentMethod();
     });
-    applyShipMethodUI();  // 初期反映
+    applyShipMethodUI();
+    setupDatepickerForCurrentMethod();
 })();

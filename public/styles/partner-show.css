@@ -198,3 +198,172 @@ input[type="checkbox"]:checked::after{
   border-radius:4px;
 }
 .chip span{ font-size:.92rem; }
+
+/* ===== 受け渡し可能日（概要）カード ===== */
+
+.card--availability {
+  position: relative;
+  overflow: hidden;
+}
+
+.card--availability::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.card--availability .card__head {
+  align-items: center;
+}
+
+.btn--sm {
+  padding: .35rem .9rem;
+  font-size: 0.85rem;
+}
+
+/* 概要レイアウト */
+
+.pa-summary {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pa-summary__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.3fr);
+  gap: 16px;
+}
+
+.pa-summary__col {
+  min-width: 0;
+}
+
+.pa-summary__subtitle {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* 毎週パターンのKVを縦積み寄りに */
+
+.kv.kv--stack {
+  grid-template-columns: 80px 1fr;
+  gap: 6px 10px;
+}
+
+.kv.kv--stack dt {
+  font-size: 0.9rem;
+}
+
+.kv.kv--stack dd {
+  font-size: 0.9rem;
+}
+
+/* 直近の受け渡し可能日：ミニ「カレンダーチップ」 */
+
+.pa-summary__calendar {
+  border-radius: 12px;
+  background: #f9fafb;
+  padding: 10px 10px 8px;
+  border: 1px dashed var(--border);
+}
+
+.pa-summary__chips {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 8px;
+}
+
+.pa-summary__chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+}
+
+.pa-summary__chip-date {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 40px;
+}
+
+.pa-summary__chip-week {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.pa-summary__chip-day {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+.pa-summary__chip-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* 「配送」「畑」バッジ */
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tag--delivery {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #bbf7d0;
+}
+
+.tag--pickup {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.pa-summary__note {
+  margin: 2px 0 0;
+}
+
+.xsmall {
+  font-size: 0.78rem;
+}
+
+/* スマホ対応 */
+
+@media (max-width: 768px) {
+  .pa-summary__row {
+    grid-template-columns: 1fr;
+  }
+
+  .pa-summary__calendar {
+    margin-top: 4px;
+  }
+
+  .pa-summary__chips {
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  }
+
+  .pa-summary__chip {
+    padding: 5px 7px;
+  }
+}

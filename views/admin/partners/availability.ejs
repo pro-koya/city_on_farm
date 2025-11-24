@@ -1,0 +1,138 @@
+<%- include('../../partials/header', {
+  title,
+  extraCSS2: '',
+  extraCSS: '/styles/partner-availability.css'
+}) %>
+
+<main class="pa">
+  <header class="pa__head">
+    <h1 class="pa__title"><%= partner.name %> の受け渡し可能日設定</h1>
+    <p class="muted">毎週のパターンと、特定日の追加を設定できます。</p>
+    <a href="/admin/partners/<%= partner.id %>" class="btn btn--ghost">取引先詳細に戻る</a>
+  </header>
+
+  <form method="POST" action="/admin/partners/<%= partner.id %>/availability" class="pa__form">
+    <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
+
+    <section class="card">
+      <h2>毎週のパターン</h2>
+      <p class="help">「この曜日は基本的に対応できる」という曜日を選択してください。</p>
+
+      <div class="pa__weekly-grid">
+        <div>
+          <h3>配送（delivery）</h3>
+          <div class="chips">
+            <% const weekdays = ['日','月','火','水','木','金','土']; %>
+            <% weekdays.forEach((label, idx) => { %>
+              <label class="chip">
+                <input
+                  type="checkbox"
+                  name="weekly_delivery_days"
+                  value="<%= idx %>"
+                  <%= weekly.delivery.has(idx) ? 'checked' : '' %>
+                >
+                <span><%= label %></span>
+              </label>
+            <% }) %>
+          </div>
+        </div>
+
+        <div>
+          <h3>畑受け渡し（pickup）</h3>
+          <div class="chips">
+            <% weekdays.forEach((label, idx) => { %>
+              <label class="chip">
+                <input
+                  type="checkbox"
+                  name="weekly_pickup_days"
+                  value="<%= idx %>"
+                  <%= weekly.pickup.has(idx) ? 'checked' : '' %>
+                >
+                <span><%= label %></span>
+              </label>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>特定日（スポット追加）</h2>
+      <p class="help">
+        イベントや臨時対応など、「週パターンに関係なく開けたい日」があれば追加してください。<br>
+        ここで指定した日は、週パターンに関係なく「受け渡し可能日」として扱われます。
+      </p>
+
+      <div class="pa__special">
+        <div>
+          <h3>配送（delivery）</h3>
+          <input id="specialDelivery" type="text">
+          <input type="hidden" id="specialDeliveryHidden" name="special_delivery_dates" value="<%= specials.delivery.join(',') %>">
+          <p class="help small">複数の日付を選択できます。</p>
+        </div>
+        <div>
+          <h3>畑受け渡し（pickup）</h3>
+          <input id="specialPickup" type="text">
+          <input type="hidden" id="specialPickupHidden" name="special_pickup_dates" value="<%= specials.pickup.join(',') %>">
+          <p class="help small">複数の日付を選択できます。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card pa__submit">
+      <button class="btn btn--primary" type="submit">保存する</button>
+      <p class="help small">設定後、購入画面のカレンダーに反映されます。</p>
+    </section>
+  </form>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
+<script>
+  (function() {
+    const specialsDelivery = <%- JSON.stringify(specials.delivery) %>;
+    const specialsPickup   = <%- JSON.stringify(specials.pickup) %>;
+
+    const delInput = document.getElementById('specialDelivery');
+    const delHidden = document.getElementById('specialDeliveryHidden');
+    const pickInput = document.getElementById('specialPickup');
+    const pickHidden = document.getElementById('specialPickupHidden');
+
+    function setup(fpInput, hidden, initialDates) {
+      if (!fpInput) return;
+      const fp = flatpickr(fpInput, {
+        mode: 'multiple',
+        dateFormat: 'Y-m-d',
+        defaultDate: initialDates,
+        locale: 'ja',
+        inline: true,          // ✅ 常にカレンダー表示
+        disableMobile: true,   // ✅ スマホでもフラットなカレンダーを使う
+        onChange: (dates, str, instance) => {
+          const vals = dates.map(d => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth()+1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${dd}`;
+          });
+          hidden.value = vals.join(',');
+          // テキスト入力欄にはサマリを軽く表示（任意）
+          if (fpInput) {
+            fpInput.value = vals.length ? `選択日: ${vals.join(', ')}` : '';
+          }
+        }
+      });
+
+      // 初期状態の hidden 値も同期（初回表示用）
+      if (Array.isArray(initialDates) && initialDates.length) {
+        hidden.value = initialDates.join(',');
+        fpInput.value = `選択日: ${initialDates.join(', ')}`;
+      }
+    }
+
+    setup(delInput, delHidden, specialsDelivery);
+    setup(pickInput, pickHidden, specialsPickup);
+  })();
+</script>
+
+<%- include('../../partials/footer') %>

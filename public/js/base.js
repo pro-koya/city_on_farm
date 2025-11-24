@@ -146,16 +146,16 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- 日付レンジ（日単位） ---
-    const eventDate = document.getElementById('ev_date');
-    if (eventDate) {
-        fp(eventDate, {
-            ...baseOpts,
-            onChange: (selectedDates) => {
-                const nowDate = selectedDates[0];
-                console.log(selectedDates + ' : ' + nowDate);
-                const dt = document.getElementById('shipDate');
-                if (dt) dt.value = nowDate ? fp.formatDate(nowDate, 'Y-m-d') : '';
-            }
-        });
-    }
+    // const eventDate = document.getElementById('ev_date');
+    // if (eventDate) {
+    //     fp(eventDate, {
+    //         ...baseOpts,
+    //         onChange: (selectedDates) => {
+    //             const nowDate = selectedDates[0];
+    //             console.log(selectedDates + ' : ' + nowDate);
+    //             const dt = document.getElementById('shipDate');
+    //             if (dt) dt.value = nowDate ? fp.formatDate(nowDate, 'Y-m-d') : '';
+    //         }
+    //     });
+    // }
 });

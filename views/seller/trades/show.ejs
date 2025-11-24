@@ -180,17 +180,15 @@
       <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>">
 
       <div class="td-status-grid">
-        <!-- <label class="td-status-field">
+        <label class="td-status-field">
           <span class="td-status-label">注文ステータス</span>
           <select class="pulldown" name="order_status" id="orderStatus">
             <option value="pending"   <%= order.status === 'pending'   ? 'selected' : '' %>>受付中</option>
-            <option value="confirmed" <%= order.status === 'confirmed' ? 'selected' : '' %>>確定</option>
-            <option value="paid"      <%= order.status === 'paid'      ? 'selected' : '' %>>支払い済み</option>
-            <option value="fulfilled" <%= order.status === 'fulfilled' ? 'selected' : '' %>>出荷完了</option>
+            <option value="fulfilled" <%= order.status === 'fulfilled' ? 'selected' : '' %>>完了</option>
             <option value="canceled"  <%= order.status === 'canceled'  ? 'selected' : '' %>>キャンセル</option>
             <option value="refunded"  <%= order.status === 'refunded'  ? 'selected' : '' %>>返金済み</option>
           </select>
-        </label> -->
+        </label>
 
         <label class="td-status-field">
           <span class="td-status-label">支払いステータス</span>
@@ -252,10 +250,10 @@
 
     // 元に戻す
     revert?.addEventListener('click', () => {
-      // const os = document.getElementById('orderStatus');
+      const os = document.getElementById('orderStatus');
       const ps = document.getElementById('paymentStatus');
       const ss = document.getElementById('shipmentStatus');
-      // if (os) os.value = initial.order || 'pending';
+      if (os) os.value = initial.order || 'pending';
       if (ps) ps.value = initial.pay   || 'unpaid';
       if (ss) ss.value = initial.ship  || 'preparing';
       setMsg('選択内容を元に戻しました。', true);
@@ -297,7 +295,7 @@
         const updated = data.order || payload;
 
         // 初期値を更新しておく（次回「元に戻す」用）
-        // initial.order = updated.order_status   || initial.order;
+        initial.order = updated.order_status   || initial.order;
         initial.pay   = updated.payment_status || initial.pay;
         initial.ship  = updated.shipment_status|| initial.ship;
 

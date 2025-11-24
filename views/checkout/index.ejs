@@ -71,8 +71,8 @@
         </div>
         <p class="help" id="shipHelp">
           <%= form.shipMethod === 'pickup'
-              ? '受け取り場所は出品者指定の畑になります。詳細はご注文確定後のメールをご確認ください。'
-              : 'ご指定の配送先へお届けします。' %>
+              ? '受け取り場所は出品者指定の畑になります。詳細はご注文確定後のメールをご確認ください。オンライン上では翌日以降の日付のみ指定できます。当日受け取りを希望される場合は、お手数ですが直接お電話でご相談ください。'
+              : 'ご指定の配送先へお届けします。オンライン上では翌日以降の日付のみ指定できます。当日配送を希望される場合は、お手数ですが直接お電話でご相談ください。' %>
         </p>
       </section>
 
@@ -230,8 +230,11 @@
   window.__CK__ = {
     csrfToken: '<%= csrfToken || '' %>',
     applyCouponUrl: '/checkout/apply-coupon',
-    createAddressUrl: '/addresses'
+    createAddressUrl: '/addresses',
+    shipAvailability: <%- JSON.stringify(shipAvailability || { delivery: [], pickup: [] }) %>
   };
 </script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
 <script src="/js/checkout.js"></script>
 <%- include('../partials/footer') %>

@@ -4327,6 +4327,14 @@ app.delete('/cart/:id', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+const {
+  loadAvailabilityForSellerUser,
+  loadPartnerAvailabilityByDate,
+  loadAvailabilityForPartner,
+  buildAvailabilitySummary,
+  loadPartnerAvailabilityForPartner
+} = require('./services/partnerAvailability');
+
 /* ----------------------------
  *  POST /cart/apply-coupon クーポン適用
  *  body: { code }
@@ -4883,8 +4891,21 @@ app.get('/checkout', async (req, res, next) => {
       return res.redirect(`/cart#seller-${encodeURIComponent(sellerId)}`);
     }
 
+    const partnerId = items[0].seller_partner_id;
     // 出品者の許可決済手段（例：DBから）
-    const sellerConfig = await fetchSellerConfig(sellerId); // { allowedPaymentMethods: ['cod','bank','card'], allowedShipMethods: ... }
+    const sellerConfig = await fetchSellerConfig(sellerId);
+
+    const today = new Date();
+    const fromDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1); // 明日
+    const toDate   = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate() + 30); // 30日後まで
+    console.log(partnerId);
+    // ✅ sellerId は partner.id とみなして、そのまま partnerId として利用
+    const shipAvailability = await loadAvailabilityForPartner(partnerId, {
+      from: fromDate,
+      to: toDate,
+    });
+
+    console.log(shipAvailability);
 
     // 住所など既存処理
     const uid = req.session.user.id;
@@ -4923,6 +4944,7 @@ app.get('/checkout', async (req, res, next) => {
       sellerId,                       // ← ビューへ渡す
       allowedPayments: sellerConfig.allowedPaymentMethods || [{code: 'cod', label_ja: '代金引換'}],
       allowedShipMethods: sellerConfig.allowedShipMethods || [{code: 'pickup', label_ja: '畑にて受け取り'}, {code: 'delivery', label_ja: '配送'}],
+      shipAvailability: shipAvailability || { delivery: [], pickup: [] },
       req
     });
   } catch (e) { next(e); }
@@ -5011,6 +5033,28 @@ app.post('/checkout', async (req, res, next) => {
       );
       if (!billAddrRows.length) {
         req.session.flash = { type:'error', message:'請求先住所が不正です。' };
+        return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
+      }
+    }
+
+    if (shipDate) {
+      const today = new Date();
+      const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+      const shipDateObj = new Date(shipDate + 'T00:00:00');
+
+      if (shipDateObj < tomorrow) {
+        req.session.flash = { type:'error', message:'受け取り日／お届け日は翌日以降の日付を指定してください。' };
+        return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
+      }
+
+      const avail = await loadPartnerAvailabilityByDate(sellerId, {
+        from: tomorrow,
+        to: new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate() + 60) // 余裕をもって
+      });
+      const arr = shipMethod === 'pickup' ? (avail.pickup || []) : (avail.delivery || []);
+
+      if (!arr.includes(shipDate)) {
+        req.session.flash = { type:'error', message:'選択された日程は出品者の受け渡し可能日ではありません。別の日付をお選びください。' };
         return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
       }
     }
@@ -7044,7 +7088,6 @@ app.get('/admin/partners', requireAuth, requireRole(['admin']), async (req, res,
 });
 
 // 取引先詳細
-// 取引先詳細
 app.get(
   '/admin/partners/:id',
   requireAuth,
@@ -7092,6 +7135,9 @@ app.get(
       const allMethod = await loadAllPaymentMethods('payment_method', 'payment_method');
       const partnerMethods = await getAllowedMethodsForPartner(id);
 
+      const { weekly, specials } = await loadPartnerAvailabilityForPartner(id); 
+      const availabilitySummary = buildAvailabilitySummary(weekly, specials);
+
       res.render('admin/partners/show', {
         title: `取引先詳細 | ${partner.name}`,
         partner,
@@ -7100,6 +7146,7 @@ app.get(
         isMember,
         paymentMethods: partnerMethods,
         allPaymentMethods: allMethod,
+        availabilitySummary,
         csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
       });
     } catch (e) {
@@ -7243,6 +7290,183 @@ app.post(
 
       await dbQuery('COMMIT');
       req.session.flash = { type:'ok', message:'決済方法を更新しました。' };
+      res.redirect(`/admin/partners/${partnerId}`);
+    } catch (e) {
+      await dbQuery('ROLLBACK').catch(()=>{});
+      next(e);
+    }
+  }
+);
+
+// admin/partners/:id/availability
+app.get(
+  '/admin/partners/:id/availability',
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      const id = String(req.params.id || '').trim();
+      if (!isUuid(id)) {
+        return res.status(400).render('errors/404', { title: '不正なID' });
+      }
+
+      // 管理者 or その取引先メンバーのみ
+      const isMember = await isMemberOfPartner(req, id);
+      if (!isAdmin(req) && !isMember) {
+        return res.status(403).send('forbidden');
+      }
+
+      const [partnerRows, weeklyRows, dateRows] = await Promise.all([
+        dbQuery(
+          `SELECT id, name, status
+             FROM partners
+            WHERE id=$1::uuid`,
+          [id]
+        ),
+        dbQuery(
+          `SELECT kind, weekday
+             FROM partner_weekday_availabilities
+            WHERE partner_id = $1`,
+          [id]
+        ),
+        dbQuery(
+          `SELECT kind, date
+             FROM partner_date_availabilities
+            WHERE partner_id = $1
+            ORDER BY date ASC
+            LIMIT 365`,
+          [id]
+        )
+      ]);
+
+      const partner = partnerRows[0];
+      if (!partner) {
+        return res.status(404).render('errors/404', { title: '取引先が見つかりません' });
+      }
+
+      const weekly = {
+        delivery: new Set(),
+        pickup: new Set()
+      };
+      weeklyRows.forEach(r => {
+        weekly[r.kind]?.add(Number(r.weekday));
+      });
+
+      const specials = {
+        delivery: [],
+        pickup: []
+      };
+      dateRows.forEach(r => {
+        const ymd = r.date.toISOString().slice(0,10);
+        specials[r.kind]?.push(ymd);
+      });
+
+      res.render('admin/partners/availability', {
+        title: `受け渡し可能日設定 | ${partner.name}`,
+        partner,
+        weekly,
+        specials,
+        csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
+      });
+    } catch (e) { next(e); }
+  }
+);
+
+app.post(
+  '/admin/partners/:id/availability',
+  requireAuth,
+  csrfProtect,
+  async (req, res, next) => {
+    try {
+      const partnerId = String(req.params.id || '').trim();
+      if (!isUuid(partnerId)) return res.status(400).send('bad partner id');
+
+      if (!isAdmin(req) && !(await isMemberOfPartner(req, partnerId))) {
+        return res.status(403).send('forbidden');
+      }
+
+      // 週パターン：チェックボックスで weekday を受け取る
+      const weeklyDeliveryDays = []
+        .concat(req.body.weekly_delivery_days || [])
+        .map(Number)
+        .filter(d => d >= 0 && d <= 6);
+
+      const weeklyPickupDays = []
+        .concat(req.body.weekly_pickup_days || [])
+        .map(Number)
+        .filter(d => d >= 0 && d <= 6);
+
+      // 特定日：YYYY-MM-DD カンマ区切りを想定
+      const specialsDelivery = (req.body.special_delivery_dates || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      const specialsPickup = (req.body.special_pickup_dates || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      await dbQuery('BEGIN');
+
+      // 週パターン入れ替え
+      await dbQuery(
+        `DELETE FROM partner_weekday_availabilities WHERE partner_id=$1`,
+        [partnerId]
+      );
+
+      const insertsWeekly = [];
+      const paramsWeekly = [partnerId];
+      let idx = 2;
+
+      weeklyDeliveryDays.forEach(wd => {
+        insertsWeekly.push(`($1::uuid, 'delivery'::ship_method, $${idx++}::int, '00:00'::time, '23:59'::time)`);
+        paramsWeekly.push(wd);
+      });
+      weeklyPickupDays.forEach(wd => {
+        insertsWeekly.push(`($1::uuid, 'pickup'::ship_method, $${idx++}::int, '00:00'::time, '23:59'::time)`);
+        paramsWeekly.push(wd);
+      });
+
+      if (insertsWeekly.length) {
+        await dbQuery(
+          `INSERT INTO partner_weekday_availabilities
+             (partner_id, kind, weekday, start_time, end_time)
+           VALUES ${insertsWeekly.join(',')}`,
+          paramsWeekly
+        );
+      }
+
+      // 特定日入れ替え
+      await dbQuery(
+        `DELETE FROM partner_date_availabilities WHERE partner_id=$1`,
+        [partnerId]
+      );
+
+      const insertsDate = [];
+      const paramsDate = [partnerId];
+      idx = 2;
+
+      specialsDelivery.forEach(ymd => {
+        insertsDate.push(`($1::uuid, 'delivery'::ship_method, $${idx++}::date, '00:00'::time, '23:59'::time)`);
+        paramsDate.push(ymd);
+      });
+      specialsPickup.forEach(ymd => {
+        insertsDate.push(`($1::uuid, 'pickup'::ship_method, $${idx++}::date, '00:00'::time, '23:59'::time)`);
+        paramsDate.push(ymd);
+      });
+
+      if (insertsDate.length) {
+        await dbQuery(
+          `INSERT INTO partner_date_availabilities
+             (partner_id, kind, date, start_time, end_time)
+           VALUES ${insertsDate.join(',')}`,
+          paramsDate
+        );
+      }
+
+      await dbQuery('COMMIT');
+
+      req.session.flash = { type:'ok', message:'受け渡し可能日を更新しました。' };
       res.redirect(`/admin/partners/${partnerId}`);
     } catch (e) {
       await dbQuery('ROLLBACK').catch(()=>{});

@@ -72,6 +72,74 @@
     </article>
 
     <% if (user.roles.includes('seller') || user.roles.includes('admin')) { %>
+    <article class="card card--availability">
+      <div class="card__head">
+        <h2 class="card__title">受け渡し可能日（概要）</h2>
+        <a class="btn btn--ghost btn--sm" href="/admin/partners/<%= partner.id %>/availability">
+          設定を編集
+        </a>
+      </div>
+
+      <% if (!availabilitySummary || (!availabilitySummary.weekly_delivery_label && !availabilitySummary.weekly_pickup_label && (!availabilitySummary.preview || !availabilitySummary.preview.length))) { %>
+        <p class="muted small">
+          まだ受け渡し可能日が設定されていません。「設定を編集」から設定してください。
+        </p>
+      <% } else { %>
+        <div class="pa-summary">
+          <div class="pa-summary__row">
+            <!-- 左：毎週パターン -->
+            <div class="pa-summary__col">
+              <h3 class="pa-summary__subtitle">毎週のパターン</h3>
+              <dl class="kv kv--stack">
+                <div>
+                  <dt>配送</dt>
+                  <dd><%= availabilitySummary.weekly_delivery_label || '未設定' %></dd>
+                </div>
+                <div>
+                  <dt>畑受け渡し</dt>
+                  <dd><%= availabilitySummary.weekly_pickup_label || '未設定' %></dd>
+                </div>
+              </dl>
+
+              <% if (availabilitySummary.specials_label) { %>
+                <p class="muted xsmall">
+                  <%= availabilitySummary.specials_label %>
+                </p>
+              <% } %>
+            </div>
+
+            <!-- 右：直近の受け渡し可能日（ミニカレンダー的な一覧） -->
+            <div class="pa-summary__col pa-summary__calendar">
+              <h3 class="pa-summary__subtitle">直近の受け渡し可能日</h3>
+
+              <% if (availabilitySummary.preview && availabilitySummary.preview.length) { %>
+                <ul class="pa-summary__chips" aria-label="直近の受け渡し可能日">
+                  <% availabilitySummary.preview.forEach(function(d) { %>
+                    <li class="pa-summary__chip">
+                      <div class="pa-summary__chip-date">
+                        <span class="pa-summary__chip-week"><%= d.weekday + '曜' %></span>
+                        <span class="pa-summary__chip-day"><%= d.month + '/' + d.day %></span>
+                      </div>
+                      <div class="pa-summary__chip-tags">
+                        <% if (d.delivery) { %><span class="tag tag--delivery">配送</span><% } %>
+                        <% if (d.pickup)  { %><span class="tag tag--pickup">畑</span><% } %>
+                      </div>
+                    </li>
+                  <% }); %>
+                </ul>
+              <% } else { %>
+                <p class="muted small">直近2週間で受け渡し可能日はありません。</p>
+              <% } %>
+            </div>
+          </div>
+
+          <p class="muted xsmall pa-summary__note">
+            詳細なカレンダーや特定日の編集は「設定を編集」から行えます。
+          </p>
+        </div>
+      <% } %>
+    </article>
+
     <article class="card">
       <div class="card__head">
         <h2 class="card__title">決済方法（取引先全体）</h2>
