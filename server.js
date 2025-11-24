@@ -500,7 +500,7 @@ app.post(
         });
       }
 
-      req.session.user = { id: user.id, name: user.name, email: user.email, roles: user.roles || [], seller_intro_summary: user.seller_intro_summary };
+      req.session.user = { id: user.id, name: user.name, email: user.email, roles: user.roles || [] };
       await mergeSessionCartToDb(req, user.id);
       await mergeSessionRecentToDb(req);
       await attachContactsToUserAfterLogin(user);
