@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-11-23T18:32:05.267Z
+> Generated at: 2025-11-24T18:36:18.272Z
 
 ---
 
@@ -950,6 +950,94 @@ _No indexes_
   
   ```sql
   CREATE UNIQUE INDEX partner_allowed_payment_methods_pkey ON public.partner_allowed_payment_methods USING btree (partner_id, method)
+  ```
+
+---
+
+### `public.partner_date_availabilities`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `partner_id` | `uuid` | NO |  |  |
+| 3 | `kind` | `ship_method` *(enum)* | NO |  |  |
+| 4 | `date` | `date` | NO |  |  |
+| 5 | `start_time` | `time without time zone` | NO | '00:00:00'::time without time zone |  |
+| 6 | `end_time` | `time without time zone` | NO | '23:59:00'::time without time zone |  |
+| 7 | `created_at` | `timestamp with time zone` | NO | now() |  |
+| 8 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+
+> **Enum `ship_method` values**: `pickup`, `delivery`
+
+**Constraints**
+
+- **CHECK**: `2200_17475_1_not_null`, `2200_17475_2_not_null`, `2200_17475_3_not_null`, `2200_17475_4_not_null`, `2200_17475_5_not_null`, `2200_17475_6_not_null`, `2200_17475_7_not_null`, `2200_17475_8_not_null`
+- **FOREIGN KEY**: `partner_date_availabilities_partner_id_fkey`
+- **PRIMARY KEY**: `partner_date_availabilities_pkey`
+- **UNIQUE**: `uq_partner_date`
+
+**Indexes**
+
+- `idx_partner_date_availabilities_partner`
+  
+  ```sql
+  CREATE INDEX idx_partner_date_availabilities_partner ON public.partner_date_availabilities USING btree (partner_id, kind, date)
+  ```
+- `partner_date_availabilities_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX partner_date_availabilities_pkey ON public.partner_date_availabilities USING btree (id)
+  ```
+- `uq_partner_date`
+  
+  ```sql
+  CREATE UNIQUE INDEX uq_partner_date ON public.partner_date_availabilities USING btree (partner_id, kind, date, start_time, end_time)
+  ```
+
+---
+
+### `public.partner_weekday_availabilities`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `partner_id` | `uuid` | NO |  |  |
+| 3 | `kind` | `ship_method` *(enum)* | NO |  |  |
+| 4 | `weekday` | `integer` | NO |  |  |
+| 5 | `start_time` | `time without time zone` | NO | '00:00:00'::time without time zone |  |
+| 6 | `end_time` | `time without time zone` | NO | '23:59:00'::time without time zone |  |
+| 7 | `created_at` | `timestamp with time zone` | NO | now() |  |
+| 8 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+
+> **Enum `ship_method` values**: `pickup`, `delivery`
+
+**Constraints**
+
+- **CHECK**: `2200_17456_1_not_null`, `2200_17456_2_not_null`, `2200_17456_3_not_null`, `2200_17456_4_not_null`, `2200_17456_5_not_null`, `2200_17456_6_not_null`, `2200_17456_7_not_null`, `2200_17456_8_not_null`, `partner_weekday_availabilities_weekday_check`
+- **FOREIGN KEY**: `partner_weekday_availabilities_partner_id_fkey`
+- **PRIMARY KEY**: `partner_weekday_availabilities_pkey`
+- **UNIQUE**: `uq_partner_weekday`
+
+**Indexes**
+
+- `idx_partner_weekday_availabilities_partner`
+  
+  ```sql
+  CREATE INDEX idx_partner_weekday_availabilities_partner ON public.partner_weekday_availabilities USING btree (partner_id, kind, weekday)
+  ```
+- `partner_weekday_availabilities_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX partner_weekday_availabilities_pkey ON public.partner_weekday_availabilities USING btree (id)
+  ```
+- `uq_partner_weekday`
+  
+  ```sql
+  CREATE UNIQUE INDEX uq_partner_weekday ON public.partner_weekday_availabilities USING btree (partner_id, kind, weekday, start_time, end_time)
   ```
 
 ---

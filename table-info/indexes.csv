@@ -73,6 +73,12 @@ public,orders,orders_pkey,CREATE UNIQUE INDEX orders_pkey ON public.orders USING
 public,orders,uq_orders_order_number,CREATE UNIQUE INDEX uq_orders_order_number ON public.orders USING btree (order_number),t,f
 public,partner_allowed_payment_methods,idx_papm_partner,CREATE INDEX idx_papm_partner ON public.partner_allowed_payment_methods USING btree (partner_id),f,f
 public,partner_allowed_payment_methods,partner_allowed_payment_methods_pkey,"CREATE UNIQUE INDEX partner_allowed_payment_methods_pkey ON public.partner_allowed_payment_methods USING btree (partner_id, method)",t,t
+public,partner_date_availabilities,idx_partner_date_availabilities_partner,"CREATE INDEX idx_partner_date_availabilities_partner ON public.partner_date_availabilities USING btree (partner_id, kind, date)",f,f
+public,partner_date_availabilities,partner_date_availabilities_pkey,CREATE UNIQUE INDEX partner_date_availabilities_pkey ON public.partner_date_availabilities USING btree (id),t,t
+public,partner_date_availabilities,uq_partner_date,"CREATE UNIQUE INDEX uq_partner_date ON public.partner_date_availabilities USING btree (partner_id, kind, date, start_time, end_time)",t,f
+public,partner_weekday_availabilities,idx_partner_weekday_availabilities_partner,"CREATE INDEX idx_partner_weekday_availabilities_partner ON public.partner_weekday_availabilities USING btree (partner_id, kind, weekday)",f,f
+public,partner_weekday_availabilities,partner_weekday_availabilities_pkey,CREATE UNIQUE INDEX partner_weekday_availabilities_pkey ON public.partner_weekday_availabilities USING btree (id),t,t
+public,partner_weekday_availabilities,uq_partner_weekday,"CREATE UNIQUE INDEX uq_partner_weekday ON public.partner_weekday_availabilities USING btree (partner_id, kind, weekday, start_time, end_time)",t,f
 public,partners,idx_partners_city_trgm,CREATE INDEX idx_partners_city_trgm ON public.partners USING gin (city gin_trgm_ops),f,f
 public,partners,idx_partners_name,CREATE INDEX idx_partners_name ON public.partners USING btree (name),f,f
 public,partners,idx_partners_postal_norm,CREATE INDEX idx_partners_postal_norm ON public.partners USING btree (postal_norm),f,f
