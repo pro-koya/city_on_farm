@@ -408,6 +408,7 @@ section {
 .navbar-logo {
   font-size: 1.3rem;
   height: 50px;
+  width: auto;
   padding-top: 2px;
   font-weight: bold;
   color: var(--color-white);
