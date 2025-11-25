@@ -406,9 +406,9 @@ section {
 }
 
 .navbar-logo {
+  display: flex;        /* 中身を縦中央にしたいなら */
+  align-items: center;
   font-size: 1.3rem;
-  height: 50px;
-  width: auto;
   padding-top: 2px;
   font-weight: bold;
   color: var(--color-white);
@@ -416,8 +416,10 @@ section {
 }
 
 .navbar-logo img {
-  width: 100%;
-  height: 100%;
+  height: 50px;         /* 高さだけ指定 */
+  width: auto;          /* 横幅は自動で縦横比維持 */
+  max-width: 100%;      /* 親よりはみ出さない保険 */
+  display: block;       /* 余計な隙間防止（任意） */
 }
 
 /* 右側：トグル＋（PC専用）ログインピル */
