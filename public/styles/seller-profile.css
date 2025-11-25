@@ -19,6 +19,7 @@
 html, body {
   background: var(--bg);
   color: var(--text);
+  font-family: 'Helvetica Neue', sans-serif;
 }
 
 /* ===== ベース ===== */
