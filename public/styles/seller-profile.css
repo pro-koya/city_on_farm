@@ -225,6 +225,11 @@ html, body {
   color: var(--muted);
 }
 
+.grid > .card > a {
+  color: var(--text);
+  text-decoration: none;
+}
+
 /* ===== レスポンシブ ===== */
 @media (max-width: 768px) {
   .seller-page {
