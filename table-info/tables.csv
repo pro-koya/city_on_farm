@@ -19,7 +19,7 @@ public,orders,,31
 public,partner_allowed_payment_methods,,4
 public,partner_date_availabilities,,8
 public,partner_weekday_availabilities,,8
-public,partners,取引先（主に飲食店などの法人・団体・個人事業主）,26
+public,partners,取引先（主に飲食店などの法人・団体・個人事業主）,27
 public,password_reset_tokens,,6
 public,payments,,8
 public,product_images,,12

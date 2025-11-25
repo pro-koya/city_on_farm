@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-11-24T18:36:18.272Z
+> Generated at: 2025-11-25T18:36:40.568Z
 
 ---
 
@@ -1076,6 +1076,7 @@ _No indexes_
 | 24 | `payment_methods` | `ARRAY` | NO | ARRAY['card'::payment_method] |  |
 | 25 | `min_order_amount` | `integer` | NO | 0 |  |
 | 26 | `shipping_policy` | `jsonb` | NO | '{}'::jsonb |  |
+| 27 | `seller_intro_summary` | `text` | YES |  |  |
 
 > **Enum `partner_type` values**: `restaurant`, `retailer`, `wholesale`, `corporate`, `individual`, `other`
 > **Enum `partner_status` values**: `active`, `inactive`, `prospect`, `suspended`
