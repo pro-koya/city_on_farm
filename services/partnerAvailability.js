@@ -154,7 +154,7 @@ function buildAvailabilitySummary(weekly, specials) {
 
     preview.push({
       date: iso,
-      month: d.getMonth(),
+      month: d.getMonth() + 1,
       day: d.getDate(),
       weekday: jpWeek[w],
       delivery: !!isDelivery,
