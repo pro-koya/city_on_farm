@@ -286,7 +286,7 @@ input[type="checkbox"]:checked::after{
   align-items: center;
   gap: 6px;
   padding: 6px 8px;
-  border-radius: 10px;
+  border-radius: 10px
   background: #fff;
   border: 1px solid #e5e7eb;
   box-shadow: 0 2px 6px rgba(0,0,0,0.03);
@@ -360,7 +360,7 @@ input[type="checkbox"]:checked::after{
   }
 
   .pa-summary__chips {
-    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   }
 
   .pa-summary__chip {
