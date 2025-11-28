@@ -233,7 +233,7 @@ input[type="checkbox"]:checked::after{
 
 .pa-summary__row {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.3fr);
+  grid-template-columns: 1fr;
   gap: 16px;
 }
 
