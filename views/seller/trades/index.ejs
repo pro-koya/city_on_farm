@@ -23,8 +23,8 @@
           ${items.map(it => `
             <tr>
               <td data-label="注文者">${it.partner_name}</td>
-              <td data-label="注文状況" class="pc__status ${it.status_ja==='完了' ? 'ok': ''}"><span class="lv-badge">${it.status_ja}</span></td>
-              <td data-label="支払い" class="pc__status"><span class="lv-badge ${it.payment_status==='paid'?'ok': it.payment_status==='unpaid'?'warn':''}">${it.payment_status_ja}</span></td>
+              <td data-label="注文状況" class="pc__status"><span class="lv-badge ${it.status_ja==='完了'?'ok':it.status_ja==='処理中'?'warn':it.status==='canceled'?'ng':''}">${it.status_ja}</span></td>
+              <td data-label="支払い" class="pc__status"><span class="lv-badge ${it.payment_status==='paid'?'ok': it.payment_status==='unpaid'?'warn':it.payment_status==='canceled'?'ng':''}">${it.payment_status_ja}</span></td>
               <td data-label="出荷" class="pc__status"><span class="lv-badge ${it.shipment_status==='delivered'?'ok': it.shipment_status==='returned'?'ng':''}">
                 ${
                   it.ship_method === 'pickup'
@@ -34,7 +34,7 @@
               </span></td>
 
               <td class="sub-table">
-                <div data-label="注文状況" class="sub__status">注文状況<span class="lv-badge ${it.status_ja==='完了' ? 'ok': ''}">${it.status_ja}</span></div>
+                <div data-label="注文状況" class="sub__status">注文状況<span class="lv-badge ${it.status_ja==='完了'?'ok':it.status_ja==='処理中'?'warn':''}">${it.status_ja}</span></div>
                 <div data-label="支払い" class="sub__status">支払い状況<span class="lv-badge ${it.payment_status==='paid'?'ok': it.payment_status==='unpaid'?'warn':''}">${it.payment_status_ja}</span></div>
                 <div data-label="出荷" class="sub__status">${it.ship_method === 'pickup' ? '受取状況' : '出荷状況'}<span class="lv-badge ${it.shipment_status==='delivered'?'ok': it.shipment_status==='returned'?'ng':''}">
                   ${

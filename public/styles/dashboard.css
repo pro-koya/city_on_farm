@@ -3,7 +3,7 @@
   --text: #2B2B2B;
   --main: #4C6B5C;
   --accent: #A3C9A8;
-  --hi: #D6EADF;
+  --hi: #e6f4ed;
   --white: #fff;
   --muted: #6b7280;
   --shadow: 0 8px 24px rgba(0, 0, 0, .08);
@@ -99,10 +99,6 @@ section {
   border-bottom: 1px solid #f1f5f9
 }
 
-.row:last-child {
-  border-bottom: none
-}
-
 .empty {
   color: var(--muted);
   padding: .4rem 0
@@ -126,6 +122,42 @@ section {
 .pending {
   color: #ca8a04;
   font-weight: 700
+}
+
+.lv-badge {
+    display: inline-block;
+    padding: .2rem .5rem;
+    border-radius: 999px;
+    font-size: .8rem;
+    text-align: center;
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.lv-badge.ok {
+    background: #E7F7EE;
+    color: #0F5132
+}
+
+.lv-badge.warn {
+    background: #FFF7E6;
+    color: #8B5E00
+}
+
+.lv-badge.ng {
+    background: #FDECEC;
+    color: #8A1C1C
+}
+
+.trade-link {
+  display: block;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.trade-link:hover {
+  transition: all .2s ease-in-out;
+  background-color: var(--hi);
 }
 
 /* KPI */

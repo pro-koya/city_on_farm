@@ -6,14 +6,17 @@
   <ul class="list">
     <% if (trades && trades.length) { %>
       <% trades.forEach(function(t){ %>
-        <li class="row">
-          <span class="mono">注文者：<%= t.buyer_name %></span>
-          <span>注文日：<%= t.date %></span>
-          <span class="<%= /完了|配達完了|支払い済み/.test(t.status)?'ok' : /キャンセル|返金済み/.test(t.status)?'ng' : 'pending' %>">
-            状況：<%= t.status %>
-          </span>
-          <span>小計：¥<%= Number(t.amount||0).toLocaleString() %></span>
-        </li>
+        <% const isPickup = t.ship_method === 'pickup' ? true : false; %>
+        <a href="/seller/trades/<%= t.id %>" class="trade-link">
+          <li class="row">
+            <span class="lv-badge <%= /完了|配達完了|支払い済み/.test(t.status)?'ok' : /キャンセル|返金済み/.test(t.status)?'ng' : 'pending' %>">
+              <%= t.status %>：¥<%= Number(t.amount||0).toLocaleString() %>
+            </span>
+            <span class="mono">注文者：<%= t.buyer_name %></span>
+            <span>注文日：<%= t.date %><br>受渡方法：<span class="lv-badge <%= isPickup ? 'ok' : 'warn'; %>"><%= t.ship_method === 'pickup' ? '畑受取' : '配送'; %></span></span>
+            <span><%= isPickup ? '受取希望日時' : '配送希望日時'; %>：<%= !t.eta ? '日付指定なし' : t.eta; %> <%= !t.shipTimeJa ? '時間指定なし' : t.shipTimeJa; %></span>
+          </li>
+        </a>
       <% }) %>
     <% } else { %>
       <li class="empty">まだ取引がありません。</li>

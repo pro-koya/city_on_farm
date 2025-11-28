@@ -37,8 +37,8 @@
                 </td>
                 <td data-label="住所">
                   <div class="small">
-                    <%= [p.prefecture, p.city, p.address1, p.address2].filter(Boolean).join(' ') %>
                     <% if (p.postal_code) { %><div class="muted">〒 <%= p.postal_code %></div><% } %>
+                    <%= [p.prefecture, p.city].filter(Boolean).join(' ') %>
                   </div>
                 </td>
                 <td data-label="所属ユーザー数" class="ta-right"><%= (typeof p.user_count!=='undefined') ? p.user_count : (p.userCount || 0) %></td>

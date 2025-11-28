@@ -3295,7 +3295,7 @@ app.get('/dashboard/seller', requireAuth, requireRole(['seller']), async (req, r
         SELECT
           o.id,
           COALESCE(o.order_number, o.id::text) AS order_no,
-          o.status AS order_status,
+          o.status AS order_status, o.ship_method, o.eta_at, o.ship_time_code,
           o.created_at,
           o.buyer_id,
           SUM(oi.price * oi.quantity)::int AS amount,
@@ -3362,7 +3362,11 @@ app.get('/dashboard/seller', requireAuth, requireRole(['seller']), async (req, r
       buyer_name: t.buyer_name,
       date: new Date(t.created_at).toLocaleDateString('ja-JP'),
       amount: t.amount,
-      status: jaLabel('order_status', t.order_status)
+      status: jaLabel('order_status', t.order_status),
+      ship_method: t.ship_method,
+      shipMethodJa: jaLabel('ship_method', t.ship_method),
+      eta: t.eta_at ? new Date(t.eta_at).toLocaleDateString('ja-JP') : '日付未指定',
+      shipTimeJa: t.ship_time_code ? shipTimeLabel(t.ship_time_code) : '時間未指定'
     }));
 
     res.render('dashboard/seller', {
@@ -3560,13 +3564,7 @@ app.get('/seller/trades', requireAuth, requireRole(['seller', 'admin']), async (
     const filtersHTML = `
       <select name="status" class="select pulldown">
         <option value="all"${status==='all'?' selected':''}>すべての注文状況</option>
-        <option value="pending"${status==='pending'?' selected':''}>受付中</option>
-        <option value="confirmed"${status==='confirmed'?' selected':''}>確定</option>
-        <option value="paid"${status==='paid'?' selected':''}>支払い済み</option>
-        <option value="processing"${status==='processing'?' selected':''}>準備中</option>
-        <option value="fulfilled"${status==='fulfilled'?' selected':''}>出荷完了</option>
-        <option value="shipped"${status==='shipped'?' selected':''}>発送済み</option>
-        <option value="delivered"${status==='delivered'?' selected':''}>配達完了</option>
+        <option value="processing"${status==='processing'?' selected':''}>処理中</option>
         <option value="canceled"${status==='canceled'?' selected':''}>キャンセル</option>
         <option value="refunded"${status==='refunded'?' selected':''}>返金済み</option>
       </select>

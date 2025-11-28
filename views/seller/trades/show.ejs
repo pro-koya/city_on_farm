@@ -200,10 +200,10 @@
         <label class="td-status-field">
           <span class="td-status-label">注文ステータス</span>
           <select class="pulldown" name="order_status" id="orderStatus">
-            <option value="pending"   <%= order.status === 'pending'   ? 'selected' : '' %>>受付中</option>
-            <option value="fulfilled" <%= order.status === 'fulfilled' ? 'selected' : '' %>>完了</option>
-            <option value="canceled"  <%= order.status === 'canceled'  ? 'selected' : '' %>>キャンセル</option>
-            <option value="refunded"  <%= order.status === 'refunded'  ? 'selected' : '' %>>返金済み</option>
+            <option value="pending"   <%= order.status_ja === '処理中'   ? 'selected' : '' %>>処理中</option>
+            <option value="fulfilled" <%= order.status_ja === '完了' ? 'selected' : '' %>>完了</option>
+            <option value="canceled"  <%= order.status_ja === 'キャンセル'  ? 'selected' : '' %>>キャンセル</option>
+            <option value="refunded"  <%= order.status_ja === '返金済み'  ? 'selected' : '' %>>返金済み</option>
           </select>
         </label>
 
