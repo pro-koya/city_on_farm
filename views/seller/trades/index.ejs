@@ -15,8 +15,8 @@
             <th>支払い</th>
             <th>出荷/受取状況</th>
             <th>合計</th>
-            <th>注文日時</th>
-            <th></th>
+            <th>配送・受取希望日時</th>
+            <th>注文日</th>
           </tr>
         </thead>
         <tbody>
@@ -45,9 +45,9 @@
                 </span></div>
               </td>
               <td data-label="合計">¥${(it.total||0).toLocaleString()}</td>
-              <td data-label="注文日時">${it.created_at}</td>
-              <td data-label="">
-                <a class="btn btn--ghost" href="/seller/trades/${it.id}">詳細</a>
+              <td data-label="配送・受取希望日時">${it.eta} ${it.shipTimeJa}</td>
+              <td data-label="注文日">
+                ${it.created_at} <a class="btn btn--ghost" href="/seller/trades/${it.id}">詳細</a>
               </td>
             </tr>
           `).join('')}

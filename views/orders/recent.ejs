@@ -56,6 +56,11 @@
       </div>
     <% } else { %>
       <% items.forEach(function(o){ %>
+        <%
+          const shipMethod  = o.ship_method;
+          const isPickup    = o.ship_method === 'pickup';
+          const shipLabel   = o.ship_method_ja || (isPickup ? '畑で受け取り' : (shipMethod ? '配送' : '—'));
+        %>
         <article class="order">
           <header class="order__head">
             <!-- <div class="order__meta">
@@ -86,7 +91,8 @@
             <aside class="order__aside">
               <div class="order__summary">
                 <div class="row"><span>合計</span><strong>¥<%= o.total %></strong></div>
-                <% if (o.eta){ %><div class="row"><span>お届け予定</span><span><%= o.eta %></span></div><% } %>
+                <div class="row"><span>受取方法</span><%= shipLabel %></div>
+                <% if (o.eta){ %><div class="row"><span><%= isPickup ? '受け取りの目安' : 'お届け予定' %></span><span><%= o.eta %> <%= o.shipTimeJa ? ` ${o.shipTimeJa}` : '' %></span></div><% } %>
               </div>
 
               <div class="order__actions">
@@ -97,13 +103,13 @@
                     <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
                       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <% } %>
-                    <button type="submit" class="btn">再注文</button>
+                    <!-- <button type="submit" class="btn">再注文</button> -->
                   </form>
                 <% } %>
 
-                <% if (o.status === 'delivered' && !o.reviewed) { %>
+                <!-- <% if (o.status === 'delivered' && !o.reviewed) { %>
                   <a class="btn btn--accent" href="/orders/<%= o.orderNo %>/review">レビューを書く</a>
-                <% } %>
+                <% } %> -->
               </div>
             </aside>
           </div>

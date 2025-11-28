@@ -5,6 +5,7 @@
   const orderNo     = order.orderNo;
   const createdAt   = order.created_at;
   const eta         = order.eta;
+  const etaFull     = order.eta_full;
   const shipMethod  = order.ship_method;             // 'delivery' | 'pickup' など
   const isPickup    = shipMethod === 'pickup';
   const shipLabel   = order.ship_method_ja || (isPickup ? '畑で受け取り' : (shipMethod ? '配送' : '—'));
@@ -17,7 +18,11 @@
       <h1 class="td__title">取引 #<%= orderNo %></h1>
       <div class="td__meta">
         <span>作成: <%= createdAt %></span>
-        <% if (eta) { %>
+        <% if (etaFull) { %>
+          <span>
+            <%= isPickup ? '受け取りの目安: ' : 'お届け予定: ' %><%= etaFull %>
+          </span>
+        <% } else if (eta) { %>
           <span>
             <%= isPickup ? '受け取りの目安: ' : 'お届け予定日: ' %><%= eta %>
           </span>
@@ -52,6 +57,18 @@
         <div class="kv__row">
           <div class="kv__key"><%= isPickup ? '受け取り方法' : '配送方法' %></div>
           <div class="kv__val"><%= shipLabel %></div>
+        </div>
+        <div class="kv__row">
+          <div class="kv__key"><%= isPickup ? '受け取り希望日時' : 'お届け希望日時' %></div>
+          <div class="kv__val">
+            <% if (order.eta_full) { %>
+              <%= order.eta_full %>
+            <% } else if (order.eta) { %>
+              <%= order.eta %>
+            <% } else { %>
+              指定なし
+            <% } %>
+          </div>
         </div>
         <div class="kv__row">
           <div class="kv__key"><%= isPickup ? '受け取りステータス' : '配送ステータス' %></div>
@@ -135,7 +152,7 @@
               </div>
             </td>
             <td class="price">
-              数量：<%= it.quantity %><%= it.unit %><br>
+              数量：<%= it.quantity %><br>
               単価：¥<%= it.price.toLocaleString() %>
             </td>
             <td class="price">

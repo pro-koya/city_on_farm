@@ -2759,6 +2759,7 @@ app.get('/orders/recent', requireAuth, async (req, res, next) => {
         o.eta_at,
         o.note,
         o.reviewed,
+        o.ship_time_code,
         (
           SELECT jsonb_agg(
                    jsonb_build_object(
@@ -2805,6 +2806,7 @@ app.get('/orders/recent', requireAuth, async (req, res, next) => {
       payment_method_ja: r.payment_method ? jaLabel('payment_method', r.payment_method) : null,
       shipment_status_ja: r.shipment_status ? jaLabel('shipment_status', r.shipment_status) : null,
       ship_method_ja: r.ship_method ? jaLabel('ship_method', r.ship_method) : null,
+      shipTimeJa: shipTimeLabel(r.ship_time_code) || null,
 
       total: r.total,
       created_at: new Date(r.created_at).toLocaleString('ja-JP'),
@@ -3523,7 +3525,7 @@ app.get('/seller/trades', requireAuth, requireRole(['seller', 'admin']), async (
       SELECT
         o.id, COALESCE(o.order_number, o.id::text) AS order_no,
         o.status, o.payment_status, o.delivery_status,
-        o.total, o.created_at, o.ship_method,
+        o.total, o.created_at, o.ship_method, o.ship_time_code, o.eta_at,
         p.name AS partner_name,
         u.name AS buyer_name
       FROM orders o
@@ -3549,7 +3551,9 @@ app.get('/seller/trades', requireAuth, requireRole(['seller', 'admin']), async (
       ship_method_ja: jaLabel('ship_method', r.ship_method),
       total: r.total,
       partner_name: r.partner_name || r.buyer_name,
-      created_at: new Date(r.created_at).toLocaleString('ja-JP')
+      created_at: new Date(r.created_at).toLocaleString('ja-JP'),
+      eta: r.eta_at ? new Date(r.eta_at).toLocaleDateString('ja-JP') : '日付未指定',
+      shipTimeJa: r.ship_time_code ? shipTimeLabel(r.ship_time_code) : '時間未指定'
     }));
 
     // フィルタHTML（プルダウンをモダン化）
@@ -3692,6 +3696,14 @@ app.get('/seller/trades/:id', requireAuth, requireRole(['seller', 'admin']), asy
       [id]
     );
 
+    const shipTimeCode = o.ship_time_code || null;
+    const shipTimeJa   = shipTimeLabel(shipTimeCode);
+    const etaDateStr = o.eta_at ? new Date(o.eta_at).toLocaleDateString('ja-JP') : '';
+    const etaFull =
+      etaDateStr || shipTimeJa
+        ? `${etaDateStr || ''}${shipTimeJa ? ` ${shipTimeJa}` : ''}`
+        : null;
+
     // 日本語ラベル
     const vm = {
       id: o.id,
@@ -3707,7 +3719,10 @@ app.get('/seller/trades/:id', requireAuth, requireRole(['seller', 'admin']), asy
       shipment_status: o.delivery_status,
       shipment_status_ja: jaLabel('shipment_status', o.delivery_status),
       created_at: new Date(o.created_at).toLocaleString('ja-JP'),
-      eta: o.eta_at ? new Date(o.eta_at).toLocaleDateString('ja-JP') : null,
+      eta: etaDateStr || null,
+      ship_time_code: shipTimeCode,
+      ship_time_ja:   shipTimeJa,
+      eta_full:       etaFull,
       subtotal: o.subtotal, discount: o.discount, shipping_fee: o.shipping_fee, tax: o.tax, total: o.total,
       buyer: { name: o.buyer_name, email: o.buyer_email },
       partner: {name: o.partner_name},
@@ -4332,8 +4347,44 @@ const {
   loadPartnerAvailabilityByDate,
   loadAvailabilityForPartner,
   buildAvailabilitySummary,
-  loadPartnerAvailabilityForPartner
+  loadPartnerAvailabilityForPartner,
+  loadPartnerWeeklyTimeSlots,
+  getPartnerIdBySellerUserId
 } = require('./services/partnerAvailability');
+
+const DELIVERY_TIME_SLOTS = [
+  { code: '9-11',  start: '09:00', end: '11:00' },
+  { code: '11-13', start: '11:00', end: '13:00' },
+  { code: '14-16', start: '14:00', end: '16:00' },
+  { code: '16-18', start: '16:00', end: '18:00' },
+  { code: '18-20', start: '18:00', end: '20:00' },
+];
+
+const PICKUP_TIME_SLOTS = [
+  { code: '7-9',  start: '07:00', end: '09:00' },
+  { code: '9-11',  start: '09:00', end: '11:00' },
+  { code: '11-13', start: '11:00', end: '13:00' },
+  { code: '14-16', start: '14:00', end: '16:00' },
+  { code: '16-18', start: '16:00', end: '18:00' },
+  { code: '18-20', start: '18:00', end: '20:00' },
+];
+
+function shipTimeLabel(code) {
+  switch (code) {
+    case '7-9':    return '7〜9時';
+    case '9-11':   return '9〜11時';
+    case '11-13':  return '11〜13時';
+    case '14-16':  return '14〜16時';
+    case '16-18':  return '16〜18時';
+    case '18-20':  return '18〜20時';
+    default:       return '';
+  }
+}
+
+const TIME_SLOT_MASTER = {
+  delivery: DELIVERY_TIME_SLOTS,
+  pickup: PICKUP_TIME_SLOTS
+};
 
 /* ----------------------------
  *  POST /cart/apply-coupon クーポン適用
@@ -4905,6 +4956,8 @@ app.get('/checkout', async (req, res, next) => {
       to: toDate,
     });
 
+    const shipTimeSlots = await loadPartnerWeeklyTimeSlots(partnerId);
+
     console.log(shipAvailability);
 
     // 住所など既存処理
@@ -4945,6 +4998,7 @@ app.get('/checkout', async (req, res, next) => {
       allowedPayments: sellerConfig.allowedPaymentMethods || [{code: 'cod', label_ja: '代金引換'}],
       allowedShipMethods: sellerConfig.allowedShipMethods || [{code: 'pickup', label_ja: '畑にて受け取り'}, {code: 'delivery', label_ja: '配送'}],
       shipAvailability: shipAvailability || { delivery: [], pickup: [] },
+      shipTimeSlots: shipTimeSlots || { delivery: {}, pickup: {} },
       req
     });
   } catch (e) { next(e); }
@@ -5059,12 +5113,48 @@ app.post('/checkout', async (req, res, next) => {
       }
     }
 
+    // shipDate と shipTime の整合性チェック
+    if (shipTime) {
+      const method = shipMethod === 'pickup' ? 'pickup' : 'delivery';
+      
+      const master = TIME_SLOT_MASTER[method] || [];
+      // まず code 自体が定義済みか
+      const allCodes = master.map(s => s.code);
+      if (!allCodes.includes(shipTime)) {
+        req.session.flash = { type:'error', message:'選択された時間帯が不正です。ページを更新して再度お試しください。' };
+        return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
+      }
+
+      // shipDate があれば、その曜日にこのスロットが有効かチェック
+      if (shipDate) {
+        // sellerId はユーザーIDなので partnerId に変換
+        // const partnerId = await getPartnerIdBySellerUserId(sellerId);
+        const weeklySlots = await loadPartnerWeeklyTimeSlots(sellerId || null);
+
+        const d = new Date(shipDate + 'T00:00:00');
+        if (!isNaN(d.getTime())) {
+          const wd = d.getDay();
+          const byWeekday = (weeklySlots[method] || {});
+          const allowedCodes = byWeekday[wd] || [];
+          if (!allowedCodes.includes(shipTime)) {
+            req.session.flash = {
+              type:'error',
+              message:'選択された時間帯は、出品者の受け渡し可能時間ではありません。別の時間帯をお選びください。'
+            };
+            return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
+          }
+        }
+      }
+    }
+
     // 対象アイテムの再取得（改竄防止）
     const allPairs = await loadCartItems(req);
     const selectedIds = getSelectedIdsBySeller(req, sellerId);
     const filtered    = filterPairsBySelectedAndSeller(allPairs, selectedIds, sellerId);
     const items       = await fetchCartItemsWithDetails(filtered);
     if (!items.length) return res.redirect('/cart');
+    const rawShipTimeCode = (shipTime || '').trim() || null;
+    const shipTimeJa = shipTimeLabel(rawShipTimeCode);
 
     // セッションに「出品者別の注文ドラフト」を保存
     if (!req.session.checkoutDraftBySeller) req.session.checkoutDraftBySeller = {};
@@ -5076,6 +5166,7 @@ app.post('/checkout', async (req, res, next) => {
       shipMethod,
       shipDate: shipDate || null,
       shipTime: shipTime || null,
+      shipTimeJa,
       paymentMethod,
       orderNote: (orderNote || '').trim()
     };
@@ -5325,6 +5416,7 @@ app.get('/checkout/confirm', async (req, res, next) => {
 
     const shipMethod_ja = jaLabel('ship_method', draft.shipMethod) || draft.shipMethod;
     const paymentMethod_ja = jaLabel('payment_method', draft.paymentMethod) || draft.paymentMethod;
+    const shipTime_ja = shipTimeLabel(draft.shipTime || '');
 
     req.session.flash = null;
     res.render('checkout/confirm', {
@@ -5339,6 +5431,7 @@ app.get('/checkout/confirm', async (req, res, next) => {
       shipMethod_ja: shipMethod_ja,
       shipDate: draft.shipDate || null,
       shipTime: draft.shipTime || '',
+      shipTime_ja,
       paymentMethod: draft.paymentMethod,
       paymentMethod_ja: paymentMethod_ja,
       orderNote: draft.orderNote || '',
@@ -5410,9 +5503,13 @@ function addrHtml(a){
 }
 
 // 購入者向け
-function buildBuyerMail({orderNo, createdAt, buyer, items, totals, shippingAddress, billingAddress, paymentMethodJa, shipMethodJa, etaAt, coupon}){
+function buildBuyerMail({orderNo, createdAt, buyer, items, totals, shippingAddress, billingAddress, paymentMethodJa, shipMethodJa, etaAt, coupon, shipTimeJa}){
   const linesText = items.map(it => `・${it.title} × ${it.quantity} … ${it.price.toLocaleString()}円`).join('\n');
   const linesHtml = items.map(it => `<li>${esc(it.title)} × ${it.quantity} … ${it.price.toLocaleString()}円</li>`).join('');
+  const etaDateStr = etaAt ? new Date(etaAt).toLocaleDateString('ja-JP') : '';
+  const etaLine = (etaDateStr || shipTimeJa)
+    ? `${etaDateStr}${shipTimeJa ? ` ${shipTimeJa}` : ''}`
+    : '指定なし';
 
   const subject = `【ご注文完了】注文番号: ${orderNo}`;
   const text =
@@ -5424,7 +5521,7 @@ function buildBuyerMail({orderNo, createdAt, buyer, items, totals, shippingAddre
 ご注文日時：${new Date(createdAt).toLocaleString('ja-JP')}
 お支払い方法：${paymentMethodJa || '—'}
 配送方法：${shipMethodJa || '—'}
-お届け希望日：${etaAt ? new Date(etaAt).toLocaleDateString('ja-JP') : '—'}
+お届け希望日時：${etaLine}
 クーポン：${coupon?.code || '—'}
 
 【ご注文商品】
@@ -5452,7 +5549,7 @@ ${billingAddress ? addrBlock(billingAddress) : '（配送先と同じ）'}
   <tr><td style="padding:2px 6px">ご注文日時</td><td>${esc(new Date(createdAt).toLocaleString('ja-JP'))}</td></tr>
   <tr><td style="padding:2px 6px">お支払い方法</td><td>${esc(paymentMethodJa || '—')}</td></tr>
   <tr><td style="padding:2px 6px">配送方法</td><td>${esc(shipMethodJa || '—')}</td></tr>
-  <tr><td style="padding:2px 6px">お届け希望日</td><td>${esc(etaAt ? new Date(etaAt).toLocaleDateString('ja-JP') : '—')}</td></tr>
+  <tr><td style="padding:2px 6px">お届け希望日時</td><td>${esc(etaLine)}</td></tr>
   <tr><td style="padding:2px 6px">クーポン</td><td>${esc(coupon?.code || '—')}</td></tr>
 </table>
 
@@ -5479,9 +5576,13 @@ ${billingAddress ? addrHtml(billingAddress) : '（配送先と同じ）'}
 }
 
 // 出品者向け
-function buildSellerMail({orderNo, createdAt, seller, buyer, items, totals, shippingAddress, paymentMethodJa, shipMethodJa, etaAt}){
+function buildSellerMail({orderNo, createdAt, seller, buyer, items, totals, shippingAddress, paymentMethodJa, shipMethodJa, etaAt, shipTimeJa}){
   const linesText = items.map(it => `・${it.title} × ${it.quantity} … ${it.price.toLocaleString()}円`).join('\n');
   const linesHtml = items.map(it => `<li>${esc(it.title)} × ${it.quantity} … ${it.price.toLocaleString()}円</li>`).join('');
+  const etaDateStr = etaAt ? new Date(etaAt).toLocaleDateString('ja-JP') : '';
+  const etaLine = (etaDateStr || shipTimeJa)
+    ? `${etaDateStr}${shipTimeJa ? ` ${shipTimeJa}` : ''}`
+    : '指定なし';
 
   const subject = `【新規注文】注文番号: ${orderNo}（${buyer.name} 様）`;
   const text =
@@ -5492,7 +5593,7 @@ function buildSellerMail({orderNo, createdAt, seller, buyer, items, totals, ship
 購入者：${buyer.name} / ${buyer.email}
 支払い方法：${paymentMethodJa || '—'}
 配送方法：${shipMethodJa || '—'}
-お届け希望日：${etaAt ? new Date(etaAt).toLocaleDateString('ja-JP') : '—'}
+お届け希望日時：${etaLine}
 
 【商品明細】
 ${linesText}
@@ -5516,7 +5617,7 @@ ${addrBlock(shippingAddress)}
   <tr><td style="padding:2px 6px">購入者</td><td>${esc(buyer.name)} / ${esc(buyer.email||'')}</td></tr>
   <tr><td style="padding:2px 6px">支払い方法</td><td>${esc(paymentMethodJa || '—')}</td></tr>
   <tr><td style="padding:2px 6px">配送方法</td><td>${esc(shipMethodJa || '—')}</td></tr>
-  <tr><td style="padding:2px 6px">お届け希望日</td><td>${esc(etaAt ? new Date(etaAt).toLocaleDateString('ja-JP') : '—')}</td></tr>
+  <tr><td style="padding:2px 6px">お届け希望日時</td><td>${esc(etaLine)}</td></tr>
 </table>
 
 <h3>商品明細</h3>
@@ -5634,6 +5735,11 @@ app.post('/checkout/confirm', async (req, res, next) => {
       }
     }
 
+    const shipMethod = draft.shipMethod;
+
+    // ★ 時間帯コードをサニタイズして安全な値に
+    const rawShipTimeCode = (draft.shipTime || '').trim() || null;
+
     // 合計計算（サーバ側で最終確定）
     const itemsForTotal = targetPairs.map(p => {
       const prod = byId.get(p.productId);
@@ -5646,7 +5752,6 @@ app.post('/checkout/confirm', async (req, res, next) => {
           ? Math.floor(subtotal * (coupon.value/100))
           : Math.min(subtotal, Math.floor(coupon.value||0)))
       : 0;
-    const shipMethod = draft.shipMethod;
     const shipping_fee = (subtotal === 0 || subtotal >= FREE_SHIP_THRESHOLD || shipMethod === 'pickup') ? 0 : FLAT_SHIPPING;
     const total = Math.max(0, subtotal - discount) + shipping_fee;
 
@@ -5689,19 +5794,19 @@ app.post('/checkout/confirm', async (req, res, next) => {
       `INSERT INTO orders
          (order_number, buyer_id, status,
           subtotal, discount, shipping_fee, total,
-          payment_method, note, eta_at, coupon_code, ship_method,
+          payment_method, note, eta_at, coupon_code, ship_method, ship_time_code,
           payment_status, delivery_status)
        VALUES
          ($1, $2, 'pending',
           $3, $4, $5, $6,
-          $7, $8, $9, $10, $11,
+          $7, $8, $9, $10, $11, $12,
           'unpaid', 'preparing')
        RETURNING id`,
       [
         orderNo, uid,
         subtotal, discount, shipping_fee, total,
         safePaymentMethod, (draft.orderNote || '').slice(0,1000), etaAt,
-        coupon?.code || null, draft.shipMethod
+        coupon?.code || null, draft.shipMethod, rawShipTimeCode
       ]
     );
     const orderId = oins.rows[0].id;
@@ -5780,6 +5885,7 @@ app.post('/checkout/confirm', async (req, res, next) => {
     const firstProd      = byId.get(targetPairs[0].productId);
     const sellerUserId   = firstProd?.seller_id;
     const { seller, to: sellerTos } = await getSellerRecipientsBySellerUserId(sellerUserId);
+    const shipTimeJa = shipTimeLabel(rawShipTimeCode);
 
     // —— メール送信：購入者 / 出品者（並列送信でもOK）
     const tasks = [];
@@ -5789,7 +5895,7 @@ app.post('/checkout/confirm', async (req, res, next) => {
       const buyerMail = buildBuyerMail({
         orderNo, createdAt, buyer, items, totals,
         shippingAddress, billingAddress,
-        paymentMethodJa, shipMethodJa, etaAt, coupon
+        paymentMethodJa, shipMethodJa, etaAt, coupon, shipTimeJa
       });
 
       tasks.push(
@@ -5816,7 +5922,7 @@ app.post('/checkout/confirm', async (req, res, next) => {
         const sellerMail = buildSellerMail({
           orderNo, createdAt, seller, buyer, items, totals,
           shippingAddress,
-          paymentMethodJa, shipMethodJa, etaAt
+          paymentMethodJa, shipMethodJa, etaAt, shipTimeJa
         });
 
         tasks.push(
@@ -5872,7 +5978,7 @@ app.get('/checkout/complete', async (req, res, next) => {
     // 注文本体の取得（order_number が一致 or id::text が一致）
     const orderRows = await dbQuery(
       `SELECT o.id, o.order_number AS order_no, o.buyer_id,
-              o.status, o.subtotal, o.discount, o.shipping_fee, o.total,
+              o.status, o.subtotal, o.discount, o.shipping_fee, o.total, o.ship_time_code,
               o.created_at, o.eta_at, o.payment_method, o.ship_method, o.coupon_code
          FROM orders o
         WHERE (o.order_number = $1 OR o.id::text = $1)
@@ -5936,6 +6042,8 @@ app.get('/checkout/complete', async (req, res, next) => {
       total: order.total
     };
 
+    const shipTimeJa = shipTimeLabel(order.ship_time_code);
+
     // EJS が期待する形へ整形
     const viewOrder = {
       id: order.id,
@@ -5950,7 +6058,9 @@ app.get('/checkout/complete', async (req, res, next) => {
       payment_method: order.payment_method,
       ship_method: order.ship_method,
       payment_method_ja: jaLabel('payment_method', order.payment_method) || null,
-      ship_method_ja: jaLabel('ship_method', order.ship_method) || null
+      ship_method_ja: jaLabel('ship_method', order.ship_method) || null,
+      ship_time_code: order.ship_time_code,
+      ship_time_ja:   shipTimeJa
     };
 
     const coupon = order.coupon_code ? { code: order.coupon_code } : null;
@@ -5993,12 +6103,14 @@ app.get('/orders/:no', requireAuth, async (req, res, next) => {
       [no, uid]
     );
     const order = orderRows[0];
+    const shipTimeJa = shipTimeLabel(order.ship_time_code);
     order.status_ja = jaLabel('order_status', order.status);
     order.paymentMethod = jaLabel('payment_method', order.payment_method);
     order.paymentStatus = jaLabel('payment_status', order.payment_status);
     order.deliveryStatus = jaLabel('shipment_status', order.delivery_status);
     order.shipMethod = jaLabel('ship_method', order.ship_method);
     order.status_ja = jaLabel('order_status', order.status);
+    order.ship_time_ja = shipTimeJa;
     if (!order) return res.status(404).render('errors/404', { title: '注文が見つかりません' });
 
     // ─ 2) アイテム一覧
@@ -7316,17 +7428,11 @@ app.get(
         return res.status(403).send('forbidden');
       }
 
-      const [partnerRows, weeklyRows, dateRows] = await Promise.all([
+      const [partnerRows, dateRows] = await Promise.all([
         dbQuery(
           `SELECT id, name, status
              FROM partners
             WHERE id=$1::uuid`,
-          [id]
-        ),
-        dbQuery(
-          `SELECT kind, weekday
-             FROM partner_weekday_availabilities
-            WHERE partner_id = $1`,
           [id]
         ),
         dbQuery(
@@ -7338,6 +7444,37 @@ app.get(
           [id]
         )
       ]);
+
+      const jpWeek = ['日','月','火','水','木','金','土'];
+
+      // ① SQL を times 付きで取得
+      const weeklyRows = await dbQuery(
+        `SELECT kind, weekday, start_time, end_time
+          FROM partner_weekday_availabilities
+          WHERE partner_id = $1`,
+        [id]
+      );
+
+      // ② kind × weekday × timeSlot のマップに整形
+      const weeklySlots = {
+        delivery: {}, // { 0: ['09:00-11:00','11:00-13:00'], 2: [...], ... }
+        pickup:   {}
+      };
+
+      weeklyRows.forEach(r => {
+        const kind = r.kind; // 'delivery' or 'pickup'
+        if (kind !== 'delivery' && kind !== 'pickup') return;
+
+        const wd = Number(r.weekday); // 0-6
+        const start = String(r.start_time).slice(0,5); // 'HH:MM'
+        const end   = String(r.end_time).slice(0,5);   // 'HH:MM'
+        const slot  = `${start}-${end}`;
+
+        if (!weeklySlots[kind][wd]) weeklySlots[kind][wd] = [];
+        if (!weeklySlots[kind][wd].includes(slot)) {
+          weeklySlots[kind][wd].push(slot);
+        }
+      });
 
       const partner = partnerRows[0];
       if (!partner) {
@@ -7365,6 +7502,7 @@ app.get(
         title: `受け渡し可能日設定 | ${partner.name}`,
         partner,
         weekly,
+        weeklySlots,
         specials,
         csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
       });
@@ -7385,89 +7523,104 @@ app.post(
         return res.status(403).send('forbidden');
       }
 
-      // 週パターン：チェックボックスで weekday を受け取る
-      const weeklyDeliveryDays = []
-        .concat(req.body.weekly_delivery_days || [])
-        .map(Number)
-        .filter(d => d >= 0 && d <= 6);
+      // ▼ 1) 週パターン：曜日×時間帯の配列をパース
+      function parseWeeklySlots(bodyFieldName) {
+        const raw = []
+          .concat(req.body[bodyFieldName] || []); // 文字列 or 配列
 
-      const weeklyPickupDays = []
-        .concat(req.body.weekly_pickup_days || [])
-        .map(Number)
-        .filter(d => d >= 0 && d <= 6);
+        const slots = []; // { weekday, start, end }
+        raw.forEach(v => {
+          const [wdStr, startStr, endStr] = String(v).split('|');
+          const wd = Number(wdStr);
+          if (Number.isNaN(wd) || wd < 0 || wd > 6) return;
+          if (!startStr || !endStr) return;
+          slots.push({
+            weekday: wd,
+            start: startStr, // 'HH:MM'
+            end: endStr      // 'HH:MM'
+          });
+        });
+        return slots;
+      }
 
-      // 特定日：YYYY-MM-DD カンマ区切りを想定
+      const weeklyDeliverySlots = parseWeeklySlots('weekly_delivery_slots');
+      const weeklyPickupSlots   = parseWeeklySlots('weekly_pickup_slots');
+
+      // ▼ 2) 特定日（既存ロジック）は一旦そのまま（必要になったら時間帯拡張）
       const specialsDelivery = (req.body.special_delivery_dates || '')
-        .split(',')
-        .map(s => s.trim())
-        .filter(Boolean);
-
+        .split(',').map(s => s.trim()).filter(Boolean);
       const specialsPickup = (req.body.special_pickup_dates || '')
-        .split(',')
-        .map(s => s.trim())
-        .filter(Boolean);
+        .split(',').map(s => s.trim()).filter(Boolean);
 
       await dbQuery('BEGIN');
 
-      // 週パターン入れ替え
+      // ▼ 3) 週パターン：一旦全部消してから入れ直す
       await dbQuery(
         `DELETE FROM partner_weekday_availabilities WHERE partner_id=$1`,
         [partnerId]
       );
 
-      const insertsWeekly = [];
-      const paramsWeekly = [partnerId];
+      const weeklyTuples = [];
+      const weeklyParams = [partnerId];
       let idx = 2;
 
-      weeklyDeliveryDays.forEach(wd => {
-        insertsWeekly.push(`($1::uuid, 'delivery'::ship_method, $${idx++}::int, '00:00'::time, '23:59'::time)`);
-        paramsWeekly.push(wd);
-      });
-      weeklyPickupDays.forEach(wd => {
-        insertsWeekly.push(`($1::uuid, 'pickup'::ship_method, $${idx++}::int, '00:00'::time, '23:59'::time)`);
-        paramsWeekly.push(wd);
+      weeklyDeliverySlots.forEach(s => {
+        weeklyTuples.push(
+          `($1::uuid, 'delivery'::ship_method, $${idx++}::int, $${idx++}::time, $${idx++}::time)`
+        );
+        weeklyParams.push(s.weekday, s.start, s.end);
       });
 
-      if (insertsWeekly.length) {
+      weeklyPickupSlots.forEach(s => {
+        weeklyTuples.push(
+          `($1::uuid, 'pickup'::ship_method, $${idx++}::int, $${idx++}::time, $${idx++}::time)`
+        );
+        weeklyParams.push(s.weekday, s.start, s.end);
+      });
+
+      if (weeklyTuples.length) {
         await dbQuery(
           `INSERT INTO partner_weekday_availabilities
              (partner_id, kind, weekday, start_time, end_time)
-           VALUES ${insertsWeekly.join(',')}`,
-          paramsWeekly
+           VALUES ${weeklyTuples.join(',')}`,
+          weeklyParams
         );
       }
 
-      // 特定日入れ替え
+      // ▼ 4) 特定日も既存通り (時間帯は一旦終日扱いなら 00:00-23:59 を維持)
       await dbQuery(
         `DELETE FROM partner_date_availabilities WHERE partner_id=$1`,
         [partnerId]
       );
 
-      const insertsDate = [];
-      const paramsDate = [partnerId];
+      const dateTuples = [];
+      const dateParams = [partnerId];
       idx = 2;
 
       specialsDelivery.forEach(ymd => {
-        insertsDate.push(`($1::uuid, 'delivery'::ship_method, $${idx++}::date, '00:00'::time, '23:59'::time)`);
-        paramsDate.push(ymd);
+        dateTuples.push(
+          `($1::uuid, 'delivery'::ship_method, $${idx++}::date, '00:00'::time, '23:59'::time)`
+        );
+        dateParams.push(ymd);
       });
       specialsPickup.forEach(ymd => {
-        insertsDate.push(`($1::uuid, 'pickup'::ship_method, $${idx++}::date, '00:00'::time, '23:59'::time)`);
-        paramsDate.push(ymd);
+        dateTuples.push(
+          `($1::uuid, 'pickup'::ship_method, $${idx++}::date, '00:00'::time, '23:59'::time)`
+        );
+        dateParams.push(ymd);
       });
 
-      if (insertsDate.length) {
+      if (dateTuples.length) {
         await dbQuery(
           `INSERT INTO partner_date_availabilities
              (partner_id, kind, date, start_time, end_time)
-           VALUES ${insertsDate.join(',')}`,
-          paramsDate
+           VALUES ${dateTuples.join(',')}`,
+          dateParams
         );
       }
 
       await dbQuery('COMMIT');
-
-      req.session.flash = { type:'ok', message:'受け渡し可能日を更新しました。' };
+      req.session.flash = { type: 'ok', message: '受け渡し可能日時を更新しました。' };
       res.redirect(`/admin/partners/${partnerId}`);
     } catch (e) {
       await dbQuery('ROLLBACK').catch(()=>{});

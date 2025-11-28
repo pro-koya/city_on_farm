@@ -20,8 +20,13 @@ const pool = new Pool({
   connectionString: dbUrl,
   ssl: useSSL ? { rejectUnauthorized: false } : false,
   max: 10,
-  idleTimeoutMillis: 30_000,
+  idleTimeoutMillis: 15_000,
   connectionTimeoutMillis: 10_000
+});
+
+pool.on('error', (err, client) => {
+  console.error('Unexpected error on idle client', err);
+  // ここでアラート飛ばしたり、ログ送ったりもできる
 });
 
 async function dbQuery(text, params = []) {

@@ -61,11 +61,12 @@
             <label for="shipTime"><%= form.shipMethod === 'pickup' ? '受け取り時間帯（任意）' : 'お届け時間帯（任意）' %></label>
             <select class="pulldown" id="shipTime" name="shipTime">
               <option value="">指定なし</option>
-              <option value="am"    <%= form.shipTime === 'am' ? 'selected' : '' %>>午前中</option>
-              <option value="14-16" <%= form.shipTime === '14-16' ? 'selected' : '' %>>14-16時</option>
-              <option value="16-18" <%= form.shipTime === '16-18' ? 'selected' : '' %>>16-18時</option>
-              <option value="18-20" <%= form.shipTime === '18-20' ? 'selected' : '' %>>18-20時</option>
-              <option value="19-21" <%= form.shipTime === '19-21' ? 'selected' : '' %>>19-21時</option>
+              <% if (form.shipTime) { %>
+                <!-- JS無効時のフォールバック表示 -->
+                <option value="<%= form.shipTime %>" selected>
+                  <%= form.shipTime %>
+                </option>
+              <% } %>
             </select>
           </div>
         </div>
@@ -231,7 +232,8 @@
     csrfToken: '<%= csrfToken || '' %>',
     applyCouponUrl: '/checkout/apply-coupon',
     createAddressUrl: '/addresses',
-    shipAvailability: <%- JSON.stringify(shipAvailability || { delivery: [], pickup: [] }) %>
+    shipAvailability: <%- JSON.stringify(shipAvailability || { delivery: [], pickup: [] }) %>,
+    shipTimeSlots: <%- JSON.stringify(shipTimeSlots || { delivery: {}, pickup: {} }) %>
   };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>

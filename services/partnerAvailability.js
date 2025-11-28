@@ -1,6 +1,74 @@
 // utils/partnerAvailability.js みたいなファイルにまとめておくと管理しやすいです
 const { dbQuery } = require('./db'); // 既存の dbQuery を想定
 
+const DELIVERY_TIME_SLOTS = [
+  { code: '9-11',  start: '09:00', end: '11:00' },
+  { code: '11-13', start: '11:00', end: '13:00' },
+  { code: '14-16', start: '14:00', end: '16:00' },
+  { code: '16-18', start: '16:00', end: '18:00' },
+  { code: '18-20', start: '18:00', end: '20:00' },
+];
+
+const PICKUP_TIME_SLOTS = [
+  { code: '7-9',  start: '07:00', end: '09:00' },
+  { code: '9-11',  start: '09:00', end: '11:00' },
+  { code: '11-13', start: '11:00', end: '13:00' },
+  { code: '14-16', start: '14:00', end: '16:00' },
+  { code: '16-18', start: '16:00', end: '18:00' },
+  { code: '18-20', start: '18:00', end: '20:00' },
+];
+
+const SLOT_LOOKUP = {
+  delivery: DELIVERY_TIME_SLOTS,
+  pickup: PICKUP_TIME_SLOTS,
+};
+
+/**
+ * partner_weekday_availabilities を「曜日×時間帯コード」で返す
+ * 戻り値例:
+ * {
+ *   delivery: { 0:['9-11','11-13'], 1:['9-11'], ... },
+ *   pickup:   { 0:['7-9','9-11'], ... }
+ * }
+ */
+async function loadPartnerWeeklyTimeSlots(partnerId) {
+  if (!partnerId) return { delivery: {}, pickup: {} };
+
+  const rows = await dbQuery(
+    `SELECT kind, weekday, start_time, end_time
+       FROM partner_weekday_availabilities
+      WHERE partner_id = $1`,
+    [partnerId]
+  );
+
+  const result = { delivery: {}, pickup: {} };
+
+  for (let wd = 0; wd < 7; wd++) {
+    result.delivery[wd] = [];
+    result.pickup[wd] = [];
+  }
+
+  for (const r of rows) {
+    const kind = (r.kind === 'pickup') ? 'pickup' : 'delivery';
+    const wd = Number(r.weekday);
+    const start = r.start_time?.slice(0, 5); // 'HH:MM'
+    const end   = r.end_time?.slice(0, 5);
+
+    const master = SLOT_LOOKUP[kind];
+    if (!master) continue;
+
+    const def = master.find(s => s.start === start && s.end === end);
+    if (!def) continue;
+
+    if (!result[kind][wd]) result[kind][wd] = [];
+    if (!result[kind][wd].includes(def.code)) {
+      result[kind][wd].push(def.code);
+    }
+  }
+
+  return result;
+}
+
 async function getPartnerIdBySellerUserId(userId) {
   const rows = await dbQuery(
     `SELECT partner_id
@@ -223,5 +291,6 @@ module.exports = {
   loadAvailabilityForSellerUser,
   buildAvailabilitySummary,
   loadPartnerAvailabilityForPartner,
-  loadAvailabilityForPartner
+  loadAvailabilityForPartner,
+  loadPartnerWeeklyTimeSlots
 };

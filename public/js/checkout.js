@@ -5,6 +5,39 @@
     const csrf = window.__CK__?.csrfToken || '';
     const applyCouponUrl = '/checkout/apply-coupon';
     const createAddressUrl = window.__CK__?.createAddressUrl || '/addresses';
+    const TIME_SLOT_MASTER = {
+      delivery: [
+        { code: '9-11',  label: '9〜11時' },
+        { code: '11-13', label: '11〜13時' },
+        { code: '14-16', label: '14〜16時' },
+        { code: '16-18', label: '16〜18時' },
+        { code: '18-20', label: '18〜20時' },
+      ],
+      pickup: [
+        { code: '7-9',  label: '7〜9時' },
+        { code: '9-11',  label: '9〜11時' },
+        { code: '11-13', label: '11〜13時' },
+        { code: '14-16', label: '14〜16時' },
+        { code: '16-18', label: '16〜18時' },
+        { code: '18-20', label: '18〜20時' },
+      ]
+    };
+
+    function getShipAvailability() {
+      const raw = window.__CK__?.shipAvailability;
+      if (!raw || typeof raw !== 'object') {
+        return { delivery: [], pickup: [] };
+      }
+      return raw;
+    }
+
+    function getShipTimeSlots() {
+      const raw = window.__CK__?.shipTimeSlots;
+      if (!raw || typeof raw !== 'object') {
+        return { delivery: {}, pickup: {} };
+      }
+      return raw;
+    }
 
     function getShipAvailability() {
         const raw = window.__CK__?.shipAvailability;
@@ -310,6 +343,7 @@
             if (shipDateHidden) {
               shipDateHidden.value = dateStr || '';
             }
+            rebuildShipTimeOptions();
           }
         };
 
@@ -333,6 +367,8 @@
               shipDateHidden.value = '';
             }
         }
+
+        rebuildShipTimeOptions();
     }
 
     function applyShipMethodUI() {
@@ -375,6 +411,64 @@
       if (shipHelp) shipHelp.textContent = isPickup ? '受け取り場所は出品者指定の畑になります。詳細はご注文確定後のメールをご確認ください。' : 'ご指定の配送先へお届けします。';
     }
 
+    const shipTimeSel = qs('#shipTime');
+
+    function rebuildShipTimeOptions() {
+      if (!shipTimeSel) return;
+
+      const method = shipMethodSel?.value || 'delivery';
+      const timeSlotsDef = TIME_SLOT_MASTER[method] || [];
+      const weeklyTimeSlots = getShipTimeSlots();
+
+      const selectedDateStr = shipDateHidden?.value || evDateInput?.value || '';
+      let allowedCodes = [];
+
+      if (selectedDateStr) {
+        // 日付が選ばれている場合 → その曜日に許可されたスロットだけ
+        const d = new Date(selectedDateStr + 'T00:00:00');
+        if (!isNaN(d.getTime())) {
+          const wd = d.getDay(); // 0-6
+          const byWeekday = weeklyTimeSlots[method] || {};
+          const codes = byWeekday[wd] || [];
+          allowedCodes = codes.length ? codes.slice() : [];
+        }
+      }
+
+      // 日付未選択 or その曜日に設定ゼロ → とりあえず全マスタを表示
+      if (!allowedCodes.length) {
+        allowedCodes = timeSlotsDef.map(s => s.code);
+      }
+
+      const current = shipTimeSel.value;
+
+      // 一旦全てクリア
+      while (shipTimeSel.firstChild) {
+        shipTimeSel.removeChild(shipTimeSel.firstChild);
+      }
+
+      // 先頭「指定なし」
+      const optNone = document.createElement('option');
+      optNone.value = '';
+      optNone.textContent = '指定なし';
+      shipTimeSel.appendChild(optNone);
+
+      // 各スロット
+      allowedCodes.forEach(code => {
+        const def = timeSlotsDef.find(s => s.code === code) || { code, label: code + '時' };
+        const opt = document.createElement('option');
+        opt.value = def.code;
+        opt.textContent = def.label;
+        shipTimeSel.appendChild(opt);
+      });
+
+      // 既存選択値があれば復元（無効なら無視）
+      if (current && allowedCodes.includes(current)) {
+        shipTimeSel.value = current;
+      } else {
+        shipTimeSel.value = '';
+      }
+    }
+
     async function recalcTotalsForShipMethod() {
         const m = shipMethodSel?.value || 'delivery';
         try {
@@ -395,7 +489,9 @@
         applyShipMethodUI();
         recalcTotalsForShipMethod();
         setupDatepickerForCurrentMethod();
+        rebuildShipTimeOptions();
     });
     applyShipMethodUI();
     setupDatepickerForCurrentMethod();
+    rebuildShipTimeOptions();
 })();

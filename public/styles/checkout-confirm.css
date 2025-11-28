@@ -12,9 +12,10 @@
   grid-template-columns: minmax(0, 1fr) .65fr;
 }
 .card.sp {display: none;}
+.cfm-right { padding-top: 1rem; margin-right: 1rem;}
 @media (max-width: 960px) {
   .cfm-grid { grid-template-columns: 1fr; }
-  .cfm-right {padding: 0 .5rem;}
+  .cfm-right {padding: 0 .5rem; margin-right: 0;}
   .card.sp {display: block;}
 }
 
@@ -70,7 +71,6 @@ section {
 .mini-sub { font-weight:600; }
 
 /* 右サマリー */
-.cfm-right { padding-top: 1rem; }
 .sticky { position:sticky; top:86px; }
 .sum .row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; }
 .sum hr { border:0; border-top:1px solid #eee; margin:10px 0; }

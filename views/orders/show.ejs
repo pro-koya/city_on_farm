@@ -41,7 +41,10 @@
         <div class="meta-row">
           <% if (etaAt) { %>
             <span class="label"><%= isPickup ? '受け取りの目安' : 'お届け予定' %></span>
-            <span class="value"><%= new Date(etaAt).toLocaleDateString('ja-JP') %></span>
+            <span class="value">
+              <%= new Date(etaAt).toLocaleDateString('ja-JP') %>
+              <%= order.ship_time_ja ? ` ${order.ship_time_ja}` : '' %>
+            </span>
           <% } %>
         </div>
 
@@ -194,98 +197,51 @@
 
       <!-- お届け先・請求先 -->
       <section class="card">
-        <div class="card__head">
-          <h2><%= isPickup ? '受け取り先・請求先' : 'お届け先・請求先' %></h2>
+      <div class="card__head">
+        <h2><%= isPickup ? '受け取り状況' : '配送状況' %></h2>
+      </div>
+
+      <div class="shipment-summary">
+        <div class="shipment-summary__row">
+          <span class="label"><%= isPickup ? '受け取り方法' : '配送方法' %>：</span>
+          <span class="value">
+            <span class="pill pill--soft"><%= shipMethodLabel %></span>
+          </span>
         </div>
 
-        <div class="addr-grid">
-          <div class="addr-card">
-            <h3><%= isPickup ? '受け取り先' : '配送先' %></h3>
-            <% if (isPickup) { %>
-              <p class="muted">
-                畑受け取りを選択しています。受け取り場所の詳細は、ご注文時のメールまたは出品者からのご案内をご確認ください。
-              </p>
-            <% } else if (shippingAddress) { %>
-              <address>
-                <div><%= shippingAddress.full_name %></div>
-                <div>〒<%= shippingAddress.postal_code %></div>
-                <div>
-                  <%= shippingAddress.prefecture %><%= shippingAddress.city %><%= shippingAddress.address_line1 %>
-                  <%= shippingAddress.address_line2 || '' %>
-                </div>
-                <% if (shippingAddress.phone) { %><div>TEL: <%= shippingAddress.phone %></div><% } %>
-              </address>
-            <% } else { %>
-              <p class="muted">配送先情報が見つかりません。</p>
-            <% } %>
-          </div>
-
-          <div class="addr-card">
-            <h3>請求先</h3>
-            <% if (billingAddress) { %>
-              <address>
-                <div><%= billingAddress.full_name %></div>
-                <div>〒<%= billingAddress.postal_code %></div>
-                <div>
-                  <%= billingAddress.prefecture %><%= billingAddress.city %><%= billingAddress.address_line1 %>
-                  <%= billingAddress.address_line2 || '' %>
-                </div>
-                <% if (billingAddress.phone) { %><div>TEL: <%= billingAddress.phone %></div><% } %>
-              </address>
-            <% } else { %>
-              <p class="muted">
-                請求先は<%= isPickup ? '受け取り先' : '配送先' %>と同一です。
-              </p>
-            <% } %>
-          </div>
-        </div>
-      </section>
-
-      <!-- 配送 / 受け取り状況 -->
-      <section class="card">
-        <div class="card__head">
-          <h2><%= isPickup ? '受け取り状況' : '配送状況' %></h2>
-        </div>
-
-        <div class="shipment-summary">
+        <% if (etaAt || order.ship_time_ja) { %>
           <div class="shipment-summary__row">
-            <span class="label"><%= isPickup ? '受け取り方法' : '配送方法' %>：</span>
+            <span class="label"><%= isPickup ? '受け取りの目安' : 'お届け予定' %>：</span>
             <span class="value">
-              <span class="pill pill--soft"><%= shipMethodLabel %></span>
+              <%= etaAt ? new Date(etaAt).toLocaleDateString('ja-JP') : '' %>
+              <%= order.ship_time_ja ? ` ${order.ship_time_ja}` : '' %>
             </span>
           </div>
-
-          <% if (etaAt) { %>
-            <div class="shipment-summary__row">
-              <span class="label"><%= isPickup ? '受け取りの目安' : 'お届け予定' %>：</span>
-              <span class="value"><%= new Date(etaAt).toLocaleDateString('ja-JP') %></span>
-            </div>
-          <% } %>
-
-          <% if (order.deliveryStatus) { %>
-            <div class="shipment-summary__row">
-              <span class="label"><%= isPickup ? '現在の状況' : '配送状況' %>：</span>
-              <span class="value">
-                <% if (isPickup) { %>
-                  <%= order.deliveryStatus === 'delivered' ? '受取完了' : '未受取' %>
-                <% } else { %>
-                  <%= order.deliveryStatus %>
-                <% } %>
-              </span>
-            </div>
-          <% } %>
-        </div>
-
-        <% if (!order.deliveryStatus) { %>
-          <p class="muted shipment-note">
-            <%= isPickup
-              ? '畑での受け取り準備が整い次第、詳細をご連絡いたします。'
-              : '出荷準備が整い次第、配送情報をご連絡いたします。'
-            %>
-          </p>
         <% } %>
-      </section>
-    </div>
+
+        <% if (order.deliveryStatus) { %>
+          <div class="shipment-summary__row">
+            <span class="label"><%= isPickup ? '現在の状況' : '配送状況' %>：</span>
+            <span class="value">
+              <% if (isPickup) { %>
+                <%= order.deliveryStatus === 'delivered' ? '受取完了' : '未受取' %>
+              <% } else { %>
+                <%= order.deliveryStatus %>
+              <% } %>
+            </span>
+          </div>
+        <% } %>
+      </div>
+
+      <% if (!order.deliveryStatus) { %>
+        <p class="muted shipment-note">
+          <%= isPickup
+            ? '畑での受け取り準備が整い次第、詳細をご連絡いたします。'
+            : '出荷準備が整い次第、配送情報をご連絡いたします。'
+          %>
+        </p>
+      <% } %>
+    </section>
 
     <!-- 右：支払い/操作 -->
     <aside class="grid__right">

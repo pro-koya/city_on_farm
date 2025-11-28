@@ -31,10 +31,14 @@
       <div class="complete-order__eta">
         <%= isPickup ? '受け取り日時：' : 'お届け予定：' %>
         <strong>
-          <%= order?.eta_at
-                ? new Date(order.eta_at).toLocaleDateString('ja-JP')
-                : '追ってご連絡'
-          %>
+          <% if (order?.eta_at || order?.ship_time_ja) { %>
+            <%= order?.eta_at
+                  ? new Date(order.eta_at).toLocaleDateString('ja-JP')
+                  : '' %>
+            <%= order?.ship_time_ja ? ` ${order.ship_time_ja}` : '' %>
+          <% } else { %>
+            追ってご連絡
+          <% } %>
         </strong>
       </div>
       <div class="complete-order__time">
@@ -143,9 +147,10 @@
             </span>
           </p>
           <p class="shipping__method">
-            <% if (order?.eta_at) { %>
+            <% if (order?.eta_at || order?.ship_time_ja) { %>
               <%= isPickup ? '受け取り日時：' : 'お届け予定：' %>
-              <%= new Date(order.eta_at).toLocaleDateString('ja-JP') %>
+              <%= order?.eta_at ? new Date(order.eta_at).toLocaleDateString('ja-JP') : '' %>
+              <%= order?.ship_time_ja ? ` ${order.ship_time_ja}` : '' %>
             <% } %>
           </p>
           <p class="shipping__note">

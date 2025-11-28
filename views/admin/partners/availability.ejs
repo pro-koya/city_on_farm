@@ -7,52 +7,96 @@
 <main class="pa">
   <header class="pa__head">
     <h1 class="pa__title"><%= partner.name %> の受け渡し可能日設定</h1>
-    <p class="muted">毎週のパターンと、特定日の追加を設定できます。</p>
+    <p class="muted small">
+      配送と畑受け取りそれぞれについて、曜日ごとの「受付時間帯」を設定できます。
+      実際のカレンダーでは、この設定に従って選択可能な日時のみが表示されます。
+    </p>
     <a href="/admin/partners/<%= partner.id %>" class="btn btn--ghost">取引先詳細に戻る</a>
   </header>
 
   <form method="POST" action="/admin/partners/<%= partner.id %>/availability" class="pa__form">
     <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
-
+    <% const jpWeek = ['日','月','火','水','木','金','土']; %>
+    <!-- ===== 配送（お届け）週間スケジュール ===== -->
     <section class="card">
-      <h2>毎週のパターン</h2>
-      <p class="help">「この曜日は基本的に対応できる」という曜日を選択してください。</p>
+      <h2>配送（お届け）の週間スケジュール</h2>
+      <p class="help small">
+        毎週の「お届け可能な曜日 × 時間帯」を選択してください。
+        例：水曜の <strong>14–16時</strong> にチェックすると、
+        購入者は毎週水曜14–16時のお届けを選べるようになります。
+      </p>
 
       <div class="pa__weekly-grid">
-        <div>
-          <h3>配送（delivery）</h3>
-          <div class="chips">
-            <% const weekdays = ['日','月','火','水','木','金','土']; %>
-            <% weekdays.forEach((label, idx) => { %>
-              <label class="chip">
-                <input
-                  type="checkbox"
-                  name="weekly_delivery_days"
-                  value="<%= idx %>"
-                  <%= weekly.delivery.has(idx) ? 'checked' : '' %>
-                >
-                <span><%= label %></span>
-              </label>
-            <% }) %>
+        <% for (let wd = 0; wd < 7; wd++) { 
+             const selectedSlots = (weeklySlots?.delivery && weeklySlots.delivery[wd]) || [];
+        %>
+          <div>
+            <h3><%= jpWeek[wd] %>曜日</h3>
+            <div class="chips">
+              <% const deliverySlots = [
+                   { code: '09:00-11:00', label: '9–11時' },
+                   { code: '11:00-13:00', label: '11–13時' },
+                   { code: '14:00-16:00', label: '14–16時' },
+                   { code: '16:00-18:00', label: '16–18時' },
+                   { code: '18:00-20:00', label: '18–20時' },
+                 ];
+              deliverySlots.forEach(slot => {
+                const isChecked = selectedSlots.includes(slot.code);
+              %>
+                <label class="chip">
+                  <input
+                    type="checkbox"
+                    name="weekly_delivery_slots"
+                    value="<%= wd %>|<%= slot.code.split('-')[0] %>|<%= slot.code.split('-')[1] %>"
+                    <%= isChecked ? 'checked' : '' %>
+                  >
+                  <span><%= slot.label %></span>
+                </label>
+              <% }) %>
+            </div>
           </div>
-        </div>
+        <% } %>
+      </div>
+    </section>
 
-        <div>
-          <h3>畑受け渡し（pickup）</h3>
-          <div class="chips">
-            <% weekdays.forEach((label, idx) => { %>
-              <label class="chip">
-                <input
-                  type="checkbox"
-                  name="weekly_pickup_days"
-                  value="<%= idx %>"
-                  <%= weekly.pickup.has(idx) ? 'checked' : '' %>
-                >
-                <span><%= label %></span>
-              </label>
-            <% }) %>
+    <!-- ===== 畑で受け取り 週間スケジュール ===== -->
+    <section class="card">
+      <h2>畑で受け取りの週間スケジュール</h2>
+      <p class="help small">
+        畑で直接受け取ってもらう場合の「受け取り可能な曜日 × 時間帯」を設定してください。
+      </p>
+
+      <div class="pa__weekly-grid">
+        <% for (let wd = 0; wd < 7; wd++) { 
+             const selectedSlots = (weeklySlots?.pickup && weeklySlots.pickup[wd]) || [];
+        %>
+          <div>
+            <h3><%= jpWeek[wd] %>曜日</h3>
+            <div class="chips">
+              <% const pickupSlots = [
+                   { code: '07:00-09:00', label: '7–9時' },
+                   { code: '09:00-11:00', label: '9–11時' },
+                   { code: '11:00-13:00', label: '11–13時' },
+                   { code: '14:00-16:00', label: '14–16時' },
+                   { code: '16:00-18:00', label: '16–18時' },
+                   { code: '18:00-20:00', label: '18–20時' },
+                 ];
+              pickupSlots.forEach(slot => {
+                const isChecked = selectedSlots.includes(slot.code);
+              %>
+                <label class="chip">
+                  <input
+                    type="checkbox"
+                    name="weekly_pickup_slots"
+                    value="<%= wd %>|<%= slot.code.split('-')[0] %>|<%= slot.code.split('-')[1] %>"
+                    <%= isChecked ? 'checked' : '' %>
+                  >
+                  <span><%= slot.label %></span>
+                </label>
+              <% }) %>
+            </div>
           </div>
-        </div>
+        <% } %>
       </div>
     </section>
 
