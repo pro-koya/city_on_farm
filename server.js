@@ -2038,7 +2038,7 @@ app.post(
         req.body.status,
         isPublic ? new Date() : null
       ]);
-      const productId = pr[0].id;
+      const productId = pr.rows[0].id;
 
       // 画像（メタ付きJSON＋URLのみ）
       const imageJsonRaw = (req.body.imageJson || '').trim();
@@ -3565,6 +3565,7 @@ app.get('/seller/trades', requireAuth, requireRole(['seller', 'admin']), async (
       <select name="status" class="select pulldown">
         <option value="all"${status==='all'?' selected':''}>すべての注文状況</option>
         <option value="processing"${status==='processing'?' selected':''}>処理中</option>
+        <option value="delivered"${status==='delivered'?' selected':''}>完了</option>
         <option value="canceled"${status==='canceled'?' selected':''}>キャンセル</option>
         <option value="refunded"${status==='refunded'?' selected':''}>返金済み</option>
       </select>
