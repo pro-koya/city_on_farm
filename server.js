@@ -447,7 +447,7 @@ async function loadAllPaymentMethods(enumTypeName, category) {
 }
 
 async function sendVerifyMail({ to, name, url }) {
-  const subject = '【メールアドレス確認】ご登録の最終ステップ';
+  const subject = '【セッツマルシェ】メールアドレスの確認';
   const text =
 `${name} 様
 
