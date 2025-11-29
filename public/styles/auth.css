@@ -267,7 +267,8 @@ input:focus {
 
 .btn--primary {
   background: var(--main);
-  color: #fff
+  color: #fff;
+  margin: 5px 0;
 }
 
 .btn--ghost {

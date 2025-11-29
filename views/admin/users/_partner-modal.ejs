@@ -5,16 +5,16 @@
       <button type="button" class="icon-btn" id="closePartnerModal" aria-label="閉じる">✕</button>
     </div>
 
-    <form id="partnerForm" class="form" novalidate>
+    <form id="partnerForm" class="form h-adr" novalidate>
       <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
 
-      <div class="tabs">
+      <!-- <div class="tabs">
         <button type="button" class="tab is-active" data-tab="search">既存から選ぶ</button>
         <button type="button" class="tab" data-tab="create">新規作成</button>
-      </div>
+      </div> -->
 
       <!-- 既存検索 -->
-      <div class="tabpane" data-pane="search">
+      <div class="tabpane" data-pane="search" hidden>
         <div class="field">
           <label for="par_q">検索</label>
           <input id="par_q" type="search" placeholder="名称・電話・郵便番号で検索">
@@ -23,23 +23,58 @@
       </div>
 
       <!-- 新規作成 -->
-      <div class="tabpane" data-pane="create" hidden>
+      <div class="tabpane" data-pane="create">
         <div class="field">
           <label for="pn_name">名称 *</label>
           <input id="pn_name" name="name" required>
         </div>
+        <div>
+          <label for="partnerType">種別</label>
+          <select class="pulldown" id="partnerType" name="partnerType">
+            <option value="">-- 任意 --</option>
+            <option value="restaurant">飲食店</option>
+            <option value="retailer">小売</option>
+            <option value="wholesale">卸</option>
+            <option value="other">その他</option>
+          </select>
+        </div>
+        <span class="p-country-name" style="display: none;">Japan</span>
         <div class="grid3">
-          <div class="field"><label for="pn_postal">郵便番号</label><input id="pn_postal" name="postal_code"></div>
-          <div class="field"><label for="pn_pref">都道府県</label><input id="pn_pref" name="prefecture"></div>
-          <div class="field"><label for="pn_city">市区町村</label><input id="pn_city" name="city"></div>
+          <div class="field"><label for="pn_postal">郵便番号</label><input class="p-postal-code" id="pn_postal" name="postal_code"></div>
+          <div class="field"><label for="pn_pref">都道府県</label><input class="p-region" id="pn_pref" name="prefecture" readonly></div>
+          <div class="field"><label for="pn_city">市区町村</label><input class="p-locality" id="pn_city" name="city" readonly></div>
         </div>
         <div class="grid2">
-          <div class="field"><label for="pn_line1">番地</label><input id="pn_line1" name="address1"></div>
-          <div class="field"><label for="pn_line2">建物名・部屋</label><input id="pn_line2" name="address2"></div>
+          <div class="field"><label for="pn_line1">番地</label><input class="p-street-address" id="pn_line1" name="address1"></div>
+          <div class="field"><label for="pn_line2">建物名・部屋</label><input class="p-extended-address" id="pn_line2" name="address2"></div>
         </div>
         <div class="field"><label for="pn_phone">電話</label><input id="pn_phone" name="phone"></div>
+        <div class="field"><label for="pn_email">メールアドレス</label><input id="pn_email" name="email"></div>
+        <div class="field"><label for="pn_website">Webサイト</label><input id="pn_website" name="website"></div>
+        <div class="field"><label for="pn_taxid">税ID</label><input id="pn_taxid" name="taxid"></div>
         <div class="row-right">
           <button type="button" class="btn btn--primary" id="btnCreatePartner">作成して紐付け</button>
+        </div>
+
+        <div id="partnerDupSection" class="dup-section" hidden>
+          <div class="modal__divider"></div>
+          <p class="hint partnerDub_hint">
+            入力内容に似ている既存の取引先が見つかりました。<br>
+            該当するものがあれば選択してください。なければ「この中には当てはまりません」を押すと、新規作成できます。
+          </p>
+
+          <ul id="partnerDupList" class="result-list"></ul>
+
+          <p class="error" id="partnerDupErr" aria-live="polite"></p>
+
+          <div class="row-right">
+            <button type="button" class="btn btn--primary" id="btnPartnerDupBind">
+              選択した取引先にする
+            </button>
+            <button type="button" class="btn btn--ghost" id="btnPartnerDupIgnore">
+              この中には当てはまりません（新規作成する）
+            </button>
+          </div>
         </div>
       </div>
 

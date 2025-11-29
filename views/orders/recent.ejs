@@ -18,7 +18,7 @@
           autocomplete="off"
         />
 
-        <select name="status" id="status" aria-label="ステータス">
+        <select name="status" class="pulldown" id="status" aria-label="ステータス">
           <option value="all"      <%= (status||'all')==='all' ? 'selected':'' %>>すべて</option>
           <option value="processing" <%= status==='processing' ? 'selected':'' %>>処理中</option>
           <option value="shipped"    <%= status==='shipped'    ? 'selected':'' %>>出荷済み</option>
@@ -26,7 +26,7 @@
           <option value="canceled"   <%= status==='canceled'   ? 'selected':'' %>>キャンセル</option>
         </select>
 
-        <select name="range" id="range" aria-label="期間">
+        <select name="range" class="pulldown" id="range" aria-label="期間">
           <option value="30d" <%= (range||'30d')==='30d' ? 'selected':'' %>>過去30日</option>
           <option value="7d"  <%= range==='7d'  ? 'selected':'' %>>過去7日</option>
           <option value="90d" <%= range==='90d' ? 'selected':'' %>>過去90日</option>
@@ -34,7 +34,7 @@
         </select>
       </div>
 
-      <div class="chips" role="listbox" aria-label="クイックフィルター">
+      <!-- <div class="chips" role="listbox" aria-label="クイックフィルター">
         <% const quick = (quickFilters || []); %>
         <a class="chip <%= quick.includes('hasIssues') ? 'is-active' : '' %>"
            href="<%= buildQuery({ hasIssues: quick.includes('hasIssues') ? '' : 1, page:1 }) %>">問題あり</a>
@@ -42,7 +42,7 @@
            href="<%= buildQuery({ hasReviewable: quick.includes('hasReviewable') ? '' : 1, page:1 }) %>">レビュー未投稿</a>
         <a class="chip <%= quick.includes('reorderable') ? 'is-active' : '' %>"
            href="<%= buildQuery({ reorderable: quick.includes('reorderable') ? '' : 1, page:1 }) %>">再注文可</a>
-      </div>
+      </div> -->
     </form>
   </section>
 

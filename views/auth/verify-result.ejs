@@ -1,0 +1,28 @@
+<%- include('../partials/header', { title, extraCSS2: '', extraCSS: '/styles/signup.css' }) %>
+
+<main class="auth">
+  <section class="card auth-card">
+    <% if (ok) { %>
+      <div class="auth-card__header">
+        <h1>メールアドレスの確認が完了しました</h1>
+      </div>
+      <p>
+        <strong><%= email %></strong> でログインできるようになりました。
+      </p>
+      <p><%= message %></p>
+      <div class="actions">
+        <a class="btn" href="/login">ログイン画面へ</a>
+      </div>
+    <% } else { %>
+      <div class="auth-card__header">
+        <h1>メールアドレスの確認に失敗しました</h1>
+      </div>
+      <p><%= message %></p>
+      <div class="actions">
+        <a class="btn" href="/login">ログイン画面へ戻る</a>
+      </div>
+    <% } %>
+  </section>
+</main>
+
+<%- include('../partials/footer') %>

@@ -446,6 +446,37 @@ async function loadAllPaymentMethods(enumTypeName, category) {
   return rows.map(r => ({ value: r.code, label_ja: r.label_ja, sort: r.sort }));
 }
 
+async function sendVerifyMail({ to, name, url }) {
+  const subject = '【セッツマルシェ】メールアドレスの確認';
+  const text =
+`${name} 様
+
+ご登録ありがとうございます。
+以下のURLをクリックして、メールアドレスの確認を完了してください。
+
+${url}
+
+※このメールに覚えがない場合は、このメールを破棄してください。`;
+
+  const html = `
+<p>${name} 様</p>
+<p>ご登録ありがとうございます。以下のボタンからメールアドレスの確認を完了してください。</p>
+<p><a href="${url}" style="display:inline-block;padding:10px 18px;border-radius:6px;background:#4C6B5C;color:#fff;text-decoration:none;">メールアドレスを確認する</a></p>
+<p>もしボタンがクリックできない場合は、次のURLをブラウザにコピーして開いてください。</p>
+<p><code>${url}</code></p>
+`;
+
+  // 表示名付き From（Gmail APIでもOK。実送は認可済アカウント）
+    const FROM = process.env.MAIL_FROM || process.env.CONTACT_FROM || process.env.SMTP_USER || 'no-reply@example.com';
+    try {
+      const res = await gmailSend({ from: FROM, to, subject, text, html });
+      console.log('auth signup mail sent:', res?.id || '(no id)');
+    } catch (err) {
+      console.error('auth signup mail failed:', err?.message || err);
+      throw err;
+    }
+}
+
 /* =========================================================
  *  認証
  * =======================================================*/
@@ -456,7 +487,8 @@ app.get('/login', (req, res) => {
     title:'ログイン',
     values: { email: '' },
     fieldErrors: {},
-    globalError: ''
+    globalError: '',
+    showResendLink: false
   });
 });
 
@@ -465,7 +497,11 @@ app.post(
   '/login',
   csrfProtect,
   [
-    body('email').trim().isEmail().withMessage('有効なメールアドレスを入力してください。').normalizeEmail(),
+    body('email').trim().isEmail().withMessage('有効なメールアドレスを入力してください。').normalizeEmail({
+      gmail_remove_dots: false,
+      gmail_remove_subaddress: false,
+      gmail_convert_googlemaildotcom: false
+    }),
     body('password').isLength({ min: 8 }).withMessage('パスワードは8文字以上で入力してください。')
   ],
   async (req, res, next) => {
@@ -481,11 +517,12 @@ app.post(
           csrfToken: req.csrfToken(),
           values: { email },
           fieldErrors,
-          globalError: ''
+          globalError: '',
+          showResendLink: false
         });
       }
 
-      const rows = await dbQuery(`SELECT id, name, email, password_hash, roles, seller_intro_summary FROM users WHERE email = $1 LIMIT 1`, [email]);
+      const rows = await dbQuery(`SELECT id, name, email, password_hash, roles, seller_intro_summary, email_verified_at FROM users WHERE email = $1 LIMIT 1`, [email]);
       const user = rows[0];
       const ok = user ? await bcrypt.compare(password, user.password_hash) : false;
 
@@ -496,7 +533,21 @@ app.post(
           csrfToken: req.csrfToken(),
           values: { email },
           fieldErrors: { email: msg, password: msg },
-          globalError: ''
+          globalError: '',
+          showResendLink: false
+        });
+      }
+
+      if (!user.email_verified_at) {
+        req.session.pendingVerifyUserId = user.id;
+        req.session.pendingVerifyEmail = user.email;
+        const msg = 'メールアドレスの確認が完了していません。メールアドレスを認証してください。';
+        return res.render('auth/login', {
+          title: 'ログイン',
+          csrfToken: req.csrfToken(),
+          values: { email },
+          fieldErrors: { email: msg, password: msg },
+          showResendLink: true
         });
       }
 
@@ -511,6 +562,110 @@ app.post(
     }
   }
 );
+
+// POST /auth/verify/resend
+app.post('/auth/verify/resend', csrfProtect, async (req, res) => {
+  try {
+    const uid   = req.session.pendingVerifyUserId;
+    const email = req.session.pendingVerifyEmail;
+
+    // セッションに情報が無い → 直接 URL 叩かれた等
+    if (!uid && !email) {
+      return res.render('auth/login', {
+        title: 'ログイン',
+        csrfToken: req.csrfToken(),
+        values: { email: '' },
+        fieldErrors: {},
+        showResendLink: false,
+        globalError: '再送対象のユーザー情報が見つかりませんでした。お手数ですが、再度ログインをお試しください。'
+      });
+    }
+
+    // DBから再取得（email_verified_at の最新状態を確認）
+    const rows = await dbQuery(
+      `SELECT id, name, email, email_verified_at
+         FROM users
+        WHERE ${uid ? 'id = $1' : 'email = $1'}
+        LIMIT 1`,
+      [uid || email]
+    );
+    const user = rows[0];
+
+    if (!user) {
+      // ユーザー自体が消えている
+      req.session.pendingVerifyUserId = null;
+      req.session.pendingVerifyEmail = null;
+      return res.render('auth/login', {
+        title: 'ログイン',
+        csrfToken: req.csrfToken(),
+        values: { email: '' },
+        fieldErrors: {},
+        showResendLink: false,
+        globalError: 'アカウント情報が見つかりませんでした。お手数ですが、新規登録をお試しください。'
+      });
+    }
+
+    if (user.email_verified_at) {
+      // すでに認証済み → ふつうにログインしてね
+      req.session.pendingVerifyUserId = null;
+      req.session.pendingVerifyEmail = null;
+      return res.render('auth/login', {
+        title: 'ログイン',
+        csrfToken: req.csrfToken(),
+        values: { email: user.email },
+        fieldErrors: {},
+        showResendLink: false,
+        globalError: 'このメールアドレスはすでに確認済みです。パスワードを入力してログインしてください。'
+      });
+    }
+
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+
+    const upd = await dbQuery(
+      `UPDATE users
+          SET email_verify_token = $1,
+              email_verified_at = NULL
+        WHERE id = $2
+        RETURNING name`,
+      [token, uid]
+    );
+
+    if (!upd.length) {
+      return res.redirect('/signup');
+    }
+
+    const origin = process.env.APP_ORIGIN;
+    const verifyUrl = `${origin}/auth/verify-email?token=${encodeURIComponent(token)}`;
+    req.session.pendingVerifyUserId = user.id;
+    req.session.pendingVerifyEmail = user.email;
+
+    await sendVerifyMail({
+      to: user.email,
+      name: user.name,
+      url: verifyUrl
+    });
+
+    return res.render('auth/verify-pending', {
+      title: 'メールアドレスの確認',
+      csrfToken: req.csrfToken(),
+      email,
+      message: '認証メールを再送しました。',
+      error: ''
+    });
+
+  } catch (err) {
+    console.error('resend verify mail error:', err);
+    return res.status(500).render('auth/login', {
+      title: 'ログイン',
+      csrfToken: req.csrfToken(),
+      values: { email: '' },
+      fieldErrors: {},
+      showResendLink: false,
+      globalError: '確認メールの再送中にエラーが発生しました。時間をおいて再度お試しください。'
+    });
+  }
+});
 
 // POST /logout
 app.post('/logout', csrfProtect, (req, res) => {
@@ -531,119 +686,115 @@ const JP_PREFS = [
   '福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県'
 ];
 
-// 既存の validators に以下を追記
-const partnerValidators = [
-  body('partnerChoice')
-    .optional({ checkFalsy:true })
-    .isIn(['none','existing','new']).withMessage('取引先の選択が不正です。'),
-
-  // existing 選択時
-  body('partnerId')
-    .if((value, { req }) => req.body.partnerChoice === 'existing')
-    .isUUID().withMessage('取引先の選択が正しくありません。'),
-
-  // new 選択時（必須/任意）
-  body('partnerName')
-    .if((value, { req }) => req.body.partnerChoice === 'new')
-    .trim().notEmpty().withMessage('取引先名を入力してください。')
-    .isLength({ max: 120 }).withMessage('取引先名は120文字以内で入力してください。'),
-
-  body('partnerType')
-    .if((value, { req }) => req.body.partnerChoice === 'new')
-    .optional({ checkFalsy:true })
-    .isIn(['restaurant','retailer','wholesale','other','']).withMessage('種別が不正です。'),
-
-  body('partnerPhone')
-    .if((value, { req }) => req.body.partnerChoice === 'new')
-    .optional({ checkFalsy:true })
-    .isLength({ max: 30 }).withMessage('電話番号は30文字以内で入力してください。'),
-
-  // ★ 住所分割
-  body('partnerPostal')
-    .if((value, { req }) => req.body.partnerChoice === 'new')
-    .optional({ checkFalsy:true })
-    .customSanitizer(v => String(v||'').replace(/[^\d]/g,''))
-    .isLength({ min: 7, max: 7 }).withMessage('郵便番号は7桁で入力してください。'),
-
-  body('partnerPrefecture')
-    .if((value, { req }) => req.body.partnerChoice === 'new')
-    .optional({ checkFalsy:true })
-    .isIn(['', ...JP_PREFS]).withMessage('都道府県が不正です。'),
-
-  body('partnerCity')
-    .if((value, { req }) => req.body.partnerChoice === 'new')
-    .optional({ checkFalsy:true })
-    .isLength({ max: 120 }).withMessage('市区町村は120文字以内で入力してください。'),
-
-  body('partnerAddress1')
-    .if((value, { req }) => req.body.partnerChoice === 'new')
-    .optional({ checkFalsy:true })
-    .isLength({ max: 160 }).withMessage('番地は160文字以内で入力してください。'),
-
-  body('partnerAddress2')
-    .if((value, { req }) => req.body.partnerChoice === 'new')
-    .optional({ checkFalsy:true })
-    .isLength({ max: 160 }).withMessage('建物名・部屋番号は160文字以内で入力してください。'),
-];
-
 // GET /signup
-app.get('/signup', async (req, res, next) => {
+app.get('/signup', (req, res, next) => {
   try {
-    const partners = await dbQuery(`SELECT id, name FROM partners ORDER BY name ASC`);
     res.set('Cache-Control', 'no-store');
     res.render('auth/signup', {
       title: 'アカウント作成',
-      partners,                         // ★ 追加
-      values: { name: '', email: '', partnerChoice: 'new' },
+      csrfToken: req.csrfToken(),
+      values: {
+        account_type: 'corporate',
+        lastname: '',
+        firstname: '',
+        email: '',
+        partnerName: '',
+        partnerType: '',
+        partnerPhone: '',
+        partnerPostal: '',
+        partnerPrefecture: '',
+        partnerCity: '',
+        partnerAddress1: '',
+        partnerAddress2: '',
+        agree: ''
+      },
       fieldErrors: {},
       globalError: ''
     });
-  } catch (e) { next(e); }
+  } catch (e) {
+    next(e);
+  }
 });
 
-// POST /signup（最終ガードのみ＝強制検証）
-// 追加: 正規化ヘルパ
 const normalizeDigits = (s) => String(s || '').replace(/[^\d]/g, '');
-const normalizeNameKey = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
 
 // POST /signup
 app.post(
   '/signup',
   csrfProtect,
   [
-    // 既存のユーザー項目バリデーション...
-    body('name').trim().notEmpty().withMessage('お名前を入力してください。')
-      .isLength({ max: 60 }).withMessage('お名前は60文字以内で入力してください。'),
-    body('email').trim().isEmail().withMessage('正しいメールアドレスの形式で入力してください。').normalizeEmail(),
+    body('account_type')
+      .isIn(['individual', 'corporate'])
+      .withMessage('アカウント種別を選択してください。'),
+
+    body('lastname')
+      .trim()
+      .notEmpty().withMessage('姓を入力してください。')
+      .isLength({ max: 30 }).withMessage('お名前は30文字以内で入力してください。'),
+
+    body('firstname')
+      .trim()
+      .notEmpty().withMessage('名を入力してください。')
+      .isLength({ max: 30 }).withMessage('お名前は30文字以内で入力してください。'),
+
+    body('email')
+      .trim()
+      .isEmail().withMessage('正しいメールアドレスの形式で入力してください。')
+      .normalizeEmail(),
+
     body('password')
       .isLength({ min: 8 }).withMessage('8文字以上で入力してください。').bail()
       .matches(/[a-z]/).withMessage('英小文字を含めてください。').bail()
       .matches(/[A-Z]/).withMessage('英大文字を含めてください。').bail()
       .matches(/\d/).withMessage('数字を含めてください。').bail()
       .matches(/[^A-Za-z0-9]/).withMessage('記号を含めてください。'),
-    body('passwordConfirm').custom((v, { req }) => v === req.body.password)
+
+    body('passwordConfirm')
+      .custom((v, { req }) => v === req.body.password)
       .withMessage('確認用パスワードが一致しません。'),
+
     body('agree')
       .customSanitizer(v => (v === '1' || v === 'on' || v === true || v === 'true' || v === 1) ? '1' : '0')
       .isIn(['1']).withMessage('利用規約・プライバシーポリシーに同意してください。'),
 
-    // ★ 取引先（選択UIは廃止）→ 入力してもらう
-    body('partnerName').trim().notEmpty().withMessage('取引先名を入力してください。')
-      .isLength({ max: 120 }).withMessage('取引先名は120文字以内で入力してください。'),
-    body('partnerPostal').optional({ checkFalsy: true }).isString().isLength({ max: 16 }),
-    body('partnerPhone').optional({ checkFalsy: true }).isString().isLength({ max: 40 }),
-    body('partnerPrefecture').optional({ checkFalsy: true }).isString().isLength({ max: 40 }),
-    body('partnerCity').optional({ checkFalsy: true }).isString().isLength({ max: 80 }),
-    body('partnerAddress1').optional({ checkFalsy: true }).isString().isLength({ max: 120 }),
-    body('partnerAddress2').optional({ checkFalsy: true }).isString().isLength({ max: 120 }),
-
-    // 郵便 or 電話のいずれか必須（キー強度確保のため強めに推奨）
-    body().custom(reqBody => {
-      const hasPostal = normalizeDigits(reqBody.partnerPostal || '').length > 0;
-      const hasPhone  = normalizeDigits(reqBody.partnerPhone  || '').length > 0;
-      if (!hasPostal && !hasPhone) {
-        throw new Error('「郵便番号」または「電話番号」のいずれかは入力してください。');
-      }
+    // ===== 法人用: 取引先情報（account_type === corporate のときだけ必須） =====
+    body('partnerName').custom((v, { req }) => {
+      if (req.body.account_type !== 'corporate') return true;
+      const val = (v || '').trim();
+      if (!val) throw new Error('法人を選択した場合、取引先名は必須です。');
+      if (val.length > 120) throw new Error('取引先名は120文字以内で入力してください。');
+      return true;
+    }),
+    body('partnerPhone').custom((v, { req }) => {
+      if (req.body.account_type !== 'corporate') return true;
+      const val = (v || '').trim();
+      if (!val) throw new Error('法人を選択した場合、電話番号は必須です。');
+      if (val.length > 40) throw new Error('電話番号は40文字以内で入力してください。');
+      return true;
+    }),
+    body('partnerPostal').custom((v, { req }) => {
+      if (req.body.account_type !== 'corporate') return true;
+      const raw = (v || '').trim();
+      if (!raw) throw new Error('法人を選択した場合、郵便番号は必須です。');
+      if (normalizeDigits(raw).length < 7) throw new Error('郵便番号は7桁で入力してください。');
+      return true;
+    }),
+    body('partnerPrefecture').custom((v, { req }) => {
+      if (req.body.account_type !== 'corporate') return true;
+      const val = (v || '').trim();
+      if (!val) throw new Error('法人を選択した場合、都道府県は必須です。');
+      return true;
+    }),
+    body('partnerCity').custom((v, { req }) => {
+      if (req.body.account_type !== 'corporate') return true;
+      const val = (v || '').trim();
+      if (!val) throw new Error('法人を選択した場合、市区町村は必須です。');
+      return true;
+    }),
+    body('partnerAddress1').custom((v, { req }) => {
+      if (req.body.account_type !== 'corporate') return true;
+      const val = (v || '').trim();
+      if (!val) throw new Error('法人を選択した場合、番地は必須です。');
       return true;
     }),
   ],
@@ -651,32 +802,42 @@ app.post(
     const errors = validationResult(req);
 
     const values = {
-      name: (req.body.name || '').trim(),
+      account_type: (req.body.account_type === 'corporate') ? 'corporate' : 'individual',
+      lastname: (req.body.lastname || '').trim(),
+      firstname: (req.body.firstname || '').trim(),
       email: (req.body.email || '').trim(),
 
-      // 取引先入力（再描画用）
       partnerName: (req.body.partnerName || '').trim(),
+      partnerType: (req.body.partnerType || '').trim(),
       partnerPhone: (req.body.partnerPhone || '').trim(),
       partnerPostal: (req.body.partnerPostal || '').trim(),
       partnerPrefecture: (req.body.partnerPrefecture || '').trim(),
       partnerCity: (req.body.partnerCity || '').trim(),
       partnerAddress1: (req.body.partnerAddress1 || '').trim(),
       partnerAddress2: (req.body.partnerAddress2 || '').trim(),
+
+      agree: req.body.agree === '1' ? '1' : ''
     };
 
     if (!errors.isEmpty()) {
       const list = errors.array({ onlyFirstError: true });
       const fieldErrors = {};
-      for (const err of list) fieldErrors[err.path || err.param] = String(err.msg);
+      for (const err of list) {
+        fieldErrors[err.path || err.param] = String(err.msg);
+      }
       return res.status(422).render('auth/signup', {
         title: 'アカウント作成',
         csrfToken: req.csrfToken(),
-        values, fieldErrors, globalError: ''
+        values,
+        fieldErrors,
+        globalError: ''
       });
     }
 
-    // メール重複
-    const dup = await dbQuery(`SELECT 1 FROM users WHERE email=$1 LIMIT 1`, [values.email]);
+    const email = values.email.toLowerCase();
+
+    // メール重複チェック
+    const dup = await dbQuery(`SELECT 1 FROM users WHERE email=$1 LIMIT 1`, [email]);
     if (dup.length) {
       return res.status(409).render('auth/signup', {
         title: 'アカウント作成',
@@ -687,96 +848,77 @@ app.post(
       });
     }
 
-    // 正規化キー作成（サーバ側でも必ず実施）
-    const nameKey = normalizeNameKey(values.partnerName);
-    const postalN = normalizeDigits(values.partnerPostal);
-    const phoneN  = normalizeDigits(values.partnerPhone);
-    const partnerKey = `${nameKey}|${postalN}|${phoneN}`;
-
     let client;
     try {
       client = await pool.connect();
       await client.query('BEGIN');
 
-      // 1) まず厳格に既存検索（生成列を利用）
-      //    郵便・電話の入力状況に応じた条件
-      let match;
-      if (postalN && phoneN) {
-        match = await client.query(
-          `SELECT id FROM partners WHERE name_key=$1 AND postal_norm=$2 AND phone_norm=$3 LIMIT 1`,
-          [nameKey, postalN, phoneN]
-        );
-      } else if (postalN) {
-        match = await client.query(
-          `SELECT id FROM partners WHERE name_key=$1 AND postal_norm=$2 LIMIT 1`,
-          [nameKey, postalN]
-        );
-      } else { // phoneN must exist by validator
-        match = await client.query(
-          `SELECT id FROM partners WHERE name_key=$1 AND phone_norm=$2 LIMIT 1`,
-          [nameKey, phoneN]
-        );
-      }
+      let partnerId = null;
 
-      let partnerId;
-
-      if (match.rowCount) {
-        partnerId = match.rows[0].id;
-      } else {
-        // 2) なければUPSERT（部分一意indexに乗るケースでレースを防げる）
-        const ins = await client.query(
+      if (values.account_type === 'corporate') {
+        // 法人の場合のみ partners を作成
+        const insPartner = await client.query(
           `INSERT INTO partners
-             (name, phone, postal_code, prefecture, city, address1, address2)
+             (name, postal_code, prefecture, city, address1, address2, phone)
            VALUES ($1,$2,$3,$4,$5,$6,$7)
-           ON CONFLICT ON CONSTRAINT ux_partners_partner_key
-          DO UPDATE SET updated_at = now()
            RETURNING id`,
           [
             values.partnerName,
-            values.partnerPhone || null,
             values.partnerPostal || null,
             values.partnerPrefecture || null,
             values.partnerCity || null,
             values.partnerAddress1 || null,
-            values.partnerAddress2 || null
+            values.partnerAddress2 || null,
+            values.partnerPhone || null
           ]
         );
-        partnerId = ins.rows[0].id;
+        partnerId = insPartner.rows[0].id;
       }
 
-      // 3) ユーザーINSERT（FK整合）
+      const crypto = require('crypto');
       const passwordHash = await bcrypt.hash(req.body.password, 12);
-      const u = await client.query(
-        `INSERT INTO users (name, email, password_hash, roles, partner_id)
-         VALUES ($1,$2,$3,ARRAY['buyer'],$4)
-         RETURNING id, name, email, roles`,
-        [values.name, values.email, passwordHash, partnerId]
+      const token = crypto.randomBytes(32).toString('hex');
+
+      const insUser = await client.query(
+        `INSERT INTO users
+           (name, email, password_hash, roles, partner_id,
+            account_type, email_verified_at, email_verify_token)
+         VALUES
+           ($1,$2,$3,ARRAY['buyer'],$4,$5,$6,$7)
+         RETURNING id, name, email`,
+        [
+          values.lastname + ' ' + values.firstname,
+          email,
+          passwordHash,
+          partnerId,
+          values.account_type,
+          null,
+          token
+        ]
       );
+
+      const user = insUser.rows[0];
 
       await client.query('COMMIT');
 
-      const user = u.rows[0];
-      req.session.user = { id: user.id, name: user.name, email: user.email, roles: user.roles };
-      res.redirect('/dashboard');
+      // 認証メール送信
+      const origin = process.env.APP_ORIGIN || 'http://localhost:3000';
+      const verifyUrl = `${origin}/auth/verify-email?token=${encodeURIComponent(token)}`;
 
+      await sendVerifyMail({
+        to: user.email,
+        name: user.name,
+        url: verifyUrl
+      });
+
+      // ここではログインさせず、認証待ちセッションに保存
+      req.session.pendingVerifyUserId = user.id;
+      req.session.pendingVerifyEmail = user.email;
+
+      return res.redirect('/signup/verify-pending');
     } catch (err) {
-      try { if (client) await client.query('ROLLBACK'); } catch {}
-      if (err?.code === '23505') {
-        // まれに partner_key が部分一意に引っかかって競合した時も、もう一度 SELECT で拾えばOK
-        try {
-          const r = await dbQuery(`SELECT id FROM partners WHERE partner_key = $1 LIMIT 1`, [partnerKey]);
-          if (r.length) {
-            const passwordHash = await bcrypt.hash(req.body.password, 12);
-            const u = await dbQuery(
-              `INSERT INTO users (name, email, password_hash, roles, partner_id)
-               VALUES ($1,$2,$3,ARRAY['buyer'],$4)
-               RETURNING id, name, email, roles`,
-              [values.name, values.email, passwordHash, r[0].id]
-            );
-            req.session.user = { id: u[0].id, name: u[0].name, email: u[0].email, roles: u[0].roles };
-            return res.redirect('/dashboard');
-          }
-        } catch {}
+      if (client) {
+        try { await client.query('ROLLBACK'); } catch (_) {}
       }
       console.error('signup error:', err);
       return res.status(500).render('auth/signup', {
@@ -791,6 +933,140 @@ app.post(
     }
   }
 );
+
+app.get('/signup/verify-pending', (req, res) => {
+  const uid = req.session.pendingVerifyUserId;
+  const email = req.session.pendingVerifyEmail;
+  if (!uid || !email) {
+    return res.redirect('/signup');
+  }
+  res.render('auth/verify-pending', {
+    title: 'メールアドレスの確認',
+    csrfToken: req.csrfToken(),
+    email,
+    message: '',
+    error: ''
+  });
+});
+
+app.post('/signup/resend-verification', csrfProtect, async (req, res, next) => {
+  try {
+    const uid = req.session.pendingVerifyUserId;
+    if (!uid) return res.redirect('/signup');
+
+    const newEmailRaw = String(req.body.email || '').trim();
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRe.test(newEmailRaw)) {
+      return res.status(400).render('auth/verify-pending', {
+        title: 'メールアドレスの確認',
+        csrfToken: req.csrfToken(),
+        email: newEmailRaw,
+        message: '',
+        error: 'メールアドレスの形式が正しくありません。'
+      });
+    }
+
+    const email = newEmailRaw.toLowerCase();
+
+    // 別ユーザーとの重複チェック
+    const dup = await dbQuery('SELECT id FROM users WHERE email=$1 AND id<>$2', [email, uid]);
+    if (dup.length) {
+      return res.status(400).render('auth/verify-pending', {
+        title: 'メールアドレスの確認',
+        csrfToken: req.csrfToken(),
+        email,
+        message: '',
+        error: 'このメールアドレスは既に別のアカウントで使用されています。'
+      });
+    }
+
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+
+    const upd = await dbQuery(
+      `UPDATE users
+          SET email = $1,
+              email_verify_token = $2,
+              email_verified_at = NULL
+        WHERE id = $3
+        RETURNING name`,
+      [email, token, uid]
+    );
+    if (!upd.length) {
+      return res.redirect('/signup');
+    }
+
+    const origin = process.env.APP_ORIGIN;
+    const verifyUrl = `${origin}/auth/verify-email?token=${encodeURIComponent(token)}`;
+
+    await sendVerifyMail({
+      to: email,
+      name: upd[0].name,
+      url: verifyUrl
+    });
+
+    req.session.pendingVerifyEmail = email;
+
+    res.render('auth/verify-pending', {
+      title: 'メールアドレスの確認',
+      csrfToken: req.csrfToken(),
+      email,
+      message: '認証メールを再送しました。',
+      error: ''
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+app.get('/auth/verify-email', async (req, res, next) => {
+  try {
+    const token = String(req.query.token || '').trim();
+    if (!token) {
+      return res.status(400).render('auth/verify-result', {
+        title: 'メールアドレス確認',
+        ok: false,
+        email: '',
+        message: 'トークンが不正です。'
+      });
+    }
+
+    const rows = await dbQuery(
+      `UPDATE users
+          SET email_verified_at = NOW(),
+              email_verify_token = NULL
+        WHERE email_verify_token = $1
+        RETURNING id, email, name`,
+      [token]
+    );
+
+    if (!rows.length) {
+      return res.status(400).render('auth/verify-result', {
+        title: 'メールアドレス確認',
+        ok: false,
+        email: '',
+        message: 'すでに確認済み、またはトークンの有効期限が切れています。'
+      });
+    }
+
+    const user = rows[0];
+
+    // 認証済みになったので pending セッションは消しておく
+    if (req.session) {
+      delete req.session.pendingVerifyUserId;
+      delete req.session.pendingVerifyEmail;
+    }
+
+    res.render('auth/verify-result', {
+      title: 'メールアドレス確認',
+      ok: true,
+      email: user.email,
+      message: 'メールアドレスの確認が完了しました。ログイン画面からサインインしてください。'
+    });
+  } catch (e) {
+    next(e);
+  }
+});
 
 // 絶対URLを作る（.env の BASE_URL があればそれを採用）
 function absoluteUrl(req, path) {
@@ -7634,7 +7910,7 @@ app.get('/admin/users/:id', requireAuth, async (req,res,next)=>{
     const uid = req.params.id === 'me' ? req.session.user.id : req.params.id;
     const isSelf = uid === req.session.user.id;
 
-    const user = (await dbQuery(`SELECT id,name,email,roles,created_at,updated_at FROM users WHERE id=$1`, [uid]))[0];
+    const user = (await dbQuery(`SELECT id,name,email,roles,created_at,updated_at, email_verified_at FROM users WHERE id=$1`, [uid]))[0];
     if (!user) return res.status(404).send('not found');
 
     const partner = (await dbQuery(`SELECT id,name,type,status,phone,billing_email,postal_code,prefecture,city,address1,address2 FROM partners WHERE id=(SELECT partner_id FROM users WHERE id=$1)`, [uid]))[0] || null;
@@ -7652,6 +7928,7 @@ app.get('/admin/users/:id', requireAuth, async (req,res,next)=>{
     const userMethodsRows = await getAllowedMethodsForUser(user.id, allMethod);
     const userMethods = userMethodsRows.map(r => r.method);
     const userSynced = userMethodsRows.some(r => r.synced_from_partner);
+    const emailVerified = user.email_verified_at;
 
     res.render('admin/users/show', {
       title: isSelf ? 'アカウント設定' : `ユーザー: ${user.name}`,
@@ -7660,9 +7937,13 @@ app.get('/admin/users/:id', requireAuth, async (req,res,next)=>{
       userPaymentSynced: userSynced,
       allPaymentMethods: allMethod,
       isSelf,
+      emailVerified,
       currentRoles: req.session.user.roles || [],
+      emailError: req.session.emailError || '',
       csrfToken: req.csrfToken()
     });
+
+    req.session.emailError = '';
   }catch(e){ next(e); }
 });
 
@@ -7674,16 +7955,27 @@ app.post('/admin/users/:id', requireAuth, csrfProtect, async (req,res,next)=>{
     // roles は本人変更禁止（adminのみ）
     const roles = (req.body.roles||'').split(',').map(s=>s.trim()).filter(Boolean);
     if (!req.session.user.roles.includes('admin')) delete req.body.roles;
+    req.session.emailError = '';
+
+    const email = req.body.email;
+    // メール重複チェック
+    const dup = await dbQuery(`SELECT 1 FROM users WHERE email=$1 LIMIT 1`, [email]);
+    if (dup.length) {
+      req.session.emailError = '入力されたメールアドレスはすでに使用されているため使用できません。';
+      return res.redirect('/admin/users/' + uid);
+    }
 
     await dbQuery(
-      `UPDATE users SET name=$2, email=$3 ${req.body.roles?`, roles=$4`:''}, updated_at=now()
+      `UPDATE users SET name = $2, email = $3 ${req.body.roles?`, roles = $4` : ''}, updated_at = now(), email_verified_at = Null
        WHERE id=$1`,
       req.body.roles
-        ? [uid, req.body.name, req.body.email || null, roles]
-        : [uid, req.body.name, req.body.email || null]
+        ? [uid, req.body.name, email || null, roles]
+        : [uid, req.body.name, email || null]
     );
 
     req.session.user.name = req.body.name;
+    req.session.pendingVerifyUserId = uid;
+    req.session.pendingVerifyEmail = email;
     res.redirect('/admin/users/' + uid);
   }catch(e){ next(e); }
 });
@@ -7834,29 +8126,101 @@ app.post('/admin/users/:id/partner', requireAuth, csrfProtect, async (req,res)=>
   res.json({ok:true});
 });
 
-// 取引先 新規作成して紐付け
+// 取引先 新規作成して紐付け（重複候補があれば先にユーザーに確認）
 app.post('/admin/users/:id/partner/create', requireAuth, csrfProtect, async (req,res)=>{
-  const uid = req.params.id;
-  const user = req.session.user;
-  if (uid !== req.session.user.id && !user.roles.includes('admin')) return res.status(403).json({ok:false});
-  const b = req.body || {};
-  if (!b.name) return res.status(400).json({ok:false, message:'名称は必須です'});
-  const ins = await dbQuery(
-    `INSERT INTO partners (name, postal_code, prefecture, city, address1, address2, phone)
-    VALUES ($1,$2,$3,$4,$5,$6,$7)
-    RETURNING id`,
-    [
-      b.name,
-      b.postal_code || null,
-      b.prefecture  || null,
-      b.city        || null,
-      b.address1    || null,
-      b.address2    || null,
-      b.phone       || null,
-    ]
-  );
-  await dbQuery(`UPDATE users SET partner_id=$2, updated_at=now() WHERE id=$1`, [uid, ins[0].id]);
-  res.json({ok:true, partner_id: ins[0].id});
+  try {
+    const uid  = req.params.id;
+    const user = req.session.user;
+    if (uid !== req.session.user.id && !user.roles.includes('admin')) {
+      return res.status(403).json({ok:false, message:'権限がありません'});
+    }
+
+    const b = req.body || {};
+    if (!b.name) return res.status(400).json({ok:false, message:'名称は必須です'});
+
+    // 「本当に新規作成したい」とユーザーが明示したときに true を送ってくる想定
+    const forceCreate = !!b.force;
+
+    // 入力値を整形
+    const name    = (b.name || '').trim();
+    const postal  = (b.postal_code || '').trim();
+    const pref    = (b.prefecture  || '').trim();
+    const city    = (b.city        || '').trim();
+    const addr1   = (b.address1    || '').trim();
+    const addr2   = (b.address2    || '').trim();
+    const phone   = (b.phone       || '').trim();
+    const email   = (b.email       || '').trim();
+    const website = (b.website     || '').trim();
+    const taxid   = (b.taxid       || '').trim();
+
+    // --- 重複候補検索（force=false のときだけ） ---
+    let candidates = [];
+    if (!forceCreate) {
+      candidates = await dbQuery(
+        `SELECT id, name, postal_code, prefecture, city, address1, address2, phone, email
+           FROM partners
+          WHERE
+            -- 名称 & 住所
+            (
+              LOWER(name) = LOWER($1)
+              AND COALESCE(postal_code,'') = COALESCE($2,'')
+              AND COALESCE(prefecture, '') = COALESCE($3,'')
+              AND COALESCE(city,       '') = COALESCE($4,'')
+              AND COALESCE(address1,   '') = COALESCE($5,'')
+            )
+            OR ($6 <> '' AND phone = $6)                    -- 電話一致
+            OR ($7 <> '' AND LOWER(email) = LOWER($7))      -- メール一致
+          LIMIT 10`,
+        [name, postal || null, pref || null, city || null, addr1 || null, phone, email]
+      );
+
+      if (candidates.length) {
+        // まだ INSERT はしない。候補一覧を返してユーザーに選んでもらう
+        return res.json({
+          ok: true,
+          need_confirm: true,
+          candidates
+        });
+      }
+    }
+
+    // --- ここまで来たら新規作成確定 ---
+    const ins = await dbQuery(
+      `INSERT INTO partners
+         (name, postal_code, prefecture, city, address1, address2,
+          phone, email, website, tax_id)
+       VALUES
+         ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       RETURNING id`,
+      [
+        name,
+        postal || null,
+        pref   || null,
+        city   || null,
+        addr1  || null,
+        addr2  || null,
+        phone  || null,
+        email  || null,
+        website|| null,
+        taxid  || null,
+      ]
+    );
+
+    const partnerId = ins[0].id;
+
+    await dbQuery(
+      `UPDATE users
+          SET partner_id = $2,
+              updated_at = now()
+        WHERE id = $1`,
+      [uid, partnerId]
+    );
+
+    res.json({ ok: true, partner_id: partnerId, created: true });
+  } catch (e) {
+    console.error('partner/create error:', e);
+    res.status(500).json({ ok:false, message:'取引先の登録に失敗しました' });
+  }
 });
 
 // =========================================================

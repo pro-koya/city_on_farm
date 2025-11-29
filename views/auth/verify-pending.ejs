@@ -1,0 +1,42 @@
+<%- include('../partials/header', { title, extraCSS2: '', extraCSS: '/styles/signup.css' }) %>
+
+<main class="auth">
+  <section class="card auth-card">
+    <div class="auth-card__header">
+      <h1>メールアドレスの確認</h1>
+      <p class="lead">
+        <strong><%= email %></strong> 宛に確認メールを送信しました。<br>
+        メール内のリンクをクリックして登録を完了してください。
+      </p>
+    </div>
+
+    <% if (message) { %>
+      <p class="global-error" style="border-color: rgba(16,185,129,.3);background:rgba(16,185,129,.06);color:#047857;">
+        <%= message %>
+      </p>
+    <% } %>
+    <% if (error) { %>
+      <p class="global-error"><%= error %></p>
+    <% } %>
+
+    <form method="POST" action="/signup/resend-verification" class="auth-form" novalidate>
+      <% if (csrfToken) { %>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <% } %>
+      <div class="field">
+        <label for="vp_email">メールアドレスを修正する</label>
+        <input id="vp_email" name="email" type="email" value="<%= email %>">
+        <p class="hint">入力を間違えていた場合は修正し、「認証メールを再送信」を押してください。</p>
+      </div>
+      <div class="actions">
+        <button class="btn" type="submit">認証メールを再送信</button>
+      </div>
+    </form>
+
+    <div class="auth-card__footer">
+      <p>メールが届かない場合は、迷惑メールフォルダもご確認ください。</p>
+    </div>
+  </section>
+</main>
+
+<%- include('../partials/footer') %>

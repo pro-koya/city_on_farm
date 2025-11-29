@@ -58,11 +58,6 @@ a {
     opacity: .5
 }
 
-.us__actions {
-    display: flex;
-    gap: 8px
-}
-
 .btn {
     border: none;
     border-radius: 10px;
@@ -81,6 +76,11 @@ a {
 .btn--primary {
     background: var(--main);
     color: #fff
+}
+
+.btn--danger {
+    background: var(--danger);
+    color: #fff;
 }
 
 .us__grid {
@@ -227,7 +227,6 @@ input[type="checkbox"]:checked::after{
 
 .row-right {
     display: flex;
-    justify-content: flex-end;
     margin-top: 16px;
     gap: 8px
 }
@@ -476,4 +475,37 @@ input[type="checkbox"]:checked::after{
 }
 .chip span{
   font-size: .92rem;
+}
+
+.dup-section {
+  margin-top: 12px;
+}
+
+.dup-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.dup-item input[type="radio"] {
+  margin-top: 4px;
+}
+
+.dup-item__title {
+  font-weight: 600;
+}
+
+.dup-item__meta {
+  font-size: .9rem;
+  color: var(--muted);
+}
+
+.partnerDub_hint {
+    color: var(--danger);
+}
+
+.kv>div.us__actions {
+    display: flex;
+    gap: 8px;
 }

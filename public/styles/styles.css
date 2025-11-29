@@ -681,7 +681,7 @@ textarea {
   padding: 0 .35rem;
   border-radius: 999px;
   background: #FF6B6B; /* cartより少し明るめ */
-  color: var(--color-main);
+  color: var(--color-white);
   font-size: 11px;
   line-height: 18px;
   text-align: center;
