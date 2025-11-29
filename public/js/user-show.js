@@ -3,6 +3,7 @@
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
   const csrf = $('input[name="_csrf"]')?.value || '';
   const userId = location.pathname.split('/').filter(Boolean).pop(); // /admin/users/:id
+  let pendingPartnerPayload = null;
 
   // ===== 表示 ↔ 編集 切り替え =====
   const btnEdit = $('#btnEdit'), btnCancel = $('#btnCancel'), btnSave = $('#btnSave');
@@ -178,11 +179,67 @@
     }
   });
 
+  function renderPartnerDupCandidates(list) {
+    const sec = $('#partnerDupSection');
+    const ul  = $('#partnerDupList');
+    const err = $('#partnerDupErr');
+    if (!sec || !ul) return;
+
+    ul.innerHTML = '';
+    err.textContent = '';
+
+    if (!list || !list.length) {
+      sec.hidden = true;
+      return;
+    }
+
+    list.forEach(p => {
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <label class="dup-item">
+          <input type="radio" name="partner_dup" value="${p.id}">
+          <div class="dup-item__body">
+            <div class="dup-item__title">${p.name}</div>
+            <div class="dup-item__meta">
+              〒${p.postal_code || ''} ${[p.prefecture, p.city, p.address1].filter(Boolean).join(' ')}
+              ${p.phone ? ' ／ TEL:' + p.phone : ''}
+              ${p.email ? ' ／ ' + p.email : ''}
+            </div>
+          </div>
+        </label>
+      `;
+      ul.appendChild(li);
+    });
+
+    // 「作成して紐付け」ボタンを隠す（重複がある場合は既存優先）
+    const createBtn = $('#btnCreatePartner');
+    if (createBtn) {
+      createBtn.hidden = true;
+    }
+
+    // セクション表示 & 自動スクロール
+    sec.hidden = false;
+    sec.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
   // ===== 取引先：変更モーダル =====
   const parModal = $('#partnerModal');
   const btnChangePartner = $('#btnChangePartner');
-  function openPar(){ parModal?.setAttribute('aria-hidden','false'); }
-  function closePar(){ parModal?.setAttribute('aria-hidden','true'); }
+  let scrollY = 0;
+  function openPar(){ 
+    scrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    parModal?.setAttribute('aria-hidden','false');
+  }
+  function closePar(){
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollY);
+    parModal?.setAttribute('aria-hidden','true');
+  }
   btnChangePartner?.addEventListener('click', openPar);
   $('#closePartnerModal')?.addEventListener('click', closePar);
 
@@ -223,6 +280,113 @@
     }, 300);
   });
 
+  async function submitPartnerCreate(force = false) {
+    $('#partnerErr').textContent = '';
+
+    const data = {
+      name: $('#pn_name').value.trim(),
+      postal_code: $('#pn_postal').value.trim(),
+      prefecture: $('#pn_pref').value.trim(),
+      city: $('#pn_city').value.trim(),
+      address1: $('#pn_line1').value.trim(),
+      address2: $('#pn_line2').value.trim(),
+      phone: $('#pn_phone').value.trim(),
+      email: $('#pn_email').value.trim(),
+      website: $('#pn_website').value.trim(),
+      taxid: $('#pn_taxid').value.trim()
+    };
+
+    if (!data.name) {
+      $('#partnerErr').textContent = '名称を入力してください。';
+      return;
+    }
+    if (!data.postal_code || !data.address1) {
+      $('#partnerErr').textContent = '住所を入力してください。';
+      return;
+    }
+    if (!data.phone && !data.email) {
+      $('#partnerErr').textContent = '電話番号もしくはメールアドレスを入力してください。';
+      return;
+    }
+
+    pendingPartnerPayload = data; // 後で force=true で再実行するために保持
+
+    if (force) {
+      data.force = true;
+    }
+
+    const resp = await fetch(`/admin/users/${encodeURIComponent(userId)}/partner/create`, {
+      method:'POST',
+      headers:{
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'CSRF-Token': csrf
+      },
+      body: JSON.stringify(data),
+      credentials: 'same-origin'
+    });
+
+    const j = await resp.json().catch(() => ({}));
+
+    if (!resp.ok || !j.ok) {
+      $('#partnerErr').textContent = j.message || '作成に失敗しました';
+      return;
+    }
+
+    // 重複候補が返ってきた場合：ラジオリストを表示してユーザーに選ばせる
+    if (j.need_confirm && Array.isArray(j.candidates) && j.candidates.length && !force) {
+      renderPartnerDupCandidates(j.candidates);
+      return; // ここではまだ作成・紐付けしない
+    }
+
+    // 候補なし or 強制新規作成で完了
+    location.reload();
+  }
+
+  // 「作成して紐付け」押下（最初の試行のみ）
+  $('#btnCreatePartner')?.addEventListener('click', () => {
+    submitPartnerCreate(false);
+  });
+
+  // 「この中には当てはまりません（新規作成）」 → force=true で再送
+  $('#btnPartnerDupIgnore')?.addEventListener('click', () => {
+    submitPartnerCreate(true);
+  });
+
+    // 重複候補から「選択した取引先にする」
+  $('#btnPartnerDupBind')?.addEventListener('click', async () => {
+    const err = $('#partnerDupErr');
+    err.textContent = '';
+
+    const selected = document.querySelector('input[name="partner_dup"]:checked');
+    if (!selected) {
+      err.textContent = '紐付ける取引先を選択してください。';
+      return;
+    }
+
+    const pid = selected.value;
+
+    try {
+      const resp = await fetch(`/admin/users/${encodeURIComponent(userId)}/partner`, {
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'X-Requested-With':'XMLHttpRequest',
+          'CSRF-Token': csrf
+        },
+        body: JSON.stringify({ partner_id: pid }),
+        credentials:'same-origin'
+      });
+      const j = await resp.json();
+      if (!resp.ok || !j.ok) {
+        throw new Error(j.message || '更新に失敗しました');
+      }
+      location.reload();
+    } catch (e) {
+      err.textContent = e.message || '更新に失敗しました';
+    }
+  });
+
   // 既存に紐付け
   document.addEventListener('click', async (e) => {
     const pid = e.target.closest('[data-bind-par]')?.dataset.bindPar;
@@ -235,41 +399,6 @@
     });
     const j = await resp.json();
     if (!resp.ok || !j.ok) return alert(j.message || '更新に失敗しました');
-    location.reload();
-  });
-
-  // 新規作成して紐付け
-  $('#btnCreatePartner')?.addEventListener('click', async ()=>{
-    const data = {
-      name: $('#pn_name').value.trim(),
-      postal_code: $('#pn_postal').value.trim(),
-      prefecture: $('#pn_pref').value.trim(),
-      city: $('#pn_city').value.trim(),
-      address1: $('#pn_line1').value.trim(),
-      address2: $('#pn_line2').value.trim(),
-      phone: $('#pn_phone').value.trim()
-    };
-    if (!data.name) {
-      $('#partnerErr').textContent = '名称を入力してください。';
-      return;
-    }
-
-    const resp = await fetch(`/admin/users/${encodeURIComponent(userId)}/partner/create`, {
-      method:'POST',
-      headers:{
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-        'CSRF-Token': csrf            // ★ 追加
-      },
-      body: JSON.stringify(data),
-      credentials: 'same-origin'
-    });
-
-    const j = await resp.json().catch(() => ({}));
-    if (!resp.ok || !j.ok) {
-      $('#partnerErr').textContent = j.message || '作成に失敗しました';
-      return;
-    }
     location.reload();
   });
 

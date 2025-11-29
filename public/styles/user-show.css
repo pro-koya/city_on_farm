@@ -477,3 +477,31 @@ input[type="checkbox"]:checked::after{
 .chip span{
   font-size: .92rem;
 }
+
+.dup-section {
+  margin-top: 12px;
+}
+
+.dup-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.dup-item input[type="radio"] {
+  margin-top: 4px;
+}
+
+.dup-item__title {
+  font-weight: 600;
+}
+
+.dup-item__meta {
+  font-size: .9rem;
+  color: var(--muted);
+}
+
+.partnerDub_hint {
+    color: var(--danger);
+}

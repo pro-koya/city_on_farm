@@ -241,6 +241,7 @@ input:focus {
 @media (max-width: 560px) {
   .auth-card {
     padding: 12px;
+    box-shadow: none;
   }
 
   .auth-card__header h1 {
@@ -273,6 +274,11 @@ input:focus {
   .grid2 {
     grid-template-columns: 1fr;
   }
+}
+
+.corpFields {
+  padding: 1rem 0;
+  width: 100%;
 }
 
 [hidden] { display: none !important; }
