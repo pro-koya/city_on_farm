@@ -686,61 +686,6 @@ const JP_PREFS = [
   '福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県'
 ];
 
-// 既存の validators に以下を追記
-const partnerValidators = [
-  body('partnerChoice')
-    .optional({ checkFalsy:true })
-    .isIn(['none','existing','new']).withMessage('取引先の選択が不正です。'),
-
-  // existing 選択時
-  body('partnerId')
-    .if((value, { req }) => req.body.partnerChoice === 'existing')
-    .isUUID().withMessage('取引先の選択が正しくありません。'),
-
-  // new 選択時（必須/任意）
-  body('partnerName')
-    .if((value, { req }) => req.body.partnerChoice === 'new')
-    .trim().notEmpty().withMessage('取引先名を入力してください。')
-    .isLength({ max: 120 }).withMessage('取引先名は120文字以内で入力してください。'),
-
-  body('partnerType')
-    .if((value, { req }) => req.body.partnerChoice === 'new')
-    .optional({ checkFalsy:true })
-    .isIn(['restaurant','retailer','wholesale','other','']).withMessage('種別が不正です。'),
-
-  body('partnerPhone')
-    .if((value, { req }) => req.body.partnerChoice === 'new')
-    .optional({ checkFalsy:true })
-    .isLength({ max: 30 }).withMessage('電話番号は30文字以内で入力してください。'),
-
-  // ★ 住所分割
-  body('partnerPostal')
-    .if((value, { req }) => req.body.partnerChoice === 'new')
-    .optional({ checkFalsy:true })
-    .customSanitizer(v => String(v||'').replace(/[^\d]/g,''))
-    .isLength({ min: 7, max: 7 }).withMessage('郵便番号は7桁で入力してください。'),
-
-  body('partnerPrefecture')
-    .if((value, { req }) => req.body.partnerChoice === 'new')
-    .optional({ checkFalsy:true })
-    .isIn(['', ...JP_PREFS]).withMessage('都道府県が不正です。'),
-
-  body('partnerCity')
-    .if((value, { req }) => req.body.partnerChoice === 'new')
-    .optional({ checkFalsy:true })
-    .isLength({ max: 120 }).withMessage('市区町村は120文字以内で入力してください。'),
-
-  body('partnerAddress1')
-    .if((value, { req }) => req.body.partnerChoice === 'new')
-    .optional({ checkFalsy:true })
-    .isLength({ max: 160 }).withMessage('番地は160文字以内で入力してください。'),
-
-  body('partnerAddress2')
-    .if((value, { req }) => req.body.partnerChoice === 'new')
-    .optional({ checkFalsy:true })
-    .isLength({ max: 160 }).withMessage('建物名・部屋番号は160文字以内で入力してください。'),
-];
-
 // GET /signup
 app.get('/signup', (req, res, next) => {
   try {
@@ -7965,7 +7910,7 @@ app.get('/admin/users/:id', requireAuth, async (req,res,next)=>{
     const uid = req.params.id === 'me' ? req.session.user.id : req.params.id;
     const isSelf = uid === req.session.user.id;
 
-    const user = (await dbQuery(`SELECT id,name,email,roles,created_at,updated_at FROM users WHERE id=$1`, [uid]))[0];
+    const user = (await dbQuery(`SELECT id,name,email,roles,created_at,updated_at, email_verified_at FROM users WHERE id=$1`, [uid]))[0];
     if (!user) return res.status(404).send('not found');
 
     const partner = (await dbQuery(`SELECT id,name,type,status,phone,billing_email,postal_code,prefecture,city,address1,address2 FROM partners WHERE id=(SELECT partner_id FROM users WHERE id=$1)`, [uid]))[0] || null;
@@ -7983,6 +7928,7 @@ app.get('/admin/users/:id', requireAuth, async (req,res,next)=>{
     const userMethodsRows = await getAllowedMethodsForUser(user.id, allMethod);
     const userMethods = userMethodsRows.map(r => r.method);
     const userSynced = userMethodsRows.some(r => r.synced_from_partner);
+    const emailVerified = user.email_verified_at;
 
     res.render('admin/users/show', {
       title: isSelf ? 'アカウント設定' : `ユーザー: ${user.name}`,
@@ -7991,9 +7937,13 @@ app.get('/admin/users/:id', requireAuth, async (req,res,next)=>{
       userPaymentSynced: userSynced,
       allPaymentMethods: allMethod,
       isSelf,
+      emailVerified,
       currentRoles: req.session.user.roles || [],
+      emailError: req.session.emailError || '',
       csrfToken: req.csrfToken()
     });
+
+    req.session.emailError = '';
   }catch(e){ next(e); }
 });
 
@@ -8005,16 +7955,27 @@ app.post('/admin/users/:id', requireAuth, csrfProtect, async (req,res,next)=>{
     // roles は本人変更禁止（adminのみ）
     const roles = (req.body.roles||'').split(',').map(s=>s.trim()).filter(Boolean);
     if (!req.session.user.roles.includes('admin')) delete req.body.roles;
+    req.session.emailError = '';
+
+    const email = req.body.email;
+    // メール重複チェック
+    const dup = await dbQuery(`SELECT 1 FROM users WHERE email=$1 LIMIT 1`, [email]);
+    if (dup.length) {
+      req.session.emailError = '入力されたメールアドレスはすでに使用されているため使用できません。';
+      return res.redirect('/admin/users/' + uid);
+    }
 
     await dbQuery(
-      `UPDATE users SET name=$2, email=$3 ${req.body.roles?`, roles=$4`:''}, updated_at=now()
+      `UPDATE users SET name = $2, email = $3 ${req.body.roles?`, roles = $4` : ''}, updated_at = now(), email_verified_at = Null
        WHERE id=$1`,
       req.body.roles
-        ? [uid, req.body.name, req.body.email || null, roles]
-        : [uid, req.body.name, req.body.email || null]
+        ? [uid, req.body.name, email || null, roles]
+        : [uid, req.body.name, email || null]
     );
 
     req.session.user.name = req.body.name;
+    req.session.pendingVerifyUserId = uid;
+    req.session.pendingVerifyEmail = email;
     res.redirect('/admin/users/' + uid);
   }catch(e){ next(e); }
 });

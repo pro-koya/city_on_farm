@@ -17,11 +17,6 @@
         <span>更新: <%= new Date(user.updated_at).toLocaleDateString('ja-JP') %></span>
       </div>
     </div>
-    <div class="us__actions">
-      <button type="button" id="btnEdit" class="btn btn--primary">編集</button>
-      <button type="button" id="btnCancel" class="btn btn--ghost" hidden>キャンセル</button>
-      <button type="submit" form="profileForm" id="btnSave" class="btn btn--primary" hidden>保存</button>
-    </div>
   </header>
 
   <section class="us__grid">
@@ -35,10 +30,26 @@
       <dl class="kv" id="viewProfile">
         <div><dt>氏名</dt><dd><%= user.name %></dd></div>
         <div><dt>メール</dt><dd><%= user.email %></dd></div>
+        <% if (!emailVerified) { %>
+          <form method="POST" action="/auth/verify/resend" class="inline-form">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button type="submit" class="btn btn--danger">
+              メールアドレスを認証する
+            </button>
+          </form>
+        <% } %>
         <% if (currentRoles.includes('admin')) { %>
         <div><dt>ロール</dt><dd><%= (user.roles||[]).join(', ') %></dd></div>
         <% } %>
         <!-- <% if (user.phone) { %><div><dt>電話</dt><dd><%= user.phone %></dd></div><% } %> -->
+        <% if (emailError !== '') { %>
+          <p class="error"><%= emailError; %></p>
+        <% } %>
+        <div class="us__actions">
+          <button type="button" id="btnEdit" class="btn btn--primary">編集</button>
+          <button type="button" id="btnCancel" class="btn btn--ghost" hidden>キャンセル</button>
+          <button type="submit" form="profileForm" id="btnSave" class="btn btn--primary" hidden>保存</button>
+        </div>
       </dl>
 
       <!-- 編集モード -->
