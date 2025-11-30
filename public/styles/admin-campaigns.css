@@ -1,0 +1,692 @@
+:root {
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --border: #e5e7eb;
+  --text: #111827;
+  --muted: #6b7280;
+  --main: #4C6B5C;
+  --danger: #e11d48;
+  --radius: 14px;
+  --shadow: 0 10px 28px rgba(0, 0, 0, .06);
+  --accent: #A3C9A8;
+}
+
+/* ===== 共通レイアウト ===== */
+
+.admin-main {
+  max-width: 1120px;
+  margin: 80px auto;
+  padding: 0 12px 40px;
+}
+
+.admin-main > .link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  text-decoration: none;
+  margin-bottom: 10px;
+}
+
+.admin-main > .link:hover {
+  text-decoration: underline;
+}
+
+/* .card は既存のものを使う前提。軽く調整 */
+.card.card--tight {
+  padding: 8px;
+}
+
+/* ====== ボタン共通 ====== */
+
+.btn-sm {
+  padding: .35rem .9rem;
+  font-size: .85rem;
+}
+
+.btn {
+  border: none;
+  cursor: pointer;
+  border-radius: 12px;
+  padding: .6rem 1rem;
+  font-weight: 800;
+  font-size: .8rem;
+  background: var(--main);
+  color: #fff;
+}
+
+.btn--ghost {
+  background: #f3f4f6;
+  color: var(--main);
+  border: 1px solid #e5e7eb;
+}
+
+.btn--ghost:hover {
+  background: #e5e7eb;
+}
+
+/* ==============================================
+   1) キャンペーン一覧 /index
+   ============================================== */
+
+.campaign-index {
+  display: grid;
+  gap: 16px;
+}
+
+.campaign-index__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.campaign-index__head h1 {
+  font-size: 1.35rem;
+  margin: 0;
+}
+
+.campaign-index__head .muted {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.campaign-index__head-right {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* フィルタバー */
+.campaign-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.campaign-filters label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.campaign-filters select,
+.campaign-filters input[type="search"] {
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: .25rem .6rem;
+  font-size: 0.85rem;
+}
+
+/* テーブル */
+
+.campaign-table-wrap {
+  overflow-x: auto;
+}
+
+.campaign-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.campaign-table thead {
+  background: #f9fafb;
+}
+
+.campaign-table th,
+.campaign-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.campaign-table th:nth-child(1),
+.campaign-table td:nth-child(1) {
+  width: 42%;
+  white-space: normal;
+}
+
+.campaign-table th:nth-child(2),
+.campaign-table td:nth-child(2) {
+  width: 10%;
+}
+
+.campaign-table th:nth-child(3),
+.campaign-table td:nth-child(3) {
+  width: 18%;
+}
+
+.campaign-table th:nth-child(4),
+.campaign-table td:nth-child(4) {
+  width: 18%;
+}
+
+.campaign-table tr:hover {
+  background: #f3f4f6;
+}
+
+.campaign-table .title-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.campaign-table .title-cell a {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.campaign-table .title-cell a:hover {
+  text-decoration: underline;
+}
+
+.campaign-table .title-cell .slug {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.campaign-table .title-cell .eyebrow {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* ステータスピル */
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem .6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.status-pill--draft {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.status-pill--scheduled {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-pill--published {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-pill--archived {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+.date-text {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* 空状態 */
+
+.campaign-empty {
+  padding: 16px 0 4px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* ==============================================
+   2) キャンペーン詳細 /:id
+   ============================================== */
+
+.campaign-show {
+  display: grid;
+  gap: 16px;
+}
+
+.campaign-show__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
+.campaign-show__title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.campaign-show__title h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.campaign-show__meta-top {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.campaign-show__meta-top .slug {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.campaign-show__meta-bottom {
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.campaign-show__meta-bottom .meta-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.campaign-show__meta-bottom .label {
+  color: #4b5563;
+}
+
+/* 右上のアクション */
+.campaign-show__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ヒーロー画像＋本文レイアウト */
+
+.campaign-show__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.9fr);
+  gap: 16px;
+}
+
+@media (max-width: 960px) {
+  .campaign-show__body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 左：本文 */
+
+.campaign-body {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 16px 18px;
+}
+
+.campaign-body__eyebrow {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.campaign-body__title {
+  font-size: 1.25rem;
+  margin: 0 0 8px;
+}
+
+/* 実際のリッチテキスト表示部分 */
+.campaign-body__rich {
+  margin-top: 10px;
+  line-height: 1.7;
+  color: var(--text);
+  font-size: 0.96rem;
+}
+
+.campaign-body__rich h2,
+.campaign-body__rich h3,
+.campaign-body__rich h4 {
+  margin-top: 1.3em;
+  margin-bottom: .4em;
+}
+
+.campaign-body__rich p {
+  margin: .4em 0;
+}
+
+.campaign-body__rich ul,
+.campaign-body__rich ol {
+  padding-left: 1.4em;
+  margin: .4em 0;
+}
+
+.campaign-body__rich img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 8px auto;
+  border-radius: 8px;
+}
+
+/* 表の見た目 */
+.campaign-body__rich table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8px 0 10px;
+  font-size: 0.9rem;
+}
+
+.campaign-body__rich th,
+.campaign-body__rich td {
+  border: 1px solid #d1d5db;
+  padding: 6px 8px;
+}
+
+.campaign-body__rich th {
+  background: #f3f4f6;
+}
+
+/* ===== テーブル風ブロック（cm-table） ===== */
+.campaign-body__rich .cm-table {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0 10px;
+  font-size: 0.9rem;
+}
+
+.campaign-body__rich .cm-table__row {
+  display: table-row;
+}
+
+.campaign-body__rich .cm-table__row--head {
+  font-weight: 600;
+}
+
+.campaign-body__rich .cm-table__cell {
+  display: table-cell;
+  border: 1px solid #d1d5db;
+  padding: 6px 8px;
+  vertical-align: top;
+}
+
+.campaign-body__rich .cm-table__cell--head {
+  background: #f3f4f6;
+}
+
+/* エディタ内のプレビューも似た見た目にしておくと分かりやすい */
+.editor .ql-editor .cm-table {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+}
+
+.editor .ql-editor .cm-table__row {
+  display: table-row;
+}
+
+.editor .ql-editor .cm-table__cell {
+  display: table-cell;
+  border: 1px solid #d1d5db;
+  padding: 4px 6px;
+}
+
+.editor .ql-editor .cm-table__cell--head {
+  background: #f3f4f6;
+  font-weight: 600;
+}
+
+/* 右：サイド情報（プレビュー/メタ） */
+
+.campaign-side {
+  display: grid;
+  gap: 10px;
+}
+
+.campaign-side__block {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+}
+
+.campaign-side__block h3 {
+  margin: 0 0 6px;
+  font-size: 0.98rem;
+}
+
+.campaign-side__block p {
+  margin: 2px 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.campaign-side__hero {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #f9fafb;
+}
+
+.campaign-side__hero img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  max-height: 220px;
+}
+
+/* メタ行 */
+
+.meta-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+.meta-list li span.label {
+  color: #4b5563;
+}
+
+/* ==============================================
+   3) 編集フォーム /new, /edit
+   ============================================== */
+
+.campaign-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: minmax(480px, 500px) minmax(0, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 960px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pane {
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+
+.pane--meta {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+
+.pane--editor {
+  display: grid;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.inline {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+input[type="text"], input[type="number"], select, textarea, input[type="datetime-local"]{
+  width:100%; min-height:44px; padding:.6rem .7rem; border-radius:12px;
+  border:1px solid #e5e7eb; background:var(--white); outline:none;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+
+@media (max-width: 720px) {
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-main {
+    padding: 0 2px 40px;
+  }
+}
+
+/* ヒーロープレビュー */
+
+.hero-preview {
+  margin-top: 6px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.hero-preview img {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+  max-height: 220px;
+}
+
+/* エディタ */
+
+.editor-toolbar {
+  border: 1px solid var(--border);
+  border-radius: 10px 10px 0 0;
+  background: #f9fafb;
+}
+
+.editor {
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  min-height: 260px;
+  background: #fff;
+}
+
+.editor .ql-editor {
+  min-height: 220px;
+}
+
+/* エディタ内の画像サイズ制御 */
+.editor .ql-editor img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 8px auto;
+}
+
+/* テーブル */
+.editor .ql-editor table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8px 0;
+}
+
+.editor .ql-editor table td,
+.editor .ql-editor table th {
+  border: 1px solid #d1d5db;
+  padding: 4px 6px;
+}
+
+/* エラー / ヒント */
+
+.error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--danger);
+  line-height: 0;
+  height: 0;
+  overflow: hidden;
+  transition: line-height .15s ease, margin-top .15s ease;
+}
+
+.error.is-visible {
+  line-height: 1.4;
+  height: auto;
+  margin-top: 2px;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.global-error {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(248, 113, 113, .35);
+  background: rgba(254, 242, 242, .7);
+  color: var(--danger);
+}
+
+/* アクション */
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+/* 汎用 muted */
+
+.muted {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.input_hidden {
+    display: none;
+}
+
+.quil_field {
+    display: flex;
+    flex-direction: column;
+}

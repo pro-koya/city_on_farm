@@ -1,0 +1,34 @@
+<%- include('../../partials/header', {
+  title,
+  extraCSS2: 'https://cdn.quilljs.com/1.3.7/quill.snow.css',
+  extraCSS: '/styles/admin-campaigns.css'
+}) %>
+
+<main class="admin-main">
+  <a class="link" href="/admin/campaigns">← キャンペーン一覧へ戻る</a>
+
+  <section class="card card--tight">
+    <div class="card__head">
+      <div>
+        <h1>キャンペーン新規作成</h1>
+        <p class="muted">トップページや特集ページに表示されるキャンペーンを作成します。</p>
+      </div>
+    </div>
+
+    <%- include('./_form', {
+      mode: 'create',
+      action: '/admin/campaigns',
+      csrfToken,
+      values,
+      fieldErrors,
+      globalError
+    }) %>
+  </section>
+</main>
+
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/johnny-quill-image-resize-module@3.0.2/image-resize.min.js"></script>
+<script src="/js/uploader-r2.js"></script>
+<script src="/js/admin-campaign-edit.js"></script>
+
+<%- include('../../partials/footer') %>

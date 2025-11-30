@@ -1,0 +1,211 @@
+<form id="campaignForm" class="campaign-form" method="POST" action="<%= action %>">
+  <% if (csrfToken) { %>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <% } %>
+
+  <!-- hidden: リッチエディタ格納先 -->
+    <div class="input_hidden">
+        <!-- HTMLそのもの -->
+        <textarea id="body_html" name="body_html" hidden><%- values.body_html || '' %></textarea>
+
+        <!-- JSON.stringify 済みの Delta -->
+        <textarea id="body_raw" name="body_raw" hidden><%- values.body_raw || '' %></textarea>
+    </div>
+
+  <div class="form-grid">
+    <!-- 左：メタ情報 -->
+    <section class="pane pane--meta">
+      <div class="field">
+        <label for="title">タイトル *</label>
+        <input id="title" name="title" type="text"
+               value="<%- values.title || '' %>" maxlength="160"
+               placeholder="例）春の山菜フェア">
+        <p class="error <%= fieldErrors?.title ? 'is-visible' : '' %>" data-for="title">
+          <%= fieldErrors?.title || '' %>
+        </p>
+      </div>
+
+      <!-- <div class="field">
+        <label for="slug">スラッグ</label>
+        <div class="inline">
+          <input id="slug" name="slug" type="text"
+                 value="<%- values.slug || '' %>" maxlength="160"
+                 placeholder="例）spring-sansai">
+          <button type="button" class="btn btn--ghost btn-sm" id="btnSlugFromTitle">
+            自動生成
+          </button>
+        </div>
+        <p class="hint">URL の一部に使われるIDです。半角英数字・ハイフンのみ。</p>
+        <p class="error <%= fieldErrors?.slug ? 'is-visible' : '' %>" data-for="slug">
+          <%= fieldErrors?.slug || '' %>
+        </p>
+      </div> -->
+
+      <div class="field">
+        <label for="eyebrow">アイブロウ（ラベル）</label>
+        <input id="eyebrow" name="eyebrow" type="text" maxlength="60"
+               value="<%- values.eyebrow || '' %>" placeholder="例）特集 / キャンペーン">
+        <p class="error <%= fieldErrors?.eyebrow ? 'is-visible' : '' %>" data-for="eyebrow">
+          <%= fieldErrors?.eyebrow || '' %>
+        </p>
+      </div>
+
+      <div class="field">
+        <label for="teaser_text">リード文（一覧に表示）</label>
+        <textarea id="teaser_text" name="teaser_text" rows="3" maxlength="300"
+                  placeholder="例）春の山菜を集めた期間限定フェア。採れたてを飲食店さまへお届けします。"><%- values.teaser_text || '' %></textarea>
+        <p class="error <%= fieldErrors?.teaser_text ? 'is-visible' : '' %>" data-for="teaser_text">
+          <%= fieldErrors?.teaser_text || '' %>
+        </p>
+      </div>
+
+      <div class="field field--row">
+        <div class="field__col">
+            <label for="hero_image_url">
+            メイン画像
+            </label>
+
+            <!-- URL は hidden。R2 からの URL をここに保存 -->
+            <input
+            type="hidden"
+            id="hero_image_url"
+            name="hero_image_url"
+            maxlength="1024"
+            value="<%- values.hero_image_url || '' %>">
+
+            <!-- アップロード / ライブラリ / クリア -->
+            <div class="hero-uploader">
+            <input id="heroImageFile" type="file" accept="image/*" hidden>
+
+            <div class="hero-uploader__buttons">
+                <button type="button" class="btn btn--primary" id="heroUploadBtn">
+                画像をアップロード
+                </button>
+                <button type="button" class="btn btn--ghost" id="heroOpenLibrary">
+                ライブラリから選ぶ
+                </button>
+            </div>
+
+            <!-- uploader-r2 用のダミー DOM -->
+            <textarea id="heroImageUrlsTmp" hidden></textarea>
+            <ul id="heroPreviewList" class="uploader__list" hidden></ul>
+            <p id="heroUploadMsg" class="hint"></p>
+            </div>
+        </div>
+
+        <div class="field__col sp-edit__hero-preview">
+            <div class="appload-clear">
+            <p class="hint">プレビュー</p>
+            <button type="button" class="btn btn--clear" id="heroClearBtn">×</button>
+            </div>
+            <div class="hero-preview">
+            <% if (values.hero_image_url) { %>
+                <img
+                id="heroPreviewImg"
+                src="<%= values.hero_image_url %>"
+                alt="メイン画像プレビュー">
+            <% } else { %>
+                <span class="hero-preview__placeholder" id="heroPreviewPlaceholder">
+                画像を選ぶとここにプレビューが表示されます
+                </span>
+            <% } %>
+            </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="status">ステータス</label>
+        <select id="status" name="status" class="pulldown">
+          <option value="draft"     <%= (values.status || 'draft') === 'draft' ? 'selected' : '' %>>下書き</option>
+          <option value="scheduled" <%= values.status === 'scheduled' ? 'selected' : '' %>>予約公開</option>
+          <option value="published" <%= values.status === 'published' ? 'selected' : '' %>>公開中</option>
+          <option value="archived"  <%= values.status === 'archived'  ? 'selected' : '' %>>アーカイブ</option>
+        </select>
+        <p class="error <%= fieldErrors?.status ? 'is-visible' : '' %>" data-for="status">
+          <%= fieldErrors?.status || '' %>
+        </p>
+      </div>
+
+      <div class="field grid2">
+        <div>
+          <label for="starts_at">開始日時</label>
+          <input id="starts_at" name="starts_at" type="datetime-local"
+                 value="<%- values.starts_at || '' %>">
+          <p class="error <%= fieldErrors?.starts_at ? 'is-visible' : '' %>" data-for="starts_at">
+            <%= fieldErrors?.starts_at || '' %>
+          </p>
+        </div>
+        <div>
+          <label for="ends_at">終了日時</label>
+          <input id="ends_at" name="ends_at" type="datetime-local"
+                 value="<%- values.ends_at || '' %>">
+          <p class="error <%= fieldErrors?.ends_at ? 'is-visible' : '' %>" data-for="ends_at">
+            <%= fieldErrors?.ends_at || '' %>
+          </p>
+        </div>
+      </div>
+
+      <% if (values.published_at) { %>
+        <div class="field">
+          <label>初回公開日時</label>
+          <p class="muted"><%= values.published_at %></p>
+        </div>
+      <% } %>
+    </section>
+
+    <!-- 右：リッチテキスト -->
+    <section class="pane pane--editor">
+      <div class="field quil_field">
+        <label>本文（キャンペーン詳細） *</label>
+        <div id="campaignToolbar" class="editor-toolbar">
+          <span class="ql-formats">
+            <select class="ql-header">
+              <option value="1"></option>
+              <option value="2"></option>
+              <option selected></option>
+            </select>
+          </span>
+          <span class="ql-formats">
+            <button class="ql-bold"></button>
+            <button class="ql-italic"></button>
+            <button class="ql-underline"></button>
+          </span>
+          <span class="ql-formats">
+            <button class="ql-list" value="ordered"></button>
+            <button class="ql-list" value="bullet"></button>
+          </span>
+          <span class="ql-formats">
+            <button class="ql-link"></button>
+            <button class="ql-image"></button>
+          </span>
+        </div>
+
+        <div id="campaignEditor" class="editor"><%- values.body_html || '' %></div>
+
+        <p class="hint">
+          見出し・画像・表を使って、キャンペーンの内容をわかりやすく構成してください。画像サイズは自動調整されます。
+        </p>
+        <p class="error <%= fieldErrors?.body_html ? 'is-visible' : '' %>" data-for="body_html">
+          <%= fieldErrors?.body_html || '' %>
+        </p>
+
+        <div id="quill-image-hidden" hidden>
+            <input type="file" id="editorImgFile" accept="image/*" hidden>
+            <ul id="editorImgList" hidden></ul>
+            <textarea id="editorImgUrls" hidden></textarea>
+            <p id="editorImgMsg" hidden></p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <% if (globalError) { %>
+    <div class="global-error"><%= globalError %></div>
+  <% } %>
+
+  <div class="form-actions">
+    <button type="submit" class="btn" id="btnSaveCampaign">
+      <%= mode === 'create' ? '作成する' : '更新する' %>
+    </button>
+  </div>
+</form>

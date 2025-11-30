@@ -1313,25 +1313,77 @@ const noteService = require('./services/noteService');
 /* =========================================================
  *  ホーム
  * =======================================================*/
-
 // --- Top（ブランド/コンセプト中心） ---
 app.get('/', async (req, res, next) => {
   try {
     // 最小限のティーザーだけ渡す（重くしない）
     const featuredProducts = await dbQuery(`
       SELECT id, slug, title, price, unit, stock,
-             (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
+             (
+               SELECT url
+               FROM product_images i
+               WHERE i.product_id = p.id
+               ORDER BY position ASC
+               LIMIT 1
+             ) AS image_url
       FROM products p
-      WHERE p.status='public'
+      WHERE p.status = 'public'
       ORDER BY p.updated_at DESC
       LIMIT 6
     `);
 
-    // キャンペーン/特集（DBやCMSがなければ固定でもOK）
-    const campaigns = [
-      { id:'spring', title:'春の山菜フェア', href:'/shop?tag=sansai', image:'/images/slide1.jpg', eyebrow:'特集' },
-      { id:'organic', title:'有機農家の恵み', href:'/shop?tag=organic', image:'/images/slide2.jpg', eyebrow:'特集' }
-    ];
+    // ============================
+    // キャンペーン（DB から取得）
+    // ============================
+    const campaignRows = await dbQuery(
+      `
+      SELECT
+        id,
+        slug,
+        title,
+        eyebrow,
+        hero_image_url,
+        status,
+        starts_at,
+        ends_at,
+        published_at
+      FROM campaigns
+      WHERE
+        status = 'published'
+        AND (starts_at IS NULL OR starts_at <= NOW())
+        AND (ends_at   IS NULL OR ends_at   >= NOW())
+      ORDER BY
+        published_at DESC NULLS LAST,
+        starts_at    DESC NULLS LAST,
+        created_at   DESC
+      LIMIT 4
+      `
+    );
+
+    // EJS 側と同じ形にマッピング
+    let campaigns = campaignRows.map(c => {
+      const key = String(c.id);
+
+      return {
+        // EJS が使っている id は単なるキーなので slug 優先
+        id: key,
+        title: c.title,
+        // ユーザー向けキャンペーン詳細ページ（前に作った /campaigns/:slug を想定）
+        href: `/campaigns/${encodeURIComponent(key)}`,
+        // メイン画像（なければプレースホルダ）
+        image: c.hero_image_url || '/images/slide1.jpg',
+        // ラベル（なければデフォルト文言）
+        eyebrow: c.eyebrow || 'キャンペーン'
+      };
+    });
+
+    // もし公開中キャンペーンが 1 件もない場合、従来の固定データをフォールバック
+    if (!campaigns.length) {
+      campaigns = [
+        { id: 'spring',  title: '春の山菜フェア',  href: '/shop?tag=sansai',  image: '/images/slide1.jpg', eyebrow: '特集' },
+        { id: 'organic', title: '有機農家の恵み', href: '/shop?tag=organic', image: '/images/slide2.jpg', eyebrow: '特集' }
+      ];
+    }
 
     // note の最新3件のティーザー
     let latestPosts = [];
@@ -1342,21 +1394,25 @@ app.get('/', async (req, res, next) => {
       const sort = (req.query.sort || 'published_desc').trim(); // 'published_desc' | 'published_asc' | 'updated_desc' | 'updated_asc' | 'popular_desc' | 'popular_asc'
 
       const perPage = 3; // 表示用
-      const { posts, total, pageCount, categories } =
+      const { posts } =
         await noteService.getListFiltered({ q, category, sort, page, perPage });
       latestPosts = posts || [];
-    } catch {}
+    } catch {
+      // note 取得失敗時は静かに無視
+    }
 
     res.render('home/index', {
       title: 'セッツマルシェ',
       featuredProducts,
-      campaigns,
+      campaigns,      // ←ここは従来と同じ変数名・構造
       latestPosts,
       extraCSS2: '',
-  extraCSS: '/styles/home.css',
+      extraCSS: '/styles/home.css',
       extraJS: '/js/home.js'
     });
-  } catch (e) { next(e); }
+  } catch (e) {
+    next(e);
+  }
 });
 
 // About
@@ -8962,6 +9018,553 @@ app.post(
     }
   }
 );
+
+// server.js のどこか admin ルート群の近くに追加
+app.get(
+  '/admin/campaigns',
+  requireAuth,
+  requireRole(['admin']),
+  async (req, res, next) => {
+    try {
+      const rows = await dbQuery(
+        `
+        SELECT
+          id,
+          slug,
+          title,
+          eyebrow,
+          teaser_text,
+          status,
+          published_at,
+          starts_at,
+          ends_at,
+          created_at,
+          updated_at
+        FROM campaigns
+        ORDER BY created_at DESC
+        `
+      );
+
+      res.render('admin/campaigns/index', {
+        title: 'キャンペーン管理',
+        campaigns: rows
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+app.get(
+  '/admin/campaigns/show/:id',
+  requireAuth,
+  requireRole(['admin']),
+  async (req, res, next) => {
+    try {
+      const id = String(req.params.id || '').trim();
+      if (!id) return res.status(400).render('errors/400', { title: '不正なIDです' });
+
+      const rows = await dbQuery(
+        `
+        SELECT * FROM campaigns
+        WHERE id = $1::uuid
+        LIMIT 1
+        `,
+        [id]
+      );
+
+      if (!rows.length) {
+        return res.status(404).render('errors/404', { title: 'キャンペーンが見つかりません' });
+      }
+
+      const campaign = rows[0];
+
+      res.render('admin/campaigns/show', {
+        title: `キャンペーン詳細：${campaign.title}`,
+        campaign
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+// 先頭付近のヘルパ定義あたりに追加
+function slugify(str = '') {
+  return String(str)
+    .trim()
+    .toLowerCase()
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, s =>
+      String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
+    )
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    || null;
+}
+
+// キャンペーン共通 validator
+const campaignValidators = [
+  body('title').trim().notEmpty().withMessage('タイトルを入力してください。')
+    .isLength({ max: 160 }).withMessage('タイトルは160文字以内で入力してください。'),
+
+  body('slug').optional({ checkFalsy: true }).trim()
+    .isLength({ max: 160 }).withMessage('スラッグは160文字以内で入力してください。')
+    .matches(/^[a-z0-9-]+$/).withMessage('スラッグは半角英数字とハイフンのみ使用できます。'),
+
+  body('eyebrow').optional({ checkFalsy: true }).trim().isLength({ max: 60 }),
+  body('teaser_text').optional({ checkFalsy: true }).trim().isLength({ max: 300 }),
+
+  body('status').trim().isIn(['draft', 'scheduled', 'published', 'archived'])
+    .withMessage('ステータスが不正です。'),
+
+  body('hero_image_url').optional({ checkFalsy: true }).trim().isLength({ max: 1024 }),
+
+  body('starts_at').optional({ checkFalsy: true }).isISO8601().withMessage('開始日時の形式が正しくありません。'),
+  body('ends_at').optional({ checkFalsy: true }).isISO8601().withMessage('終了日時の形式が正しくありません。'),
+
+  body('body_html').optional({ checkFalsy: true }).isString(),
+  body('body_raw').optional({ checkFalsy: true }).isString(), // JSON文字列として受ける
+];
+
+app.get(
+  '/admin/campaigns/new',
+  requireAuth,
+  requireRole(['admin']),
+  (req, res) => {
+    const now = new Date();
+    res.render('admin/campaigns/new', {
+      title: 'キャンペーン新規作成',
+      csrfToken: req.csrfToken(),
+      values: {
+        title: '',
+        slug: '',
+        eyebrow: '特集',
+        teaser_text: '',
+        hero_image_url: '',
+        status: 'draft',
+        starts_at: '',
+        ends_at: '',
+        body_html: '',
+        body_raw: '',
+      },
+      fieldErrors: {},
+      globalError: ''
+    });
+  }
+);
+
+app.post(
+  '/admin/campaigns',
+  requireAuth,
+  requireRole(['admin']),
+  csrfProtect,
+  campaignValidators,
+  async (req, res) => {
+    const errors = validationResult(req);
+
+    // 値を整形（再描画用）
+    const values = {
+      title: (req.body.title || '').trim(),
+      slug: (req.body.slug || '').trim(),
+      eyebrow: (req.body.eyebrow || '').trim(),
+      teaser_text: (req.body.teaser_text || '').trim(),
+      hero_image_url: (req.body.hero_image_url || '').trim(),
+      status: (req.body.status || 'draft').trim(),
+      starts_at: req.body.starts_at || '',
+      ends_at: req.body.ends_at || '',
+      body_html: req.body.body_html || '',
+      body_raw: req.body.body_raw || '',
+    };
+
+    // スラッグが未入力なら title から自動生成
+    if (!values.slug) {
+      values.slug = slugify(values.title || '');
+    }
+
+    if (!errors.isEmpty()) {
+      const list = errors.array({ onlyFirstError: true });
+      const fieldErrors = {};
+      for (const err of list) {
+        fieldErrors[err.path || err.param] = String(err.msg);
+      }
+      return res.status(422).render('admin/campaigns/new', {
+        title: 'キャンペーン新規作成',
+        csrfToken: req.csrfToken(),
+        values,
+        fieldErrors,
+        globalError: ''
+      });
+    }
+
+    const adminId = req.session.user?.id || null;
+
+    // 日時は ISO8601 文字列から Date に変換（空なら null）
+    const startsAt = values.starts_at ? new Date(values.starts_at) : null;
+    const endsAt   = values.ends_at ? new Date(values.ends_at) : null;
+
+    // 公開ステータスのとき、自動で published_at を入れる
+    const publishedAt = values.status === 'published' ? new Date() : null;
+
+    try {
+      const rows = await dbQuery(
+        `
+        INSERT INTO campaigns
+          (slug, title, eyebrow, teaser_text, hero_image_url,
+           body_html, body_raw, status, starts_at, ends_at,
+           published_at, created_by)
+        VALUES
+          ($1,$2,$3,$4,$5,
+           $6,$7,$8,$9,$10,
+           $11,$12)
+        RETURNING id
+        `,
+        [
+          values.slug,
+          values.title,
+          values.eyebrow || null,
+          values.teaser_text || null,
+          values.hero_image_url || null,
+          values.body_html || null,
+          values.body_raw ? JSON.parse(values.body_raw) : null,
+          values.status,
+          startsAt,
+          endsAt,
+          publishedAt,
+          adminId
+        ]
+      );
+
+      const id = rows[0].id;
+      return res.redirect(`/admin/campaigns/show/${id}`);
+    } catch (err) {
+      console.error('create campaign error:', err);
+      // slug のユニーク制約など
+      if (err.code === '23505') {
+        return res.status(409).render('admin/campaigns/new', {
+          title: 'キャンペーン新規作成',
+          csrfToken: req.csrfToken(),
+          values,
+          fieldErrors: { slug: 'このスラッグは既に使用されています。別のスラッグを指定してください。' },
+          globalError: ''
+        });
+      }
+      return res.status(500).render('admin/campaigns/new', {
+        title: 'キャンペーン新規作成',
+        csrfToken: req.csrfToken(),
+        values,
+        fieldErrors: {},
+        globalError: 'キャンペーンの作成でエラーが発生しました。時間をおいて再度お試しください。'
+      });
+    }
+  }
+);
+
+app.get(
+  '/admin/campaigns/edit/:id',
+  requireAuth,
+  requireRole(['admin']),
+  async (req, res, next) => {
+    try {
+      const id = String(req.params.id || '').trim();
+      const rows = await dbQuery(
+        `
+        SELECT
+          id, slug, title, eyebrow, teaser_text, hero_image_url,
+          body_html,
+          body_raw,
+          status,
+          starts_at, ends_at,
+          published_at,
+          created_at, updated_at
+        FROM campaigns
+        WHERE id = $1::uuid
+        LIMIT 1
+        `,
+        [id]
+      );
+      if (!rows.length) {
+        return res.status(404).render('errors/404', { title: 'キャンペーンが見つかりません' });
+      }
+      const c = rows[0];
+
+      const values = {
+        id: c.id,
+        title: c.title || '',
+        slug: c.slug || '',
+        eyebrow: c.eyebrow || '',
+        teaser_text: c.teaser_text || '',
+        hero_image_url: c.hero_image_url || '',
+        status: c.status || 'draft',
+        starts_at: c.starts_at ? new Date(c.starts_at).toISOString().slice(0,16) : '',
+        ends_at:   c.ends_at   ? new Date(c.ends_at).toISOString().slice(0,16)   : '',
+        body_html: c.body_html || '',
+        body_raw:
+          c.body_raw
+            ? (typeof c.body_raw === 'string'
+                ? c.body_raw                // すでに JSON 文字列ならそのまま
+                : JSON.stringify(c.body_raw)) // JSON/JSONB オブジェクトなら stringify
+            : '',
+        published_at: c.published_at
+          ? new Date(c.published_at).toLocaleString('ja-JP')
+          : ''
+      };
+
+      res.render('admin/campaigns/edit', {
+        title: `キャンペーン編集：${c.title}`,
+        csrfToken: req.csrfToken(),
+        values,
+        fieldErrors: {},
+        globalError: ''
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+app.post(
+  '/admin/campaigns/:id',
+  requireAuth,
+  requireRole(['admin']),
+  csrfProtect,
+  campaignValidators,
+  async (req, res) => {
+    const id = String(req.params.id || '').trim();
+
+    const errors = validationResult(req);
+    const values = {
+      id,
+      title: (req.body.title || '').trim(),
+      slug: (req.body.slug || '').trim(),
+      eyebrow: (req.body.eyebrow || '').trim(),
+      teaser_text: (req.body.teaser_text || '').trim(),
+      hero_image_url: (req.body.hero_image_url || '').trim(),
+      status: (req.body.status || 'draft').trim(),
+      starts_at: req.body.starts_at || '',
+      ends_at: req.body.ends_at || '',
+      body_html: req.body.body_html || '',
+      body_raw: req.body.body_raw || '',
+      published_at: '' // 表示用
+    };
+
+    if (!values.slug) values.slug = slugify(values.title || '');
+
+    if (!errors.isEmpty()) {
+      const list = errors.array({ onlyFirstError: true });
+      const fieldErrors = {};
+      for (const err of list) fieldErrors[err.path || err.param] = String(err.msg);
+      return res.status(422).render('admin/campaigns/edit', {
+        title: `キャンペーン編集：${values.title || ''}`,
+        csrfToken: req.csrfToken(),
+        values,
+        fieldErrors,
+        globalError: ''
+      });
+    }
+
+    const startsAt = values.starts_at ? new Date(values.starts_at) : null;
+    const endsAt   = values.ends_at ? new Date(values.ends_at) : null;
+
+    try {
+      // 既存の published_at を取得（status 遷移に応じて変更）
+      const curRows = await dbQuery(
+        `SELECT status, published_at FROM campaigns WHERE id = $1::uuid LIMIT 1`,
+        [id]
+      );
+      if (!curRows.length) {
+        return res.status(404).render('errors/404', { title: 'キャンペーンが見つかりません' });
+      }
+      let publishedAt = curRows[0].published_at;
+
+      // ドラフト/スケジュール → 初めて "published" になったときだけ現在時刻をセット
+      if (values.status === 'published' && !publishedAt) {
+        publishedAt = new Date();
+      }
+      // archived に落としても published_at は残す（履歴として）
+
+      const result = await dbQuery(
+        `
+        UPDATE campaigns
+           SET slug = $2,
+               title = $3,
+               eyebrow = $4,
+               teaser_text = $5,
+               hero_image_url = $6,
+               body_html = $7,
+               body_raw  = $8,
+               status = $9,
+               starts_at = $10,
+               ends_at = $11,
+               published_at = $12,
+               updated_at = now()
+         WHERE id = $1::uuid
+         RETURNING published_at
+        `,
+        [
+          id,
+          values.slug,
+          values.title,
+          values.eyebrow || null,
+          values.teaser_text || null,
+          values.hero_image_url || null,
+          values.body_html || null,
+          values.body_raw ? JSON.parse(values.body_raw) : null,
+          values.status,
+          startsAt,
+          endsAt,
+          publishedAt
+        ]
+      );
+
+      values.published_at = result[0].published_at
+        ? new Date(result[0].published_at).toLocaleString('ja-JP')
+        : '';
+
+      return res.redirect(`/admin/campaigns/show/${id}`);
+    } catch (err) {
+      console.error('update campaign error:', err);
+      if (err.code === '23505') {
+        return res.status(409).render('admin/campaigns/edit', {
+          title: `キャンペーン編集：${values.title || ''}`,
+          csrfToken: req.csrfToken(),
+          values,
+          fieldErrors: { slug: 'このスラッグは既に使用されています。' },
+          globalError: ''
+        });
+      }
+      return res.status(500).render('admin/campaigns/edit', {
+        title: `キャンペーン編集：${values.title || ''}`,
+        csrfToken: req.csrfToken(),
+        values,
+        fieldErrors: {},
+        globalError: 'キャンペーンの更新でエラーが発生しました。時間をおいて再度お試しください。'
+      });
+    }
+  }
+);
+
+// 公開用：キャンペーン一覧
+app.get('/campaigns', async (req, res, next) => {
+  try {
+    const rows = await dbQuery(
+      `
+      SELECT
+        id, slug, title, eyebrow, teaser_text, hero_image_url,
+        status,
+        starts_at, ends_at,
+        published_at
+      FROM campaigns
+      WHERE status = 'published'
+      ORDER BY
+        COALESCE(starts_at, published_at, created_at) DESC
+      `
+    );
+
+    // ビューで扱いやすいように整形
+    const campaigns = rows.map((c) => {
+      const now = new Date();
+      const startsAt = c.starts_at ? new Date(c.starts_at) : null;
+      const endsAt   = c.ends_at   ? new Date(c.ends_at)   : null;
+
+      let state = 'live';      // live | upcoming | closed
+      let stateLabel = '開催中';
+      if (endsAt && endsAt < now) {
+        state = 'closed';
+        stateLabel = '終了';
+      } else if (startsAt && startsAt > now) {
+        state = 'upcoming';
+        stateLabel = '開催前';
+      }
+
+      return {
+        ...c,
+        starts_at_fmt: startsAt ? startsAt.toLocaleDateString('ja-JP') : '',
+        ends_at_fmt:   endsAt   ? endsAt.toLocaleDateString('ja-JP')   : '',
+        published_at_fmt: c.published_at
+          ? new Date(c.published_at).toLocaleDateString('ja-JP')
+          : '',
+        state,
+        stateLabel
+      };
+    });
+
+    res.render('campaigns/index', {
+      title: 'キャンペーン一覧',
+      campaigns
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 公開用：キャンペーン詳細
+app.get('/campaigns/:id', async (req, res, next) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) {
+      return res.redirect('/campaigns');
+    }
+
+    const rows = await dbQuery(
+      `
+      SELECT
+        id, slug, title, eyebrow, teaser_text, hero_image_url,
+        body_html,
+        status,
+        starts_at, ends_at,
+        published_at,
+        created_at, updated_at
+      FROM campaigns
+      WHERE id = $1
+        AND status = 'published'
+      LIMIT 1
+      `,
+      [id]
+    );
+
+    if (!rows.length) {
+      return res.status(404).render('errors/404', { title: 'キャンペーンが見つかりません' });
+    }
+
+    const c = rows[0];
+    const now = new Date();
+    const startsAt = c.starts_at ? new Date(c.starts_at) : null;
+    const endsAt   = c.ends_at   ? new Date(c.ends_at)   : null;
+
+    let state = 'live';
+    let stateLabel = '開催中';
+    let stateNote = '';
+
+    if (endsAt && endsAt < now) {
+      state = 'closed';
+      stateLabel = '終了';
+      stateNote = 'このキャンペーンは終了しました。';
+    } else if (startsAt && startsAt > now) {
+      state = 'upcoming';
+      stateLabel = '開催前';
+      stateNote = 'このキャンペーンはまだ開始前です。';
+    }
+
+    const campaign = {
+      ...c,
+      starts_at_fmt: startsAt ? startsAt.toLocaleDateString('ja-JP') : '',
+      ends_at_fmt:   endsAt   ? endsAt.toLocaleDateString('ja-JP')   : '',
+      published_at_fmt: c.published_at
+        ? new Date(c.published_at).toLocaleString('ja-JP')
+        : '',
+      state,
+      stateLabel,
+      stateNote
+    };
+
+    res.render('campaigns/show', {
+      title: campaign.title,
+      campaign
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // 開発支援：CSRFエラーの見やすい応答
 app.use((err, req, res, next) => {

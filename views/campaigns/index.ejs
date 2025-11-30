@@ -1,0 +1,94 @@
+<%- include('../partials/header', {
+  title,
+  extraCSS2: '',
+  extraCSS: '/styles/campaigns.css'
+}) %>
+
+<main class="campaigns-main">
+  <section class="campaigns-hero">
+    <div class="campaigns-hero__inner">
+      <p class="campaigns-hero__eyebrow">CAMPAIGN</p>
+      <h1 class="campaigns-hero__title">開催中・開催予定のキャンペーン</h1>
+      <p class="campaigns-hero__lead">
+        季節の野菜フェアや特集企画など、<br class="br-sp">
+        今チェックしておきたいキャンペーンをまとめました。
+      </p>
+    </div>
+  </section>
+
+  <section class="campaigns-list">
+    <% if (!campaigns || !campaigns.length) { %>
+      <p class="campaigns-empty">
+        現在、公開中のキャンペーンはありません。<br>
+        次回の開催をお楽しみにお待ちください。
+      </p>
+    <% } else { %>
+      <div class="campaigns-grid">
+        <% campaigns.forEach(c => { %>
+          <article class="campaign-card campaign-card--<%= c.state %>">
+            <a href="/campaigns/<%= c.id %>" class="campaign-card__link">
+              <% if (c.hero_image_url) { %>
+                <figure class="campaign-card__thumb">
+                  <img src="<%= c.hero_image_url %>" alt="<%= c.title %>">
+                  <span class="campaign-card__state campaign-card__state--<%= c.state %>">
+                    <%= c.stateLabel %>
+                  </span>
+                  <% if (c.eyebrow) { %>
+                    <span class="campaign-card__eyebrow"><%= c.eyebrow %></span>
+                  <% } %>
+                </figure>
+              <% } else { %>
+                <figure class="campaign-card__thumb campaign-card__thumb--placeholder">
+                  <div class="campaign-card__thumb-inner">
+                    <span class="campaign-card__state campaign-card__state--<%= c.state %>">
+                      <%= c.stateLabel %>
+                    </span>
+                    <% if (c.eyebrow) { %>
+                      <span class="campaign-card__eyebrow"><%= c.eyebrow %></span>
+                    <% } %>
+                  </div>
+                </figure>
+              <% } %>
+
+              <div class="campaign-card__body">
+                <h2 class="campaign-card__title"><%= c.title %></h2>
+
+                <% if (c.teaser_text) { %>
+                  <p class="campaign-card__teaser">
+                    <%= c.teaser_text %>
+                  </p>
+                <% } %>
+
+                <dl class="campaign-card__meta">
+                  <% if (c.starts_at_fmt || c.ends_at_fmt) { %>
+                    <div>
+                      <dt>期間</dt>
+                      <dd>
+                        <%= c.starts_at_fmt || '未定' %>
+                        <% if (c.starts_at_fmt || c.ends_at_fmt) { %>〜<% } %>
+                        <%= c.ends_at_fmt || '未定' %>
+                      </dd>
+                    </div>
+                  <% } %>
+                  <% if (c.published_at_fmt) { %>
+                    <div>
+                      <dt>公開日</dt>
+                      <dd><%= c.published_at_fmt %></dd>
+                    </div>
+                  <% } %>
+                </dl>
+
+                <p class="campaign-card__cta">
+                  詳しく見る
+                  <span aria-hidden="true">→</span>
+                </p>
+              </div>
+            </a>
+          </article>
+        <% }) %>
+      </div>
+    <% } %>
+  </section>
+</main>
+
+<%- include('../partials/footer') %>
