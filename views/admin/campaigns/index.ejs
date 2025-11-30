@@ -1,0 +1,62 @@
+<%- include('../../partials/header', {
+  title,
+  extraCSS2: '',
+  extraCSS: '/styles/admin-campaign.css'
+}) %>
+
+<main class="admin-main">
+  <section class="card">
+    <div class="card__head">
+      <h1>キャンペーン管理</h1>
+      <a class="btn btn--primary" href="/admin/campaigns/new">新規キャンペーン作成</a>
+    </div>
+
+    <% if (!campaigns || !campaigns.length) { %>
+      <p class="muted">まだキャンペーンは登録されていません。</p>
+    <% } else { %>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>タイトル</th>
+            <th>ステータス</th>
+            <th>公開日</th>
+            <th>期間</th>
+            <th>作成日</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% campaigns.forEach(c => { %>
+            <tr>
+              <td>
+                <a href="/admin/campaigns/show/<%= c.id %>">
+                  <%= c.title %>
+                </a>
+                <% if (c.eyebrow) { %>
+                  <div class="eyebrow"><%= c.eyebrow %></div>
+                <% } %>
+              </td>
+              <td><span class="badge badge--<%= c.status %>"><%= c.status %></span></td>
+              <td>
+                <%= c.published_at
+                    ? new Date(c.published_at).toLocaleString('ja-JP')
+                    : '—' %>
+              </td>
+              <td>
+                <% if (c.starts_at || c.ends_at) { %>
+                  <%= c.starts_at ? new Date(c.starts_at).toLocaleDateString('ja-JP') : '—' %>
+                  〜
+                  <%= c.ends_at ? new Date(c.ends_at).toLocaleDateString('ja-JP') : '—' %>
+                <% } else { %>
+                  —
+                <% } %>
+              </td>
+              <td><%= new Date(c.created_at).toLocaleString('ja-JP') %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+</main>
+
+<%- include('../../partials/footer') %>

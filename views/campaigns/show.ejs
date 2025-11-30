@@ -1,0 +1,73 @@
+<%- include('../partials/header', {
+  title,
+  extraCSS2: '',
+  extraCSS: '/styles/campaigns.css'
+}) %>
+
+<main class="campaigns-main">
+  <div class="campaign-breadcrumb">
+    <a href="/campaigns">キャンペーン一覧</a>
+    <span>›</span>
+    <span><%= campaign.title %></span>
+  </div>
+
+  <article class="campaign-single">
+    <% if (campaign.hero_image_url) { %>
+      <section class="campaign-single__hero">
+        <figure class="campaign-single__hero-imgwrap">
+          <img src="<%= campaign.hero_image_url %>" alt="<%= campaign.title %>">
+          <% if (campaign.eyebrow) { %>
+            <span class="campaign-single__eyebrow"><%= campaign.eyebrow %></span>
+          <% } %>
+          <span class="campaign-single__state campaign-single__state--<%= campaign.state %>">
+            <%= campaign.stateLabel %>
+          </span>
+        </figure>
+      </section>
+    <% } %>
+
+    <section class="campaign-single__head">
+      <p class="campaign-single__label">CAMPAIGN</p>
+      <h1 class="campaign-single__title"><%= campaign.title %></h1>
+
+      <dl class="campaign-single__meta">
+        <% if (campaign.starts_at_fmt || campaign.ends_at_fmt) { %>
+          <div>
+            <dt>開催期間</dt>
+            <dd>
+              <%= campaign.starts_at_fmt || '未定' %>
+              <% if (campaign.starts_at_fmt || campaign.ends_at_fmt) { %>〜<% } %>
+              <%= campaign.ends_at_fmt || '未定' %>
+            </dd>
+          </div>
+        <% } %>
+
+        <% if (campaign.published_at_fmt) { %>
+          <div>
+            <dt>公開日</dt>
+            <dd><%= campaign.published_at_fmt %></dd>
+          </div>
+        <% } %>
+      </dl>
+
+      <% if (campaign.stateNote) { %>
+        <p class="campaign-single__state-note campaign-single__state-note--<%= campaign.state %>">
+          <%= campaign.stateNote %>
+        </p>
+      <% } %>
+
+      <% if (campaign.teaser_text) { %>
+        <p class="campaign-single__teaser"><%= campaign.teaser_text %></p>
+      <% } %>
+    </section>
+
+    <section class="campaign-single__body">
+      <!-- body_html はサニタイズ済み前提 -->
+      <div class="campaign-body">
+        <%- campaign.body_html || '' %>
+      </div>
+    </section>
+  </article>
+</main>
+
+<%- include('../partials/footer') %>

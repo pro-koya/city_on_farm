@@ -1,0 +1,68 @@
+<%- include('../../partials/header', {
+  title,
+  extraCSS2: '',
+  extraCSS: '/styles/admin-campaign.css'
+}) %>
+
+<main class="admin-main">
+  <a class="link" href="/admin/campaigns">← キャンペーン一覧へ戻る</a>
+
+  <section class="card">
+    <div class="card__head">
+      <div>
+        <p class="eyebrow"><%= campaign.eyebrow || 'キャンペーン' %></p>
+        <h1><%= campaign.title %></h1>
+      </div>
+      <div class="card__head-actions">
+        <span class="badge badge--<%= campaign.status %>"><%= campaign.status %></span>
+        <a class="btn" href="/admin/campaigns/edit/<%= campaign.id %>">編集</a>
+      </div>
+    </div>
+
+    <dl class="kv">
+      <div>
+        <dt>ステータス</dt>
+        <dd><%= campaign.status %></dd>
+      </div>
+      <div>
+        <dt>公開日</dt>
+        <dd><%= campaign.published_at
+              ? new Date(campaign.published_at).toLocaleString('ja-JP')
+              : '—' %></dd>
+      </div>
+      <div>
+        <dt>期間</dt>
+        <dd>
+          <% if (campaign.starts_at || campaign.ends_at) { %>
+            <%= campaign.starts_at ? new Date(campaign.starts_at).toLocaleDateString('ja-JP') : '—' %>
+            〜
+            <%= campaign.ends_at ? new Date(campaign.ends_at).toLocaleDateString('ja-JP') : '—' %>
+          <% } else { %>
+            —
+          <% } %>
+        </dd>
+      </div>
+      <div>
+        <dt>作成日時</dt>
+        <dd><%= new Date(campaign.created_at).toLocaleString('ja-JP') %></dd>
+      </div>
+      <div>
+        <dt>更新日時</dt>
+        <dd><%= new Date(campaign.updated_at).toLocaleString('ja-JP') %></dd>
+      </div>
+    </dl>
+
+    <% if (campaign.hero_image_url) { %>
+      <figure class="campaign-hero">
+        <img src="<%= campaign.hero_image_url %>" alt="">
+      </figure>
+    <% } %>
+
+    <section class="campaign-body">
+      <!-- body_html はサニタイズ済み前提 -->
+      <%- campaign.body_html || '' %>
+    </section>
+  </section>
+</main>
+
+<%- include('../../partials/footer') %>
