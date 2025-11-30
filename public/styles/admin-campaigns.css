@@ -608,10 +608,12 @@ input[type="text"], input[type="number"], select, textarea, input[type="datetime
   border-radius: 0 0 10px 10px;
   min-height: 260px;
   background: #fff;
+  font-size: 16px;
 }
 
 .editor .ql-editor {
   min-height: 220px;
+  font-size: 16px;
 }
 
 /* エディタ内の画像サイズ制御 */

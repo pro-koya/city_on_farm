@@ -239,7 +239,7 @@
 /* スマホ対応 */
 @media (max-width: 768px) {
   .admin-main {
-    margin-top: 60px;
+    margin-top: 80px;
     padding: 0 10px 32px;
   }
 
