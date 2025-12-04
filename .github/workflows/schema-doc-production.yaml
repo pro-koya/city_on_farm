@@ -1,4 +1,4 @@
-name: Generate Schema Doc
+name: Generate Schema Doc Production
 
 on:
   workflow_dispatch:
