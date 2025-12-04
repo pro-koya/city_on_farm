@@ -95,27 +95,36 @@
     applyBtn?.addEventListener('click', async () => {
         const code = (codeInput?.value || '').trim();
         if (!code) {
-        if (msgEl) msgEl.textContent = 'クーポンコードを入力してください。';
-        return;
+          if (msgEl) msgEl.textContent = 'クーポンコードを入力してください。';
+          return;
         }
         applyBtn.disabled = true;
         try {
-        const data = await postJSON(applyCouponUrl, {
-            code,                          // ← 適用
+          const data = await postJSON(applyCouponUrl, {
+            code,
             shipMethod: shipMethodSel?.value || 'delivery',
-            sellerId: currentSellerId
-        });
-        if (msgEl) msgEl.textContent = data?.message || (data?.applied ? 'クーポンを適用しました。' : '無効なクーポンです。');
-        paintTotals(data?.totals);
-        // 適用済みになったら入力ロック（1注文1クーポン）
-        if (data?.applied) {
+            sellerId: currentSellerId,
+            shippingAddressId: getSelectedShippingAddressId()
+          });
+          if (msgEl) msgEl.textContent =
+            data?.message || (data?.applied ? 'クーポンを適用しました。' : '無効なクーポンです。');
+          paintTotals(data?.totals);
+          if (data?.shippingError) {
+            setShippingError(data.shippingError);
+          } else {
+            setShippingError('');
+          }
+          // 適用済みになったら入力ロック
+          if (data?.applied) {
             codeInput?.setAttribute('disabled','disabled');
             applyBtn?.setAttribute('disabled','disabled');
             ensureRemoveButtonEnabled(true);
-        }
+          }
         } catch (e) {
-        if (msgEl) msgEl.textContent = '適用に失敗しました。時間をおいて再度お試しください。';
-        } finally { applyBtn.disabled = false; }
+          if (msgEl) msgEl.textContent = '適用に失敗しました。時間をおいて再度お試しください。';
+        } finally {
+          applyBtn.disabled = false;
+        }
     });
 
     // ====== 解除ボタン（無ければ動的追加） ======
@@ -138,24 +147,30 @@
     }
 
     async function onRemoveCoupon() {
-        if (!removeBtn) return;
-        removeBtn.disabled = true;
-        try {
+      if (!removeBtn) return;
+      removeBtn.disabled = true;
+      try {
         const data = await postJSON(applyCouponUrl, {
-            code: '',                       // ← 解除
-            shipMethod: shipMethodSel?.value || 'delivery',
-            sellerId: currentSellerId
+          code: '',  // ← 明示的に空 → サーバーでは「解除」として扱う
+          shipMethod: shipMethodSel?.value || 'delivery',
+          sellerId: currentSellerId,
+          shippingAddressId: getSelectedShippingAddressId()
         });
         paintTotals(data?.totals);
         if (msgEl) msgEl.textContent = data?.message || 'クーポンを解除しました。';
+        if (data?.shippingError) {
+          setShippingError(data.shippingError);
+        } else {
+          setShippingError('');
+        }
         // 入力復帰
         codeInput?.removeAttribute('disabled');
         applyBtn?.removeAttribute('disabled');
         if (codeInput) codeInput.value = '';
         ensureRemoveButtonEnabled(false);
-        } catch (e) {
+      } catch (e) {
         if (msgEl) msgEl.textContent = '解除に失敗しました。時間をおいて再度お試しください。';
-        } finally { removeBtn.disabled = false; }
+      } finally { removeBtn.disabled = false; }
     }
     removeBtn?.addEventListener('click', onRemoveCoupon);
 
@@ -225,6 +240,7 @@
         li.querySelector('input[type="radio"]').dispatchEvent(new Event('change', {bubbles:true}));
     }
 
+    const toConfirm = qs('#toConfirm');
     // 住所保存（AJAX）
     form?.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -280,7 +296,7 @@
     });
 
     // ====== 確認へ進む（二重送信防止 & バリデーション） ======
-    const toConfirm = qs('#toConfirm');
+    
 
     checkoutForm?.addEventListener('submit', (e) => {
       if (!checkoutForm.checkValidity()) {
@@ -299,13 +315,64 @@
     const labelDate     = qs('label[for="ev_date"]');
     const labelTime     = qs('label[for="shipTime"]');
     const shipHelp      = qs('#shipHelp');
-    const noShipMsg     = qs('#shippingAddrInv');
     const shipAddrList  = qs('#shippingAddrList');
     const billSameCheck = qs('#billSameCheck');
     const evDateInput   = qs('#ev_date');
     const shipDateHidden = qs('#shipDate');
+    const shippingErrorEl = qs('#shippingError');
 
     let datePicker = null;
+
+    // 選択中の配送先住所ID取得
+    function getSelectedShippingAddressId() {
+      const checked = shipAddrList?.querySelector('input[name="shippingAddressId"]:checked');
+      return checked ? checked.value : null;
+    }
+
+    shipAddrList?.addEventListener('change', (e) => {
+      if (e.target && e.target.name === 'shippingAddressId') {
+        recalcTotalsWithShipping();
+      }
+    });
+
+    // 配送エラー表示 + ボタン制御
+    function setShippingError(message) {
+      if (!shippingErrorEl) return;
+      const hasMsg = !!message;
+      shippingErrorEl.textContent = message || '';
+      shippingErrorEl.classList.toggle('is-hidden', !hasMsg);
+      if (toConfirm) {
+        toConfirm.disabled = hasMsg;  // エラーがある間は確認ボタンを無効化
+      }
+    }
+
+    async function recalcTotalsWithShipping() {
+      const m = shipMethodSel?.value || 'delivery';
+      const shippingAddressId = getSelectedShippingAddressId();
+
+      try {
+        const data = await postJSON('/checkout/recalc-totals', {
+          shipMethod: m,
+          sellerId: currentSellerId,
+          shippingAddressId
+        });
+
+        if (data?.totals) {
+          paintTotals(data.totals);
+        }
+
+        // 配送不可など
+        if (data?.shippingError) {
+          setShippingError(data.shippingError);
+        } else {
+          setShippingError('');
+        }
+      } catch (e) {
+        console.error(e);
+        // サーバーエラー時はとりあえずメッセージだけ
+        setShippingError('送料の再計算に失敗しました。時間をおいて再度お試しください。');
+      }
+    }
 
     function setupDatepickerForCurrentMethod() {
         const fp = window.flatpickr;
@@ -382,10 +449,6 @@
       if (shippingCard) {
         shippingCard.classList.toggle('is-hidden', isPickup);
         shippingCard.setAttribute('aria-hidden', isPickup ? 'true' : 'false');
-      }
-      if (noShipMsg) {
-        noShipMsg.classList.toggle('is-hidden', isPickup);
-        noShipMsg.setAttribute('aria-hidden', isPickup ? 'true' : 'false');
       }
       if (shipAddrList) {
         shipAddrList.classList.toggle('is-hidden', isPickup);
@@ -487,11 +550,12 @@
     
     shipMethodSel?.addEventListener('change', () => {
         applyShipMethodUI();
-        recalcTotalsForShipMethod();
+        recalcTotalsWithShipping();
         setupDatepickerForCurrentMethod();
         rebuildShipTimeOptions();
     });
     applyShipMethodUI();
     setupDatepickerForCurrentMethod();
     rebuildShipTimeOptions();
+    recalcTotalsWithShipping();
 })();

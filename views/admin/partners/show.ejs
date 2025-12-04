@@ -19,13 +19,13 @@
 
     <% if (user.roles.includes('admin')) { %>
     <div class="ps__actions">
-      <form id="statusForm" action="/admin/partners/<%= partner.id %>/status" method="POST" class="inline">
+      <!-- <form id="statusForm" action="/admin/partners/<%= partner.id %>/status" method="POST" class="inline">
         <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
         <input type="hidden" name="status" id="statusInput" value="<%= partner.status === 'active' ? 'inactive':'active' %>">
         <button type="submit" class="btn btn--toggle" id="toggleBtn">
           <%= partner.status === 'active' ? '無効にする' : '有効にする' %>
         </button>
-      </form>
+      </form> -->
       <a class="btn btn--ghost" href="/admin/partners">一覧へ戻る</a>
     </div>
     <% } %>
@@ -138,6 +138,114 @@
       <% } %>
     </article>
 
+    <article class="card card--shipping">
+      <div class="card__head">
+        <h2 class="card__title">配送・送料設定（概要）</h2>
+        <a class="btn btn--ghost btn--sm" href="/admin/partners/<%= partner.id %>/shipping">
+          設定を編集
+        </a>
+      </div>
+
+      <% if (!shippingSummary || !shippingSummary.hasAny) { %>
+        <p class="muted small">
+          まだ配送・送料設定が登録されていません。「設定を編集」から設定してください。
+        </p>
+      <% } else { %>
+        <div class="ship-summary">
+          <!-- 全国一律（デフォルト） -->
+          <section class="ship-summary__global">
+            <h3 class="ship-summary__subtitle">全国一律の設定</h3>
+            <p class="ship-summary__global-label">
+              <%= shippingSummary.globalLabel %>
+            </p>
+          </section>
+
+          <!-- 地域別タブ -->
+          <section class="ship-summary__regions">
+            <div class="ship-tabs" role="tablist">
+              <button type="button"
+                      class="ship-tab is-active"
+                      data-tab="pref"
+                      role="tab"
+                      aria-selected="true">
+                都道府県ごとの設定
+              </button>
+              <button type="button"
+                      class="ship-tab"
+                      data-tab="city"
+                      role="tab"
+                      aria-selected="false">
+                市区町村ごとの設定
+              </button>
+            </div>
+
+            <div class="ship-panels">
+              <!-- 都道府県タブ -->
+              <div class="ship-panel is-active"
+                   data-tab="pref"
+                   role="tabpanel">
+                <% if (!shippingSummary.prefectureRules || !shippingSummary.prefectureRules.length) { %>
+                  <p class="muted xsmall">都道府県単位の個別設定はありません。</p>
+                <% } else { %>
+                  <ul class="ship-list">
+                    <% shippingSummary.prefectureRules.forEach(function(r) { %>
+                      <li class="ship-list__item">
+                        <div class="ship-list__label">
+                          <span class="ship-pill"><%= r.prefecture %></span>
+                        </div>
+                        <div class="ship-list__meta">
+                          <% if (!r.can_ship) { %>
+                            <span class="ship-tag ship-tag--ng">配送不可</span>
+                          <% } else { %>
+                            <span class="ship-tag ship-tag--ok">
+                              <%= (r.shipping_fee != null) ? (r.shipping_fee + '円') : '送料未設定' %>
+                            </span>
+                          <% } %>
+                        </div>
+                      </li>
+                    <% }); %>
+                  </ul>
+                <% } %>
+              </div>
+
+              <!-- 市区町村タブ -->
+              <div class="ship-panel"
+                   data-tab="city"
+                   role="tabpanel">
+                <% if (!shippingSummary.cityRules || !shippingSummary.cityRules.length) { %>
+                  <p class="muted xsmall">市区町村単位の個別設定はありません。</p>
+                <% } else { %>
+                  <ul class="ship-list">
+                    <% shippingSummary.cityRules.forEach(function(r) { %>
+                      <li class="ship-list__item">
+                        <div class="ship-list__label">
+                          <span class="ship-pill"><%= r.prefecture %></span>
+                          <span class="ship-pill ship-pill--sub"><%= r.city %></span>
+                        </div>
+                        <div class="ship-list__meta">
+                          <% if (!r.can_ship) { %>
+                            <span class="ship-tag ship-tag--ng">配送不可</span>
+                          <% } else { %>
+                            <span class="ship-tag ship-tag--ok">
+                              <%= (r.shipping_fee != null) ? (r.shipping_fee + '円') : '送料未設定' %>
+                            </span>
+                          <% } %>
+                        </div>
+                      </li>
+                    <% }); %>
+                  </ul>
+                <% } %>
+              </div>
+            </div>
+
+            <p class="muted xsmall ship-summary__note">
+              ここに表示されているのは概要です。詳しい地域と金額は「設定を編集」から確認・変更できます。
+            </p>
+          </section>
+        </div>
+      <% } %>
+    </article>
+
     <article class="card">
       <div class="card__head">
         <h2 class="card__title">決済方法（取引先全体）</h2>
@@ -228,5 +336,5 @@
   </section>
 </main>
 
-<!-- <script src="/js/partner-show.js"></script> -->
+<script src="/js/partner-show.js"></script>
 <%- include('../../partials/footer') %>

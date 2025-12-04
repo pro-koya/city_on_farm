@@ -286,7 +286,7 @@ input[type="checkbox"]:checked::after{
   align-items: center;
   gap: 6px;
   padding: 6px 8px;
-  border-radius: 10px
+  border-radius: 10px;
   background: #fff;
   border: 1px solid #e5e7eb;
   box-shadow: 0 2px 6px rgba(0,0,0,0.03);
@@ -365,5 +365,164 @@ input[type="checkbox"]:checked::after{
 
   .pa-summary__chip {
     padding: 5px 7px;
+  }
+}
+
+/* ===== 配送・送料設定（概要）カード ===== */
+
+.card--shipping {
+  position: relative;
+  overflow: hidden;
+}
+
+.ship-summary {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 全国一律エリア */
+.ship-summary__global {
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #f9fafb;
+  width: 100%;
+  border: 1px dashed var(--border);
+}
+
+.ship-summary__subtitle {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ship-summary__global-label {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* タブ + パネル */
+.ship-summary__regions {
+  margin-top: 6px;
+  padding: .5rem;
+}
+
+.ship-tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  margin-bottom: 6px;
+}
+
+.ship-tab {
+  border: none;
+  background: transparent;
+  padding: .25rem .8rem;
+  border-radius: 999px;
+  font-size: .85rem;
+  cursor: pointer;
+  color: var(--muted);
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+.ship-tab.is-active {
+  background: #fff;
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0,0,0,.05);
+}
+
+.ship-panels {
+  position: relative;
+}
+
+.ship-panel {
+  display: none;
+}
+
+.ship-panel.is-active {
+  display: block;
+}
+
+/* スクロールするリスト（高さ制限） */
+.ship-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.ship-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px dashed #e5e7eb;
+  font-size: .9rem;
+}
+
+.ship-list__label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ship-list__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* 地域ピル */
+.ship-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #eef2ff;
+  font-size: .78rem;
+}
+
+.ship-pill--sub {
+  background: #e5f3ff;
+}
+
+/* 送料タグ */
+.ship-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: .78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ship-tag--ok {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #bbf7d0;
+}
+
+.ship-tag--ng {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.ship-summary__note {
+  margin: 4px 0 0;
+}
+
+/* スマホ調整 */
+@media (max-width: 768px) {
+  .ship-list__item {
+    align-items: flex-start;
   }
 }

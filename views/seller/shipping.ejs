@@ -1,0 +1,390 @@
+<%- include('../partials/header', {
+  title,
+  extraCSS2: '',
+  extraCSS: '/styles/seller-shipping.css'
+}) %>
+
+<main class="sh">
+  <header class="sh__head">
+    <div>
+      <p class="sh__eyebrow">出品者設定</p>
+      <h1 class="sh__title">送料・配送地域設定</h1>
+      <p class="sh__desc">
+        お客様の地域ごとの送料と、配送可能エリアを設定できます。<br>
+        まず「全国デフォルト送料」を決めてから、イレギュラーな地域のみを都道府県・市単位で上書きする運用がおすすめです。
+      </p>
+    </div>
+    <div class="sh__seller">
+      <span class="sh__seller-label">出品者</span>
+      <span class="sh__seller-name"><%= seller.name %></span>
+    </div>
+  </header>
+
+  <form id="shippingForm" class="sh__form" method="POST" action="<%= action %>">
+    <% if (csrfToken) { %>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% } %>
+
+    <%
+      const allRules  = (rules || []);
+      const defaultRule = allRules.find(r => r.scope === 'all') || {
+        scope: 'all',
+        shipping_fee: null,
+        can_ship: true
+      };
+      const prefectureRules = allRules.filter(r => r.scope === 'prefecture');
+      const cityRules       = allRules.filter(r => r.scope === 'city');
+
+      const prefectures = [
+        '北海道','青森県','岩手県','宮城県','秋田県','山形県','福島県',
+        '茨城県','栃木県','群馬県','埼玉県','千葉県','東京都','神奈川県',
+        '新潟県','富山県','石川県','福井県','山梨県','長野県',
+        '岐阜県','静岡県','愛知県','三重県',
+        '滋賀県','京都府','大阪府','兵庫県','奈良県','和歌山県',
+        '鳥取県','島根県','岡山県','広島県','山口県',
+        '徳島県','香川県','愛媛県','高知県',
+        '福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県'
+      ];
+    %>
+
+    <!-- 1. 全国デフォルト -->
+    <section class="sh-card sh-card--main">
+      <div class="sh-card__head">
+        <div>
+          <h2 class="sh-card__title">全国デフォルト送料</h2>
+          <p class="sh-card__hint">
+            都道府県・市で個別設定されていない地域に適用される基本の送料です。
+          </p>
+        </div>
+        <div class="sh-toggle">
+          <label class="sh-switch">
+            <input
+              type="checkbox"
+              name="default[can_ship]"
+              class="js-all-can-ship"
+              <%= defaultRule.can_ship !== false ? 'checked' : '' %>>
+            <span class="sh-switch__track"></span>
+            <span class="sh-switch__label">
+              未指定の地域への配送を許可する
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="sh-grid">
+        <!-- hidden: scope, id -->
+        <input type="hidden" name="default[scope]" value="all">
+        <input type="hidden" name="default[id]"   value="<%= defaultRule.id || '' %>">
+
+        <div class="sh-field">
+          <label class="sh-label">全国デフォルト送料</label>
+          <div class="sh-input-inline">
+            <input
+              type="number"
+              min="0"
+              step="1"
+              class="sh-input js-all-fee"
+              name="default[shipping_fee]"
+              value="<%= defaultRule.shipping_fee != null ? defaultRule.shipping_fee : '' %>"
+              <%= defaultRule.can_ship === false ? 'disabled' : '' %>
+              placeholder="例）800">
+            <span class="sh-input-suffix">円（税込）</span>
+          </div>
+          <p class="sh-caption">
+            未指定地域への配送を許可しない場合はオフにしてください（その場合、個別に指定した地域にのみ配送されます）。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 都道府県ごとの設定 -->
+    <section class="sh-card">
+      <div class="sh-card__head">
+        <div>
+          <h2 class="sh-card__title">都道府県ごとの送料・配送可否</h2>
+          <p class="sh-card__hint">
+            全国デフォルトから外したい都道府県だけを追加してください。<br>
+            例）「北海道は +200円」「沖縄県は配送不可」など。
+          </p>
+        </div>
+        <button type="button" class="btn btn--ghost btn--sm js-add-pref-row">
+          + 都道府県ルールを追加
+        </button>
+      </div>
+
+      <div class="sh-table sh-table--regions" data-scope="prefecture">
+        <div class="sh-table__header">
+          <div>都道府県</div>
+          <div>送料（円）</div>
+          <div>配送可否</div>
+          <div class="sh-table__col-actions"></div>
+        </div>
+        <div class="sh-table__body js-pref-rows">
+        <% if (!prefectureRules.length) { %>
+          <p class="sh-table__empty js-pref-empty">
+            都道府県ごとのルールはまだありません。「追加」ボタンから設定できます。
+          </p>
+        <% } %>
+
+        <% prefectureRules.forEach(function(r, idx) { %>
+          <div class="sh-row" data-row data-index="<%= idx %>">
+            <input type="hidden" name="prefRules[<%= idx %>][scope]" value="prefecture">
+            <input type="hidden" name="prefRules[<%= idx %>][id]"    value="<%= r.id %>">
+            <input type="hidden" name="prefRules[<%= idx %>][city]"  value="">
+
+            <div class="sh-cell">
+              <select name="prefRules[<%= idx %>][prefecture]" class="sh-input pulldown">
+                <option value="">選択してください</option>
+                <% prefectures.forEach(function(p) { %>
+                  <option value="<%= p %>" <%= r.prefecture === p ? 'selected' : '' %>><%= p %></option>
+                <% }); %>
+              </select>
+            </div>
+
+            <div class="sh-cell">
+              <div class="sh-input-inline">
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  name="prefRules[<%= idx %>][shipping_fee]"
+                  class="sh-input js-fee-input"
+                  value="<%= r.shipping_fee != null ? r.shipping_fee : '' %>"
+                  <%= r.can_ship === false ? 'disabled' : '' %>
+                  placeholder="例）1000">
+                <span class="sh-input-suffix">円</span>
+              </div>
+            </div>
+
+            <div class="sh-cell">
+              <label class="sh-switch sh-switch--compact">
+                <input
+                  type="checkbox"
+                  name="prefRules[<%= idx %>][can_ship]"
+                  class="js-can-ship"
+                  <%= r.can_ship !== false ? 'checked' : '' %>>
+                <span class="sh-switch__track"></span>
+                <span class="sh-switch__label">配送可</span>
+              </label>
+            </div>
+
+            <div class="sh-cell sh-cell--actions">
+              <button type="button" class="sh-icon-btn js-remove-row" aria-label="このルールを削除">
+                ✕
+              </button>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+      </div>
+    </section>
+
+    <!-- 3. 市区町村ごとの設定 -->
+    <section class="sh-card">
+      <div class="sh-card__head">
+        <div>
+          <h2 class="sh-card__title">市区町村ごとの送料・配送可否</h2>
+          <p class="sh-card__hint">
+            特定の市区町村だけ別送料にしたい場合に使います。<br>
+            例）「京都府京都市は送料無料」「大阪府摂津市のみ配送可」など。
+          </p>
+        </div>
+        <button type="button" class="btn btn--ghost btn--sm js-add-city-row">
+          + 市区町村ルールを追加
+        </button>
+      </div>
+
+      <div class="sh-table sh-table--regions" data-scope="city">
+        <div class="sh-table__header">
+          <div>都道府県</div>
+          <div>市区町村</div>
+          <div>送料（円）</div>
+          <div>配送可否</div>
+          <div class="sh-table__col-actions"></div>
+        </div>
+        <div class="sh-table__body js-city-rows">
+        <% if (!cityRules.length) { %>
+          <p class="sh-table__empty js-city-empty">
+            市区町村ごとのルールはまだありません。「追加」ボタンから設定できます。
+          </p>
+        <% } %>
+
+        <% cityRules.forEach(function(r, idx) { %>
+          <div class="sh-row" data-row data-index="<%= idx %>">
+            <input type="hidden" name="cityRules[<%= idx %>][scope]" value="city">
+            <input type="hidden" name="cityRules[<%= idx %>][id]"    value="<%= r.id %>">
+
+            <div class="sh-cell">
+              <select name="cityRules[<%= idx %>][prefecture]" class="sh-input pulldown">
+                <option value="">選択してください</option>
+                <% prefectures.forEach(function(p) { %>
+                  <option value="<%= p %>" <%= r.prefecture === p ? 'selected' : '' %>><%= p %></option>
+                <% }); %>
+              </select>
+            </div>
+
+            <div class="sh-cell">
+              <input
+                type="text"
+                name="cityRules[<%= idx %>][city]"
+                class="sh-input"
+                value="<%= r.city || '' %>"
+                placeholder="例）摂津市">
+            </div>
+
+            <div class="sh-cell">
+              <div class="sh-input-inline">
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  name="cityRules[<%= idx %>][shipping_fee]"
+                  class="sh-input js-fee-input"
+                  value="<%= r.shipping_fee != null ? r.shipping_fee : '' %>"
+                  <%= r.can_ship === false ? 'disabled' : '' %>
+                  placeholder="例）1200">
+                <span class="sh-input-suffix">円</span>
+              </div>
+            </div>
+
+            <div class="sh-cell">
+              <label class="sh-switch sh-switch--compact">
+                <input
+                  type="checkbox"
+                  name="cityRules[<%= idx %>][can_ship]"
+                  class="js-can-ship"
+                  <%= r.can_ship !== false ? 'checked' : '' %>>
+                <span class="sh-switch__track"></span>
+                <span class="sh-switch__label">配送可</span>
+              </label>
+            </div>
+
+            <div class="sh-cell sh-cell--actions">
+              <button type="button" class="sh-icon-btn js-remove-row" aria-label="このルールを削除">
+                ✕
+              </button>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    </section>
+
+    <!-- 保存ボタン -->
+    <div class="sh-actions">
+      <a href="/admin/partners/<%= seller.id %>" class="btn btn--ghost">
+        戻る
+      </a>
+      <button type="submit" class="btn btn--primary" id="shSaveBtn">
+        保存する
+      </button>
+    </div>
+  </form>
+
+  <!-- テンプレート：都道府県ルール -->
+  <template id="tpl-pref-row">
+    <div class="sh-row" data-row data-index="__INDEX__">
+      <input type="hidden" name="prefRules[__INDEX__][scope]" value="prefecture">
+      <input type="hidden" name="prefRules[__INDEX__][id]"    value="">
+      <input type="hidden" name="prefRules[__INDEX__][city]"  value="">
+
+      <div class="sh-cell">
+        <select name="prefRules[__INDEX__][prefecture]" class="sh-input pulldown">
+          <option value="">選択してください</option>
+          <% prefectures.forEach(function(p) { %>
+            <option value="<%= p %>"><%= p %></option>
+          <% }); %>
+        </select>
+      </div>
+
+      <div class="sh-cell">
+        <div class="sh-input-inline">
+          <input
+            type="number"
+            min="0"
+            step="1"
+            name="prefRules[__INDEX__][shipping_fee]"
+            class="sh-input js-fee-input"
+            placeholder="例）1000">
+          <span class="sh-input-suffix">円</span>
+        </div>
+      </div>
+
+      <div class="sh-cell">
+        <label class="sh-switch sh-switch--compact">
+          <input
+            type="checkbox"
+            name="prefRules[__INDEX__][can_ship]"
+            class="js-can-ship"
+            checked>
+          <span class="sh-switch__track"></span>
+          <span class="sh-switch__label">配送可</span>
+        </label>
+      </div>
+
+      <div class="sh-cell sh-cell--actions">
+        <button type="button" class="sh-icon-btn js-remove-row" aria-label="このルールを削除">
+          ✕
+        </button>
+      </div>
+    </div>
+  </template>
+
+  <!-- テンプレート：市区町村ルール -->
+  <template id="tpl-city-row">
+    <div class="sh-row" data-row data-index="__INDEX__">
+      <input type="hidden" name="cityRules[__INDEX__][scope]" value="city">
+      <input type="hidden" name="cityRules[__INDEX__][id]"    value="">
+
+      <div class="sh-cell">
+        <select name="cityRules[__INDEX__][prefecture]" class="sh-input pulldown">
+          <option value="">選択してください</option>
+          <% prefectures.forEach(function(p) { %>
+            <option value="<%= p %>"><%= p %></option>
+          <% }); %>
+        </select>
+      </div>
+
+      <div class="sh-cell">
+        <input
+          type="text"
+          name="cityRules[__INDEX__][city]"
+          class="sh-input"
+          placeholder="例）摂津市">
+      </div>
+
+      <div class="sh-cell">
+        <div class="sh-input-inline">
+          <input
+            type="number"
+            min="0"
+            step="1"
+            name="cityRules[__INDEX__][shipping_fee]"
+            class="sh-input js-fee-input"
+            placeholder="例）1200">
+          <span class="sh-input-suffix">円</span>
+        </div>
+      </div>
+
+      <div class="sh-cell">
+        <label class="sh-switch sh-switch--compact">
+          <input
+            type="checkbox"
+            name="cityRules[__INDEX__][can_ship]"
+            class="js-can-ship"
+            checked>
+          <span class="sh-switch__track"></span>
+          <span class="sh-switch__label">配送可</span>
+        </label>
+      </div>
+
+      <div class="sh-cell sh-cell--actions">
+        <button type="button" class="sh-icon-btn js-remove-row" aria-label="このルールを削除">
+          ✕
+        </button>
+      </div>
+    </div>
+  </template>
+</main>
+
+<script src="/js/seller-shipping.js"></script>
+<%- include('../partials/footer') %>
