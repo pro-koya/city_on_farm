@@ -1,0 +1,57 @@
+name: Generate Schema Doc
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'table-info-production/export-tableSchema.sql'
+      - 'table-info-production/generate_schema_md.mjs'
+  schedule:
+    - cron: '0 18 * * *'   # 毎日 03:00 JST 相当 (UTC 18:00)
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      PGURL: ${{ secrets.PGURL_PRODUCTION }}  # リポジトリSecretsに DSN を保存
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install psql
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Generate CSVs
+        run: npm run schema:csv
+
+      - name: Generate SCHEMA.md
+        run: npm run schema:md
+
+      # 変更があればコミット
+      - name: Commit & Push
+        run: |
+          if ! git diff --quiet; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add table-info-production/*.csv table-info-production/SCHEMA.md
+            git commit -m "chore(schema): update schema docs"
+            git push
+          fi
+
+      # （オプション）成果物としても保存
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-docs
+          path: |
+            table-info-production/*.csv
+            table-info-production/SCHEMA.md
