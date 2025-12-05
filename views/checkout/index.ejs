@@ -83,23 +83,23 @@
           <h2>配送先住所</h2>
           <button class="link" type="button" id="openAddressModal" aria-haspopup="dialog">＋ 新しい住所を追加</button>
         </div>
-          <p class="muted" id="shippingAddrInv" aria-hidden="<%= form.shipMethod === 'pickup' ? 'true' : 'false' %>">畑受け取りでは配送先は不要です。</p>
-          <ul id="shippingAddrList" class="addr-list" role="list" aria-hidden="<%= form.shipMethod === 'pickup' ? 'true' : 'false' %>">
-            <% addresses.forEach(function(a){ %>
-              <li class="addr-item">
-                <label class="addr-radio">
-                  <input type="radio" name="shippingAddressId" value="<%= a.id %>" <%= String(form.shippingAddressId) === String(a.id) ? 'checked' : '' %> >
-                  <div class="addr-body">
-                    <div class="addr-name"><%= a.full_name %>（<%= a.phone %>）</div>
-                    <div class="addr-lines">
-                      〒<%= a.postal_code %>：<%= a.prefecture %><%= a.city %><%= a.address_line1 %> <%= a.address_line2 || '' %>
-                    </div>
-                    <% if (a.is_default) { %><span class="badge">既定</span><% } %>
+        <p class="error is-hidden" id="shippingError" aria-live="polite"></p>
+        <ul id="shippingAddrList" class="addr-list" role="list" aria-hidden="<%= form.shipMethod === 'pickup' ? 'true' : 'false' %>">
+          <% addresses.forEach(function(a){ %>
+            <li class="addr-item">
+              <label class="addr-radio">
+                <input type="radio" name="shippingAddressId" value="<%= a.id %>" <%= String(form.shippingAddressId) === String(a.id) ? 'checked' : '' %> >
+                <div class="addr-body">
+                  <div class="addr-name"><%= a.full_name %>（<%= a.phone %>）</div>
+                  <div class="addr-lines">
+                    〒<%= a.postal_code %>：<%= a.prefecture %><%= a.city %><%= a.address_line1 %> <%= a.address_line2 || '' %>
                   </div>
-                </label>
-              </li>
-              <% }); %>
-          </ul>
+                  <% if (a.is_default) { %><span class="badge">既定</span><% } %>
+                </div>
+              </label>
+            </li>
+            <% }); %>
+        </ul>
       </section>
 
       <!-- 請求先（pickupでも必要） -->

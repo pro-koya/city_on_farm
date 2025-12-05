@@ -1,0 +1,154 @@
+table_schema,table_name,index_name,index_def,is_unique,is_primary
+public,addresses,addresses_pkey,CREATE UNIQUE INDEX addresses_pkey ON public.addresses USING btree (id),t,t
+public,addresses,ix_addresses_order_scope,"CREATE INDEX ix_addresses_order_scope ON public.addresses USING btree (order_id, scope, address_type)",f,f
+public,addresses,ix_addresses_user_scope,"CREATE INDEX ix_addresses_user_scope ON public.addresses USING btree (user_id, scope, address_type)",f,f
+public,addresses,ux_user_default_address,"CREATE UNIQUE INDEX ux_user_default_address ON public.addresses USING btree (user_id, address_type) WHERE ((scope = 'user'::text) AND (is_default = true))",t,f
+public,cart_items,cart_items_cart_id_product_id_key,"CREATE UNIQUE INDEX cart_items_cart_id_product_id_key ON public.cart_items USING btree (cart_id, product_id)",t,f
+public,cart_items,cart_items_pkey,CREATE UNIQUE INDEX cart_items_pkey ON public.cart_items USING btree (id),t,t
+public,cart_items,idx_cart_items_cart,CREATE INDEX idx_cart_items_cart ON public.cart_items USING btree (cart_id),f,f
+public,cart_items,idx_cart_items_product,CREATE INDEX idx_cart_items_product ON public.cart_items USING btree (product_id),f,f
+public,cart_items,idx_cart_items_seller,CREATE INDEX idx_cart_items_seller ON public.cart_items USING btree (seller_id),f,f
+public,cart_items,idx_cart_items_user,CREATE INDEX idx_cart_items_user ON public.cart_items USING btree (user_id),f,f
+public,carts,carts_pkey,CREATE UNIQUE INDEX carts_pkey ON public.carts USING btree (id),t,t
+public,carts,carts_user_id_key,CREATE UNIQUE INDEX carts_user_id_key ON public.carts USING btree (user_id),t,f
+public,categories,categories_name_key,CREATE UNIQUE INDEX categories_name_key ON public.categories USING btree (name),t,f
+public,categories,categories_pkey,CREATE UNIQUE INDEX categories_pkey ON public.categories USING btree (id),t,t
+public,categories,categories_slug_key,CREATE UNIQUE INDEX categories_slug_key ON public.categories USING btree (slug),t,f
+public,contact_messages,contact_messages_pkey,CREATE UNIQUE INDEX contact_messages_pkey ON public.contact_messages USING btree (id),t,t
+public,contact_messages,idx_contact_messages_contact_id,"CREATE INDEX idx_contact_messages_contact_id ON public.contact_messages USING btree (contact_id, created_at)",f,f
+public,contact_messages,idx_contact_messages_sender,"CREATE INDEX idx_contact_messages_sender ON public.contact_messages USING btree (sender_type, sender_id)",f,f
+public,contacts,contacts_pkey,CREATE UNIQUE INDEX contacts_pkey ON public.contacts USING btree (id),t,t
+public,contacts,idx_contacts_category,CREATE INDEX idx_contacts_category ON public.contacts USING btree (category),f,f
+public,contacts,idx_contacts_created_at,CREATE INDEX idx_contacts_created_at ON public.contacts USING btree (created_at DESC),f,f
+public,contacts,idx_contacts_email,CREATE INDEX idx_contacts_email ON public.contacts USING btree (email),f,f
+public,contacts,idx_contacts_status,CREATE INDEX idx_contacts_status ON public.contacts USING btree (status),f,f
+public,contacts,idx_contacts_subject_body_trgm,"CREATE INDEX idx_contacts_subject_body_trgm ON public.contacts USING gin ((((COALESCE(subject, ''::text) || ' '::text) || COALESCE(message, ''::text))) gin_trgm_ops)",f,f
+public,contacts,idx_contacts_subject_trgm,CREATE INDEX idx_contacts_subject_trgm ON public.contacts USING gin (subject gin_trgm_ops),f,f
+public,contacts,idx_contacts_type,CREATE INDEX idx_contacts_type ON public.contacts USING btree (type),f,f
+public,contacts,idx_contacts_user_id,CREATE INDEX idx_contacts_user_id ON public.contacts USING btree (user_id),f,f
+public,coupons,coupons_code_key,CREATE UNIQUE INDEX coupons_code_key ON public.coupons USING btree (code),t,f
+public,coupons,coupons_pkey,CREATE UNIQUE INDEX coupons_pkey ON public.coupons USING btree (id),t,t
+public,coupons,ix_coupons_active_window,"CREATE INDEX ix_coupons_active_window ON public.coupons USING btree (is_active, starts_at, ends_at, code)",f,f
+public,global_allowed_payment_methods,global_allowed_payment_methods_pkey,CREATE UNIQUE INDEX global_allowed_payment_methods_pkey ON public.global_allowed_payment_methods USING btree (method),t,t
+public,gmail_tokens,gmail_tokens_pkey,CREATE UNIQUE INDEX gmail_tokens_pkey ON public.gmail_tokens USING btree (id),t,t
+public,notification_reads,idx_notification_reads_notification,CREATE INDEX idx_notification_reads_notification ON public.notification_reads USING btree (notification_id),f,f
+public,notification_reads,idx_notification_reads_user,"CREATE INDEX idx_notification_reads_user ON public.notification_reads USING btree (user_id, read_at DESC)",f,f
+public,notification_reads,notification_reads_pkey,CREATE UNIQUE INDEX notification_reads_pkey ON public.notification_reads USING btree (id),t,t
+public,notification_reads,notification_reads_uniq,"CREATE UNIQUE INDEX notification_reads_uniq ON public.notification_reads USING btree (notification_id, user_id)",t,f
+public,notification_targets,idx_notification_targets_audience,CREATE INDEX idx_notification_targets_audience ON public.notification_targets USING btree (audience),f,f
+public,notification_targets,idx_notification_targets_notification_id,CREATE INDEX idx_notification_targets_notification_id ON public.notification_targets USING btree (notification_id),f,f
+public,notification_targets,idx_notification_targets_role,CREATE INDEX idx_notification_targets_role ON public.notification_targets USING btree (role),f,f
+public,notification_targets,idx_notification_targets_user_id,CREATE INDEX idx_notification_targets_user_id ON public.notification_targets USING btree (user_id),f,f
+public,notification_targets,notification_targets_pkey,CREATE UNIQUE INDEX notification_targets_pkey ON public.notification_targets USING btree (id),t,t
+public,notifications,idx_notifications_created_at,CREATE INDEX idx_notifications_created_at ON public.notifications USING btree (created_at DESC),f,f
+public,notifications,idx_notifications_type,CREATE INDEX idx_notifications_type ON public.notifications USING btree (type),f,f
+public,notifications,idx_notifications_visible_window,"CREATE INDEX idx_notifications_visible_window ON public.notifications USING btree (visible_from, visible_to)",f,f
+public,notifications,notifications_pkey,CREATE UNIQUE INDEX notifications_pkey ON public.notifications USING btree (id),t,t
+public,option_labels,option_labels_pkey,"CREATE UNIQUE INDEX option_labels_pkey ON public.option_labels USING btree (category, value)",t,t
+public,option_labels,option_labels_unique,"CREATE UNIQUE INDEX option_labels_unique ON public.option_labels USING btree (category, value)",t,f
+public,option_labels,ux_option_labels_category_value,"CREATE UNIQUE INDEX ux_option_labels_category_value ON public.option_labels USING btree (category, value)",t,f
+public,order_addresses,idx_order_addresses_order,CREATE INDEX idx_order_addresses_order ON public.order_addresses USING btree (order_id),f,f
+public,order_addresses,idx_order_addresses_type,CREATE INDEX idx_order_addresses_type ON public.order_addresses USING btree (address_type),f,f
+public,order_addresses,ix_order_addresses_order_id,CREATE INDEX ix_order_addresses_order_id ON public.order_addresses USING btree (order_id),f,f
+public,order_addresses,ix_order_addresses_type,CREATE INDEX ix_order_addresses_type ON public.order_addresses USING btree (address_type),f,f
+public,order_addresses,order_addresses_pkey,CREATE UNIQUE INDEX order_addresses_pkey ON public.order_addresses USING btree (id),t,t
+public,order_groups,idx_order_groups_user_created,"CREATE INDEX idx_order_groups_user_created ON public.order_groups USING btree (user_id, created_at DESC)",f,f
+public,order_groups,order_groups_group_number_key,CREATE UNIQUE INDEX order_groups_group_number_key ON public.order_groups USING btree (group_number),t,f
+public,order_groups,order_groups_pkey,CREATE UNIQUE INDEX order_groups_pkey ON public.order_groups USING btree (id),t,t
+public,order_items,idx_order_items_order,CREATE INDEX idx_order_items_order ON public.order_items USING btree (order_id),f,f
+public,order_items,idx_order_items_product,CREATE INDEX idx_order_items_product ON public.order_items USING btree (product_id),f,f
+public,order_items,order_items_pkey,CREATE UNIQUE INDEX order_items_pkey ON public.order_items USING btree (id),t,t
+public,orders,idx_orders_buyer,CREATE INDEX idx_orders_buyer ON public.orders USING btree (buyer_id),f,f
+public,orders,idx_orders_buyer_created_at,"CREATE INDEX idx_orders_buyer_created_at ON public.orders USING btree (buyer_id, created_at DESC)",f,f
+public,orders,idx_orders_created,CREATE INDEX idx_orders_created ON public.orders USING btree (created_at DESC),f,f
+public,orders,idx_orders_group,CREATE INDEX idx_orders_group ON public.orders USING btree (group_id),f,f
+public,orders,idx_orders_order_number,CREATE INDEX idx_orders_order_number ON public.orders USING btree (order_number),f,f
+public,orders,idx_orders_payment_status,CREATE INDEX idx_orders_payment_status ON public.orders USING btree (payment_status),f,f
+public,orders,idx_orders_seller_created,"CREATE INDEX idx_orders_seller_created ON public.orders USING btree (seller_id, created_at DESC)",f,f
+public,orders,idx_orders_shipment_status,CREATE INDEX idx_orders_shipment_status ON public.orders USING btree (shipment_status),f,f
+public,orders,idx_orders_status,CREATE INDEX idx_orders_status ON public.orders USING btree (status),f,f
+public,orders,idx_orders_status_updated_at,"CREATE INDEX idx_orders_status_updated_at ON public.orders USING btree (status, updated_at DESC)",f,f
+public,orders,orders_order_number_key,CREATE UNIQUE INDEX orders_order_number_key ON public.orders USING btree (order_number),t,f
+public,orders,orders_pkey,CREATE UNIQUE INDEX orders_pkey ON public.orders USING btree (id),t,t
+public,orders,uq_orders_order_number,CREATE UNIQUE INDEX uq_orders_order_number ON public.orders USING btree (order_number),t,f
+public,partner_allowed_payment_methods,idx_papm_partner,CREATE INDEX idx_papm_partner ON public.partner_allowed_payment_methods USING btree (partner_id),f,f
+public,partner_allowed_payment_methods,partner_allowed_payment_methods_pkey,"CREATE UNIQUE INDEX partner_allowed_payment_methods_pkey ON public.partner_allowed_payment_methods USING btree (partner_id, method)",t,t
+public,partner_date_availabilities,idx_partner_date_availabilities_partner,"CREATE INDEX idx_partner_date_availabilities_partner ON public.partner_date_availabilities USING btree (partner_id, kind, date)",f,f
+public,partner_date_availabilities,partner_date_availabilities_pkey,CREATE UNIQUE INDEX partner_date_availabilities_pkey ON public.partner_date_availabilities USING btree (id),t,t
+public,partner_date_availabilities,uq_partner_date,"CREATE UNIQUE INDEX uq_partner_date ON public.partner_date_availabilities USING btree (partner_id, kind, date, start_time, end_time)",t,f
+public,partner_weekday_availabilities,idx_partner_weekday_availabilities_partner,"CREATE INDEX idx_partner_weekday_availabilities_partner ON public.partner_weekday_availabilities USING btree (partner_id, kind, weekday)",f,f
+public,partner_weekday_availabilities,partner_weekday_availabilities_pkey,CREATE UNIQUE INDEX partner_weekday_availabilities_pkey ON public.partner_weekday_availabilities USING btree (id),t,t
+public,partner_weekday_availabilities,uq_partner_weekday,"CREATE UNIQUE INDEX uq_partner_weekday ON public.partner_weekday_availabilities USING btree (partner_id, kind, weekday, start_time, end_time)",t,f
+public,partners,idx_partners_city_trgm,CREATE INDEX idx_partners_city_trgm ON public.partners USING gin (city gin_trgm_ops),f,f
+public,partners,idx_partners_name,CREATE INDEX idx_partners_name ON public.partners USING btree (name),f,f
+public,partners,idx_partners_postal_norm,CREATE INDEX idx_partners_postal_norm ON public.partners USING btree (postal_norm),f,f
+public,partners,idx_partners_prefecture_city,"CREATE INDEX idx_partners_prefecture_city ON public.partners USING btree (prefecture, city)",f,f
+public,partners,idx_partners_status,CREATE INDEX idx_partners_status ON public.partners USING btree (status),f,f
+public,partners,idx_partners_status_type,"CREATE INDEX idx_partners_status_type ON public.partners USING btree (status, type)",f,f
+public,partners,idx_partners_type,CREATE INDEX idx_partners_type ON public.partners USING btree (type),f,f
+public,partners,partners_pkey,CREATE UNIQUE INDEX partners_pkey ON public.partners USING btree (id),t,t
+public,partners,ux_partners_partner_key,CREATE UNIQUE INDEX ux_partners_partner_key ON public.partners USING btree (partner_key),t,f
+public,password_reset_tokens,idx_prt_exp_used,"CREATE INDEX idx_prt_exp_used ON public.password_reset_tokens USING btree (expires_at, used)",f,f
+public,password_reset_tokens,idx_prt_user,CREATE INDEX idx_prt_user ON public.password_reset_tokens USING btree (user_id),f,f
+public,password_reset_tokens,idx_prt_user_token,"CREATE INDEX idx_prt_user_token ON public.password_reset_tokens USING btree (user_id, token_hash)",f,f
+public,password_reset_tokens,password_reset_tokens_pkey,CREATE UNIQUE INDEX password_reset_tokens_pkey ON public.password_reset_tokens USING btree (id),t,t
+public,payments,idx_payments_created,CREATE INDEX idx_payments_created ON public.payments USING btree (created_at DESC),f,f
+public,payments,idx_payments_order,CREATE INDEX idx_payments_order ON public.payments USING btree (order_id),f,f
+public,payments,idx_payments_order_updated,"CREATE INDEX idx_payments_order_updated ON public.payments USING btree (order_id, updated_at DESC)",f,f
+public,payments,idx_payments_status,CREATE INDEX idx_payments_status ON public.payments USING btree (status),f,f
+public,payments,payments_pkey,CREATE UNIQUE INDEX payments_pkey ON public.payments USING btree (id),t,t
+public,payments,payments_transaction_id_key,CREATE UNIQUE INDEX payments_transaction_id_key ON public.payments USING btree (transaction_id),t,f
+public,product_images,idx_product_images_position,"CREATE INDEX idx_product_images_position ON public.product_images USING btree (product_id, ""position"")",f,f
+public,product_images,idx_product_images_product,CREATE INDEX idx_product_images_product ON public.product_images USING btree (product_id),f,f
+public,product_images,ix_product_images_position,"CREATE INDEX ix_product_images_position ON public.product_images USING btree (""position"")",f,f
+public,product_images,ix_product_images_product_id,CREATE INDEX ix_product_images_product_id ON public.product_images USING btree (product_id),f,f
+public,product_images,product_images_pkey,CREATE UNIQUE INDEX product_images_pkey ON public.product_images USING btree (id),t,t
+public,product_images,product_images_r2_key_key,CREATE UNIQUE INDEX product_images_r2_key_key ON public.product_images USING btree (r2_key),t,f
+public,product_reviews,idx_product_reviews_product_created,"CREATE INDEX idx_product_reviews_product_created ON public.product_reviews USING btree (product_id, created_at DESC)",f,f
+public,product_reviews,idx_product_reviews_status,CREATE INDEX idx_product_reviews_status ON public.product_reviews USING btree (status),f,f
+public,product_reviews,product_reviews_pkey,CREATE UNIQUE INDEX product_reviews_pkey ON public.product_reviews USING btree (id),t,t
+public,product_reviews,uq_product_reviews_user,"CREATE UNIQUE INDEX uq_product_reviews_user ON public.product_reviews USING btree (product_id, user_id)",t,f
+public,product_specs,idx_product_specs_pos,"CREATE INDEX idx_product_specs_pos ON public.product_specs USING btree (product_id, ""position"")",f,f
+public,product_specs,idx_product_specs_product,CREATE INDEX idx_product_specs_product ON public.product_specs USING btree (product_id),f,f
+public,product_specs,product_specs_pkey,CREATE UNIQUE INDEX product_specs_pkey ON public.product_specs USING btree (id),t,t
+public,product_tags,product_tags_pkey,"CREATE UNIQUE INDEX product_tags_pkey ON public.product_tags USING btree (product_id, tag_id)",t,t
+public,products,idx_products_category,CREATE INDEX idx_products_category ON public.products USING btree (category_id),f,f
+public,products,idx_products_price,CREATE INDEX idx_products_price ON public.products USING btree (price),f,f
+public,products,idx_products_published_at,CREATE INDEX idx_products_published_at ON public.products USING btree (published_at DESC),f,f
+public,products,idx_products_status,CREATE INDEX idx_products_status ON public.products USING btree (status),f,f
+public,products,idx_products_stock,CREATE INDEX idx_products_stock ON public.products USING btree (stock),f,f
+public,products,idx_products_trgm,"CREATE INDEX idx_products_trgm ON public.products USING gin ((((COALESCE(title, ''::text) || ' '::text) || COALESCE(description_md, ''::text))) gin_trgm_ops)",f,f
+public,products,products_pkey,CREATE UNIQUE INDEX products_pkey ON public.products USING btree (id),t,t
+public,products,products_slug_key,CREATE UNIQUE INDEX products_slug_key ON public.products USING btree (slug),t,f
+public,r2_assets,r2_assets_key_uidx,CREATE UNIQUE INDEX r2_assets_key_uidx ON public.r2_assets USING btree (key),t,f
+public,r2_assets,r2_assets_pkey,CREATE UNIQUE INDEX r2_assets_pkey ON public.r2_assets USING btree (key),t,t
+public,r2_assets,r2_assets_seller_idx,CREATE INDEX r2_assets_seller_idx ON public.r2_assets USING btree (seller_id),f,f
+public,r2_assets,r2_assets_sha256_idx,CREATE INDEX r2_assets_sha256_idx ON public.r2_assets USING btree (sha256),f,f
+public,seller_profile_values,seller_profile_values_pkey,"CREATE UNIQUE INDEX seller_profile_values_pkey ON public.seller_profile_values USING btree (seller_profile_id, value_code)",t,t
+public,seller_profiles,idx_seller_profiles_partner_id,CREATE INDEX idx_seller_profiles_partner_id ON public.seller_profiles USING btree (partner_id),f,f
+public,seller_profiles,seller_profiles_pkey,CREATE UNIQUE INDEX seller_profiles_pkey ON public.seller_profiles USING btree (id),t,t
+public,seller_profiles,seller_profiles_user_id_idx,CREATE UNIQUE INDEX seller_profiles_user_id_idx ON public.seller_profiles USING btree (last_updated_by_user_id),t,f
+public,seller_profiles,ux_seller_profiles_partner,CREATE UNIQUE INDEX ux_seller_profiles_partner ON public.seller_profiles USING btree (partner_id),t,f
+public,seller_value_tags,seller_value_tags_pkey,CREATE UNIQUE INDEX seller_value_tags_pkey ON public.seller_value_tags USING btree (code),t,t
+public,shipments,idx_shipments_created,CREATE INDEX idx_shipments_created ON public.shipments USING btree (created_at DESC),f,f
+public,shipments,idx_shipments_order,CREATE INDEX idx_shipments_order ON public.shipments USING btree (order_id),f,f
+public,shipments,idx_shipments_order_updated,"CREATE INDEX idx_shipments_order_updated ON public.shipments USING btree (order_id, updated_at DESC)",f,f
+public,shipments,idx_shipments_status,CREATE INDEX idx_shipments_status ON public.shipments USING btree (status),f,f
+public,shipments,ix_shipments_order,CREATE INDEX ix_shipments_order ON public.shipments USING btree (order_id),f,f
+public,shipments,ix_shipments_status,CREATE INDEX ix_shipments_status ON public.shipments USING btree (status),f,f
+public,shipments,shipments_pkey,CREATE UNIQUE INDEX shipments_pkey ON public.shipments USING btree (id),t,t
+public,shipments,shipments_tracking_number_key,CREATE UNIQUE INDEX shipments_tracking_number_key ON public.shipments USING btree (tracking_number),t,f
+public,tags,idx_tags_name,CREATE INDEX idx_tags_name ON public.tags USING btree (name),f,f
+public,tags,tags_name_key,CREATE UNIQUE INDEX tags_name_key ON public.tags USING btree (name),t,f
+public,tags,tags_pkey,CREATE UNIQUE INDEX tags_pkey ON public.tags USING btree (id),t,t
+public,tags,tags_slug_key,CREATE UNIQUE INDEX tags_slug_key ON public.tags USING btree (slug),t,f
+public,user_allowed_payment_methods,idx_uapm_user,CREATE INDEX idx_uapm_user ON public.user_allowed_payment_methods USING btree (user_id),f,f
+public,user_allowed_payment_methods,user_allowed_payment_methods_pkey,"CREATE UNIQUE INDEX user_allowed_payment_methods_pkey ON public.user_allowed_payment_methods USING btree (user_id, method)",t,t
+public,user_recent_products,idx_user_recent_products_user_time,"CREATE INDEX idx_user_recent_products_user_time ON public.user_recent_products USING btree (user_id, viewed_at DESC)",f,f
+public,user_recent_products,user_recent_products_pkey,"CREATE UNIQUE INDEX user_recent_products_pkey ON public.user_recent_products USING btree (user_id, product_id)",t,t
+public,users,idx_users_city_trgm,CREATE INDEX idx_users_city_trgm ON public.users USING gin (city gin_trgm_ops),f,f
+public,users,idx_users_partner,CREATE INDEX idx_users_partner ON public.users USING btree (partner_id),f,f
+public,users,idx_users_postal_norm,CREATE INDEX idx_users_postal_norm ON public.users USING btree (postal_norm),f,f
+public,users,idx_users_prefecture_city,"CREATE INDEX idx_users_prefecture_city ON public.users USING btree (prefecture, city)",f,f
+public,users,users_email_key,CREATE UNIQUE INDEX users_email_key ON public.users USING btree (email),t,f
+public,users,users_pkey,CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id),t,t

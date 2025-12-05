@@ -4385,6 +4385,7 @@ async function loadCartItems(req) {
     quantity: v.quantity,
     sellerId: v.sellerId,
     sellerPartnerId: v.sellerPartnerId,
+    coupon: req.session?.cart?.coupon || null
   }));
 }
 
@@ -4435,10 +4436,197 @@ async function fetchCartItemsWithDetails(items) {
     }));
 }
 
+const {
+  getRulesForSeller,
+  saveRulesForSeller
+} = require('./services/shippingRulesService');
+
+function selectShippingRuleForAddress(rules, addr) {
+  if (!addr) return null;
+  const prefecture = (addr.prefecture || '').trim();
+  const city = (addr.city || '').trim();
+  if (!prefecture) return null;
+
+  const cityRule = rules.find(
+    r => r.scope === 'city' &&
+         r.prefecture === prefecture &&
+         r.city === city
+  );
+  if (cityRule) return cityRule;
+
+  const prefRule = rules.find(
+    r => r.scope === 'prefecture' &&
+         r.prefecture === prefecture
+  );
+  if (prefRule) return prefRule;
+
+  const allRule = rules.find(r => r.scope === 'all');
+  return allRule || null;
+}
+
+function shippingFromRule(rule) {
+  if (!rule) {
+    return { ok: false, reason: 'NO_RULE', shipping: null };
+  }
+  if (rule.can_ship === false) {
+    return { ok: false, reason: 'CANNOT_SHIP', shipping: null };
+  }
+  let fee = rule.shipping_fee;
+  if (fee == null) fee = 0;
+  return { ok: true, reason: 'OK', shipping: fee };
+}
+
+async function resolveShippingForSellerAndAddress({ sellerId, userId, shippingAddressId }) {
+  if (!shippingAddressId) {
+    return { ok: false, reason: 'NO_ADDRESS', shipping: null, rule: null };
+  }
+
+  const [addrRows, rules] = await Promise.all([
+    dbQuery(
+      `SELECT id, prefecture, city
+         FROM addresses
+        WHERE id=$1::uuid
+          AND user_id=$2
+          AND scope='user'
+        LIMIT 1`,
+      [shippingAddressId, userId]
+    ),
+    getRulesForSeller(sellerId)
+  ]);
+
+  if (!addrRows.length) {
+    return { ok: false, reason: 'ADDR_NOT_FOUND', shipping: null, rule: null };
+  }
+
+  const addr = addrRows[0];
+  const rule = selectShippingRuleForAddress(rules, addr);
+  const base = shippingFromRule(rule);
+  return { ...base, rule, addr };
+}
+
+/**
+ * フロントに返すための totals + shippingError をまとめて作る共通ヘルパ
+ */
+async function buildTotalsForFrontend(req, { shipMethod, sellerId, shippingAddressId }) {
+  const cart = await loadCartItems(req);
+  const selectedIds = getSelectedIdsBySeller(req, sellerId);
+  const pairs = filterPairsBySelectedAndSeller(cart, selectedIds, sellerId);
+  const items = await fetchCartItemsWithDetails(pairs || []);
+  const userId = req.session?.user?.id || null;
+  const _shipMethod = shipMethod || 'delivery';
+
+  let shippingOverride = null;
+  let shippingError = null;
+
+  if (_shipMethod === 'delivery') {
+    const shipRes = await resolveShippingForSellerAndAddress({
+      sellerId,
+      userId,
+      shippingAddressId
+    });
+
+    if (!shipRes.ok) {
+      if (shipRes.reason === 'CANNOT_SHIP') {
+        shippingError = '選択された住所はこの出品者の配送対象外エリアです。畑で受け取り、または別の住所をご選択ください。';
+      } else if (shipRes.reason === 'NO_RULE') {
+        shippingError = 'この出品者の配送設定が見つかりません。畑受け取りを選ぶか、別の住所をご指定ください。';
+      } else {
+        shippingError = '配送先住所が不正です。別の住所を選択してください。';
+      }
+    } else {
+      shippingOverride = shipRes.shipping;
+    }
+  }
+
+  const coupon = cart.coupon || req.session.cart?.coupon || null;
+  let totals = calcTotals(items, coupon, { shipMethod: _shipMethod, shippingOverride });
+
+  // クーポンの最大割引を考慮（apply-coupon と揃える）
+  if (coupon?.maxDiscount && totals.discount > coupon.maxDiscount) {
+    const diff = totals.discount - coupon.maxDiscount;
+    totals.discount = coupon.maxDiscount;
+    totals.total = Math.max(0, totals.total + diff);
+  }
+
+  return { totals, shippingError };
+}
+
+/**
+ * seller_shipping_rules + 住所 から、適用すべきルールを 1 件選ぶ
+ * 優先度: city > prefecture > all
+ */
+function selectShippingRuleForAddress(rules, addr) {
+  if (!addr) return null;
+  const prefecture = (addr.prefecture || '').trim();
+  const city = (addr.city || '').trim();
+  if (!prefecture) return null;
+
+  const cityRule = rules.find(
+    r => r.scope === 'city' &&
+         r.prefecture === prefecture &&
+         r.city === city
+  );
+  if (cityRule) return cityRule;
+
+  const prefRule = rules.find(
+    r => r.scope === 'prefecture' &&
+         r.prefecture === prefecture
+  );
+  if (prefRule) return prefRule;
+
+  const allRule = rules.find(r => r.scope === 'all');
+  return allRule || null;
+}
+
+/**
+ * ルール1件から送料計算（配送可否も含め判定）
+ */
+function shippingFromRule(rule) {
+  if (!rule) {
+    return { ok: false, reason: 'NO_RULE', shipping: null };
+  }
+  if (rule.can_ship === false) {
+    return { ok: false, reason: 'CANNOT_SHIP', shipping: null };
+  }
+  let fee = rule.shipping_fee;
+  if (fee == null) fee = 0; // 設定なし = 0円とみなす
+  return { ok: true, reason: 'OK', shipping: fee };
+}
+
+/**
+ * sellerId + ユーザー + 住所ID から、送料を解決する（DBアクセス込）
+ */
+async function resolveShippingForSellerAndAddress({ sellerId, userId, shippingAddressId }) {
+  if (!shippingAddressId) {
+    return { ok: false, reason: 'NO_ADDRESS', shipping: null, rule: null };
+  }
+
+  const [addrRows, rules] = await Promise.all([
+    dbQuery(
+      `SELECT id, prefecture, city
+         FROM addresses
+        WHERE id=$1::uuid
+          AND user_id=$2
+        LIMIT 1`,
+      [shippingAddressId, userId]
+    ),
+    getRulesForSeller(sellerId)
+  ]);
+
+  if (!addrRows.length) {
+    return { ok: false, reason: 'ADDR_NOT_FOUND', shipping: null, rule: null };
+  }
+
+  const addr = addrRows[0];
+  const rule = selectShippingRuleForAddress(rules, addr);
+  const base = shippingFromRule(rule);
+  return { ...base, rule, addr };
+}
+
 /** 合計計算（割引・送料を含めたサマリー） */
 function calcTotals(items, coupon, opts = {}) {
   const { shipMethod = 'delivery', shippingOverride = null } = opts || {};
-
+  console.log(coupon);
   const subtotal = items.reduce(
     (acc, it) => acc + (toInt(it.price, 0) * toInt(it.quantity, 1)),
     0
@@ -4472,7 +4660,7 @@ function calcTotals(items, coupon, opts = {}) {
   const total = totalBeforeShip + shipping;
 
   // 送料無料までの残額（pickup時は常に0）
-  const freeShipRemain = (shipMethod === 'pickup')
+  const freeShipRemain = (shipMethod === 'pickup' || shippingOverride !== null)
     ? 0
     : Math.max(0, FREE_SHIP_THRESHOLD - subtotal);
 
@@ -4717,111 +4905,112 @@ const TIME_SLOT_MASTER = {
   pickup: PICKUP_TIME_SLOTS
 };
 
-/* ----------------------------
- *  POST /cart/apply-coupon クーポン適用
- *  body: { code }
- *  例: SUM10 → 10%OFF
- * -------------------------- */
-app.post('/checkout/apply-coupon', async (req, res, next) => {
-  try {
-    const { code, shipMethod, sellerId } = req.body || {};
-    const cart = ensureCart(req);
-    const _shipMethod = shipMethod || 'delivery';
-    const userId = req.session?.user?.id || null;
+// /* ----------------------------
+//  *  POST /cart/apply-coupon クーポン適用
+//  *  body: { code }
+//  *  例: SUM10 → 10%OFF
+//  * -------------------------- */
+// app.post('/checkout/apply-coupon', async (req, res, next) => {
+//   console.log('4914行目のアプライクーポン');
+//   try {
+//     const { code, shipMethod, sellerId } = req.body || {};
+//     const cart = ensureCart(req);
+//     const _shipMethod = shipMethod || 'delivery';
+//     const userId = req.session?.user?.id || null;
 
-    // ★ どの出品者カートかで items を取得する
-    let items = [];
-    if (sellerId) {
-      const allPairs = await loadCartItems(req); // いつも /checkout で使っているやつ
-      const selectedIds = getSelectedIdsBySeller(req, sellerId);
-      const pairs = filterPairsBySelectedAndSeller(allPairs, selectedIds, sellerId);
-      items = await fetchCartItemsWithDetails(pairs);
-    } else {
-      // sellerId が無い場合は従来通り cart.items から（フォールバック）
-      items = await fetchCartItemsWithDetails(cart.items || []);
-    }
+//     // ★ どの出品者カートかで items を取得する
+//     let items = [];
+//     if (sellerId) {
+//       const allPairs = await loadCartItems(req); // いつも /checkout で使っているやつ
+//       const selectedIds = getSelectedIdsBySeller(req, sellerId);
+//       const pairs = filterPairsBySelectedAndSeller(allPairs, selectedIds, sellerId);
+//       items = await fetchCartItemsWithDetails(pairs);
+//     } else {
+//       // sellerId が無い場合は従来通り cart.items から（フォールバック）
+//       items = await fetchCartItemsWithDetails(cart.items || []);
+//     }
 
-    const subtotal = items.reduce((a, it) => a + (toInt(it.price, 0) * toInt(it.quantity, 1)), 0);
+//     const subtotal = items.reduce((a, it) => a + (toInt(it.price, 0) * toInt(it.quantity, 1)), 0);
 
-    // ★ code プロパティの「有無」で再計算/適用/解除を分ける
-    const hasCodeKey = Object.prototype.hasOwnProperty.call(req.body || {}, 'code');
+//     // ★ code プロパティの「有無」で再計算/適用/解除を分ける
+//     const hasCodeKey = Object.prototype.hasOwnProperty.call(req.body || {}, 'code');
 
-    // ① 再計算のみ（shipMethod 変更時）
-    if (!hasCodeKey) {
-      const coupon = cart.coupon || null;
-      const totals = calcTotals(items, coupon, { shipMethod: _shipMethod });
-      return res.json({
-        ok: true,
-        applied: !!coupon,
-        totals,
-        message: ''
-      });
-    }
+//     // ① 再計算のみ（shipMethod 変更時）
+//     if (!hasCodeKey) {
+//       const coupon = cart.coupon || null;
+//       const totals = calcTotals(items, coupon, { shipMethod: _shipMethod });
+//       return res.json({
+//         ok: true,
+//         applied: !!coupon,
+//         totals,
+//         message: ''
+//       });
+//     }
 
-    // ② 解除（code === '' など falsy）
-    if (!code) {
-      cart.coupon = null;
-      const totals = calcTotals(items, null, { shipMethod: _shipMethod });
-      return res.json({
-        ok: true,
-        applied: false,
-        totals,
-        message: 'クーポンを解除しました。'
-      });
-    }
+//     // ② 解除（code === '' など falsy）
+//     if (!code) {
+//       cart.coupon = null;
+//       const totals = calcTotals(items, null, { shipMethod: _shipMethod });
+//       return res.json({
+//         ok: true,
+//         applied: false,
+//         totals,
+//         message: 'クーポンを解除しました。'
+//       });
+//     }
 
-    // ③ 新規適用（code あり）
-    // すでに適用済みなら注意だけ出して totals はそのまま
-    if (cart.coupon && cart.coupon.code) {
-      const totals = calcTotals(items, cart.coupon, { shipMethod: _shipMethod });
-      return res.json({
-        ok: true,
-        applied: true,
-        totals,
-        message: `既にクーポン（${cart.coupon.code}）が適用されています。解除してから別のコードを適用してください。`,
-        locked: true
-      });
-    }
+//     // ③ 新規適用（code あり）
+//     // すでに適用済みなら注意だけ出して totals はそのまま
+//     if (cart.coupon && cart.coupon.code) {
+//       const totals = calcTotals(items, cart.coupon, { shipMethod: _shipMethod });
+//       return res.json({
+//         ok: true,
+//         applied: true,
+//         totals,
+//         message: `既にクーポン（${cart.coupon.code}）が適用されています。解除してから別のコードを適用してください。`,
+//         locked: true
+//       });
+//     }
 
-    const norm = String(code).trim();
-    const coupon = await findCouponByCode(norm);
-    if (!coupon) {
-      const totals = calcTotals(items, null, { shipMethod: _shipMethod });
-      return res.json({ ok: true, applied: false, totals, message: '無効なクーポンです。' });
-    }
+//     const norm = String(code).trim();
+//     const coupon = await findCouponByCode(norm);
+//     if (!coupon) {
+//       const totals = calcTotals(items, null, { shipMethod: _shipMethod });
+//       return res.json({ ok: true, applied: false, totals, message: '無効なクーポンです。' });
+//     }
 
-    const v = await validateCouponForUser(coupon, { userId, subtotal, shipMethod: _shipMethod });
-    if (!v.ok) {
-      const totals = calcTotals(items, null, { shipMethod: _shipMethod });
-      let msg = 'このクーポンはご利用いただけません。';
-      if (v.reason === 'MIN_SUBTOTAL') msg = `小計が最低利用金額（¥${Number(v.data?.min||0).toLocaleString()}）に達していません。`;
-      if (v.reason === 'GLOBAL_LIMIT') msg = 'このクーポンは規定回数に達しました。';
-      if (v.reason === 'PER_USER_LIMIT') msg = 'お一人様のご利用上限に達しています。';
-      if (v.reason === 'SHIP_METHOD')   msg = 'このクーポンは現在の受け取り方法ではご利用いただけません。';
-      return res.json({ ok: true, applied: false, totals, message: msg });
-    }
+//     const v = await validateCouponForUser(coupon, { userId, subtotal, shipMethod: _shipMethod });
+//     if (!v.ok) {
+//       const totals = calcTotals(items, null, { shipMethod: _shipMethod });
+//       let msg = 'このクーポンはご利用いただけません。';
+//       if (v.reason === 'MIN_SUBTOTAL') msg = `小計が最低利用金額（¥${Number(v.data?.min||0).toLocaleString()}）に達していません。`;
+//       if (v.reason === 'GLOBAL_LIMIT') msg = 'このクーポンは規定回数に達しました。';
+//       if (v.reason === 'PER_USER_LIMIT') msg = 'お一人様のご利用上限に達しています。';
+//       if (v.reason === 'SHIP_METHOD')   msg = 'このクーポンは現在の受け取り方法ではご利用いただけません。';
+//       return res.json({ ok: true, applied: false, totals, message: msg });
+//     }
 
-    // セッション保存
-    cart.coupon = {
-      code: coupon.code,
-      type: coupon.discount_type,
-      value: Number(coupon.discount_value) || 0,
-      maxDiscount: Number(coupon.max_discount) || null,
-      minSubtotal: Number(coupon.min_subtotal) || 0,
-    };
+//     // セッション保存
+//     cart.coupon = {
+//       code: coupon.code,
+//       type: coupon.discount_type,
+//       value: Number(coupon.discount_value) || 0,
+//       maxDiscount: Number(coupon.max_discount) || null,
+//       minSubtotal: Number(coupon.min_subtotal) || 0,
+//     };
 
-    let totals = calcTotals(items, cart.coupon, { shipMethod: _shipMethod });
-    if (cart.coupon.maxDiscount && totals.discount > cart.coupon.maxDiscount) {
-      const diff = totals.discount - cart.coupon.maxDiscount;
-      totals.discount = cart.coupon.maxDiscount;
-      totals.total = Math.max(0, totals.total + diff);
-    }
+//     let totals = calcTotals(items, cart.coupon, { shipMethod: _shipMethod });
+//     if (cart.coupon.maxDiscount && totals.discount > cart.coupon.maxDiscount) {
+//       const diff = totals.discount - cart.coupon.maxDiscount;
+//       totals.discount = cart.coupon.maxDiscount;
+//       totals.total = Math.max(0, totals.total + diff);
+//     }
 
-    return res.json({ ok: true, applied: true, totals, message: 'クーポンを適用しました。' });
-  } catch (e) {
-    next(e);
-  }
-});
+//     return res.json({ ok: true, applied: true, totals, message: 'クーポンを適用しました。' });
+//   } catch (e) {
+//     next(e);
+//   }
+// });
 
 async function getUserCartId(sessionUserId) {
   const rows = await dbQuery(
@@ -5195,14 +5384,14 @@ async function validateCouponForUser(coupon, { userId, subtotal, shipMethod }) {
 
   // 利用回数制限（要件に応じて「orders」等の実テーブルで最終確定時にも検証）
   if (Number.isFinite(coupon.global_limit)) {
-    const g = await dbQuery(`SELECT COUNT(*)::int AS c FROM orders WHERE coupon_code = $1`, [coupon.code]);
+    const g = await dbQuery(`SELECT COUNT(*)::int AS c FROM orders WHERE coupon_code = $1 and status != 'canceled'`, [coupon.code]);
     if ((g[0]?.c|0) >= (coupon.global_limit|0)) {
       return { ok: false, reason: 'GLOBAL_LIMIT' };
     }
   }
   if (Number.isFinite(coupon.per_user_limit) && userId) {
     const u = await dbQuery(
-      `SELECT COUNT(*)::int AS c FROM orders WHERE coupon_code = $1 AND buyer_id = $2`,
+      `SELECT COUNT(*)::int AS c FROM orders WHERE coupon_code = $1 AND buyer_id = $2 and status != 'canceled'`,
       [coupon.code, userId]
     );
     if ((u[0]?.c|0) >= (coupon.per_user_limit|0)) {
@@ -5212,6 +5401,29 @@ async function validateCouponForUser(coupon, { userId, subtotal, shipMethod }) {
 
   return { ok: true };
 }
+
+app.post('/checkout/recalc-totals', async (req, res, next) => {
+  try {
+    if (!req.session?.user) {
+      return res.status(401).json({ ok: false, message: 'ログインが必要です。' });
+    }
+
+    const { shipMethod, sellerId, shippingAddressId } = req.body || {};
+    if (!sellerId) {
+      return res.status(400).json({ ok: false, message: 'sellerId が指定されていません。' });
+    }
+
+    const { totals, shippingError } = await buildTotalsForFrontend(req, {
+      shipMethod,
+      sellerId,
+      shippingAddressId
+    });
+
+    return res.json({ ok: true, totals, shippingError });
+  } catch (e) {
+    next(e);
+  }
+});
 
 /* ----------------------------
  *  GET /checkout  注文情報入力ページ
@@ -5280,7 +5492,6 @@ app.get('/checkout', async (req, res, next) => {
     const today = new Date();
     const fromDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1); // 明日
     const toDate   = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate() + 30); // 30日後まで
-    console.log(partnerId);
     // ✅ sellerId は partner.id とみなして、そのまま partnerId として利用
     const shipAvailability = await loadAvailabilityForPartner(partnerId, {
       from: fromDate,
@@ -5288,8 +5499,6 @@ app.get('/checkout', async (req, res, next) => {
     });
 
     const shipTimeSlots = await loadPartnerWeeklyTimeSlots(partnerId);
-
-    console.log(shipAvailability);
 
     // 住所など既存処理
     const uid = req.session.user.id;
@@ -5312,8 +5521,32 @@ app.get('/checkout', async (req, res, next) => {
       orderNote: draft.orderNote || ''
     };
 
+    let shippingOverride = null;
+    if (form.shipMethod === 'delivery' && form.shippingAddressId) {
+      // 既に addresses を取っているので追加クエリ無しでOK
+      const addr = addresses.find(a => String(a.id) === String(form.shippingAddressId));
+      if (addr) {
+        const rules = await getRulesForSeller(sellerId);
+        const rule = selectShippingRuleForAddress(rules, addr);
+        const s = shippingFromRule(rule);
+        if (s.ok) {
+          shippingOverride = s.shipping;
+        } else if (rule && s.reason === 'CANNOT_SHIP') {
+          // 配送不可エリアなら警告だけ出しておく（POST 側でブロックする）
+          req.session.flash = {
+            type: 'error',
+            message: '選択された配送先はこの出品者の配送対象外エリアです。別の住所を選ぶか「畑で受け取り」を選択してください。'
+          };
+        }
+      }
+    }
+
     // 合計系はグループ内で計算
-    const totals = calcTotals(items, req.session?.cart?.coupon || null, {shipMethod: form.shipMethod});
+    const totals = calcTotals(
+      items,
+      req.session?.cart?.coupon || null,
+      { shipMethod: form.shipMethod, shippingOverride }
+    );
 
     res.render('checkout/index', {
       title: 'ご注文手続き',
@@ -5356,8 +5589,6 @@ app.post('/checkout', async (req, res, next) => {
       shippingAddressId, billSame, billingAddressId,
       shipMethod, shipDate, shipTime, paymentMethod, orderNote, agree
     } = req.body;
-
-    console.log(shipMethod);
 
     // 出品者の許可設定
     const sellerConfig = await fetchSellerConfig(sellerId);
@@ -5420,6 +5651,28 @@ app.post('/checkout', async (req, res, next) => {
         req.session.flash = { type:'error', message:'請求先住所が不正です。' };
         return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
       }
+    }
+
+    let shippingOverride = null;
+    if (shipMethod === 'delivery') {
+      const shipRes = await resolveShippingForSellerAndAddress({
+        sellerId,
+        userId: uid,
+        shippingAddressId
+      });
+
+      if (!shipRes.ok) {
+        let msg = '選択された住所はこの出品者の配送対象外エリアです。';
+        if (shipRes.reason === 'NO_RULE') {
+          msg = 'この出品者の配送設定が見つかりません。別の受け取り方法をお選びください。';
+        } else if (shipRes.reason === 'CANNOT_SHIP') {
+          msg = '選択された住所はこの出品者の配送不可エリアです。畑受け取りを選ぶか、別の住所をご指定ください。';
+        }
+        req.session.flash = { type:'error', message: msg };
+        return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
+      }
+
+      shippingOverride = shipRes.shipping; // この値自体は draft には入れず、confirm でもう一度計算します
     }
 
     if (shipDate) {
@@ -5511,57 +5764,139 @@ app.post('/checkout', async (req, res, next) => {
 
 /* ----------------------------
  *  POST /checkout/apply-coupon
+ *  - クーポン適用 / 解除 / 再計算
  * -------------------------- */
 app.post('/checkout/apply-coupon', async (req, res, next) => {
+  console.log('UNIFIED /checkout/apply-coupon');
   try {
-    const { code, shipMethod } = req.body || {};
-    const cart = ensureCart(req);
-
-    // カートの中身（sellerごと等の分割がある場合は適宜フィルタ）
-    const items = await fetchCartItemsWithDetails(cart.items);
-    const subtotal = items.reduce((a, it) => a + (toInt(it.price, 0) * toInt(it.quantity, 1)), 0);
+    const { code, shipMethod, sellerId, shippingAddressId } = req.body || {};
+    const cart = ensureCart(req); // ★ セッション cart を必ず取得
     const _shipMethod = shipMethod || 'delivery';
     const userId = req.session?.user?.id || null;
 
-    // 解除
-    if (!code) {
-      cart.coupon = null;
-      const totals = calcTotals(items, null, { shipMethod: _shipMethod });
-      return res.json({ ok: true, applied: false, totals, message: 'クーポンを解除しました。' });
-    }
+    // 「code プロパティが body に存在するかどうか」を判定
+    const hasCodeKey = Object.prototype.hasOwnProperty.call(req.body || {}, 'code');
 
-    // すでに何か適用済みなら、まずは解除を促す（1注文=1クーポン）
-    if (cart.coupon && cart.coupon.code) {
-      const totals = calcTotals(items, cart.coupon, { shipMethod: _shipMethod });
+    // -----------------------------
+    // ① 再計算のみ（shipMethod/住所変更など）
+    //    body に code プロパティそのものが無いパターン
+    // -----------------------------
+    if (!hasCodeKey) {
+      const { totals, shippingError } = await buildTotalsForFrontend(req, {
+        shipMethod: _shipMethod,
+        sellerId,
+        shippingAddressId
+      });
       return res.json({
         ok: true,
-        applied: true,               // 既に適用されているという意味で true
+        applied: !!(cart.coupon && cart.coupon.code),
         totals,
-        message: `既にクーポン（${cart.coupon.code}）が適用されています。解除してから別のコードを適用してください。`,
-        locked: true                 // UIで入力/ボタンをロックする目印
+        shippingError,
+        message: ''
       });
     }
 
+    // ここから先は「code プロパティあり」
+
+    // -----------------------------
+    // ② 解除（code === '' など空文字）
+    // -----------------------------
+    if (!code) {
+      cart.coupon = null;
+      const { totals, shippingError } = await buildTotalsForFrontend(req, {
+        shipMethod: _shipMethod,
+        sellerId,
+        shippingAddressId
+      });
+      return res.json({
+        ok: true,
+        applied: false,
+        totals,
+        shippingError,
+        message: 'クーポンを解除しました。'
+      });
+    }
+
+    // -----------------------------
+    // ③ 新規適用（code あり）
+    //    既に何か適用済みなら警告だけ
+    // -----------------------------
+    if (cart.coupon && cart.coupon.code) {
+      const { totals, shippingError } = await buildTotalsForFrontend(req, {
+        shipMethod: _shipMethod,
+        sellerId,
+        shippingAddressId
+      });
+      return res.json({
+        ok: true,
+        applied: true, // 既に何か適用されている
+        totals,
+        shippingError,
+        message: `既にクーポン（${cart.coupon.code}）が適用されています。解除してから別のコードを適用してください。`,
+        locked: true
+      });
+    }
+
+    // クーポン検索
     const norm = String(code).trim();
     const coupon = await findCouponByCode(norm);
     if (!coupon) {
-      const totals = calcTotals(items, null, { shipMethod: _shipMethod });
-      return res.json({ ok: true, applied: false, totals, message: '無効なクーポンです。' });
+      const { totals, shippingError } = await buildTotalsForFrontend(req, {
+        shipMethod: _shipMethod,
+        sellerId,
+        shippingAddressId
+      });
+      return res.json({
+        ok: true,
+        applied: false,
+        totals,
+        shippingError,
+        message: '無効なクーポンです。'
+      });
     }
 
-    // 検証
+    // -----------------------------
+    // ④ クーポン利用可否チェック（小計ベース）
+    //    → 出品者ごとの items を使って subtotal 計算
+    // -----------------------------
+    const allPairs   = await loadCartItems(req);
+    const selectedIds = sellerId ? getSelectedIdsBySeller(req, sellerId) : new Set();
+    const pairs = sellerId
+      ? filterPairsBySelectedAndSeller(allPairs, selectedIds, sellerId)
+      : (cart.items || []);
+
+    const items = await fetchCartItemsWithDetails(pairs || []);
+    const subtotal = items.reduce(
+      (a, it) => a + (toInt(it.price, 0) * toInt(it.quantity, 1)),
+      0
+    );
+
     const v = await validateCouponForUser(coupon, { userId, subtotal, shipMethod: _shipMethod });
     if (!v.ok) {
-      const totals = calcTotals(items, null, { shipMethod: _shipMethod });
+      const { totals, shippingError } = await buildTotalsForFrontend(req, {
+        shipMethod: _shipMethod,
+        sellerId,
+        shippingAddressId
+      });
+
       let msg = 'このクーポンはご利用いただけません。';
       if (v.reason === 'MIN_SUBTOTAL') msg = `小計が最低利用金額（¥${Number(v.data?.min||0).toLocaleString()}）に達していません。`;
       if (v.reason === 'GLOBAL_LIMIT') msg = 'このクーポンは規定回数に達しました。';
       if (v.reason === 'PER_USER_LIMIT') msg = 'お一人様のご利用上限に達しています。';
       if (v.reason === 'SHIP_METHOD')   msg = 'このクーポンは現在の受け取り方法ではご利用いただけません。';
-      return res.json({ ok: true, applied: false, totals, message: msg });
+
+      return res.json({
+        ok: true,
+        applied: false,
+        totals,
+        shippingError,
+        message: msg
+      });
     }
 
-    // セッション保存（必要最小限）
+    // -----------------------------
+    // ⑤ 適用OK → セッション cart に保存
+    // -----------------------------
     cart.coupon = {
       code: coupon.code,
       type: coupon.discount_type,        // 'percent' | 'amount'
@@ -5570,17 +5905,19 @@ app.post('/checkout/apply-coupon', async (req, res, next) => {
       minSubtotal: Number(coupon.min_subtotal) || 0,
     };
 
-    // 計算＆上限補正
-    let totals = calcTotals(items, cart.coupon, { shipMethod: _shipMethod });
-    if (cart.coupon.maxDiscount && totals.discount > cart.coupon.maxDiscount) {
-      const diff = totals.discount - cart.coupon.maxDiscount;
-      totals.discount = cart.coupon.maxDiscount;
-      totals.total = Math.max(0, totals.total + diff);
-    }
-    console.log(totals.total);
-    console.log(totals.discount);
+    const { totals, shippingError } = await buildTotalsForFrontend(req, {
+      shipMethod: _shipMethod,
+      sellerId,
+      shippingAddressId
+    });
 
-    return res.json({ ok: true, applied: true, totals, message: 'クーポンを適用しました。' });
+    return res.json({
+      ok: true,
+      applied: true,
+      totals,
+      shippingError,
+      message: 'クーポンを適用しました。'
+    });
   } catch (e) {
     next(e);
   }
@@ -5734,8 +6071,31 @@ app.get('/checkout/confirm', async (req, res, next) => {
       }
     }
 
+    let shippingOverride = null;
+    if (shipMethod === 'delivery') {
+      const shipRes = await resolveShippingForSellerAndAddress({
+        sellerId,
+        userId: uid,
+        shippingAddressId: draft.shippingAddressId
+      });
+
+      if (!shipRes.ok) {
+        req.session.flash = {
+          type: 'error',
+          message: '配送先住所が現在の配送設定では配送対象外です。もう一度選択してください。'
+        };
+        return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
+      }
+
+      shippingOverride = shipRes.shipping;
+    }
+
     // 合計（クーポンはセッションの cart.coupon を利用）
-    const totals = calcTotals(items, req.session?.cart?.coupon || null, { shipMethod: draft.shipMethod });
+    const totals = calcTotals(
+      items,
+      req.session?.cart?.coupon || null,
+      { shipMethod: draft.shipMethod, shippingOverride }
+    );
 
     const sessionCart = req.session?.cart?.coupon || null;
     let coupon = null;
@@ -6071,30 +6431,6 @@ app.post('/checkout/confirm', async (req, res, next) => {
     // ★ 時間帯コードをサニタイズして安全な値に
     const rawShipTimeCode = (draft.shipTime || '').trim() || null;
 
-    // 合計計算（サーバ側で最終確定）
-    const itemsForTotal = targetPairs.map(p => {
-      const prod = byId.get(p.productId);
-      return { price: prod.price, quantity: p.quantity };
-    });
-    const coupon = req.session?.cart?.coupon || null;
-    const subtotal = itemsForTotal.reduce((a,b)=>a + (b.price*b.quantity), 0);
-    const discount = coupon
-      ? (coupon.type === 'percent'
-          ? Math.floor(subtotal * (coupon.value/100))
-          : Math.min(subtotal, Math.floor(coupon.value||0)))
-      : 0;
-    const shipping_fee = (subtotal === 0 || subtotal >= FREE_SHIP_THRESHOLD || shipMethod === 'pickup') ? 0 : FLAT_SHIPPING;
-    const total = Math.max(0, subtotal - discount) + shipping_fee;
-
-    // 住所の再確認
-    let shippingAddress = null;
-    if (shipMethod === 'delivery') {
-      shippingAddress = await findUserAddress(uid, draft.shippingAddressId);
-      if (!shippingAddress) {
-        req.session.flash = { type:'error', message:'配送先住所が不正です。' };
-        return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
-      }
-    }
     const billSame = draft.billSame;
     let billingAddress = null;
     if (shipMethod === 'pickup' || !billSame) {
@@ -6104,6 +6440,62 @@ app.post('/checkout/confirm', async (req, res, next) => {
         return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
       }
     }
+
+    // 合計計算（サーバ側で最終確定）
+    const itemsForTotal = targetPairs.map(p => {
+      const prod = byId.get(p.productId);
+      return { price: prod.price, quantity: p.quantity };
+    });
+    const coupon = req.session?.cart?.coupon || null;
+
+    const subtotal = itemsForTotal.reduce((a,b)=>a + (b.price*b.quantity), 0);
+
+    // ★ クーポン割引（type / value / maxDiscount に対応）
+    let discount = 0;
+    if (coupon) {
+      if (coupon.type === 'percent') {
+        discount = Math.floor(subtotal * (coupon.value / 100));
+      } else {
+        discount = Math.min(subtotal, Math.floor(coupon.value || 0));
+      }
+      if (coupon.maxDiscount && discount > coupon.maxDiscount) {
+        discount = coupon.maxDiscount;
+      }
+      // 必要なら minSubtotal もここでガード
+      if (coupon.minSubtotal && subtotal < coupon.minSubtotal) {
+        // 条件を満たしていない場合は割引 0 扱いにする
+        discount = 0;
+      }
+    }
+
+    // ★ 出品者ごとの配送ルールで送料決定
+    let shipping_fee = 0;
+    if (shipMethod === 'pickup') {
+      shipping_fee = 0;
+    } else {
+      const shipRes = await resolveShippingForSellerAndAddress({
+        sellerId,
+        userId: uid,
+        shippingAddressId: draft.shippingAddressId
+      });
+
+      if (!shipRes.ok) {
+        let msg = '配送先住所が不正です。別の住所を選択してください。';
+        if (shipRes.reason === 'CANNOT_SHIP') {
+          msg = '選択された住所はこの出品者の配送対象外エリアです。畑受け取り、または別の住所をご選択ください。';
+        } else if (shipRes.reason === 'NO_RULE') {
+          msg = 'この出品者の配送設定が見つかりません。畑受け取りを選ぶか、別の住所をご指定ください。';
+        } else if (shipRes.reason === 'ADDR_NOT_FOUND') {
+          msg = '配送先住所が見つかりません。別の住所を選択してください。';
+        }
+        req.session.flash = { type: 'error', message: msg };
+        return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
+      }
+
+      shipping_fee = shipRes.shipping || 0;
+    }
+
+    const total = Math.max(0, subtotal - discount) + shipping_fee;
 
     // 出品者の許可設定を再取得し、支払い方法を最終バリデーション
     const sellerConfig = await fetchSellerConfig(sellerId);
@@ -6192,7 +6584,7 @@ app.post('/checkout/confirm', async (req, res, next) => {
     }
     req.session.cart = req.session.cart || {};
     // クーポンは「使い切り」にしたいならここで null
-    // req.session.cart.coupon = null;
+    req.session.cart.coupon = null;
 
     await client.query('COMMIT');
 
@@ -7436,8 +7828,6 @@ ${body.length > 120 ? body.slice(0, 120) + '…' : body}
             ['contact_reply', title, bodyText, linkUrl]
           );
           const notificationId = nRows[0]?.id;
-          console.log(notificationId);
-          console.log(contact.user_id);
           if (notificationId) {
             // 対象ユーザー用ターゲットを作成
             await dbQuery(
@@ -7460,6 +7850,43 @@ ${body.length > 120 ? body.slice(0, 120) + '…' : body}
     }
   }
 );
+
+// 取引先向け配送・送料サマリをロード
+async function loadShippingSummaryForPartner(partnerId) {
+  const rows = await dbQuery(
+    `SELECT scope, prefecture, city, shipping_fee, can_ship
+       FROM seller_shipping_rules
+      WHERE seller_id = $1::uuid
+      ORDER BY scope, prefecture NULLS FIRST, city NULLS FIRST`,
+    [partnerId]
+  );
+  if (!rows.length) {
+    return { hasAny: false };
+  }
+
+  const globalRule      = rows.find(r => r.scope === 'all') || null;
+  const prefectureRules = rows.filter(r => r.scope === 'prefecture');
+  const cityRules       = rows.filter(r => r.scope === 'city');
+
+  let globalLabel = '全国一律は未設定です。';
+  if (globalRule) {
+    if (!globalRule.can_ship) {
+      globalLabel = '全国配送不可（個別地域のみ配送）';
+    } else if (globalRule.shipping_fee == null) {
+      globalLabel = '全国配送可（送料未設定）';
+    } else {
+      globalLabel = `全国一律 ${globalRule.shipping_fee}円`;
+    }
+  }
+
+  return {
+    hasAny: true,
+    globalRule,
+    globalLabel,
+    prefectureRules,
+    cityRules
+  };
+}
 
 // 取引先一覧
 // GET /admin/partners
@@ -7582,6 +8009,8 @@ app.get(
       const { weekly, specials } = await loadPartnerAvailabilityForPartner(id); 
       const availabilitySummary = buildAvailabilitySummary(weekly, specials);
 
+      const shippingSummary = await loadShippingSummaryForPartner(id);
+
       res.render('admin/partners/show', {
         title: `取引先詳細 | ${partner.name}`,
         partner,
@@ -7591,6 +8020,7 @@ app.get(
         paymentMethods: partnerMethods,
         allPaymentMethods: allMethod,
         availabilitySummary,
+        shippingSummary,
         csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
       });
     } catch (e) {
@@ -7956,6 +8386,72 @@ app.post(
     } catch (e) {
       await dbQuery('ROLLBACK').catch(()=>{});
       next(e);
+    }
+  }
+);
+
+/**
+ * GET: 送料・配送地域設定ページ
+ */
+app.get(
+  '/admin/partners/:id/shipping',
+  requireAuth,
+  requireRole(['seller']),
+  async (req, res, next) => {
+    try {
+      const sellerId = req.params.id;
+      // 出品者情報
+      const sellerRows = await dbQuery(
+        `SELECT id, name FROM partners WHERE id = $1 LIMIT 1`,
+        [sellerId]
+      );
+      if (!sellerRows.length) {
+        return res.status(404).render('errors/404', {
+          title: '出品者が見つかりません'
+        });
+      }
+      const seller = sellerRows[0];
+
+      // 既存ルール
+      const rules = await getRulesForSeller(sellerId);
+
+      res.render('seller/shipping', {
+        title: '送料・配送地域設定',
+        action: '/admin/partners/' + sellerId + '/shipping',
+        csrfToken: req.csrfToken(),
+        seller,
+        partner: {},      // 必要ならパートナー情報を入れてもOK
+        rules
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * POST: 送料・配送地域設定保存
+ */
+app.post(
+  '/admin/partners/:id/shipping',
+  requireAuth,
+  requireRole(['seller']),
+  async (req, res, next) => {
+    try {
+      const sellerId = req.params.id; // ログイン中の seller
+
+      const defaultRule = req.body.default || null;
+      const prefRules   = req.body.prefRules || [];
+      const cityRules   = req.body.cityRules || [];
+
+      await saveRulesForSeller(sellerId, { defaultRule, prefRules, cityRules });
+
+      return res.redirect(`/admin/partners/${encodeURIComponent(sellerId)}/shipping`);
+    } catch (err) {
+      if (err && err.code === '23505') {
+        console.error('shipping rules unique violation:', err.detail || err.message);
+      }
+      next(err);
     }
   }
 );
