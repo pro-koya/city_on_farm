@@ -31,10 +31,10 @@ jobs:
           node-version: '18'
 
       - name: Generate CSVs
-        run: npm run schema:csv
+        run: npm run schema:prod:csv
 
       - name: Generate SCHEMA.md
-        run: npm run schema:md
+        run: npm run schema:prod:md
 
       # 変更があればコミット
       - name: Commit & Push
