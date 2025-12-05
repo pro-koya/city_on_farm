@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-11-26T18:31:43.390Z
+> Generated at: 2025-12-05T00:23:53.720Z
 
 ---
 
@@ -33,7 +33,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16681_10_not_null`, `2200_16681_11_not_null`, `2200_16681_12_not_null`, `2200_16681_14_not_null`, `2200_16681_15_not_null`, `2200_16681_17_not_null`, `2200_16681_18_not_null`, `2200_16681_1_not_null`, `2200_16681_2_not_null`, `2200_16681_5_not_null`, `2200_16681_6_not_null`, `2200_16681_9_not_null`, `addresses_address_type_check`, `addresses_check`, `addresses_scope_check`
+- **CHECK**: `addresses_address_line1_not_null`, `addresses_address_type_check`, `addresses_address_type_not_null`, `addresses_check`, `addresses_city_not_null`, `addresses_country_not_null`, `addresses_created_at_not_null`, `addresses_full_name_not_null`, `addresses_id_not_null`, `addresses_is_default_not_null`, `addresses_postal_code_not_null`, `addresses_prefecture_not_null`, `addresses_scope_check`, `addresses_scope_not_null`, `addresses_updated_at_not_null`
 - **FOREIGN KEY**: `addresses_order_id_fkey`, `addresses_user_id_fkey`
 - **PRIMARY KEY**: `addresses_pkey`
 
@@ -62,6 +62,55 @@
 
 ---
 
+### `public.campaigns`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `slug` | `text` | YES |  |  |
+| 3 | `title` | `text` | NO |  |  |
+| 4 | `eyebrow` | `text` | YES |  |  |
+| 5 | `teaser_text` | `text` | YES |  |  |
+| 6 | `hero_image_url` | `text` | YES |  |  |
+| 7 | `body_html` | `text` | NO |  |  |
+| 8 | `body_raw` | `text` | YES |  |  |
+| 9 | `status` | `text` | NO | 'draft'::text |  |
+| 10 | `published_at` | `timestamp with time zone` | YES |  |  |
+| 11 | `starts_at` | `timestamp with time zone` | YES |  |  |
+| 12 | `ends_at` | `timestamp with time zone` | YES |  |  |
+| 13 | `created_by` | `uuid` | YES |  |  |
+| 14 | `created_at` | `timestamp with time zone` | NO | now() |  |
+| 15 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+
+**Constraints**
+
+- **CHECK**: `campaigns_body_html_not_null`, `campaigns_created_at_not_null`, `campaigns_id_not_null`, `campaigns_status_not_null`, `campaigns_title_not_null`, `campaigns_updated_at_not_null`
+- **FOREIGN KEY**: `campaigns_created_by_fkey`
+- **PRIMARY KEY**: `campaigns_pkey`
+- **UNIQUE**: `campaigns_slug_key`
+
+**Indexes**
+
+- `campaigns_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX campaigns_pkey ON public.campaigns USING btree (id)
+  ```
+- `campaigns_slug_key`
+  
+  ```sql
+  CREATE UNIQUE INDEX campaigns_slug_key ON public.campaigns USING btree (slug)
+  ```
+- `idx_campaigns_status_published`
+  
+  ```sql
+  CREATE INDEX idx_campaigns_status_published ON public.campaigns USING btree (status, published_at DESC)
+  ```
+
+---
+
 ### `public.cart_items`
 
 **Columns**
@@ -81,7 +130,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16695_1_not_null`, `2200_16695_2_not_null`, `2200_16695_3_not_null`, `2200_16695_4_not_null`, `2200_16695_5_not_null`, `2200_16695_6_not_null`, `2200_16695_7_not_null`, `cart_items_quantity_check`
+- **CHECK**: `cart_items_cart_id_not_null`, `cart_items_created_at_not_null`, `cart_items_id_not_null`, `cart_items_product_id_not_null`, `cart_items_quantity_check`, `cart_items_quantity_not_null`, `cart_items_saved_for_later_not_null`, `cart_items_updated_at_not_null`
 - **FOREIGN KEY**: `cart_items_cart_id_fkey`, `cart_items_product_id_fkey`, `cart_items_user_id_fkey`
 - **PRIMARY KEY**: `cart_items_pkey`
 - **UNIQUE**: `cart_items_cart_id_product_id_key`
@@ -135,7 +184,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16705_1_not_null`, `2200_16705_2_not_null`, `2200_16705_4_not_null`, `2200_16705_5_not_null`
+- **CHECK**: `carts_created_at_not_null`, `carts_id_not_null`, `carts_updated_at_not_null`, `carts_user_id_not_null`
 - **FOREIGN KEY**: `carts_user_id_fkey`
 - **PRIMARY KEY**: `carts_pkey`
 - **UNIQUE**: `carts_user_id_key`
@@ -170,7 +219,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16713_1_not_null`, `2200_16713_2_not_null`, `2200_16713_3_not_null`, `2200_16713_4_not_null`, `2200_16713_5_not_null`, `2200_16713_6_not_null`
+- **CHECK**: `categories_created_at_not_null`, `categories_id_not_null`, `categories_name_not_null`, `categories_slug_not_null`, `categories_sort_order_not_null`, `categories_updated_at_not_null`
 - **PRIMARY KEY**: `categories_pkey`
 - **UNIQUE**: `categories_name_key`, `categories_slug_key`
 
@@ -211,7 +260,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_17319_1_not_null`, `2200_17319_2_not_null`, `2200_17319_4_not_null`, `2200_17319_5_not_null`, `2200_17319_6_not_null`, `2200_17319_7_not_null`, `2200_17319_8_not_null`
+- **CHECK**: `contact_messages_body_not_null`, `contact_messages_contact_id_not_null`, `contact_messages_created_at_not_null`, `contact_messages_id_not_null`, `contact_messages_is_internal_not_null`, `contact_messages_sender_type_not_null`, `contact_messages_updated_at_not_null`
 - **FOREIGN KEY**: `contact_messages_contact_id_fkey`, `contact_messages_sender_id_fkey`
 - **PRIMARY KEY**: `contact_messages_pkey`
 
@@ -259,7 +308,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16722_10_not_null`, `2200_16722_1_not_null`, `2200_16722_2_not_null`, `2200_16722_3_not_null`, `2200_16722_4_not_null`, `2200_16722_5_not_null`, `2200_16722_6_not_null`, `2200_16722_9_not_null`, `contacts_status_check`
+- **CHECK**: `contacts_created_at_not_null`, `contacts_email_not_null`, `contacts_id_not_null`, `contacts_message_not_null`, `contacts_name_not_null`, `contacts_status_check`, `contacts_status_not_null`, `contacts_type_not_null`, `contacts_updated_at_not_null`
 - **FOREIGN KEY**: `contacts_handled_by_fkey`, `contacts_user_id_fkey`
 - **PRIMARY KEY**: `contacts_pkey`
 
@@ -339,7 +388,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16733_14_not_null`, `2200_16733_16_not_null`, `2200_16733_17_not_null`, `2200_16733_1_not_null`, `2200_16733_2_not_null`, `2200_16733_5_not_null`, `2200_16733_6_not_null`, `2200_16733_7_not_null`, `2200_16733_9_not_null`, `coupons_applies_to_check`, `coupons_check`, `coupons_discount_type_check`, `coupons_discount_value_check`, `coupons_max_discount_check`, `coupons_min_subtotal_check`
+- **CHECK**: `coupons_applies_to_check`, `coupons_applies_to_not_null`, `coupons_check`, `coupons_code_not_null`, `coupons_created_at_not_null`, `coupons_discount_type_check`, `coupons_discount_type_not_null`, `coupons_discount_value_check`, `coupons_discount_value_not_null`, `coupons_id_not_null`, `coupons_is_active_not_null`, `coupons_max_discount_check`, `coupons_min_subtotal_check`, `coupons_min_subtotal_not_null`, `coupons_updated_at_not_null`
 - **PRIMARY KEY**: `coupons_pkey`
 - **UNIQUE**: `coupons_code_key`
 
@@ -363,6 +412,56 @@
 
 ---
 
+### `public.email_verifications`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `user_id` | `uuid` | NO |  |  |
+| 3 | `email` | `text` | NO |  |  |
+| 4 | `token` | `text` | NO |  |  |
+| 5 | `expires_at` | `timestamp with time zone` | NO |  |  |
+| 6 | `created_at` | `timestamp with time zone` | NO | now() |  |
+| 7 | `used_at` | `timestamp with time zone` | YES |  |  |
+
+**Constraints**
+
+- **CHECK**: `email_verifications_created_at_not_null`, `email_verifications_email_not_null`, `email_verifications_expires_at_not_null`, `email_verifications_id_not_null`, `email_verifications_token_not_null`, `email_verifications_user_id_not_null`
+- **PRIMARY KEY**: `email_verifications_pkey`
+- **UNIQUE**: `uq_email_verifications_token`
+
+**Indexes**
+
+- `email_verifications_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX email_verifications_pkey ON public.email_verifications USING btree (id)
+  ```
+- `idx_email_verifications_email`
+  
+  ```sql
+  CREATE INDEX idx_email_verifications_email ON public.email_verifications USING btree (email)
+  ```
+- `idx_email_verifications_expires`
+  
+  ```sql
+  CREATE INDEX idx_email_verifications_expires ON public.email_verifications USING btree (expires_at)
+  ```
+- `idx_email_verifications_user`
+  
+  ```sql
+  CREATE INDEX idx_email_verifications_user ON public.email_verifications USING btree (user_id)
+  ```
+- `uq_email_verifications_token`
+  
+  ```sql
+  CREATE UNIQUE INDEX uq_email_verifications_token ON public.email_verifications USING btree (token)
+  ```
+
+---
+
 ### `public.global_allowed_payment_methods`
 
 **Columns**
@@ -375,7 +474,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16750_1_not_null`
+- **CHECK**: `global_allowed_payment_methods_method_not_null`
 - **PRIMARY KEY**: `global_allowed_payment_methods_pkey`
 
 **Indexes**
@@ -400,7 +499,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_17270_1_not_null`, `2200_17270_2_not_null`, `2200_17270_3_not_null`
+- **CHECK**: `gmail_tokens_id_not_null`, `gmail_tokens_token_json_not_null`, `gmail_tokens_updated_at_not_null`
 - **PRIMARY KEY**: `gmail_tokens_pkey`
 
 **Indexes**
@@ -428,7 +527,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_17386_1_not_null`, `2200_17386_2_not_null`, `2200_17386_3_not_null`, `2200_17386_4_not_null`
+- **CHECK**: `notification_reads_id_not_null`, `notification_reads_notification_id_not_null`, `notification_reads_read_at_not_null`, `notification_reads_user_id_not_null`
 - **FOREIGN KEY**: `notification_reads_notification_id_fkey`, `notification_reads_user_id_fkey`
 - **PRIMARY KEY**: `notification_reads_pkey`
 - **UNIQUE**: `notification_reads_uniq`
@@ -475,7 +574,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_17361_1_not_null`, `2200_17361_2_not_null`, `2200_17361_6_not_null`, `notification_targets_one_dimension_chk`
+- **CHECK**: `notification_targets_created_at_not_null`, `notification_targets_id_not_null`, `notification_targets_notification_id_not_null`, `notification_targets_one_dimension_chk`
 - **FOREIGN KEY**: `notification_targets_notification_id_fkey`, `notification_targets_user_id_fkey`
 - **PRIMARY KEY**: `notification_targets_pkey`
 
@@ -530,7 +629,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_17342_10_not_null`, `2200_17342_1_not_null`, `2200_17342_2_not_null`, `2200_17342_3_not_null`, `2200_17342_4_not_null`, `2200_17342_9_not_null`
+- **CHECK**: `notifications_body_not_null`, `notifications_created_at_not_null`, `notifications_id_not_null`, `notifications_title_not_null`, `notifications_type_not_null`, `notifications_updated_at_not_null`
 - **FOREIGN KEY**: `notifications_created_by_fkey`
 - **PRIMARY KEY**: `notifications_pkey`
 
@@ -576,7 +675,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16753_1_not_null`, `2200_16753_2_not_null`, `2200_16753_3_not_null`, `2200_16753_4_not_null`, `2200_16753_5_not_null`, `2200_16753_6_not_null`, `2200_16753_7_not_null`, `2200_16753_8_not_null`
+- **CHECK**: `option_labels_active_not_null`, `option_labels_category_not_null`, `option_labels_created_at_not_null`, `option_labels_label_en_not_null`, `option_labels_label_ja_not_null`, `option_labels_sort_not_null`, `option_labels_updated_at_not_null`, `option_labels_value_not_null`
 - **PRIMARY KEY**: `option_labels_pkey`
 - **UNIQUE**: `option_labels_unique`
 
@@ -625,7 +724,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16762_11_not_null`, `2200_16762_12_not_null`, `2200_16762_13_not_null`, `2200_16762_1_not_null`, `2200_16762_2_not_null`, `2200_16762_3_not_null`, `2200_16762_4_not_null`, `2200_16762_5_not_null`, `2200_16762_6_not_null`, `2200_16762_7_not_null`, `2200_16762_8_not_null`, `2200_16762_9_not_null`
+- **CHECK**: `order_addresses_address_line1_not_null`, `order_addresses_address_type_not_null`, `order_addresses_city_not_null`, `order_addresses_country_not_null`, `order_addresses_created_at_not_null`, `order_addresses_full_name_not_null`, `order_addresses_id_not_null`, `order_addresses_order_id_not_null`, `order_addresses_phone_not_null`, `order_addresses_postal_code_not_null`, `order_addresses_prefecture_not_null`, `order_addresses_updated_at_not_null`
 - **FOREIGN KEY**: `order_addresses_order_id_fkey`
 - **PRIMARY KEY**: `order_addresses_pkey`
 
@@ -674,7 +773,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16771_1_not_null`, `2200_16771_2_not_null`, `2200_16771_4_not_null`, `2200_16771_5_not_null`, `2200_16771_6_not_null`
+- **CHECK**: `order_groups_created_at_not_null`, `order_groups_id_not_null`, `order_groups_total_amount_not_null`, `order_groups_updated_at_not_null`, `order_groups_user_id_not_null`
 - **FOREIGN KEY**: `order_groups_user_id_fkey`
 - **PRIMARY KEY**: `order_groups_pkey`
 - **UNIQUE**: `order_groups_group_number_key`
@@ -716,7 +815,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16780_1_not_null`, `2200_16780_2_not_null`, `2200_16780_3_not_null`, `2200_16780_4_not_null`, `2200_16780_5_not_null`, `order_items_price_check`, `order_items_quantity_check`
+- **CHECK**: `order_items_id_not_null`, `order_items_order_id_not_null`, `order_items_price_check`, `order_items_price_not_null`, `order_items_product_id_not_null`, `order_items_quantity_check`, `order_items_quantity_not_null`
 - **FOREIGN KEY**: `order_items_order_id_fkey`, `order_items_product_id_fkey`, `order_items_seller_id_fkey`
 - **PRIMARY KEY**: `order_items_pkey`
 
@@ -777,6 +876,7 @@
 | 29 | `ship_to` | `jsonb` | YES | '{}'::jsonb |  |
 | 30 | `payment_provider` | `text` | YES |  |  |
 | 31 | `payment_external_id` | `text` | YES |  |  |
+| 32 | `ship_time_code` | `text` | YES |  |  |
 
 > **Enum `order_status` values**: `pending`, `paid`, `shipped`, `cancelled`, `confirmed`, `processing`, `delivered`, `canceled`, `refunded`, `fulfilled`
 > **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`
@@ -786,7 +886,7 @@
 
 **Constraints**
 
-- **CHECK**: `2200_16788_15_not_null`, `2200_16788_1_not_null`, `2200_16788_20_not_null`, `2200_16788_21_not_null`, `2200_16788_23_not_null`, `2200_16788_24_not_null`, `2200_16788_2_not_null`, `2200_16788_3_not_null`, `2200_16788_4_not_null`, `2200_16788_5_not_null`, `2200_16788_6_not_null`, `2200_16788_7_not_null`, `2200_16788_8_not_null`, `2200_16788_9_not_null`, `orders_amounts_check`
+- **CHECK**: `orders_amounts_check`, `orders_bill_same_not_null`, `orders_buyer_id_not_null`, `orders_coupon_discount_not_null`, `orders_created_at_not_null`, `orders_discount_not_null`, `orders_id_not_null`, `orders_payment_status_not_null`, `orders_shipment_status_not_null`, `orders_shipping_fee_not_null`, `orders_status_not_null`, `orders_subtotal_not_null`, `orders_tax_not_null`, `orders_total_not_null`, `orders_updated_at_not_null`
 - **FOREIGN KEY**: `orders_buyer_id_fkey`, `orders_group_id_fkey`, `orders_seller_id_fkey`
 - **PRIMARY KEY**: `orders_pkey`
 - **UNIQUE**: `orders_order_number_key`, `uq_orders_order_number`
@@ -935,7 +1035,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16814_1_not_null`, `2200_16814_2_not_null`, `2200_16814_3_not_null`, `2200_16814_4_not_null`
+- **CHECK**: `partner_allowed_payment_methods_created_at_not_null`, `partner_allowed_payment_methods_method_not_null`, `partner_allowed_payment_methods_partner_id_not_null`, `partner_allowed_payment_methods_updated_at_not_null`
 - **FOREIGN KEY**: `partner_allowed_payment_methods_partner_id_fkey`
 - **PRIMARY KEY**: `partner_allowed_payment_methods_pkey`
 
@@ -973,7 +1073,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_17475_1_not_null`, `2200_17475_2_not_null`, `2200_17475_3_not_null`, `2200_17475_4_not_null`, `2200_17475_5_not_null`, `2200_17475_6_not_null`, `2200_17475_7_not_null`, `2200_17475_8_not_null`
+- **CHECK**: `partner_date_availabilities_created_at_not_null`, `partner_date_availabilities_date_not_null`, `partner_date_availabilities_end_time_not_null`, `partner_date_availabilities_id_not_null`, `partner_date_availabilities_kind_not_null`, `partner_date_availabilities_partner_id_not_null`, `partner_date_availabilities_start_time_not_null`, `partner_date_availabilities_updated_at_not_null`
 - **FOREIGN KEY**: `partner_date_availabilities_partner_id_fkey`
 - **PRIMARY KEY**: `partner_date_availabilities_pkey`
 - **UNIQUE**: `uq_partner_date`
@@ -1017,7 +1117,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_17456_1_not_null`, `2200_17456_2_not_null`, `2200_17456_3_not_null`, `2200_17456_4_not_null`, `2200_17456_5_not_null`, `2200_17456_6_not_null`, `2200_17456_7_not_null`, `2200_17456_8_not_null`, `partner_weekday_availabilities_weekday_check`
+- **CHECK**: `partner_weekday_availabilities_created_at_not_null`, `partner_weekday_availabilities_end_time_not_null`, `partner_weekday_availabilities_id_not_null`, `partner_weekday_availabilities_kind_not_null`, `partner_weekday_availabilities_partner_id_not_null`, `partner_weekday_availabilities_start_time_not_null`, `partner_weekday_availabilities_updated_at_not_null`, `partner_weekday_availabilities_weekday_check`, `partner_weekday_availabilities_weekday_not_null`
 - **FOREIGN KEY**: `partner_weekday_availabilities_partner_id_fkey`
 - **PRIMARY KEY**: `partner_weekday_availabilities_pkey`
 - **UNIQUE**: `uq_partner_weekday`
@@ -1083,7 +1183,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16819_18_not_null`, `2200_16819_19_not_null`, `2200_16819_1_not_null`, `2200_16819_24_not_null`, `2200_16819_25_not_null`, `2200_16819_26_not_null`, `2200_16819_2_not_null`, `2200_16819_4_not_null`, `2200_16819_5_not_null`
+- **CHECK**: `partners_created_at_not_null`, `partners_id_not_null`, `partners_min_order_amount_not_null`, `partners_name_not_null`, `partners_payment_methods_not_null`, `partners_shipping_policy_not_null`, `partners_status_not_null`, `partners_type_not_null`, `partners_updated_at_not_null`
 - **PRIMARY KEY**: `partners_pkey`
 - **UNIQUE**: `ux_partners_partner_key`
 
@@ -1152,7 +1252,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_17279_1_not_null`, `2200_17279_2_not_null`, `2200_17279_3_not_null`, `2200_17279_4_not_null`, `2200_17279_5_not_null`, `2200_17279_6_not_null`
+- **CHECK**: `password_reset_tokens_created_at_not_null`, `password_reset_tokens_expires_at_not_null`, `password_reset_tokens_id_not_null`, `password_reset_tokens_token_hash_not_null`, `password_reset_tokens_used_not_null`, `password_reset_tokens_user_id_not_null`
 - **FOREIGN KEY**: `password_reset_tokens_user_id_fkey`
 - **PRIMARY KEY**: `password_reset_tokens_pkey`
 
@@ -1201,7 +1301,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16836_1_not_null`, `2200_16836_2_not_null`, `2200_16836_3_not_null`, `2200_16836_4_not_null`, `2200_16836_5_not_null`, `2200_16836_7_not_null`, `2200_16836_8_not_null`, `payments_amount_check`
+- **CHECK**: `payments_amount_check`, `payments_amount_not_null`, `payments_created_at_not_null`, `payments_id_not_null`, `payments_method_not_null`, `payments_order_id_not_null`, `payments_status_not_null`, `payments_updated_at_not_null`
 - **FOREIGN KEY**: `payments_order_id_fkey`
 - **PRIMARY KEY**: `payments_pkey`
 - **UNIQUE**: `payments_transaction_id_key`
@@ -1262,7 +1362,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16846_1_not_null`, `2200_16846_2_not_null`, `2200_16846_3_not_null`, `2200_16846_5_not_null`, `2200_16846_6_not_null`
+- **CHECK**: `product_images_created_at_not_null`, `product_images_id_not_null`, `product_images_position_not_null`, `product_images_product_id_not_null`, `product_images_url_not_null`
 - **FOREIGN KEY**: `product_images_product_id_fkey`
 - **PRIMARY KEY**: `product_images_pkey`
 - **UNIQUE**: `product_images_r2_key_key`
@@ -1342,7 +1442,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16854_1_not_null`, `2200_16854_2_not_null`, `2200_16854_3_not_null`, `2200_16854_4_not_null`, `2200_16854_6_not_null`, `2200_16854_7_not_null`, `2200_16854_8_not_null`, `2200_16854_9_not_null`, `product_reviews_rating_check`
+- **CHECK**: `product_reviews_body_not_null`, `product_reviews_created_at_not_null`, `product_reviews_id_not_null`, `product_reviews_product_id_not_null`, `product_reviews_rating_check`, `product_reviews_rating_not_null`, `product_reviews_status_not_null`, `product_reviews_updated_at_not_null`, `product_reviews_user_id_not_null`
 - **FOREIGN KEY**: `product_reviews_product_id_fkey`, `product_reviews_user_id_fkey`
 - **PRIMARY KEY**: `product_reviews_pkey`
 - **UNIQUE**: `uq_product_reviews_user`
@@ -1387,7 +1487,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16868_1_not_null`, `2200_16868_2_not_null`, `2200_16868_3_not_null`, `2200_16868_4_not_null`, `2200_16868_5_not_null`, `2200_16868_6_not_null`
+- **CHECK**: `product_specs_created_at_not_null`, `product_specs_id_not_null`, `product_specs_label_not_null`, `product_specs_position_not_null`, `product_specs_product_id_not_null`, `product_specs_value_not_null`
 - **FOREIGN KEY**: `product_specs_product_id_fkey`
 - **PRIMARY KEY**: `product_specs_pkey`
 
@@ -1422,7 +1522,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16876_1_not_null`, `2200_16876_2_not_null`
+- **CHECK**: `product_tags_product_id_not_null`, `product_tags_tag_id_not_null`
 - **FOREIGN KEY**: `product_tags_product_id_fkey`, `product_tags_tag_id_fkey`
 - **PRIMARY KEY**: `product_tags_pkey`
 
@@ -1466,7 +1566,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16879_10_not_null`, `2200_16879_11_not_null`, `2200_16879_12_not_null`, `2200_16879_13_not_null`, `2200_16879_14_not_null`, `2200_16879_15_not_null`, `2200_16879_17_not_null`, `2200_16879_18_not_null`, `2200_16879_1_not_null`, `2200_16879_2_not_null`, `2200_16879_4_not_null`, `2200_16879_5_not_null`, `2200_16879_8_not_null`, `2200_16879_9_not_null`, `products_price_check`, `products_ship_days_check`, `products_ship_method_check`, `products_stock_check`
+- **CHECK**: `products_created_at_not_null`, `products_id_not_null`, `products_is_organic_not_null`, `products_is_seasonal_not_null`, `products_price_check`, `products_price_not_null`, `products_seller_id_not_null`, `products_ship_days_check`, `products_ship_days_not_null`, `products_ship_method_check`, `products_ship_method_not_null`, `products_slug_not_null`, `products_status_not_null`, `products_stock_check`, `products_stock_not_null`, `products_title_not_null`, `products_unit_not_null`, `products_updated_at_not_null`
 - **FOREIGN KEY**: `products_category_id_fkey`, `products_seller_id_fkey`
 - **PRIMARY KEY**: `products_pkey`
 - **UNIQUE**: `products_slug_key`
@@ -1533,7 +1633,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16895_1_not_null`, `2200_16895_8_not_null`
+- **CHECK**: `r2_assets_created_at_not_null`, `r2_assets_key_not_null`
 - **PRIMARY KEY**: `r2_assets_pkey`
 
 **Indexes**
@@ -1572,7 +1672,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_17431_1_not_null`, `2200_17431_2_not_null`
+- **CHECK**: `seller_profile_values_seller_profile_id_not_null`, `seller_profile_values_value_code_not_null`
 - **FOREIGN KEY**: `seller_profile_values_seller_profile_id_fkey`, `seller_profile_values_value_code_fkey`
 - **PRIMARY KEY**: `seller_profile_values_pkey`
 
@@ -1608,7 +1708,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_17407_1_not_null`, `2200_17407_2_not_null`, `2200_17407_6_not_null`, `2200_17407_7_not_null`, `2200_17407_8_not_null`
+- **CHECK**: `seller_profiles_created_at_not_null`, `seller_profiles_id_not_null`, `seller_profiles_last_updated_by_user_id_not_null`, `seller_profiles_partner_id_not_null`, `seller_profiles_updated_at_not_null`
 - **FOREIGN KEY**: `fk_seller_profiles_partner`, `seller_profiles_user_id_fkey`
 - **PRIMARY KEY**: `seller_profiles_pkey`
 - **UNIQUE**: `ux_seller_profiles_partner`
@@ -1638,6 +1738,51 @@ _No indexes_
 
 ---
 
+### `public.seller_shipping_rules`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `seller_id` | `uuid` | NO |  |  |
+| 3 | `scope` | `shipping_scope` *(enum)* | NO |  |  |
+| 4 | `prefecture` | `text` | YES |  |  |
+| 5 | `city` | `text` | YES |  |  |
+| 6 | `shipping_fee` | `integer` | YES |  |  |
+| 7 | `can_ship` | `boolean` | NO | true |  |
+| 8 | `priority` | `integer` | NO | 0 |  |
+| 9 | `created_at` | `timestamp with time zone` | NO | now() |  |
+| 10 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+
+> **Enum `shipping_scope` values**: `all`, `prefecture`, `city`
+
+**Constraints**
+
+- **CHECK**: `chk_shipping_scope_consistency`, `seller_shipping_rules_can_ship_not_null`, `seller_shipping_rules_created_at_not_null`, `seller_shipping_rules_id_not_null`, `seller_shipping_rules_priority_not_null`, `seller_shipping_rules_scope_not_null`, `seller_shipping_rules_seller_id_not_null`, `seller_shipping_rules_updated_at_not_null`
+- **FOREIGN KEY**: `seller_shipping_rules_seller_id_fkey`
+- **PRIMARY KEY**: `seller_shipping_rules_pkey`
+
+**Indexes**
+
+- `seller_shipping_rules_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX seller_shipping_rules_pkey ON public.seller_shipping_rules USING btree (id)
+  ```
+- `ux_seller_shipping_default`
+  
+  ```sql
+  CREATE UNIQUE INDEX ux_seller_shipping_default ON public.seller_shipping_rules USING btree (seller_id) WHERE (scope = 'all'::shipping_scope)
+  ```
+- `ux_seller_shipping_region`
+  
+  ```sql
+  CREATE UNIQUE INDEX ux_seller_shipping_region ON public.seller_shipping_rules USING btree (seller_id, scope, prefecture, city) WHERE (scope <> 'all'::shipping_scope)
+  ```
+
+---
+
 ### `public.seller_value_tags`
 
 **Columns**
@@ -1650,7 +1795,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_17423_1_not_null`, `2200_17423_2_not_null`, `2200_17423_3_not_null`
+- **CHECK**: `seller_value_tags_code_not_null`, `seller_value_tags_label_ja_not_null`, `seller_value_tags_sort_order_not_null`
 - **PRIMARY KEY**: `seller_value_tags_pkey`
 
 **Indexes**
@@ -1683,7 +1828,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16901_1_not_null`, `2200_16901_2_not_null`, `2200_16901_3_not_null`, `2200_16901_8_not_null`, `2200_16901_9_not_null`
+- **CHECK**: `shipments_created_at_not_null`, `shipments_id_not_null`, `shipments_order_id_not_null`, `shipments_status_not_null`, `shipments_updated_at_not_null`
 - **FOREIGN KEY**: `shipments_order_id_fkey`
 - **PRIMARY KEY**: `shipments_pkey`
 - **UNIQUE**: `shipments_tracking_number_key`
@@ -1747,7 +1892,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16910_1_not_null`, `2200_16910_2_not_null`, `2200_16910_3_not_null`, `2200_16910_4_not_null`, `2200_16910_5_not_null`
+- **CHECK**: `tags_created_at_not_null`, `tags_id_not_null`, `tags_name_not_null`, `tags_slug_not_null`, `tags_updated_at_not_null`
 - **PRIMARY KEY**: `tags_pkey`
 - **UNIQUE**: `tags_name_key`, `tags_slug_key`
 
@@ -1792,7 +1937,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16918_1_not_null`, `2200_16918_2_not_null`, `2200_16918_3_not_null`, `2200_16918_4_not_null`, `2200_16918_5_not_null`
+- **CHECK**: `user_allowed_payment_methods_created_at_not_null`, `user_allowed_payment_methods_method_not_null`, `user_allowed_payment_methods_synced_from_partner_not_null`, `user_allowed_payment_methods_updated_at_not_null`, `user_allowed_payment_methods_user_id_not_null`
 - **FOREIGN KEY**: `user_allowed_payment_methods_user_id_fkey`
 - **PRIMARY KEY**: `user_allowed_payment_methods_pkey`
 
@@ -1823,7 +1968,7 @@ _No indexes_
 
 **Constraints**
 
-- **CHECK**: `2200_16924_1_not_null`, `2200_16924_2_not_null`, `2200_16924_3_not_null`
+- **CHECK**: `user_recent_products_product_id_not_null`, `user_recent_products_user_id_not_null`, `user_recent_products_viewed_at_not_null`
 - **FOREIGN KEY**: `user_recent_products_product_id_fkey`, `user_recent_products_user_id_fkey`
 - **PRIMARY KEY**: `user_recent_products_pkey`
 
@@ -1865,11 +2010,13 @@ _No indexes_
 | 15 | `phone` | `text` | YES |  | 電話番号（ハイフン付き可） |
 | 16 | `phone_norm` | `text` | YES |  | 電話番号（数字のみ） |
 | 17 | `seller_intro_summary` | `text` | YES |  | 商品ページなどに表示する出品者紹介の概要テキスト |
+| 18 | `account_type` | `text` | NO | 'individual'::text |  |
+| 19 | `email_verified_at` | `timestamp with time zone` | YES |  |  |
+| 20 | `email_verify_token` | `text` | YES |  |  |
 
 **Constraints**
 
-- **CHECK**: `2200_16928_1_not_null`, `2200_16928_2_not_null`, `2200_16928_3_not_null`, `2200_16928_4_not_null`, `2200_16928_5_not_null`, `2200_16928_6_not_null`, `2200_16928_7_not_null`
-- **FOREIGN KEY**: `users_partner_id_fkey`
+- **CHECK**: `users_account_type_check`, `users_account_type_not_null`, `users_created_at_not_null`, `users_email_not_null`, `users_id_not_null`, `users_name_not_null`, `users_password_hash_not_null`, `users_roles_not_null`, `users_updated_at_not_null`
 - **PRIMARY KEY**: `users_pkey`
 - **UNIQUE**: `users_email_key`
 
@@ -1921,4 +2068,5 @@ _No indexes_
 - `public.review_status`: `published`, `pending`, `hidden`
 - `public.ship_method`: `pickup`, `delivery`
 - `public.shipment_status`: `pending`, `preparing`, `shipped`, `delivered`, `cancelled`, `returned`, `lost`, `canceled`, `in_transit`
+- `public.shipping_scope`: `all`, `prefecture`, `city`
 

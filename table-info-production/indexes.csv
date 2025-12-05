@@ -3,6 +3,9 @@ public,addresses,addresses_pkey,CREATE UNIQUE INDEX addresses_pkey ON public.add
 public,addresses,ix_addresses_order_scope,"CREATE INDEX ix_addresses_order_scope ON public.addresses USING btree (order_id, scope, address_type)",f,f
 public,addresses,ix_addresses_user_scope,"CREATE INDEX ix_addresses_user_scope ON public.addresses USING btree (user_id, scope, address_type)",f,f
 public,addresses,ux_user_default_address,"CREATE UNIQUE INDEX ux_user_default_address ON public.addresses USING btree (user_id, address_type) WHERE ((scope = 'user'::text) AND (is_default = true))",t,f
+public,campaigns,campaigns_pkey,CREATE UNIQUE INDEX campaigns_pkey ON public.campaigns USING btree (id),t,t
+public,campaigns,campaigns_slug_key,CREATE UNIQUE INDEX campaigns_slug_key ON public.campaigns USING btree (slug),t,f
+public,campaigns,idx_campaigns_status_published,"CREATE INDEX idx_campaigns_status_published ON public.campaigns USING btree (status, published_at DESC)",f,f
 public,cart_items,cart_items_cart_id_product_id_key,"CREATE UNIQUE INDEX cart_items_cart_id_product_id_key ON public.cart_items USING btree (cart_id, product_id)",t,f
 public,cart_items,cart_items_pkey,CREATE UNIQUE INDEX cart_items_pkey ON public.cart_items USING btree (id),t,t
 public,cart_items,idx_cart_items_cart,CREATE INDEX idx_cart_items_cart ON public.cart_items USING btree (cart_id),f,f
@@ -29,6 +32,11 @@ public,contacts,idx_contacts_user_id,CREATE INDEX idx_contacts_user_id ON public
 public,coupons,coupons_code_key,CREATE UNIQUE INDEX coupons_code_key ON public.coupons USING btree (code),t,f
 public,coupons,coupons_pkey,CREATE UNIQUE INDEX coupons_pkey ON public.coupons USING btree (id),t,t
 public,coupons,ix_coupons_active_window,"CREATE INDEX ix_coupons_active_window ON public.coupons USING btree (is_active, starts_at, ends_at, code)",f,f
+public,email_verifications,email_verifications_pkey,CREATE UNIQUE INDEX email_verifications_pkey ON public.email_verifications USING btree (id),t,t
+public,email_verifications,idx_email_verifications_email,CREATE INDEX idx_email_verifications_email ON public.email_verifications USING btree (email),f,f
+public,email_verifications,idx_email_verifications_expires,CREATE INDEX idx_email_verifications_expires ON public.email_verifications USING btree (expires_at),f,f
+public,email_verifications,idx_email_verifications_user,CREATE INDEX idx_email_verifications_user ON public.email_verifications USING btree (user_id),f,f
+public,email_verifications,uq_email_verifications_token,CREATE UNIQUE INDEX uq_email_verifications_token ON public.email_verifications USING btree (token),t,f
 public,global_allowed_payment_methods,global_allowed_payment_methods_pkey,CREATE UNIQUE INDEX global_allowed_payment_methods_pkey ON public.global_allowed_payment_methods USING btree (method),t,t
 public,gmail_tokens,gmail_tokens_pkey,CREATE UNIQUE INDEX gmail_tokens_pkey ON public.gmail_tokens USING btree (id),t,t
 public,notification_reads,idx_notification_reads_notification,CREATE INDEX idx_notification_reads_notification ON public.notification_reads USING btree (notification_id),f,f
@@ -129,6 +137,9 @@ public,seller_profiles,idx_seller_profiles_partner_id,CREATE INDEX idx_seller_pr
 public,seller_profiles,seller_profiles_pkey,CREATE UNIQUE INDEX seller_profiles_pkey ON public.seller_profiles USING btree (id),t,t
 public,seller_profiles,seller_profiles_user_id_idx,CREATE UNIQUE INDEX seller_profiles_user_id_idx ON public.seller_profiles USING btree (last_updated_by_user_id),t,f
 public,seller_profiles,ux_seller_profiles_partner,CREATE UNIQUE INDEX ux_seller_profiles_partner ON public.seller_profiles USING btree (partner_id),t,f
+public,seller_shipping_rules,seller_shipping_rules_pkey,CREATE UNIQUE INDEX seller_shipping_rules_pkey ON public.seller_shipping_rules USING btree (id),t,t
+public,seller_shipping_rules,ux_seller_shipping_default,CREATE UNIQUE INDEX ux_seller_shipping_default ON public.seller_shipping_rules USING btree (seller_id) WHERE (scope = 'all'::shipping_scope),t,f
+public,seller_shipping_rules,ux_seller_shipping_region,"CREATE UNIQUE INDEX ux_seller_shipping_region ON public.seller_shipping_rules USING btree (seller_id, scope, prefecture, city) WHERE (scope <> 'all'::shipping_scope)",t,f
 public,seller_value_tags,seller_value_tags_pkey,CREATE UNIQUE INDEX seller_value_tags_pkey ON public.seller_value_tags USING btree (code),t,t
 public,shipments,idx_shipments_created,CREATE INDEX idx_shipments_created ON public.shipments USING btree (created_at DESC),f,f
 public,shipments,idx_shipments_order,CREATE INDEX idx_shipments_order ON public.shipments USING btree (order_id),f,f
