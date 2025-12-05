@@ -6,6 +6,9 @@
     "start": "nodemon server.js",
     "schema:csv": "psql \"$PGURL\" -v ON_ERROR_STOP=1 -f table-info/export-tableSchema.sql",
     "schema:md": "node table-info/generate_schema_md.mjs",
+    "schema:prod:csv": "psql \"$PGURL\" -v ON_ERROR_STOP=1 -f table-info-production/export-tableSchema.sql",
+    "schema:prod:md": "node table-info-production/generate_schema_md.mjs",
+    "schema:prod:all": "npm run schema:prod:csv && npm run schema:prod:md",
     "schema:all": "npm run schema:csv && npm run schema:md"
   },
   "keywords": [],
