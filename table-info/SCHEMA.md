@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-12-05T00:24:50.524Z
+> Generated at: 2025-12-05T18:33:20.723Z
 
 ---
 
@@ -943,6 +943,11 @@
   
   ```sql
   CREATE INDEX idx_orders_status_updated_at ON public.orders USING btree (status, updated_at DESC)
+  ```
+- `ix_orders_coupon_code`
+  
+  ```sql
+  CREATE INDEX ix_orders_coupon_code ON public.orders USING btree (coupon_code)
   ```
 - `orders_order_number_key`
   

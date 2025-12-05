@@ -76,6 +76,7 @@ public,orders,idx_orders_seller_created,"CREATE INDEX idx_orders_seller_created 
 public,orders,idx_orders_shipment_status,CREATE INDEX idx_orders_shipment_status ON public.orders USING btree (shipment_status),f,f
 public,orders,idx_orders_status,CREATE INDEX idx_orders_status ON public.orders USING btree (status),f,f
 public,orders,idx_orders_status_updated_at,"CREATE INDEX idx_orders_status_updated_at ON public.orders USING btree (status, updated_at DESC)",f,f
+public,orders,ix_orders_coupon_code,CREATE INDEX ix_orders_coupon_code ON public.orders USING btree (coupon_code),f,f
 public,orders,orders_order_number_key,CREATE UNIQUE INDEX orders_order_number_key ON public.orders USING btree (order_number),t,f
 public,orders,orders_pkey,CREATE UNIQUE INDEX orders_pkey ON public.orders USING btree (id),t,t
 public,orders,uq_orders_order_number,CREATE UNIQUE INDEX uq_orders_order_number ON public.orders USING btree (order_number),t,f
