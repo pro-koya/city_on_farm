@@ -134,7 +134,6 @@
   border-radius: 10px;
   border: 1px solid var(--sh-border);
   padding: 8px 10px;
-  font-size: 14px;
   background: #fff;
   box-sizing: border-box;
 }
@@ -152,7 +151,6 @@
 }
 
 .sh-input-suffix {
-  font-size: 13px;
   color: var(--sh-muted);
 }
 

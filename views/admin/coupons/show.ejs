@@ -1,0 +1,176 @@
+<%- include('../../partials/header', {
+  title,
+  extraCSS: '/styles/admin-coupons.css',
+  extraCSS2: ''
+}) %>
+
+<main class="admin admin-coupons-detail">
+  <header class="admin-page-header">
+    <div>
+      <h1>クーポン詳細</h1>
+      <p class="muted"><code><%= coupon.code %></code></p>
+    </div>
+    <div class="admin-page-header__actions">
+      <a href="/admin/coupons/<%= coupon.id %>/edit" class="btn btn--primary">編集</a>
+      <a href="/admin/coupons" class="btn btn--ghost">一覧に戻る</a>
+    </div>
+  </header>
+
+  <section class="admin-detail-grid">
+    <!-- 左：基本情報 -->
+    <article class="card">
+      <h2>基本情報</h2>
+      <dl class="detail-list">
+        <dt>コード</dt>
+        <dd><code><%= coupon.code %></code></dd>
+
+        <dt>名前</dt>
+        <dd><%= coupon.name || '-' %></dd>
+
+        <dt>説明</dt>
+        <dd><pre class="pre-wrap"><%= coupon.description || '-' %></pre></dd>
+
+        <dt>割引</dt>
+        <dd>
+          <% if (coupon.discount_type === 'percent') { %>
+            <%= coupon.discount_value %>% OFF
+          <% } else { %>
+            ¥<%= Number(coupon.discount_value || 0).toLocaleString() %> OFF
+          <% } %>
+        </dd>
+
+        <dt>適用条件</dt>
+        <dd>
+          <% if (coupon.min_subtotal && coupon.min_subtotal > 0) { %>
+            小計 ¥<%= Number(coupon.min_subtotal).toLocaleString() %> 以上
+          <% } else { %>
+            制限なし
+          <% } %>
+          <% if (coupon.max_discount) { %>
+            <br>割引上限 ¥<%= Number(coupon.max_discount).toLocaleString() %>
+          <% } %>
+        </dd>
+
+        <dt>適用対象</dt>
+        <dd><%= coupon.applies_to || 'order' %></dd>
+
+        <dt>利用上限</dt>
+        <dd>
+          全体: <%= coupon.global_limit || '制限なし' %><br>
+          1人あたり: <%= coupon.per_user_limit || '制限なし' %>
+        </dd>
+
+        <dt>有効期間</dt>
+        <dd>
+          <% if (!coupon.starts_at && !coupon.ends_at) { %>
+            期間指定なし
+          <% } else { %>
+            <% if (coupon.starts_at) { %>
+              <div>開始: <%= new Date(coupon.starts_at).toLocaleString('ja-JP') %></div>
+            <% } %>
+            <% if (coupon.ends_at) { %>
+              <div>終了: <%= new Date(coupon.ends_at).toLocaleString('ja-JP') %></div>
+            <% } %>
+          <% } %>
+        </dd>
+
+        <dt>状態</dt>
+        <dd>
+          <%
+            const now = new Date();
+            const startsAt = coupon.starts_at ? new Date(coupon.starts_at) : null;
+            const endsAt   = coupon.ends_at   ? new Date(coupon.ends_at)   : null;
+            const inWindow =
+              (!startsAt || startsAt <= now) &&
+              (!endsAt   || endsAt   >= now);
+            let statusLabel = '下書き/無効';
+            let statusClass = 'badge--muted';
+            if (coupon.is_active && inWindow) {
+              statusLabel = 'アクティブ';
+              statusClass = 'badge--success';
+            } else if (!coupon.is_active) {
+              statusLabel = '無効';
+              statusClass = 'badge--danger';
+            } else if (endsAt && endsAt < now) {
+              statusLabel = '期限切れ';
+              statusClass = 'badge--muted';
+            }
+          %>
+          <span class="badge <%= statusClass %>"><%= statusLabel %></span>
+        </dd>
+
+        <dt>作成日時</dt>
+        <dd><%= new Date(coupon.created_at).toLocaleString('ja-JP') %></dd>
+
+        <dt>更新日時</dt>
+        <dd><%= new Date(coupon.updated_at).toLocaleString('ja-JP') %></dd>
+      </dl>
+    </article>
+
+    <!-- 右：利用状況 -->
+    <article class="card">
+      <h2>利用状況</h2>
+      <dl class="detail-list">
+        <dt>累計使用回数</dt>
+        <dd><strong><%= coupon.usage_count || 0 %></strong> 回</dd>
+
+        <dt>累計割引額</dt>
+        <dd>¥<%= Number(coupon.total_discount || 0).toLocaleString() %></dd>
+
+        <dt>最終使用日時</dt>
+        <dd>
+          <% if (coupon.last_used_at) { %>
+            <%= new Date(coupon.last_used_at).toLocaleString('ja-JP') %>
+          <% } else { %>
+            まだ使用されていません
+          <% } %>
+        </dd>
+      </dl>
+
+      <h3>メタデータ（JSON）</h3>
+      <pre class="code-block">
+<%= JSON.stringify(coupon.metadata || {}, null, 2) %>
+      </pre>
+    </article>
+  </section>
+
+  <!-- 直近の使用履歴 -->
+  <section class="card">
+    <h2>直近の利用履歴</h2>
+    <% if (!usages.length) { %>
+      <p class="muted">このクーポンはまだ注文で使用されていません。</p>
+    <% } else { %>
+      <table class="admin-table admin-table--usages">
+        <thead>
+          <tr>
+            <th>注文番号</th>
+            <th>購入者</th>
+            <th>注文日時</th>
+            <th>注文合計</th>
+            <th>割引額</th>
+            <th>ステータス</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% usages.forEach(o => { %>
+            <tr>
+              <td><%= o.order_number || o.id %></td>
+              <td>
+                <%= o.buyer_name || '-' %>
+                <% if (o.buyer_email) { %>
+                  <span class="muted small">（<%= o.buyer_email %>）</span>
+                <% } %>
+              </td>
+              <td><%= new Date(o.created_at).toLocaleString('ja-JP') %></td>
+              <td>¥<%= Number(o.total || 0).toLocaleString() %></td>
+              <td>¥<%= Number(o.coupon_discount || 0).toLocaleString() %></td>
+              <td><%= o.status %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+</main>
+
+<%- include('../../partials/footer') %>

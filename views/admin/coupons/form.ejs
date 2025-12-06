@@ -1,0 +1,224 @@
+<%- include('../../partials/header', {
+  title,
+  extraCSS: '/styles/admin-coupons.css',
+  extraCSS2: ''
+}) %>
+
+<main class="admin admin-coupons-form">
+  <header class="admin-page-header">
+    <div>
+      <h1><%= isNew ? 'クーポン新規作成' : 'クーポン編集' %></h1>
+      <% if (!isNew && coupon.code) { %>
+        <p class="muted"><code><%= coupon.code %></code></p>
+      <% } %>
+    </div>
+    <div class="admin-page-header__actions">
+      <% if (!isNew && coupon.id) { %>
+        <a href="/admin/coupons/<%= coupon.id %>" class="btn btn--ghost">詳細へ戻る</a>
+      <% } %>
+      <a href="/admin/coupons" class="btn btn--ghost">一覧へ</a>
+    </div>
+  </header>
+
+  <% if (errors && errors.length) { %>
+    <section class="alert alert--error">
+      <h2>入力内容に問題があります</h2>
+      <ul>
+        <% errors.forEach(err => { %>
+          <li><%= err %></li>
+        <% }) %>
+      </ul>
+    </section>
+  <% } %>
+
+  <form
+    method="POST"
+    action="<%= isNew ? '/admin/coupons' : ('/admin/coupons/' + coupon.id) %>"
+    class="card form-grid"
+  >
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <section class="form-section">
+      <h2>基本情報</h2>
+
+      <div class="field">
+        <label for="code">クーポンコード <span class="required">*</span></label>
+        <input
+          id="code"
+          name="code"
+          type="text"
+          required
+          placeholder="例）SUMMER10"
+          value="<%= coupon.code || '' %>"
+        >
+        <p class="help">英数字・記号など任意。ユーザーが入力するコードです。</p>
+      </div>
+
+      <div class="field">
+        <label for="name">表示名</label>
+        <input
+          id="name"
+          name="name"
+          type="text"
+          placeholder="例）サマ―セール10%OFF"
+          value="<%= coupon.name || '' %>"
+        >
+      </div>
+
+      <div class="field">
+        <label for="description">説明</label>
+        <textarea
+          id="description"
+          name="description"
+          rows="3"
+          placeholder="管理用・ユーザー向けの説明など"
+        ><%= coupon.description || '' %></textarea>
+      </div>
+
+      <div class="field field--row">
+        <div>
+          <label for="discount_type">割引種別 <span class="required">*</span></label>
+          <select id="discount_type" name="discount_type" required>
+            <option value="percent" <%= coupon.discount_type === 'percent' ? 'selected' : '' %>>割合（%OFF）</option>
+            <option value="amount"  <%= coupon.discount_type === 'amount'  ? 'selected' : '' %>>金額（円引き）</option>
+          </select>
+        </div>
+        <div>
+          <label for="discount_value">割引値 <span class="required">*</span></label>
+          <input
+            id="discount_value"
+            name="discount_value"
+            type="number"
+            min="1"
+            step="1"
+            value="<%= coupon.discount_value || '' %>"
+            required
+          >
+          <p class="help">
+            割合の場合は「10」で 10%OFF、金額の場合は「500」で ¥500 OFF になります。
+          </p>
+        </div>
+      </div>
+
+      <div class="field field--row">
+        <div>
+          <label for="min_subtotal">最低利用金額（小計）</label>
+          <input
+            id="min_subtotal"
+            name="min_subtotal"
+            type="number"
+            min="0"
+            step="1"
+            value="<%= coupon.min_subtotal || 0 %>"
+          >
+          <p class="help">この金額以上の注文でのみ利用可能。0 の場合は制限なし。</p>
+        </div>
+        <div>
+          <label for="max_discount">割引上限額</label>
+          <input
+            id="max_discount"
+            name="max_discount"
+            type="number"
+            min="0"
+            step="1"
+            value="<%= coupon.max_discount || '' %>"
+          >
+          <p class="help">割合割引の上限額。未入力の場合は上限なし。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="form-section">
+      <h2>利用条件・期間</h2>
+
+      <div class="field field--row">
+        <div>
+          <label for="applies_to">適用対象</label>
+          <select id="applies_to" name="applies_to">
+            <option value="order" <%= (coupon.applies_to || 'order') === 'order' ? 'selected' : '' %>>注文全体</option>
+            <!-- 将来的に「特定カテゴリー」「特定商品」などを増やす想定 -->
+          </select>
+        </div>
+        <div>
+          <label for="global_limit">全体の利用上限</label>
+          <input
+            id="global_limit"
+            name="global_limit"
+            type="number"
+            min="0"
+            step="1"
+            value="<%= coupon.global_limit || '' %>"
+          >
+          <p class="help">このクーポンが全体で何回まで使えるか。空欄で制限なし。</p>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="per_user_limit">1ユーザーあたりの利用上限</label>
+        <input
+          id="per_user_limit"
+          name="per_user_limit"
+          type="number"
+          min="0"
+          step="1"
+          value="<%= coupon.per_user_limit || '' %>"
+        >
+        <p class="help">1つのアカウントが利用できる回数。空欄で制限なし。</p>
+      </div>
+
+      <div class="field field--row">
+        <div>
+          <label for="starts_at">開始日時</label>
+          <input
+            id="starts_at"
+            name="starts_at"
+            type="datetime-local"
+            value="<%= coupon.starts_at ? new Date(coupon.starts_at).toISOString().slice(0,16) : '' %>"
+          >
+        </div>
+        <div>
+          <label for="ends_at">終了日時</label>
+          <input
+            id="ends_at"
+            name="ends_at"
+            type="datetime-local"
+            value="<%= coupon.ends_at ? new Date(coupon.ends_at).toISOString().slice(0,16) : '' %>"
+          >
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="check">
+          <input
+            type="checkbox"
+            name="is_active"
+            value="1"
+            <%= coupon.is_active ? 'checked' : '' %>
+          >
+          有効化する（ON の場合、期間内ならユーザーが利用できます）
+        </label>
+      </div>
+
+      <div class="field">
+        <label for="metadata_json">メタデータ（JSON）</label>
+        <textarea
+          id="metadata_json"
+          name="metadata_json"
+          rows="8"
+          placeholder='{"target_seller_id":"...","note":"内部メモなど"}'
+        ><%= metadata_json || '' %></textarea>
+        <p class="help">内部的に使いたい設定があれば JSON で保持できます（任意）。</p>
+      </div>
+    </section>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn--primary btn--lg">
+        <%= isNew ? '作成' : '更新' %>
+      </button>
+      <a href="<%= isNew ? '/admin/coupons' : ('/admin/coupons/' + coupon.id) %>" class="btn btn--ghost">
+        キャンセル
+      </a>
+    </div>
+  </form>
+</main>
+
+<%- include('../../partials/footer') %>
