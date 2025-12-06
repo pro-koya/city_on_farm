@@ -295,6 +295,7 @@ section {
   padding: .5rem 1rem;
   border-radius: 1.5rem;
   cursor: pointer;
+  text-align: center;
 }
 
 .btn.is-active {
@@ -304,10 +305,9 @@ section {
 }
 
 .btn-grid {
-  display: flex;
-  justify-content: flex-start;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   width: 100%;
-  flex-wrap: wrap;
   gap: 6px;
 }
 
