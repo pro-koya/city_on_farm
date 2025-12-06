@@ -717,7 +717,6 @@ app.get('/signup', (req, res, next) => {
 });
 
 const normalizeDigits = (s) => String(s || '').replace(/[^\d]/g, '');
-
 // POST /signup
 app.post(
   '/signup',
@@ -8462,12 +8461,36 @@ app.get('/admin/users/:id', requireAuth, async (req,res,next)=>{
     const uid = req.params.id === 'me' ? req.session.user.id : req.params.id;
     const isSelf = uid === req.session.user.id;
 
-    const user = (await dbQuery(`SELECT id,name,email,roles,created_at,updated_at, email_verified_at FROM users WHERE id=$1`, [uid]))[0];
+    const user = (await dbQuery(`SELECT id, name, email, roles, partner_id, created_at, updated_at, email_verified_at FROM users WHERE id=$1`, [uid]))[0];
     if (!user) return res.status(404).send('not found');
 
-    const partner = (await dbQuery(`SELECT id,name,type,status,phone,billing_email,postal_code,prefecture,city,address1,address2 FROM partners WHERE id=(SELECT partner_id FROM users WHERE id=$1)`, [uid]))[0] || null;
-    if (!isAdmin(req) && !(await isMemberOfPartner(req, partner.id))) {
-        return res.status(403).render('errors/403', { title: '権限がありません' })
+    let partner;
+    if (user.partner_id) {
+      partner = (await dbQuery(`SELECT id,name,type,status,phone,billing_email,postal_code,prefecture,city,address1,address2 FROM partners WHERE id = $1`, [user.partner_id]))[0] || null;
+    }
+    let isAllowed = false;
+
+    // A. 管理者なら許可
+    if (isAdmin) {
+        isAllowed = true;
+    } 
+    // B. 自分自身の閲覧なら許可 (取引先の有無にかかわらず)
+    else if (isSelf) {
+        isAllowed = true;
+    }
+    // C. 取引先に所属しているアカウントであり、かつ同じ取引先のメンバーなら許可
+    else if (user.partner_id) {
+        // 閲覧対象のユーザーが取引先に所属しており (user.partner_id が null でない)、
+        // リクエストユーザーがその取引先のメンバーであるかチェック
+        if (await isMemberOfPartner(req, user.partner_id)) {
+            isAllowed = true;
+        }
+    }
+    // D. どちらの条件も満たさない場合、isAllowed は false のまま
+
+    // 3. 許可されなかった場合は拒否
+    if (!isAllowed) {
+        return res.status(403).render('errors/403', { title: '権限がありません' });
     }
     
     const addresses = await dbQuery(
@@ -10059,6 +10082,503 @@ app.get('/campaigns/:id', async (req, res, next) => {
     });
   } catch (err) {
     next(err);
+  }
+});
+
+app.get('/admin/coupons', 
+  requireAuth,
+  requireRole(['admin']),
+  csrfProtect,
+  async (req, res, next) => {
+  try {
+    const page       = Math.max(parseInt(req.query.page || '1', 10), 1);
+    const limit      = 20;
+    const offset     = (page - 1) * limit;
+    const keyword    = (req.query.q || '').trim();
+    const status     = (req.query.status || '').trim(); // '', 'active', 'inactive'
+    const sort       = (req.query.sort || '').trim();   // '', 'usage_desc' などを将来使う想定
+
+    const params = [];
+    let where = '1=1';
+
+    // キーワード検索（code / name）
+    if (keyword) {
+      params.push(`%${keyword}%`);
+      where += ` AND (c.code ILIKE $${params.length}
+                 OR c.name ILIKE $${params.length})`;
+    }
+
+    // ステータスフィルタ
+    if (status === 'active') {
+      params.push(new Date());
+      const idx = params.length;
+      // starts_at / ends_at の「現在有効」
+      where += ` AND c.is_active = true
+                 AND (c.starts_at IS NULL OR c.starts_at <= $${idx})
+                 AND (c.ends_at   IS NULL OR c.ends_at   >= $${idx})`;
+    } else if (status === 'inactive') {
+      where += ` AND (c.is_active = false
+                  OR (c.ends_at IS NOT NULL AND c.ends_at < now()))`;
+    }
+
+    // ソート条件
+    let orderBy = 'c.created_at DESC';
+    if (sort === 'usage_desc') {
+      orderBy = 'usage_stats.usage_count DESC, c.created_at DESC';
+    }
+
+    // 一覧データ取得（使用回数＋最終使用日時付き）
+    const listSql = `
+      SELECT
+        c.*,
+        COALESCE(usage_stats.usage_count, 0) AS usage_count,
+        usage_stats.last_used_at
+      FROM coupons c
+      LEFT JOIN LATERAL (
+        SELECT
+          COUNT(*)        AS usage_count,
+          MAX(created_at) AS last_used_at
+        FROM orders o
+        WHERE o.coupon_code = c.code
+      ) AS usage_stats ON true
+      WHERE ${where}
+      ORDER BY ${orderBy}
+      LIMIT ${limit} OFFSET ${offset};
+    `;
+
+    const coupons = await dbQuery(listSql, params);
+
+    // 総件数（ページネーション用）
+    const countSql = `
+      SELECT COUNT(*) AS cnt
+      FROM coupons c
+      WHERE ${where};
+    `;
+    const countRows = await dbQuery(countSql, params);
+    const totalCount = parseInt(countRows[0]?.cnt || '0', 10);
+    const totalPages = Math.max(Math.ceil(totalCount / limit), 1);
+
+    // 軽いサマリー情報（ヘッダカード用）
+    const statsSql = `
+      SELECT
+        -- 現在有効なクーポン数
+        COUNT(*) FILTER (
+          WHERE c.is_active = true
+            AND (c.starts_at IS NULL OR c.starts_at <= now())
+            AND (c.ends_at   IS NULL OR c.ends_at   >= now())
+        ) AS active_count,
+        -- 今月作成されたクーポン数
+        COUNT(*) FILTER (
+          WHERE date_trunc('month', c.created_at) = date_trunc('month', now())
+        ) AS this_month_created,
+        -- 累計使用回数
+        (
+          SELECT COUNT(*)
+          FROM orders o
+          WHERE o.coupon_code IS NOT NULL AND o.coupon_code <> ''
+        ) AS total_usage
+      FROM coupons c;
+    `;
+    const statsRows = await dbQuery(statsSql, []);
+    const stats = statsRows[0] || {
+      active_count: 0,
+      this_month_created: 0,
+      total_usage: 0,
+    };
+
+    res.set('Cache-Control', 'no-store');
+    return res.render('admin/coupons/index', {
+      title: 'クーポン一覧',
+      coupons,
+      stats,
+      page,
+      totalPages,
+      totalCount,
+      keyword,
+      status,
+      sort,
+      limit,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// 整数正規化
+function toIntOrNull(v) {
+  if (v === undefined || v === null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.floor(n) : null;
+}
+
+// 0 以上の整数（必須）にしたいとき用
+function toNonNegativeInt(v, fallback = 0) {
+  const n = toIntOrNull(v);
+  if (n === null || n < 0) return fallback;
+  return n;
+}
+
+// <input type="datetime-local"> を Date に変換
+function parseDateTimeLocal(str) {
+  if (!str) return null;
+  const d = new Date(str);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+// フォーム入力を coupon オブジェクトにまとめる + 簡易バリデーション
+function buildCouponFromBody(body = {}) {
+  const errors = [];
+
+  const code = String(body.code || '').trim();
+  if (!code) errors.push('クーポンコードは必須です。');
+
+  const discount_type = (body.discount_type || '').trim();
+  if (!['percent', 'amount'].includes(discount_type)) {
+    errors.push('割引種別が不正です。');
+  }
+
+  const discount_value = toIntOrNull(body.discount_value);
+  if (discount_value === null || discount_value <= 0) {
+    errors.push('割引値は 1 以上の整数で入力してください。');
+  }
+
+  const min_subtotal = toNonNegativeInt(body.min_subtotal, 0);
+  const max_discount = toIntOrNull(body.max_discount);
+  const applies_to   = (body.applies_to || 'order').trim() || 'order';
+  const global_limit = toIntOrNull(body.global_limit);
+  const per_user_limit = toIntOrNull(body.per_user_limit);
+
+  const starts_at = parseDateTimeLocal(body.starts_at);
+  const ends_at   = parseDateTimeLocal(body.ends_at);
+
+  if (starts_at && ends_at && starts_at > ends_at) {
+    errors.push('開始日時は終了日時より前にしてください。');
+  }
+
+  const is_active = body.is_active === '1' || body.is_active === 'true' || body.is_active === 'on';
+
+  // metadata は JSON テキストとして入力（任意）
+  let metadata = null;
+  const metadataRaw = (body.metadata_json || '').trim();
+  if (metadataRaw) {
+    try {
+      metadata = JSON.parse(metadataRaw);
+    } catch (e) {
+      errors.push('metadata は JSON 形式で入力してください。');
+    }
+  }
+
+  const coupon = {
+    code,
+    name: (body.name || '').trim() || null,
+    description: (body.description || '').trim() || null,
+    discount_type,
+    discount_value,
+    min_subtotal,
+    max_discount,
+    applies_to,
+    global_limit,
+    per_user_limit,
+    starts_at,
+    ends_at,
+    is_active,
+    metadata
+  };
+
+  return { coupon, errors };eegrht
+}
+
+// GET /admin/coupons/:id  詳細ページ
+app.get('/admin/coupons/:id',
+  requireAuth,
+  requireRole(['admin']),
+  csrfProtect,
+  async (req, res, next) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) {
+      return res.redirect('/admin/coupons');
+    }
+
+    // クーポン本体 + 使用回数・総割引額・最終使用日時
+    const rows = await dbQuery(`
+      SELECT
+        c.*,
+        COALESCE(usage_stats.usage_count, 0) AS usage_count,
+        COALESCE(usage_stats.total_discount, 0) AS total_discount,
+        usage_stats.last_used_at
+      FROM coupons c
+      LEFT JOIN LATERAL (
+        SELECT
+          COUNT(*)                        AS usage_count,
+          COALESCE(SUM(o.coupon_discount), 0) AS total_discount,
+          MAX(o.created_at)              AS last_used_at
+        FROM orders o
+        WHERE o.coupon_code = c.code
+      ) AS usage_stats ON true
+      WHERE c.id = $1
+      LIMIT 1;
+    `, [id]);
+
+    const coupon = rows[0];
+    if (!coupon) {
+      return res.status(404).render('errors/404', { title: 'クーポンが見つかりません' });
+    }
+
+    // 直近の使用履歴（注文）
+    const usageRows = await dbQuery(`
+      SELECT
+        o.id,
+        o.order_number,
+        o.created_at,
+        o.total,
+        o.coupon_discount,
+        o.status,
+        u.name AS buyer_name,
+        u.email AS buyer_email
+      FROM orders o
+      LEFT JOIN users u ON u.id = o.buyer_id
+      WHERE o.coupon_code = $1
+      ORDER BY o.created_at DESC
+      LIMIT 20;
+    `, [coupon.code]);
+
+    res.set('Cache-Control', 'no-store');
+    return res.render('admin/coupons/show', {
+      title: `クーポン詳細: ${coupon.code}`,
+      coupon,
+      usages: usageRows
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// GET /admin/coupons/new  新規作成フォーム
+app.get('/admin/coupons-new',
+  requireAuth,
+  requireRole(['admin']),
+  csrfProtect,
+  async (req, res, next) => {
+  try {
+    const emptyCoupon = {
+      code: '',
+      name: '',
+      description: '',
+      discount_type: 'percent',
+      discount_value: 10,
+      min_subtotal: 0,
+      max_discount: null,
+      applies_to: 'order',
+      global_limit: null,
+      per_user_limit: null,
+      starts_at: null,
+      ends_at: null,
+      is_active: true,
+      metadata: {}
+    };
+
+    res.set('Cache-Control', 'no-store');
+    return res.render('admin/coupons/form', {
+      title: 'クーポン新規作成',
+      coupon: emptyCoupon,
+      isNew: true,
+      errors: [],
+      metadata_json: ''
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// GET /admin/coupons/:id/edit  編集フォーム
+app.get('/admin/coupons/:id/edit',
+  requireAuth,
+  requireRole(['admin']),
+  csrfProtect,
+  async (req, res, next) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.redirect('/admin/coupons');
+
+    const rows = await dbQuery(`
+      SELECT *
+      FROM coupons
+      WHERE id = $1
+      LIMIT 1;
+    `, [id]);
+
+    const coupon = rows[0];
+    if (!coupon) {
+      return res.status(404).render('errors/404', { title: 'クーポンが見つかりません' });
+    }
+
+    const metadata_json = coupon.metadata
+      ? JSON.stringify(coupon.metadata, null, 2)
+      : '';
+
+    res.set('Cache-Control', 'no-store');
+    return res.render('admin/coupons/form', {
+      title: `クーポン編集: ${coupon.code}`,
+      coupon,
+      isNew: false,
+      errors: [],
+      metadata_json
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// POST /admin/coupons  新規作成
+app.post('/admin/coupons',
+  requireAuth,
+  requireRole(['admin']),
+  csrfProtect,
+  async (req, res, next) => {
+  try {
+    const { coupon, errors } = buildCouponFromBody(req.body);
+
+    if (errors.length) {
+      return res.status(422).render('admin/coupons/form', {
+        title: 'クーポン新規作成',
+        coupon,
+        isNew: true,
+        errors,
+        metadata_json: req.body.metadata_json || ''
+      });
+    }
+
+    const row = await dbQuery(`
+      INSERT INTO coupons
+        (code, name, description,
+         discount_type, discount_value,
+         min_subtotal, max_discount,
+         applies_to, global_limit, per_user_limit,
+         starts_at, ends_at,
+         is_active, metadata)
+      VALUES
+        ($1,$2,$3,
+         $4,$5,
+         $6,$7,
+         $8,$9,$10,
+         $11,$12,
+         $13,$14)
+      RETURNING id;
+    `, [
+      coupon.code,
+      coupon.name,
+      coupon.description,
+      coupon.discount_type,
+      coupon.discount_value,
+      coupon.min_subtotal,
+      coupon.max_discount,
+      coupon.applies_to,
+      coupon.global_limit,
+      coupon.per_user_limit,
+      coupon.starts_at,
+      coupon.ends_at,
+      coupon.is_active,
+      coupon.metadata
+    ]);
+
+    const id = row[0].id;
+    return res.redirect(`/admin/coupons/${id}`);
+  } catch (e) {
+    // UNIQUE 制約違反など
+    if (e.code === '23505') { // unique_violation
+      const { coupon } = buildCouponFromBody(req.body);
+      return res.status(409).render('admin/coupons/form', {
+        title: 'クーポン新規作成',
+        coupon,
+        isNew: true,
+        errors: ['このクーポンコードは既に使用されています。'],
+        metadata_json: req.body.metadata_json || ''
+      });
+    }
+    next(e);
+  }
+});
+
+// POST /admin/coupons/:id  更新
+app.post('/admin/coupons/:id',
+  requireAuth,
+  requireRole(['admin']),
+  csrfProtect,
+  async (req, res, next) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.redirect('/admin/coupons');
+
+    const { coupon, errors } = buildCouponFromBody(req.body);
+
+    if (errors.length) {
+      coupon.id = id; // form で使えるように
+      return res.status(422).render('admin/coupons/form', {
+        title: `クーポン編集: ${coupon.code || ''}`,
+        coupon,
+        isNew: false,
+        errors,
+        metadata_json: req.body.metadata_json || ''
+      });
+    }
+
+    const result = await dbQuery(`
+      UPDATE coupons
+      SET
+        code = $1,
+        name = $2,
+        description = $3,
+        discount_type = $4,
+        discount_value = $5,
+        min_subtotal = $6,
+        max_discount = $7,
+        applies_to = $8,
+        global_limit = $9,
+        per_user_limit = $10,
+        starts_at = $11,
+        ends_at = $12,
+        is_active = $13,
+        metadata = $14,
+        updated_at = now()
+      WHERE id = $15
+      RETURNING id;
+    `, [
+      coupon.code,
+      coupon.name,
+      coupon.description,
+      coupon.discount_type,
+      coupon.discount_value,
+      coupon.min_subtotal,
+      coupon.max_discount,
+      coupon.applies_to,
+      coupon.global_limit,
+      coupon.per_user_limit,
+      coupon.starts_at,
+      coupon.ends_at,
+      coupon.is_active,
+      coupon.metadata,
+      id
+    ]);
+
+    if (!result.length) {
+      return res.status(404).render('errors/404', { title: 'クーポンが見つかりません' });
+    }
+
+    return res.redirect(`/admin/coupons/${id}`);
+  } catch (e) {
+    if (e.code === '23505') {
+      const { coupon } = buildCouponFromBody(req.body);
+      coupon.id = req.params.id;
+      return res.status(409).render('admin/coupons/form', {
+        title: `クーポン編集: ${coupon.code || ''}`,
+        coupon,
+        isNew: false,
+        errors: ['このクーポンコードは既に使用されています。'],
+        metadata_json: req.body.metadata_json || ''
+      });
+    }
+    next(e);
   }
 });
 

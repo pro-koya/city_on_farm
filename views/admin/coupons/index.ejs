@@ -1,0 +1,191 @@
+<%- include('../../partials/header', {
+  title,
+  extraCSS: '/styles/admin-coupons.css',
+  extraCSS2: ''
+}) %>
+
+<main class="admin admin-coupons">
+  <header class="admin-page-header">
+    <div>
+      <h1>クーポン一覧</h1>
+      <p class="muted">クーポンの発行・管理・利用状況を確認できます。</p>
+    </div>
+    <div class="admin-page-header__actions">
+      <a href="/admin/coupons-new" class="btn btn--primary">＋ 新規クーポン作成</a>
+    </div>
+  </header>
+
+  <!-- サマリカード -->
+  <section class="admin-stats-grid">
+    <article class="stat-card">
+      <p class="stat-label">現在有効なクーポン</p>
+      <p class="stat-value"><%= stats.active_count || 0 %></p>
+    </article>
+    <!-- <article class="stat-card">
+      <p class="stat-label">今月作成されたクーポン</p>
+      <p class="stat-value"><%= stats.this_month_created || 0 %></p>
+    </article> -->
+    <article class="stat-card">
+      <p class="stat-label">累計使用回数</p>
+      <p class="stat-value"><%= stats.total_usage || 0 %></p>
+    </article>
+  </section>
+
+  <!-- フィルタ / 検索 -->
+  <section class="admin-filters">
+    <form method="GET" action="/admin/coupons" class="filter-form">
+      <div class="filter-group">
+            <div class="filter-form__group">
+                <label for="q">検索</label>
+                <input
+                id="q"
+                type="text"
+                name="q"
+                placeholder="コード・名前で検索"
+                value="<%= keyword %>"
+                >
+            </div>
+            <div class="filter-form__actions">
+                <button type="submit" class="btn btn--ghost">絞り込み</button>
+            </div>
+      </div>
+
+      <div class="filter-group">
+          <div class="filter-form__group">
+            <label for="status">ステータス</label>
+            <select id="status" name="status" class="pulldown">
+              <option value="" <%= !status ? 'selected' : '' %>>すべて</option>
+              <option value="active" <%= status === 'active' ? 'selected' : '' %>>有効</option>
+              <option value="inactive" <%= status === 'inactive' ? 'selected' : '' %>>無効/期限切れ</option>
+            </select>
+          </div>
+    
+          <div class="filter-form__group">
+            <label for="sort">並び替え</label>
+            <select id="sort" name="sort" class="pulldown">
+              <option value="" <%= !sort ? 'selected' : '' %>>新しい順</option>
+              <option value="usage_desc" <%= sort === 'usage_desc' ? 'selected' : '' %>>使用回数の多い順</option>
+            </select>
+          </div>
+      </div>
+
+      
+    </form>
+  </section>
+
+  <!-- 一覧テーブル -->
+  <section class="admin-table-wrap">
+    <% if (!coupons.length) { %>
+      <p class="muted">クーポンがまだ登録されていません。</p>
+    <% } else { %>
+      <table class="admin-table admin-table--coupons">
+        <thead>
+          <tr>
+            <th>コード</th>
+            <th>名前</th>
+            <th>割引</th>
+            <th>条件</th>
+            <th>期間</th>
+            <th>状態</th>
+            <th>使用回数</th>
+            <!-- <th></th> -->
+          </tr>
+        </thead>
+        <tbody>
+          <% coupons.forEach(c => { %>
+            <% 
+              const now = new Date();
+              const startsAt = c.starts_at ? new Date(c.starts_at) : null;
+              const endsAt   = c.ends_at   ? new Date(c.ends_at)   : null;
+
+              let statusLabel = '下書き/無効';
+              let statusClass = 'badge--muted';
+
+              const inWindow =
+                (!startsAt || startsAt <= now) &&
+                (!endsAt   || endsAt   >= now);
+
+              if (c.is_active && inWindow) {
+                statusLabel = 'アクティブ';
+                statusClass = 'badge--success';
+              } else if (!c.is_active) {
+                statusLabel = '無効';
+                statusClass = 'badge--danger';
+              } else if (endsAt && endsAt < now) {
+                statusLabel = '期限切れ';
+                statusClass = 'badge--muted';
+              }
+            %>
+            <tr class="coupon-row" data-href="/admin/coupons/<%= c.id %>">
+              <td data-label="コード">
+                  <code><%= c.code %></code>
+              </td>
+              <td data-label="名前"><%= c.name || '-' %></td>
+              <td data-label="割引">
+                <% if (c.discount_type === 'percent') { %>
+                  <%= c.discount_value %>% OFF
+                <% } else { %>
+                  ¥<%= Number(c.discount_value || 0).toLocaleString() %> OFF
+                <% } %>
+              </td>
+              <td data-label="条件">
+                <% if (c.min_subtotal && c.min_subtotal > 0) { %>
+                  <span class="muted">¥<%= Number(c.min_subtotal).toLocaleString() %> 以上</span>
+                <% } else { %>
+                  <span class="muted">制限なし</span>
+                <% } %>
+                <% if (c.max_discount) { %>
+                  <span class="muted"> / 上限 ¥<%= Number(c.max_discount).toLocaleString() %></span>
+                <% } %>
+              </td>
+              <td data-label="期間">
+                <% if (!c.starts_at && !c.ends_at) { %>
+                  <span class="muted">期間指定なし</span>
+                <% } else { %>
+                  <% if (c.starts_at) { %>
+                    <div><%= new Date(c.starts_at).toLocaleDateString('ja-JP') %></div>
+                  <% } %>
+                  <% if (c.ends_at) { %>
+                    <div>〜<%= new Date(c.ends_at).toLocaleDateString('ja-JP') %></div>
+                  <% } %>
+                <% } %>
+              </td>
+              <td data-label="状態">
+                <span class="badge <%= statusClass %>"><%= statusLabel %></span>
+              </td>
+              <td data-label="使用回数"><%= c.usage_count || 0 %></td>
+              <!-- <td class="admin-table__actions">
+                <a href="/admin/coupons/<%= c.id %>" class="btn btn--ghost">詳細</a>
+                <a href="/admin/coupons/<%= c.id %>/edit" class="btn btn--ghost">編集</a>
+              </td> -->
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+
+  <!-- ページネーション -->
+  <% if (totalPages > 1) { %>
+    <nav class="pagination">
+      <% for (let p = 1; p <= totalPages; p++) { %>
+        <% 
+          const params = new URLSearchParams();
+          if (keyword) params.set('q', keyword);
+          if (status)  params.set('status', status);
+          if (sort)    params.set('sort', sort);
+          params.set('page', p);
+        %>
+        <a
+          href="/admin/coupons?<%= params.toString() %>"
+          class="page-link <%= p === page ? 'is-current' : '' %>"
+        >
+          <%= p %>
+        </a>
+      <% } %>
+    </nav>
+  <% } %>
+</main>
+
+<script src="/js/admin-coupons.js"></script>
+<%- include('../../partials/footer') %>

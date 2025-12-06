@@ -1,0 +1,644 @@
+:root {
+  --ac-bg: #f5f5f7;
+  --ac-surface: #ffffff;
+  --ac-border: #e5e7eb;
+  --ac-text: #111827;
+  --ac-muted: #6b7280;
+  --ac-main: #4C6B5C;       /* 深めのグリーン */
+  --ac-main-soft: #E5F1E8;
+  --ac-radius: 14px;
+  --ac-shadow: 0 14px 30px rgba(15, 23, 42, .06);
+}
+
+/* ================================
+   Base Layout
+   ================================ */
+
+body.admin-page {
+  background: radial-gradient(circle at top left, #f5f7fb 0, #ffffff 50%, #f5f7fb 100%);
+}
+
+main.admin.admin-coupons,
+main.admin.admin-coupons-detail,
+main.admin.admin-coupons-form {
+  max-width: 1200px;
+  margin: 80px auto 48px;
+  padding: 0 16px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--ac-text);
+}
+
+section {
+    padding: 8px;
+}
+
+/* ================================
+   Header
+   ================================ */
+
+.admin-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #e0e3ea;
+  padding-bottom: 16px;
+}
+
+.admin-page-header h1 {
+  font-size: 1.6rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  margin: 0 0 4px;
+}
+
+.admin-page-header .muted {
+  font-size: 0.85rem;
+  color: var(--ac-muted);
+}
+
+.admin-page-header__actions {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Buttons（既存 .btn を前提に少し盛る） */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 0.55rem 1.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn.btn--primary {
+  background: var(--ac-main);
+  border-color: var(--ac-main);
+  color: #fff;
+  box-shadow: 0 10px 25px rgba(76, 107, 92, 0.35);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+
+.btn.btn--primary:hover {
+  filter: brightness(0.96);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(76, 107, 92, 0.45);
+}
+
+.btn.btn--ghost {
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+  font-weight: 500;
+  box-shadow: none;
+}
+
+.btn.btn--ghost:hover {
+  background: #f3f4f6;
+}
+
+/* ================================
+   Stats (サマリカード)
+   ================================ */
+
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 0;
+}
+
+.stat-card {
+  border-radius: var(--ac-radius);
+  background: linear-gradient(135deg, #f9fafb, #f2f8f4);
+  border: 1px solid rgba(209, 213, 219, 0.9);
+  box-shadow: var(--ac-shadow);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ac-muted);
+  margin: 0 0 4px;
+}
+
+.stat-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--ac-text);
+  margin: 0;
+}
+
+/* ================================
+   Filters (検索/絞り込み)
+   ================================ */
+
+.admin-filters {
+  margin: 8px auto;
+  padding: 0;
+}
+
+.filter-form {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.3fr);
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--ac-radius);
+  background: var(--ac-surface);
+  border: 1px solid var(--ac-border);
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.04);
+}
+
+.filter-group {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.filter-form__group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.filter-form__group label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.filter-form__group input[type="text"],
+.filter-form__group select {
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: var(--ac-surface);
+  outline: none;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.filter-form__group input[type="text"]:focus,
+.filter-form__group select:focus {
+  border-color: var(--ac-main);
+  background-color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(76, 107, 92, 0.45);
+}
+
+.filter-form__actions {
+  display: flex;
+  align-items: flex-end;
+}
+
+/* ================================
+   Table (一覧)
+   ================================ */
+
+.admin-table-wrap {
+  border-radius: var(--ac-radius);
+  background: var(--ac-surface);
+  border: 1px solid var(--ac-border);
+  box-shadow: var(--ac-shadow);
+  padding: 10px 12px 8px;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.admin-table thead {
+  background: linear-gradient(90deg, #f3f4ff, #f5fdf7);
+}
+
+.admin-table thead th {
+  text-align: left;
+  font-weight: 600;
+  padding: 10px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #4b5563;
+  white-space: nowrap;
+}
+
+.admin-table tbody tr {
+  transition: background-color 0.12s ease, transform 0.08s ease;
+}
+
+.admin-table tbody tr:nth-child(even) {
+  background-color: #fafbff;
+}
+
+.admin-table tbody tr:hover {
+  background-color: #eef2ff;
+  transform: translateY(-1px);
+}
+
+.admin-table td {
+  padding: 6px;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+}
+
+.admin-table td.numeric {
+  text-align: right;
+}
+
+/* 一覧専用 */
+.admin-table--coupons td:first-child a.code-link {
+  color: #111827;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-table--coupons td:first-child a.code-link code {
+  background: #111827;
+  color: #e5e7eb;
+  font-size: 0.78rem;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.admin-table--coupons td:first-child a.code-link:hover code {
+  filter: brightness(1.08);
+}
+
+/* 条件セル内テキスト */
+.admin-table--coupons td .muted {
+  font-size: 0.8rem;
+}
+
+/* 行末アクション */
+.admin-table__actions {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.admin-table__actions .link {
+  font-size: 0.8rem;
+  color: var(--ac-main);
+  text-decoration: none;
+  margin-left: 8px;
+}
+
+.admin-table__actions .link:hover {
+  text-decoration: underline;
+}
+
+.admin .card {
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 16px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  padding: 18px 8px;
+  margin-bottom: 20px;
+  box-shadow:
+    0 10px 30px rgba(15, 23, 42, 0.04),
+    0 1px 0 rgba(148, 163, 184, 0.25);
+  backdrop-filter: blur(8px);
+}
+
+.admin .card h2 {
+  font-size: 1.1rem;
+  margin: 0 0 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin .card h2::before {
+  content: "";
+  width: 4px;
+  height: 16px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #6366f1, #22c55e);
+}
+
+/* ================================
+   Badges / Status
+   ================================ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.badge--success {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+}
+
+.badge--danger {
+  background: rgba(248, 113, 113, 0.1);
+  color: #b91c1c;
+}
+
+.badge--muted {
+  background: rgba(148, 163, 184, 0.1);
+  color: #4b5563;
+}
+
+.badge--warning {
+  background: rgba(251, 191, 36, 0.14);
+  color: #92400e;
+}
+
+/* ================================
+   Text utils
+   ================================ */
+
+.muted {
+  color: var(--ac-muted);
+}
+
+.small {
+  font-size: 0.78rem;
+}
+
+.help {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: var(--ac-muted);
+}
+
+/* ================================
+   Pagination
+   ================================ */
+
+.pagination {
+  margin-top: 18px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.page-link {
+  min-width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.86rem;
+  text-decoration: none;
+  color: #374151;
+  background: #ffffff;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease, transform 0.08s ease;
+}
+
+.page-link:hover {
+  background: #f3f4f6;
+  transform: translateY(-1px);
+}
+
+.page-link.is-current {
+  background: var(--ac-main);
+  color: #ffffff;
+  border-color: var(--ac-main);
+  box-shadow: 0 8px 18px rgba(76, 107, 92, 0.35);
+}
+
+/* ================================
+   Detail Layout（詳細ページ用）
+   ================================ */
+
+.admin-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 2fr);
+  gap: 18px;
+  margin-bottom: 20px;
+  padding: 0;
+}
+
+.detail-list {
+  display: grid;
+  grid-template-columns: minmax(120px, 150px) minmax(0, 1fr);
+  column-gap: 14px;
+  row-gap: 6px;
+  font-size: 0.88rem;
+}
+
+.detail-list dt {
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.detail-list dd {
+  margin: 0;
+  border-bottom: .5px solid var(--ac-border);
+  padding-bottom: 5px;
+}
+
+/* ================================
+   Forms（新規作成/編集用）
+   ================================ */
+
+.form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2.4fr);
+  gap: 18px;
+}
+
+.form-section h2 {
+  font-size: 1rem;
+  margin: 0 0 10px;
+  font-weight: 600;
+}
+
+.form-section + .form-section {
+  margin-top: 8px;
+}
+
+.field {
+  margin-bottom: 12px;
+}
+
+.field label {
+  display: inline-block;
+  margin-bottom: 4px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.field input[type="text"],
+.field input[type="number"],
+.field input[type="datetime-local"],
+.field textarea,
+.field select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 9px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background-color: var(--ac-surface);
+  outline: none;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.field input[type="text"]:focus,
+.field input[type="number"]:focus,
+.field input[type="datetime-local"]:focus,
+.field textarea:focus,
+.field select:focus {
+  border-color: var(--ac-main);
+  background-color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(76, 107, 92, 0.4);
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.field--row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.required {
+  color: #ef4444;
+  font-size: 0.78rem;
+  margin-left: 2px;
+}
+
+.form-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ================================
+   Alerts
+   ================================ */
+
+.alert {
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+}
+
+.alert--error {
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  color: #7f1d1d;
+}
+
+/* ================================
+   Responsive
+   ================================ */
+
+@media (max-width: 960px) {
+  .admin-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-page-header__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .filter-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  main.admin.admin-coupons,
+  main.admin.admin-coupons-detail,
+  main.admin.admin-coupons-form {
+    padding-inline: 12px;
+  }
+
+  .admin-stats-grid {
+    gap: 8px;
+  }
+
+  .field--row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detail-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* テーブルをラベル付きの縦並びに */
+  .admin-table thead {
+    display: none;
+  }
+
+  .admin-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 8px 4px;
+  }
+
+  .admin-table td {
+    border-bottom: none;
+    padding: 4px 2px;
+    font-size: 0.82rem;
+    display: flex;
+  }
+
+  .admin-table td::before {
+    content: attr(data-label);
+    display: inline-block;
+    min-width: 90px;
+    font-weight: 600;
+    color: var(--ac-muted);
+    margin-right: 6px;
+  }
+
+  .admin-table__actions {
+    margin-top: 4px;
+    text-align: left;
+  }
+}
