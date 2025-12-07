@@ -289,7 +289,7 @@ main.page {
   position: relative;
 }
 
-.rail__track > .card {
+.rail__track > .card, .ranking-panel > .card {
   width: 220px;
 }
 
@@ -810,4 +810,12 @@ main.page {
 
 .favorite-btn--guest:hover {
   background: var(--white);
+}
+
+@media (max-width: 720px) {
+  .sp-flex-column {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 3px !important;
+  }
 }
