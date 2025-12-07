@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-12-06T18:27:25.020Z
+> Generated at: 2025-12-07T18:27:15.969Z
 
 ---
 
@@ -462,6 +462,48 @@
 
 ---
 
+### `public.favorites`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `user_id` | `uuid` | NO |  |  |
+| 3 | `product_id` | `uuid` | NO |  |  |
+| 4 | `created_at` | `timestamp with time zone` | NO | now() |  |
+
+**Constraints**
+
+- **CHECK**: `favorites_created_at_not_null`, `favorites_id_not_null`, `favorites_product_id_not_null`, `favorites_user_id_not_null`
+- **FOREIGN KEY**: `fk_favorites_product`, `fk_favorites_user`
+- **PRIMARY KEY**: `favorites_pkey`
+
+**Indexes**
+
+- `favorites_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX favorites_pkey ON public.favorites USING btree (id)
+  ```
+- `ix_favorites_product`
+  
+  ```sql
+  CREATE INDEX ix_favorites_product ON public.favorites USING btree (product_id)
+  ```
+- `ix_favorites_user`
+  
+  ```sql
+  CREATE INDEX ix_favorites_user ON public.favorites USING btree (user_id, created_at DESC)
+  ```
+- `ux_favorites_user_product`
+  
+  ```sql
+  CREATE UNIQUE INDEX ux_favorites_user_product ON public.favorites USING btree (user_id, product_id)
+  ```
+
+---
+
 ### `public.global_allowed_payment_methods`
 
 **Columns**
@@ -831,6 +873,16 @@
   ```sql
   CREATE INDEX idx_order_items_product ON public.order_items USING btree (product_id)
   ```
+- `ix_order_items_product`
+  
+  ```sql
+  CREATE INDEX ix_order_items_product ON public.order_items USING btree (product_id)
+  ```
+- `ix_order_items_seller_product`
+  
+  ```sql
+  CREATE INDEX ix_order_items_seller_product ON public.order_items USING btree (seller_id, product_id)
+  ```
 - `order_items_pkey`
   
   ```sql
@@ -942,6 +994,11 @@
   
   ```sql
   CREATE INDEX idx_orders_status_updated_at ON public.orders USING btree (status, updated_at DESC)
+  ```
+- `ix_orders_status_created`
+  
+  ```sql
+  CREATE INDEX ix_orders_status_created ON public.orders USING btree (status, created_at)
   ```
 - `orders_order_number_key`
   
@@ -1402,6 +1459,43 @@ _No indexes_
 
 ---
 
+### `public.product_popularity_stats`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `product_id` | `uuid` | NO |  |  |
+| 3 | `period_type` | `text` | NO |  |  |
+| 4 | `range_start` | `timestamp with time zone` | NO |  |  |
+| 5 | `range_end` | `timestamp with time zone` | NO |  |  |
+| 6 | `order_count` | `integer` | NO | 0 |  |
+| 7 | `quantity_sold` | `integer` | NO | 0 |  |
+| 8 | `sales_amount` | `integer` | NO | 0 |  |
+| 9 | `favorite_count` | `integer` | NO | 0 |  |
+| 10 | `snapshot_at` | `timestamp with time zone` | NO | now() |  |
+
+**Constraints**
+
+- **CHECK**: `product_popularity_stats_favorite_count_not_null`, `product_popularity_stats_id_not_null`, `product_popularity_stats_order_count_not_null`, `product_popularity_stats_period_type_not_null`, `product_popularity_stats_product_id_not_null`, `product_popularity_stats_quantity_sold_not_null`, `product_popularity_stats_range_end_not_null`, `product_popularity_stats_range_start_not_null`, `product_popularity_stats_sales_amount_not_null`, `product_popularity_stats_snapshot_at_not_null`
+- **PRIMARY KEY**: `product_popularity_stats_pkey`
+
+**Indexes**
+
+- `ix_popularity_product_period`
+  
+  ```sql
+  CREATE INDEX ix_popularity_product_period ON public.product_popularity_stats USING btree (period_type, range_end DESC, product_id)
+  ```
+- `product_popularity_stats_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX product_popularity_stats_pkey ON public.product_popularity_stats USING btree (id)
+  ```
+
+---
+
 ### `public.product_rating_stats`
 
 **Columns**
@@ -1561,12 +1655,13 @@ _No indexes_
 | 17 | `created_at` | `timestamp with time zone` | NO | now() |  |
 | 18 | `updated_at` | `timestamp with time zone` | NO | now() |  |
 | 19 | `description_raw` | `text` | YES |  |  |
+| 20 | `favorite_count` | `integer` | NO | 0 |  |
 
 > **Enum `product_status` values**: `draft`, `private`, `public`
 
 **Constraints**
 
-- **CHECK**: `products_created_at_not_null`, `products_id_not_null`, `products_is_organic_not_null`, `products_is_seasonal_not_null`, `products_price_check`, `products_price_not_null`, `products_seller_id_not_null`, `products_ship_days_check`, `products_ship_days_not_null`, `products_ship_method_check`, `products_ship_method_not_null`, `products_slug_not_null`, `products_status_not_null`, `products_stock_check`, `products_stock_not_null`, `products_title_not_null`, `products_unit_not_null`, `products_updated_at_not_null`
+- **CHECK**: `products_created_at_not_null`, `products_favorite_count_not_null`, `products_id_not_null`, `products_is_organic_not_null`, `products_is_seasonal_not_null`, `products_price_check`, `products_price_not_null`, `products_seller_id_not_null`, `products_ship_days_check`, `products_ship_days_not_null`, `products_ship_method_check`, `products_ship_method_not_null`, `products_slug_not_null`, `products_status_not_null`, `products_stock_check`, `products_stock_not_null`, `products_title_not_null`, `products_unit_not_null`, `products_updated_at_not_null`
 - **FOREIGN KEY**: `products_category_id_fkey`, `products_seller_id_fkey`
 - **PRIMARY KEY**: `products_pkey`
 - **UNIQUE**: `products_slug_key`

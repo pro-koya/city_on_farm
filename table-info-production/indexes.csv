@@ -37,6 +37,10 @@ public,email_verifications,idx_email_verifications_email,CREATE INDEX idx_email_
 public,email_verifications,idx_email_verifications_expires,CREATE INDEX idx_email_verifications_expires ON public.email_verifications USING btree (expires_at),f,f
 public,email_verifications,idx_email_verifications_user,CREATE INDEX idx_email_verifications_user ON public.email_verifications USING btree (user_id),f,f
 public,email_verifications,uq_email_verifications_token,CREATE UNIQUE INDEX uq_email_verifications_token ON public.email_verifications USING btree (token),t,f
+public,favorites,favorites_pkey,CREATE UNIQUE INDEX favorites_pkey ON public.favorites USING btree (id),t,t
+public,favorites,ix_favorites_product,CREATE INDEX ix_favorites_product ON public.favorites USING btree (product_id),f,f
+public,favorites,ix_favorites_user,"CREATE INDEX ix_favorites_user ON public.favorites USING btree (user_id, created_at DESC)",f,f
+public,favorites,ux_favorites_user_product,"CREATE UNIQUE INDEX ux_favorites_user_product ON public.favorites USING btree (user_id, product_id)",t,f
 public,global_allowed_payment_methods,global_allowed_payment_methods_pkey,CREATE UNIQUE INDEX global_allowed_payment_methods_pkey ON public.global_allowed_payment_methods USING btree (method),t,t
 public,gmail_tokens,gmail_tokens_pkey,CREATE UNIQUE INDEX gmail_tokens_pkey ON public.gmail_tokens USING btree (id),t,t
 public,notification_reads,idx_notification_reads_notification,CREATE INDEX idx_notification_reads_notification ON public.notification_reads USING btree (notification_id),f,f
@@ -65,6 +69,8 @@ public,order_groups,order_groups_group_number_key,CREATE UNIQUE INDEX order_grou
 public,order_groups,order_groups_pkey,CREATE UNIQUE INDEX order_groups_pkey ON public.order_groups USING btree (id),t,t
 public,order_items,idx_order_items_order,CREATE INDEX idx_order_items_order ON public.order_items USING btree (order_id),f,f
 public,order_items,idx_order_items_product,CREATE INDEX idx_order_items_product ON public.order_items USING btree (product_id),f,f
+public,order_items,ix_order_items_product,CREATE INDEX ix_order_items_product ON public.order_items USING btree (product_id),f,f
+public,order_items,ix_order_items_seller_product,"CREATE INDEX ix_order_items_seller_product ON public.order_items USING btree (seller_id, product_id)",f,f
 public,order_items,order_items_pkey,CREATE UNIQUE INDEX order_items_pkey ON public.order_items USING btree (id),t,t
 public,orders,idx_orders_buyer,CREATE INDEX idx_orders_buyer ON public.orders USING btree (buyer_id),f,f
 public,orders,idx_orders_buyer_created_at,"CREATE INDEX idx_orders_buyer_created_at ON public.orders USING btree (buyer_id, created_at DESC)",f,f
@@ -76,6 +82,7 @@ public,orders,idx_orders_seller_created,"CREATE INDEX idx_orders_seller_created 
 public,orders,idx_orders_shipment_status,CREATE INDEX idx_orders_shipment_status ON public.orders USING btree (shipment_status),f,f
 public,orders,idx_orders_status,CREATE INDEX idx_orders_status ON public.orders USING btree (status),f,f
 public,orders,idx_orders_status_updated_at,"CREATE INDEX idx_orders_status_updated_at ON public.orders USING btree (status, updated_at DESC)",f,f
+public,orders,ix_orders_status_created,"CREATE INDEX ix_orders_status_created ON public.orders USING btree (status, created_at)",f,f
 public,orders,orders_order_number_key,CREATE UNIQUE INDEX orders_order_number_key ON public.orders USING btree (order_number),t,f
 public,orders,orders_pkey,CREATE UNIQUE INDEX orders_pkey ON public.orders USING btree (id),t,t
 public,orders,uq_orders_order_number,CREATE UNIQUE INDEX uq_orders_order_number ON public.orders USING btree (order_number),t,f
@@ -112,6 +119,8 @@ public,product_images,ix_product_images_position,"CREATE INDEX ix_product_images
 public,product_images,ix_product_images_product_id,CREATE INDEX ix_product_images_product_id ON public.product_images USING btree (product_id),f,f
 public,product_images,product_images_pkey,CREATE UNIQUE INDEX product_images_pkey ON public.product_images USING btree (id),t,t
 public,product_images,product_images_r2_key_key,CREATE UNIQUE INDEX product_images_r2_key_key ON public.product_images USING btree (r2_key),t,f
+public,product_popularity_stats,ix_popularity_product_period,"CREATE INDEX ix_popularity_product_period ON public.product_popularity_stats USING btree (period_type, range_end DESC, product_id)",f,f
+public,product_popularity_stats,product_popularity_stats_pkey,CREATE UNIQUE INDEX product_popularity_stats_pkey ON public.product_popularity_stats USING btree (id),t,t
 public,product_reviews,idx_product_reviews_product_created,"CREATE INDEX idx_product_reviews_product_created ON public.product_reviews USING btree (product_id, created_at DESC)",f,f
 public,product_reviews,idx_product_reviews_status,CREATE INDEX idx_product_reviews_status ON public.product_reviews USING btree (status),f,f
 public,product_reviews,product_reviews_pkey,CREATE UNIQUE INDEX product_reviews_pkey ON public.product_reviews USING btree (id),t,t
