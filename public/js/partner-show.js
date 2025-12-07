@@ -93,4 +93,26 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   }
+
+  // 基本情報編集モードの切り替え
+  const editBtn = document.getElementById('editPartnerBtn');
+  const cancelBtn = document.getElementById('cancelEditBtn');
+  const viewMode = document.getElementById('partnerViewMode');
+  const editMode = document.getElementById('partnerEditMode');
+
+  if (editBtn && viewMode && editMode) {
+    editBtn.addEventListener('click', () => {
+      viewMode.style.display = 'none';
+      editMode.style.display = 'block';
+      editBtn.style.display = 'none';
+    });
+  }
+
+  if (cancelBtn && viewMode && editMode) {
+    cancelBtn.addEventListener('click', () => {
+      viewMode.style.display = 'block';
+      editMode.style.display = 'none';
+      if (editBtn) editBtn.style.display = 'inline-block';
+    });
+  }
 });

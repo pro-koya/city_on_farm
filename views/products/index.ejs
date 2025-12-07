@@ -48,7 +48,7 @@
     </div>
     <div class="rail__track">
       <% newArrivals.forEach(function(p){ %>
-        <%- include('../partials/productCard', { p }) %>
+        <%- include('../partials/productCard', { p, currentUser, csrfToken }) %>
       <% }) %>
     </div>
   </section>
@@ -60,22 +60,58 @@
     <div class="rail__head"><h2>閲覧履歴</h2></div>
     <div class="rail__track">
       <% recent.forEach(function(p){ %>
-        <%- include('../partials/productCard', { p }) %>
+        <%- include('../partials/productCard', { p, currentUser, csrfToken }) %>
       <% }) %>
     </div>
   </section>
   <% } %>
 
-  <!-- ✅ 人気 -->
-  <% if (popular && popular.length) { %>
+  <!-- ✅ 人気商品ランキング -->
+  <% if (popularWeekly && popularWeekly.length) { %>
   <section class="rail">
     <div class="rail__head">
-      <h2>人気</h2>
-      <a class="link" href="<%= buildQuery({sort:'popular', page:1}) %>">ランキング →</a>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <h2>人気商品ランキング</h2>
+        <div class="ranking-tabs" style="display: flex; gap: 4px;">
+          <button type="button" class="ranking-tab is-active" data-range="7d">週間</button>
+          <button type="button" class="ranking-tab" data-range="30d">月間</button>
+        </div>
+      </div>
+      <a class="link" href="/ranking/popular">すべて見る →</a>
+    </div>
+    <div class="rail__track" id="popularRankingTrack">
+      <!-- 週間ランキング -->
+      <div class="ranking-panel is-active" data-range="7d" style="display: flex;">
+        <% popularWeekly.forEach(function(p, index){ %>
+          <%- include('../partials/productCard', { p, currentUser, csrfToken, showRank: true, rank: index + 1 }) %>
+        <% }) %>
+      </div>
+      <!-- 月間ランキング -->
+      <div class="ranking-panel" data-range="30d" style="display: none;">
+        <% if (popularMonthly && popularMonthly.length) { %>
+          <% popularMonthly.forEach(function(p, index){ %>
+            <%- include('../partials/productCard', { p, currentUser, csrfToken, showRank: true, rank: index + 1 }) %>
+          <% }) %>
+        <% } else { %>
+          <p class="empty" style="padding: 40px 20px; text-align: center; color: var(--muted); width: 100%;">
+            月間ランキングデータがありません
+          </p>
+        <% } %>
+      </div>
+    </div>
+  </section>
+  <% } %>
+
+  <!-- ✅ みんなのお気に入り -->
+  <% if (topFavorites && topFavorites.length) { %>
+  <section class="rail">
+    <div class="rail__head">
+      <h2>みんなのお気に入り</h2>
+      <a class="link" href="/ranking/favorites">すべて見る →</a>
     </div>
     <div class="rail__track">
-      <% popular.forEach(function(p){ %>
-        <%- include('../partials/productCard', { p }) %>
+      <% topFavorites.forEach(function(p){ %>
+        <%- include('../partials/productCard', { p, currentUser, csrfToken, showFavoriteCount: true }) %>
       <% }) %>
     </div>
   </section>
@@ -102,7 +138,7 @@
     <div class="rail__head"><h2>あなたへのおすすめ</h2></div>
     <div class="rail__track">
       <% recommended.forEach(function(p){ %>
-        <%- include('../partials/productCard', { p }) %>
+        <%- include('../partials/productCard', { p, currentUser, csrfToken }) %>
       <% }) %>
     </div>
   </section>
@@ -125,7 +161,7 @@
     <% } else { %>
       <div class="grid">
         <% previewProducts.forEach(function(p){ %>
-          <%- include('../partials/productCard', { p }) %>
+          <%- include('../partials/productCard', { p, currentUser, csrfToken }) %>
         <% }) %>
       </div>
 
@@ -153,7 +189,33 @@
     Object.keys(o).forEach(k => (o[k]===undefined || o[k]==='' || o[k]===null) && delete o[k]);
     return o;
   }
+
+  // ランキングタブの切り替え
+  document.addEventListener('DOMContentLoaded', () => {
+    const tabs = document.querySelectorAll('.ranking-tab[data-range]');
+    const panels = document.querySelectorAll('.ranking-panel');
+    
+    tabs.forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        e.preventDefault();
+        const range = tab.dataset.range;
+        
+        // タブのアクティブ状態を更新
+        tabs.forEach(t => {
+          t.classList.toggle('is-active', t === tab);
+        });
+        
+        // パネルの表示を切り替え
+        panels.forEach(panel => {
+          const isActive = panel.dataset.range === range;
+          panel.classList.toggle('is-active', isActive);
+          panel.style.display = isActive ? 'flex' : 'none';
+        });
+      });
+    });
+  });
 </script>
 
+<script src="/js/favorites.js"></script>
 <script src="/js/products.js"></script>
 <%- include('../partials/footer') %>

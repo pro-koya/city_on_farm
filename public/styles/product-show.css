@@ -3,6 +3,7 @@
   --text: #2B2B2B;
   --main: #4C6B5C;
   --accent: #A3C9A8;
+  --danger: #e11d48;
   --hi: #D6EADF;
   --white: #fff;
   --muted: #6b7280;
@@ -1032,4 +1033,66 @@ table td {
     height: 80vh;
     border-radius: 0;
   }
+}
+
+/* お気に入りボタン（商品詳細ページ） */
+.favorite-btn {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.favorite-btn:hover {
+  background: #fef2f2;
+  border-color: var(--danger);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: scale(1.05);
+}
+
+.favorite-btn:active {
+  transform: scale(0.95);
+}
+
+.favorite-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.favorite-icon {
+  width: 28px;
+  height: 28px;
+  stroke: var(--muted);
+  stroke-width: 1.5px;
+  fill: none;
+  transition: all 0.2s ease;
+}
+
+.favorite-btn.is-favorited {
+  background: #fef2f2;
+  border-color: var(--danger);
+}
+
+.favorite-btn.is-favorited .favorite-icon {
+  fill: var(--danger);
+  stroke: var(--danger);
+}
+
+.favorite-btn--guest {
+  text-decoration: none;
+  color: inherit;
+}
+
+.favorite-btn--guest:hover {
+  background: #f9fafb;
 }

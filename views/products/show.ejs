@@ -37,7 +37,27 @@
     </div>
 
     <div class="info">
-      <h1 class="title" itemprop="name"><%= product.title %></h1>
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+        <h1 class="title" itemprop="name" style="margin: 0; flex: 1;"><%= product.title %></h1>
+        <!-- お気に入りボタン -->
+        <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+        <button type="button" 
+                class="favorite-btn <%= (typeof isFavorited !== 'undefined' && isFavorited) ? 'is-favorited' : '' %>" 
+                data-product-id="<%= product.id %>"
+                aria-label="<%= (typeof isFavorited !== 'undefined' && isFavorited) ? 'お気に入りから削除' : 'お気に入りに追加' %>"
+                aria-pressed="<%= (typeof isFavorited !== 'undefined' && isFavorited) ? 'true' : 'false' %>">
+          <svg class="favorite-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+          </svg>
+        </button>
+        <% } else { %>
+        <a href="/login" class="favorite-btn favorite-btn--guest" aria-label="ログインしてからお気に入りに追加">
+          <svg class="favorite-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+          </svg>
+        </a>
+        <% } %>
+      </div>
 
       <div class="rating">
         <span class="stars" aria-hidden="true"><%= '★'.repeat(Math.round(product.rating||0)) %><%= '☆'.repeat(5-Math.round(product.rating||0)) %></span>
@@ -311,5 +331,6 @@
   </div>
 </div>
 
+<script src="/js/favorites.js"></script>
 <script src="/js/product-show.js"></script>
 <%- include('../partials/footer') %>

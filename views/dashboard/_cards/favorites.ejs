@@ -1,0 +1,22 @@
+<section class="card">
+  <div class="card__head">
+    <h2>お気に入り商品</h2>
+    <a class="link" href="/my/favorites">すべて見る →</a>
+  </div>
+  <div class="rail__track rail__track--tight">
+    <% if (favorites && favorites.length) { %>
+      <% favorites.slice(0,12).forEach(function(p){ %>
+        <a class="card-mini" href="/products/<%= p.id %>" data-product-id="<%= p.id %>">
+          <img src="<%= p.image_url || '/images/placeholder.png' %>" alt="<%= p.title %>">
+          <div class="card-mini__cap">
+            <strong><%= p.title %></strong>
+            <span class="muted">¥<%= Number(p.price||0).toLocaleString() %></span>
+          </div>
+        </a>
+      <% }) %>
+    <% } else { %>
+      <p class="empty">お気に入り商品はまだありません。<a href="/products">商品一覧を見る</a></p>
+    <% } %>
+  </div>
+</section>
+
