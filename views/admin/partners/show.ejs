@@ -46,27 +46,125 @@
   <section class="ps__grid">
     <!-- 基本情報 -->
     <article class="card">
-      <h2 class="card__title">店舗情報</h2>
-      <dl class="kv">
-        <div><dt>名称</dt><dd><%= partner.name %></dd></div>
-        <% if (partner.kana) { %><div><dt>カナ</dt><dd><%= partner.kana %></dd></div><% } %>
-        <div><dt>種別</dt><dd><%= partner.type %></dd></div>
-        <div><dt>メール</dt><dd><%= partner.email || '—' %></dd></div>
-        <div><dt>電話</dt><dd><%= partner.phone || '—' %></dd></div>
-        <div><dt>Web</dt><dd>
-          <% if (partner.website) { %>
-            <a href="<%= partner.website %>" target="_blank" rel="noopener"><%= partner.website %></a>
-          <% } else { %>—<% } %>
-        </dd></div>
-        <div><dt>税ID</dt><dd><%= partner.tax_id || '—' %></dd></div>
-        <div><dt>住所</dt><dd>
-          <div class="addr">
-            <div>〒 <%= partner.postal_code || '—' %></div>
-            <div><%= [partner.prefecture, partner.city, partner.address1, partner.address2].filter(Boolean).join(' ') || '—' %></div>
+      <div class="card__head">
+        <h2 class="card__title">店舗情報</h2>
+        <% if (user.roles.includes('admin') || isMember) { %>
+        <button type="button" class="btn btn--ghost btn--sm" id="editPartnerBtn">
+          編集
+        </button>
+        <% } %>
+      </div>
+
+      <!-- 表示モード -->
+      <div id="partnerViewMode">
+        <dl class="kv">
+          <div><dt>名称</dt><dd><%= partner.name %></dd></div>
+          <% if (partner.kana) { %><div><dt>カナ</dt><dd><%= partner.kana %></dd></div><% } %>
+          <div><dt>種別</dt><dd><%= partner.type %></dd></div>
+          <div><dt>メール</dt><dd><%= partner.email || '—' %></dd></div>
+          <div><dt>電話</dt><dd><%= partner.phone || '—' %></dd></div>
+          <div><dt>Web</dt><dd>
+            <% if (partner.website) { %>
+              <a href="<%= partner.website %>" target="_blank" rel="noopener"><%= partner.website %></a>
+            <% } else { %>—<% } %>
+          </dd></div>
+          <div><dt>税ID</dt><dd><%= partner.tax_id || '—' %></dd></div>
+          <div><dt>住所</dt><dd>
+            <div class="addr">
+              <div>〒 <%= partner.postal_code || '—' %></div>
+              <div><%= [partner.prefecture, partner.city, partner.address1, partner.address2].filter(Boolean).join(' ') || '—' %></div>
+            </div>
+          </dd></div>
+          <div class="kv--full"><dt>メモ</dt><dd><%= partner.note || '—' %></dd></div>
+        </dl>
+      </div>
+
+      <!-- 編集モード -->
+      <% if (user.roles.includes('admin') || isMember) { %>
+      <div id="partnerEditMode" style="display: none;">
+        <form action="/admin/partners/<%= partner.id %>/edit" method="POST" class="form h-adr" id="partnerEditForm">
+          <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
+          <span class="p-country-name" style="display: none;">Japan</span>
+
+          <div class="field">
+            <label for="partner_name">名称 *</label>
+            <input type="text" id="partner_name" name="name" value="<%= partner.name || '' %>" required>
           </div>
-        </dd></div>
-        <div class="kv--full"><dt>メモ</dt><dd><%= partner.note || '—' %></dd></div>
-      </dl>
+
+          <div class="field">
+            <label for="partner_kana">カナ</label>
+            <input type="text" id="partner_kana" name="kana" value="<%= partner.kana || '' %>">
+          </div>
+
+          <div class="field">
+            <label for="partner_type">種別</label>
+            <select id="partner_type" name="type" class="pulldown">
+              <option value="">-- 任意 --</option>
+              <option value="restaurant" <%= partner.type === 'restaurant' ? 'selected' : '' %>>飲食店</option>
+              <option value="retailer" <%= partner.type === 'retailer' ? 'selected' : '' %>>小売</option>
+              <option value="wholesale" <%= partner.type === 'wholesale' ? 'selected' : '' %>>卸</option>
+              <option value="other" <%= partner.type === 'other' ? 'selected' : '' %>>その他</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="partner_email">メールアドレス</label>
+            <input type="email" id="partner_email" name="email" value="<%= partner.email || '' %>">
+          </div>
+
+          <div class="field">
+            <label for="partner_phone">電話番号</label>
+            <input type="tel" id="partner_phone" name="phone" value="<%= partner.phone || '' %>">
+          </div>
+
+          <div class="field">
+            <label for="partner_website">Webサイト</label>
+            <input type="url" id="partner_website" name="website" value="<%= partner.website || '' %>" placeholder="https://example.com">
+          </div>
+
+          <div class="field">
+            <label for="partner_tax_id">税ID</label>
+            <input type="text" id="partner_tax_id" name="tax_id" value="<%= partner.tax_id || '' %>">
+          </div>
+
+          <div class="grid3">
+            <div class="field">
+              <label for="partner_postal_code">郵便番号</label>
+              <input type="text" id="partner_postal_code" name="postal_code" value="<%= partner.postal_code || '' %>" class="p-postal-code">
+            </div>
+            <div class="field">
+              <label for="partner_prefecture">都道府県</label>
+              <input type="text" id="partner_prefecture" name="prefecture" value="<%= partner.prefecture || '' %>" class="p-region" readonly>
+            </div>
+            <div class="field">
+              <label for="partner_city">市区町村</label>
+              <input type="text" id="partner_city" name="city" value="<%= partner.city || '' %>" class="p-locality" readonly>
+            </div>
+          </div>
+
+          <div class="grid2">
+            <div class="field">
+              <label for="partner_address1">番地</label>
+              <input type="text" id="partner_address1" name="address1" value="<%= partner.address1 || '' %>" class="p-street-address">
+            </div>
+            <div class="field">
+              <label for="partner_address2">建物名・部屋</label>
+              <input type="text" id="partner_address2" name="address2" value="<%= partner.address2 || '' %>" class="p-extended-address">
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="partner_note">メモ</label>
+            <textarea id="partner_note" name="note" rows="4"><%= partner.note || '' %></textarea>
+          </div>
+
+          <div class="row-right" style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px;">
+            <button type="button" class="btn btn--ghost" id="cancelEditBtn">キャンセル</button>
+            <button type="submit" class="btn btn--toggle">保存</button>
+          </div>
+        </form>
+      </div>
+      <% } %>
     </article>
 
     <% if (user.roles.includes('seller') || user.roles.includes('admin')) { %>
@@ -336,5 +434,6 @@
   </section>
 </main>
 
+<script src="https://yubinbango.github.io/yubinbango/yubinbango.js" charset="UTF-8"></script>
 <script src="/js/partner-show.js"></script>
 <%- include('../../partials/footer') %>

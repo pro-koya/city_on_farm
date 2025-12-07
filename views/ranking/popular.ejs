@@ -1,0 +1,59 @@
+<%- include('../partials/header', { 
+  title: '人気商品ランキング', 
+  extraCSS2: '',
+  extraCSS: '/styles/products.css' 
+}) %>
+
+<main class="page page--list">
+  <header style="margin-bottom: 24px;">
+    <h1 style="margin: 0 0 8px; font-size: 1.8rem;">人気商品ランキング</h1>
+    <div class="ranking-tabs" style="display: flex; gap: 4px; margin-top: 12px;">
+      <a href="/ranking/popular?range=7d" class="ranking-tab <%= range === '7d' ? 'is-active' : '' %>">週間（過去7日）</a>
+      <a href="/ranking/popular?range=30d" class="ranking-tab <%= range === '30d' ? 'is-active' : '' %>">月間（過去30日）</a>
+      <a href="/ranking/popular?range=all" class="ranking-tab <%= range === 'all' ? 'is-active' : '' %>">全期間</a>
+    </div>
+  </header>
+
+  <section class="grid-wrap grid-wrap--compact" id="grid">
+    <% if (!products || !products.length) { %>
+      <div class="empty" style="text-align: center; padding: 60px 20px;">
+        <p style="font-size: 1.1rem; margin-bottom: 16px;">ランキングデータがありません</p>
+        <a class="btn btn--ghost" href="/products">商品一覧を見る</a>
+      </div>
+    <% } else { %>
+      <div class="grid">
+        <% products.forEach(function(p, index){ %>
+          <%- include('../partials/productCard', { 
+            p, 
+            currentUser, 
+            csrfToken,
+            showRank: true,
+            rank: index + 1
+          }) %>
+        <% }) %>
+      </div>
+
+      <% if (pagination && pagination.pageCount > 1) { %>
+      <nav class="pagination" aria-label="ページネーション" style="margin-top: 32px;">
+        <a class="page <%= pagination.page===1 ? 'is-disabled' : '' %>"
+           href="?range=<%= range %>&page=<%= Math.max(1, pagination.page-1) %>#grid"
+           aria-label="前のページ">‹</a>
+
+        <% for (let i = 1; i <= pagination.pageCount; i++) { %>
+          <a class="page <%= i===pagination.page ? 'is-active' : '' %>"
+             href="?range=<%= range %>&page=<%= i %>#grid"><%= i %></a>
+        <% } %>
+
+        <a class="page <%= pagination.page===pagination.pageCount ? 'is-disabled' : '' %>"
+           href="?range=<%= range %>&page=<%= Math.min(pagination.pageCount, pagination.page+1) %>#grid"
+           aria-label="次のページ">›</a>
+      </nav>
+      <% } %>
+    <% } %>
+  </section>
+</main>
+
+<script src="/js/favorites.js"></script>
+<script src="/js/products.js"></script>
+<%- include('../partials/footer') %>
+

@@ -1,0 +1,62 @@
+<%- include('../partials/header', { 
+  title: 'お気に入り商品', 
+  extraCSS2: '',
+  extraCSS: '/styles/products.css' 
+}) %>
+
+<main class="page page--list">
+  <header style="margin-bottom: 24px;">
+    <h1 style="margin: 0 0 8px; font-size: 1.8rem;">お気に入り商品</h1>
+    <p class="muted" style="margin: 0; color: #6b7280;">
+      <%= pagination.total %>件のお気に入り商品
+    </p>
+  </header>
+
+  <section class="grid-wrap grid-wrap--compact" id="grid">
+    <% if (!favorites || !favorites.length) { %>
+      <div class="empty" style="text-align: center; padding: 60px 20px;">
+        <p style="font-size: 1.1rem; margin-bottom: 16px;">お気に入り商品はまだありません</p>
+        <a class="btn btn--ghost" href="/products">商品一覧を見る</a>
+      </div>
+    <% } else { %>
+      <div class="grid">
+        <% favorites.forEach(function(fav){ %>
+          <%- include('../partials/productCard', { 
+            p: {
+              id: fav.id,
+              title: fav.title,
+              price: fav.price,
+              stock: fav.stock,
+              unit: fav.unit,
+              image_url: fav.image_url,
+              isFavorited: true
+            },
+            currentUser: currentUser,
+            csrfToken: csrfToken
+          }) %>
+        <% }) %>
+      </div>
+
+      <% if (pagination.pageCount > 1) { %>
+      <nav class="pagination" aria-label="ページネーション" style="margin-top: 32px;">
+        <a class="page <%= pagination.page===1 ? 'is-disabled' : '' %>"
+           href="?page=<%= Math.max(1, pagination.page-1) %>#grid"
+           aria-label="前のページ">‹</a>
+
+        <% for (let i = 1; i <= pagination.pageCount; i++) { %>
+          <a class="page <%= i===pagination.page ? 'is-active' : '' %>"
+             href="?page=<%= i %>#grid"><%= i %></a>
+        <% } %>
+
+        <a class="page <%= pagination.page===pagination.pageCount ? 'is-disabled' : '' %>"
+           href="?page=<%= Math.min(pagination.pageCount, pagination.page+1) %>#grid"
+           aria-label="次のページ">›</a>
+      </nav>
+      <% } %>
+    <% } %>
+  </section>
+</main>
+
+<script src="/js/favorites.js"></script>
+<%- include('../partials/footer') %>
+

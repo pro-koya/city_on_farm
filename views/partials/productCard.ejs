@@ -9,6 +9,13 @@
   
       const diffDays = (today - created) / (1000 * 60 * 60 * 24);
     %>
+    <!-- 順位バッジ（ランキング表示時） -->
+    <% if (typeof showRank !== 'undefined' && showRank && typeof rank !== 'undefined') { %>
+      <span class="badge--rank badge--rank--<%= rank <= 3 ? rank : 'other' %>">
+        <% if (rank === 1) { %>🥇<% } else if (rank === 2) { %>🥈<% } else if (rank === 3) { %>🥉<% } else { %><%= rank %>位<% } %>
+      </span>
+    <% } %>
+
     <% if (diffDays <= 3 && diffDays >= 0) { %>
       <span class="badge--new">NEW</span>
     <% } %>
@@ -18,6 +25,26 @@
     <% } else if (p.stock < 5) { %>
       <span class="badge--low">残り<%= p.stock %>点</span>
     <% } %>
+
+    <!-- お気に入りボタン -->
+    <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+    <button type="button" 
+            class="favorite-btn <%= (typeof p.isFavorited !== 'undefined' && p.isFavorited) ? 'is-favorited' : '' %>" 
+            data-product-id="<%= p.id %>"
+            aria-label="<%= (typeof p.isFavorited !== 'undefined' && p.isFavorited) ? 'お気に入りから削除' : 'お気に入りに追加' %>"
+            aria-pressed="<%= (typeof p.isFavorited !== 'undefined' && p.isFavorited) ? 'true' : 'false' %>">
+      <svg class="favorite-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+      </svg>
+    </button>
+    <% } else { %>
+    <a href="/login" class="favorite-btn favorite-btn--guest" aria-label="ログインしてからお気に入りに追加">
+      <svg class="favorite-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+      </svg>
+    </a>
+    <% } %>
+
     <img src="<%= p.image_url %>" alt="<%= p.title %>">
     <div class="card__body">
       <h3 class="card__name"><%= p.title %></h3>
@@ -25,6 +52,24 @@
         <span>¥<%= p.price %></span>
         <span><%= p.unit || '' %></span>
       </div>
+      <!-- ランキング情報（人気ランキング表示時） -->
+      <% if (typeof showRank !== 'undefined' && showRank && p.quantity_sold != null) { %>
+        <div class="card__stats" style="margin-top: 6px; font-size: 0.85rem; color: var(--muted);">
+          <span>売れた個数: <%= p.quantity_sold || 0 %>個</span>
+          <% if (p.order_count != null) { %>
+            <span style="margin-left: 8px;">注文数: <%= p.order_count || 0 %>件</span>
+          <% } %>
+        </div>
+      <% } %>
+      <!-- お気に入り数（みんなのお気に入り表示時） -->
+      <% if (typeof showFavoriteCount !== 'undefined' && showFavoriteCount && p.favorite_count != null && p.favorite_count > 0) { %>
+        <div class="card__favorite-count" style="margin-top: 6px; font-size: 0.85rem; color: var(--muted); display: flex; align-items: center; gap: 4px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--danger)" stroke="var(--danger)" stroke-width="2" style="flex-shrink: 0;">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+          </svg>
+          <span><%= p.favorite_count %>人がお気に入り</span>
+        </div>
+      <% } %>
     </div>
   </a>
   <form class="buy buyForm" action="/cart/add" method="POST" data-stock="<%= p.stock %>" novalidate>

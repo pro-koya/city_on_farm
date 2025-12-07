@@ -1942,6 +1942,98 @@ async function mergeSessionRecentToDb(req) {
 }
 
 /* =========================================================
+ * 人気商品ランキング取得
+ * =======================================================*/
+async function getPopularProducts(dbQuery, { range = '7d', limit = 12, sellerId = null } = {}) {
+  // 期間条件の設定
+  let dateCondition = '';
+  const params = [];
+  let paramIndex = 1;
+
+  if (range === '7d') {
+    dateCondition = `AND o.created_at >= now() - interval '7 days'`;
+  } else if (range === '30d') {
+    dateCondition = `AND o.created_at >= now() - interval '30 days'`;
+  } else if (range === 'all') {
+    dateCondition = ''; // 全期間
+  } else {
+    // デフォルトは7日
+    dateCondition = `AND o.created_at >= now() - interval '7 days'`;
+  }
+
+  // 出品者フィルター（将来用）
+  const sellerCondition = sellerId ? `AND oi.seller_id = $${paramIndex}::uuid` : '';
+  if (sellerId) {
+    params.push(sellerId);
+    paramIndex++;
+  }
+
+  // ランキング取得クエリ
+  // 注文ステータス: delivered, processing, paid, confirmed, fulfilled を含む
+  // 除外: canceled, cancelled, refunded
+  // 支払いステータス: paid, completed を含む
+  const rows = await dbQuery(
+    `SELECT 
+       p.id,
+       p.title,
+       p.price,
+       p.unit,
+       p.stock,
+       p.favorite_count,
+       (SELECT url FROM product_images pi WHERE pi.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url,
+       SUM(oi.quantity)::int AS quantity_sold,
+       COUNT(DISTINCT o.id)::int AS order_count,
+       SUM(oi.price * oi.quantity)::int AS sales_amount,
+       MAX(o.created_at) AS last_sold_at
+     FROM order_items oi
+     JOIN orders o ON o.id = oi.order_id
+     JOIN products p ON p.id = oi.product_id
+     WHERE p.status = 'public'
+       AND o.status NOT IN ('canceled', 'cancelled', 'refunded')
+       AND o.payment_status IN ('paid', 'completed')
+       ${dateCondition}
+       ${sellerCondition}
+     GROUP BY p.id, p.title, p.price, p.unit, p.stock, p.favorite_count
+     HAVING SUM(oi.quantity) > 0
+     ORDER BY 
+       SUM(oi.quantity) DESC,
+       SUM(oi.price * oi.quantity) DESC,
+       p.favorite_count DESC,
+       MAX(o.created_at) DESC
+     LIMIT $${paramIndex}::int`,
+    [...params, limit]
+  );
+
+  return rows;
+}
+
+/* =========================================================
+ * みんなのお気に入り取得
+ * =======================================================*/
+async function getTopFavorites(dbQuery, { limit = 12 } = {}) {
+  const rows = await dbQuery(
+    `SELECT 
+       p.id,
+       p.title,
+       p.price,
+       p.unit,
+       p.stock,
+       p.favorite_count,
+       (SELECT url FROM product_images pi WHERE pi.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
+     FROM products p
+     WHERE p.status = 'public'
+       AND p.favorite_count > 0
+     ORDER BY 
+       p.favorite_count DESC,
+       p.created_at DESC
+     LIMIT $1::int`,
+    [limit]
+  );
+
+  return rows;
+}
+
+/* =========================================================
  * option_labels キャッシュ（日本語ラベル解決）
  * =======================================================*/
 const OPTION_LABELS = {
@@ -2026,6 +2118,41 @@ app.get('/products', async (req, res, next) => {
 
     const buildQuery = buildQueryPath('/products', { q, category, sort });
 
+    // 人気商品ランキング（週間・月間）とみんなのお気に入りを取得
+    const [popularWeekly, popularMonthly, topFavorites] = await Promise.all([
+      getPopularProducts(dbQuery, { range: '7d', limit: 12 }),
+      getPopularProducts(dbQuery, { range: '30d', limit: 12 }),
+      getTopFavorites(dbQuery, { limit: 12 })
+    ]);
+
+    // お気に入り状態の取得（全商品用：通常商品 + ランキング商品）
+    let favoriteProductIds = new Set();
+    if (req.session?.user) {
+      const allProductIds = [
+        ...items.map(p => p.id),
+        ...popularWeekly.map(p => p.id),
+        ...popularMonthly.map(p => p.id),
+        ...topFavorites.map(p => p.id)
+      ];
+      if (allProductIds.length > 0) {
+        const favRows = await dbQuery(
+          `SELECT product_id FROM favorites WHERE user_id = $1::uuid AND product_id = ANY($2::uuid[])`,
+          [req.session.user.id, allProductIds]
+        );
+        favoriteProductIds = new Set(favRows.map(r => r.product_id));
+      }
+    }
+
+    // 各商品にお気に入り状態を追加
+    items.forEach(p => {
+      p.isFavorited = favoriteProductIds.has(p.id);
+    });
+
+    // 各ランキング商品にお気に入り状態を追加
+    [...popularWeekly, ...popularMonthly, ...topFavorites].forEach(p => {
+      p.isFavorited = favoriteProductIds.has(p.id);
+    });
+
     res.render('products/index', {
       title: '商品一覧',
       q, sort, category,
@@ -2036,14 +2163,19 @@ app.get('/products', async (req, res, next) => {
       categories,
       categoriesChips,
       newArrivals: items.slice(0, 8),
-      popular: [],
+      popular: popularWeekly, // 週間ランキングをデフォルト表示
+      popularWeekly,
+      popularMonthly,
+      topFavorites,
       collections: [],
       recommended: [],
       recent: [],
       previewProducts: items,
       previewTotal: total,
       buildQuery,
-      page: pageNum
+      page: pageNum,
+      currentUser: req.session?.user || null,
+      csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
     });
   } catch (e) { next(e); }
 });
@@ -2061,6 +2193,21 @@ app.get('/products/list', async (req, res, next) => {
       q, category, sort, page, flags, visible: 'public', pageSize: 20
     });
 
+    // お気に入り状態の取得（ログインユーザーのみ）
+    let favoriteProductIds = new Set();
+    if (req.session?.user) {
+      const favRows = await dbQuery(
+        `SELECT product_id FROM favorites WHERE user_id = $1::uuid`,
+        [req.session.user.id]
+      );
+      favoriteProductIds = new Set(favRows.map(r => r.product_id));
+    }
+
+    // 各商品にお気に入り状態を追加
+    items.forEach(p => {
+      p.isFavorited = favoriteProductIds.has(p.id);
+    });
+
     const pagination = { page: pageNum, pageCount: Math.max(1, Math.ceil(total / pageSize)) };
     const buildQuery = buildQueryPath('/products/list', { q, category, sort });
 
@@ -2075,9 +2222,132 @@ app.get('/products/list', async (req, res, next) => {
       total,
       pagination,
       buildQuery,
-      page: pageNum
+      page: pageNum,
+      currentUser: req.session?.user || null,
+      csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
     });
   } catch (e) { next(e); }
+});
+
+// 人気商品ランキングページ
+app.get('/ranking/popular', async (req, res, next) => {
+  try {
+    const range = String(req.query.range || '7d').trim();
+    if (!['7d', '30d', 'all'].includes(range)) {
+      return res.redirect('/ranking/popular?range=7d');
+    }
+
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const perPage = 20;
+    const offset = (page - 1) * perPage;
+
+    // ランキング取得
+    const allProducts = await getPopularProducts(dbQuery, { range, limit: 1000 });
+    const total = allProducts.length;
+    const pageCount = Math.ceil(total / perPage);
+    const products = allProducts.slice(offset, offset + perPage);
+
+    // お気に入り状態の取得（ログインユーザーのみ）
+    let favoriteProductIds = new Set();
+    if (req.session?.user && products.length > 0) {
+      const productIds = products.map(p => p.id);
+      const favRows = await dbQuery(
+        `SELECT product_id FROM favorites WHERE user_id = $1::uuid AND product_id = ANY($2::uuid[])`,
+        [req.session.user.id, productIds]
+      );
+      favoriteProductIds = new Set(favRows.map(r => r.product_id));
+    }
+
+    // 各商品にお気に入り状態を追加
+    products.forEach(p => {
+      p.isFavorited = favoriteProductIds.has(p.id);
+    });
+
+    res.render('ranking/popular', {
+      title: '人気商品ランキング',
+      products,
+      range,
+      pagination: {
+        page,
+        pageCount,
+        total,
+        perPage
+      },
+      currentUser: req.session?.user || null,
+      csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// みんなのお気に入りページ
+app.get('/ranking/favorites', async (req, res, next) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const perPage = 20;
+    const offset = (page - 1) * perPage;
+
+    // 総件数
+    const countRows = await dbQuery(
+      `SELECT COUNT(*)::int AS cnt
+       FROM products
+       WHERE status = 'public' AND favorite_count > 0`
+    );
+    const total = countRows[0]?.cnt || 0;
+    const pageCount = Math.ceil(total / perPage);
+
+    // お気に入り数順で取得
+    const products = await dbQuery(
+      `SELECT 
+         p.id,
+         p.title,
+         p.price,
+         p.unit,
+         p.stock,
+         p.favorite_count,
+         (SELECT url FROM product_images pi WHERE pi.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
+       FROM products p
+       WHERE p.status = 'public'
+         AND p.favorite_count > 0
+       ORDER BY 
+         p.favorite_count DESC,
+         p.created_at DESC
+       LIMIT $1::int OFFSET $2::int`,
+      [perPage, offset]
+    );
+
+    // お気に入り状態の取得（ログインユーザーのみ）
+    let favoriteProductIds = new Set();
+    if (req.session?.user && products.length > 0) {
+      const productIds = products.map(p => p.id);
+      const favRows = await dbQuery(
+        `SELECT product_id FROM favorites WHERE user_id = $1::uuid AND product_id = ANY($2::uuid[])`,
+        [req.session.user.id, productIds]
+      );
+      favoriteProductIds = new Set(favRows.map(r => r.product_id));
+    }
+
+    // 各商品にお気に入り状態を追加
+    products.forEach(p => {
+      p.isFavorited = favoriteProductIds.has(p.id);
+    });
+
+    res.render('ranking/favorites', {
+      title: 'みんなのお気に入り',
+      products,
+      pagination: {
+        page,
+        pageCount,
+        total,
+        perPage
+      },
+      currentUser: req.session?.user || null,
+      csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
+    });
+  } catch (e) {
+    next(e);
+  }
 });
 
 // /products/:slug（詳細）
@@ -2164,17 +2434,89 @@ app.get('/products/:id', async (req, res, next) => {
       sellerHighlight = await getSellerHighlightByUserId(sellerUserId);
     }
 
+    // お気に入り状態の取得（ログインユーザーのみ）
+    let isFavorited = false;
+    if (req.session?.user) {
+      const favRows = await dbQuery(
+        `SELECT 1 FROM favorites WHERE user_id = $1 AND product_id = $2 LIMIT 1`,
+        [req.session.user.id, product.id]
+      );
+      isFavorited = favRows.length > 0;
+    }
+
     res.set('Cache-Control', 'no-store');
     res.render('products/show', {
       title: product.title,
       product, specs, tags, related, reviews, myReview,
-      recentlyViewed, currentUser, sellerHighlight
+      recentlyViewed, currentUser, sellerHighlight,
+      isFavorited, csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
     });
   } catch (e) {
     console.log(e);
     next(e);
   }
 });
+
+// お気に入りトグル（追加/削除）
+app.post(
+  '/favorites/:productId',
+  requireAuth,
+  csrfProtect,
+  async (req, res, next) => {
+    try {
+      const productId = String(req.params.productId || '').trim();
+      if (!isUuid(productId)) {
+        return res.status(400).json({ ok: false, message: '不正な商品IDです' });
+      }
+
+      const userId = req.session.user.id;
+
+      // 商品の存在確認
+      const productRows = await dbQuery(
+        `SELECT id, status FROM products WHERE id = $1::uuid LIMIT 1`,
+        [productId]
+      );
+      if (!productRows.length) {
+        return res.status(404).json({ ok: false, message: '商品が見つかりません' });
+      }
+
+      // 非公開商品はお気に入り登録不可
+      if (productRows[0].status !== 'public') {
+        return res.status(403).json({ ok: false, message: 'この商品はお気に入りに登録できません' });
+      }
+
+      // 既にお気に入りに登録されているか確認
+      const existingRows = await dbQuery(
+        `SELECT id FROM favorites WHERE user_id = $1::uuid AND product_id = $2::uuid LIMIT 1`,
+        [userId, productId]
+      );
+
+      if (existingRows.length > 0) {
+        // 削除（トグル）
+        await dbQuery(
+          `DELETE FROM favorites WHERE user_id = $1::uuid AND product_id = $2::uuid`,
+          [userId, productId]
+        );
+        // トリガーでfavorite_countが自動更新される
+        return res.json({ ok: true, favorited: false, message: 'お気に入りから削除しました' });
+      } else {
+        // 追加（トグル）
+        await dbQuery(
+          `INSERT INTO favorites (user_id, product_id) VALUES ($1::uuid, $2::uuid)`,
+          [userId, productId]
+        );
+        // トリガーでfavorite_countが自動更新される
+        return res.json({ ok: true, favorited: true, message: 'お気に入りに追加しました' });
+      }
+    } catch (e) {
+      // UNIQUE制約違反など
+      if (e.code === '23505') {
+        return res.status(409).json({ ok: false, message: '既にお気に入りに登録されています' });
+      }
+      next(e);
+    }
+  }
+);
 
 app.post(
   '/products/:productId/reviews',
@@ -3586,7 +3928,25 @@ app.get('/dashboard/buyer', requireAuth, async (req, res, next) => {
       )
     ]);
 
-    const recentProducts = await fetchRecentProducts(req, 12);
+    const [recentProducts, favoriteProducts] = await Promise.all([
+      fetchRecentProducts(req, 12),
+      // お気に入り商品を取得
+      dbQuery(
+        `SELECT 
+           p.id,
+           p.title,
+           p.price,
+           p.unit,
+           (SELECT url FROM product_images pi WHERE pi.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
+         FROM favorites f
+         JOIN products p ON p.id = f.product_id
+         WHERE f.user_id = $1::uuid
+           AND p.status = 'public'
+         ORDER BY f.created_at DESC
+         LIMIT 12`,
+        [uid]
+      )
+    ]);
 
     // 日本語ラベル付与（注文状況）
     const ordersWithJa = recentOrders.map(o => ({
@@ -3599,6 +3959,7 @@ app.get('/dashboard/buyer', requireAuth, async (req, res, next) => {
       currentUser: req.session.user,
       orders: ordersWithJa,
       recent: recentProducts,
+      favorites: favoriteProducts,
       notices,
       totalOrders: count[0]?.cnt || 0
     });
@@ -8045,6 +8406,78 @@ app.get(
   }
 );
 
+// 取引先基本情報の更新（管理者 or 取引先メンバー）
+app.post(
+  '/admin/partners/:id/edit',
+  requireAuth,
+  csrfProtect,
+  async (req, res, next) => {
+    try {
+      const id = String(req.params.id || '').trim();
+      if (!isUuid(id)) {
+        return res.status(400).render('errors/404', { title: '不正なID' });
+      }
+
+      // 権限：管理者 or その取引先メンバー
+      const isMember = await isMemberOfPartner(req, id);
+      if (!isAdmin(req) && !isMember) {
+        return res.status(403).send('forbidden');
+      }
+
+      // フォームデータの取得とバリデーション
+      const name = String(req.body.name || '').trim();
+      if (!name) {
+        return res.redirect(`/admin/partners/${id}?error=名称は必須です`);
+      }
+
+      const kana = String(req.body.kana || '').trim() || null;
+      const type = String(req.body.type || '').trim() || null;
+      const email = String(req.body.email || '').trim() || null;
+      const phone = String(req.body.phone || '').trim() || null;
+      const website = String(req.body.website || '').trim() || null;
+      const tax_id = String(req.body.tax_id || '').trim() || null;
+      const postal_code = String(req.body.postal_code || '').trim() || null;
+      const prefecture = String(req.body.prefecture || '').trim() || null;
+      const city = String(req.body.city || '').trim() || null;
+      const address1 = String(req.body.address1 || '').trim() || null;
+      const address2 = String(req.body.address2 || '').trim() || null;
+      const note = String(req.body.note || '').trim() || null;
+
+      // 更新実行
+      const result = await dbQuery(
+        `UPDATE partners
+         SET
+           name = $1,
+           kana = $2,
+           type = $3,
+           email = $4,
+           phone = $5,
+           website = $6,
+           tax_id = $7,
+           postal_code = $8,
+           prefecture = $9,
+           city = $10,
+           address1 = $11,
+           address2 = $12,
+           note = $13,
+           updated_at = now()
+         WHERE id = $14::uuid
+         RETURNING id`,
+        [name, kana, type, email, phone, website, tax_id, postal_code, prefecture, city, address1, address2, note, id]
+      );
+
+      if (!result.length) {
+        return res.status(404).render('errors/404', { title: '取引先が見つかりません' });
+      }
+
+      // 更新後、詳細ページにリダイレクト
+      return res.redirect(`/admin/partners/${id}`);
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
 // 有効/無効トグル
 app.post(
   '/admin/partners/:id/status',
@@ -9368,6 +9801,68 @@ app.get('/my/notifications', requireAuth, async (req, res, next) => {
       total,
       filter,
       pagination,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// =========================================================
+// マイページ：お気に入り一覧
+// GET /my/favorites
+// =========================================================
+app.get('/my/favorites', requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.session.user.id;
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const perPage = 20;
+    const offset = (page - 1) * perPage;
+
+    // お気に入り商品を取得（非公開商品は除外）
+    const favorites = await dbQuery(
+      `SELECT 
+         f.id AS favorite_id,
+         f.created_at AS favorited_at,
+         p.id,
+         p.title,
+         p.price,
+         p.stock,
+         p.status,
+         p.unit,
+         p.favorite_count,
+         (SELECT url FROM product_images pi WHERE pi.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
+       FROM favorites f
+       JOIN products p ON p.id = f.product_id
+       WHERE f.user_id = $1::uuid
+         AND p.status = 'public'
+       ORDER BY f.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [userId, perPage, offset]
+    );
+
+    // 総件数
+    const countRows = await dbQuery(
+      `SELECT COUNT(*)::int AS cnt
+       FROM favorites f
+       JOIN products p ON p.id = f.product_id
+       WHERE f.user_id = $1::uuid
+         AND p.status = 'public'`,
+      [userId]
+    );
+    const total = countRows[0]?.cnt || 0;
+    const pageCount = Math.ceil(total / perPage);
+
+    res.render('my/favorites', {
+      title: 'お気に入り商品',
+      favorites,
+      pagination: {
+        page,
+        pageCount,
+        total,
+        perPage
+      },
+      currentUser: req.session.user,
+      csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
     });
   } catch (e) {
     next(e);

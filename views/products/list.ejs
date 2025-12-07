@@ -23,7 +23,7 @@
         <% } else { %>
         <div class="grid">
             <% products.forEach(function(p){ %>
-            <%- include('../partials/productCard', { p }) %>
+            <%- include('../partials/productCard', { p, currentUser, csrfToken }) %>
             <% }) %>
         </div>
 
@@ -52,5 +52,6 @@
     return o;
   }
 </script>
+<script src="/js/favorites.js"></script>
 <script src="/js/products.js"></script>
 <%- include('../partials/footer') %>
