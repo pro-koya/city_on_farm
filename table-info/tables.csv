@@ -8,6 +8,7 @@ public,contact_messages,,8
 public,contacts,,13
 public,coupons,,17
 public,email_verifications,,7
+public,favorites,,4
 public,global_allowed_payment_methods,,1
 public,gmail_tokens,,3
 public,notification_reads,ユーザーごとの通知既読状態,4
@@ -25,10 +26,11 @@ public,partners,取引先（主に飲食店などの法人・団体・個人事�
 public,password_reset_tokens,,6
 public,payments,,8
 public,product_images,,12
+public,product_popularity_stats,,10
 public,product_reviews,,9
 public,product_specs,,6
 public,product_tags,,2
-public,products,,19
+public,products,,20
 public,r2_assets,,8
 public,seller_profile_values,,2
 public,seller_profiles,,13
