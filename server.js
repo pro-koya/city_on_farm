@@ -3610,16 +3610,24 @@ app.get('/dashboard/seller', requireAuth, requireRole(['seller']), async (req, r
     const user  = req.session.user;
     const uid   = user.id;
     const roles = Array.isArray(user.roles) ? user.roles : [];
+    const u = await dbQuery(
+      'select id, partner_id from users where id = $1', [uid]
+    );
+    const partner_id = u[0].partner_id;
+
 
     const [listings, tradesRecent, tradesCount, revenueSum, revenueCardData, notices] = await Promise.all([
       dbQuery(`
-        SELECT p.slug, p.title, p.price, p.stock, p.id,
-               (SELECT url FROM product_images WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
+        SELECT p.slug, p.title, p.price, p.stock, p.id, p.seller_id,
+               (SELECT url FROM product_images WHERE product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url,
+               u.partner_id AS partner_id
           FROM products p
+          LEFT JOIN users u ON u.id = p.seller_id
          WHERE p.seller_id = $1
+          OR partner_id = $2
          ORDER BY p.updated_at DESC
          LIMIT 12
-      `, [uid]),
+      `, [uid, partner_id]),
 
       // 直近6件
       dbQuery(`
@@ -3898,7 +3906,6 @@ app.get('/seller/trades', requireAuth, requireRole(['seller', 'admin']), async (
         <option value="processing"${status==='processing'?' selected':''}>処理中</option>
         <option value="delivered"${status==='delivered'?' selected':''}>完了</option>
         <option value="canceled"${status==='canceled'?' selected':''}>キャンセル</option>
-        <option value="refunded"${status==='refunded'?' selected':''}>返金済み</option>
       </select>
       <select name="payment" class="select pulldown">
         <option value="all"${payment==='all'?' selected':''}>すべての支払い状況</option>
@@ -5106,6 +5113,11 @@ app.get('/seller/listings',
       const pageSize = 20;
       const offset   = (pageNum - 1) * pageSize;
 
+      const u = await dbQuery(
+        'SELECT id, partner_id from users where id = $1', [sellerId]
+      );
+      const partner_id = u[0].partner_id;
+
       // 並び順
       let orderBy = 'p.updated_at DESC NULLS LAST';
       if (sort === 'priceAsc')  orderBy = 'p.price ASC, p.updated_at DESC';
@@ -5119,8 +5131,9 @@ app.get('/seller/listings',
       let setOwner;
 
       if ((previousUrl && !previousUrl.includes('admin') && !owner) || owner === 'owner_own' || (!previousUrl && owner !== 'owner_all')) {
-        where.push('p.seller_id = $1');
+        where.push('(p.seller_id = $1 OR partner_id = $2)');
         params.push(sellerId);
+        params.push(partner_id);
         setOwner = 'owner_own';
       } else if (previousUrl && previousUrl.includes('admin') && !owner || owner === 'owner_all') {
         setOwner = 'owner_all';
@@ -5141,32 +5154,36 @@ app.get('/seller/listings',
       const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
       // 件数
-      const cntRows = await dbQuery(
-        `SELECT COUNT(*)::int AS cnt FROM products p ${whereSql}`,
-        params
-      );
-      const total = cntRows[0]?.cnt ?? 0;
+      // const cntRows = await dbQuery(
+      //   `SELECT COUNT(*)::int AS cnt, u.partner_id AS partner_id FROM products p LEFT JOIN users u ON u.id = p.seller_id ${whereSql}`,
+      //   params
+      // );
+      // const total = cntRows[0]?.cnt ?? 0;
 
       // 一覧
       const rows = await dbQuery(
         `
         SELECT
           p.id, p.slug, p.title, p.price, p.stock, p.status,
-          p.is_organic, p.is_seasonal, p.updated_at,
+          p.is_organic, p.is_seasonal, p.updated_at, p.seller_id,
           (
             SELECT url
             FROM product_images i
             WHERE i.product_id = p.id
             ORDER BY position ASC
             LIMIT 1
-          ) AS image_url
+          ) AS image_url,
+          u.partner_id AS partner_id
         FROM products p
+         LEFT JOIN users u ON u.id = p.seller_id
         ${whereSql}
         ORDER BY ${orderBy}
         LIMIT $${params.length + 1} OFFSET $${params.length + 2}
         `,
         [...params, pageSize, offset]
       );
+
+      const total = rows.length;
 
       const pagination = { page: pageNum, pageCount: Math.max(1, Math.ceil(total / pageSize)) };
       const buildQuery = buildQueryPath('/seller/listings', { q, status, sort });
