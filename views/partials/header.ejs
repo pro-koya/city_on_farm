@@ -4,9 +4,65 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>
-    <%= title %>
-  </title>
+
+  <!-- SEO: タイトル -->
+  <title><%= title %> | セッツマルシェ - 新鮮な農作物を農家から直送</title>
+
+  <!-- SEO: メタディスクリプション -->
+  <%
+    const defaultDescription = "セッツマルシェは地域の農家が育てた新鮮な農作物を直接お届けするオンラインマーケット。旬の野菜や果物、こだわりの農産物を生産者から直接購入できます。地産地消で安心・安全な食卓をサポートします。";
+    const pageDescription = typeof description !== 'undefined' ? description : defaultDescription;
+  %>
+  <meta name="description" content="<%= pageDescription %>" />
+
+  <!-- SEO: キーワード -->
+  <meta name="keywords" content="農作物,直売,産直,地産地消,新鮮野菜,果物,農家直送,オーガニック,有機野菜,旬の野菜,セッツマルシェ,今日の食卓,マルシェ,農産物" />
+
+  <!-- SEO: 著者・サイト名 -->
+  <meta name="author" content="セッツマルシェ" />
+  <meta name="application-name" content="セッツマルシェ" />
+
+  <!-- SEO: robots -->
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+
+  <!-- SEO: canonical URL -->
+  <% if (typeof canonicalUrl !== 'undefined' && canonicalUrl) { %>
+    <link rel="canonical" href="<%= canonicalUrl %>" />
+  <% } %>
+
+  <!-- Open Graph / Facebook -->
+  <%
+    const siteName = "セッツマルシェ";
+    const ogTitle = typeof ogTitleCustom !== 'undefined' ? ogTitleCustom : title + ' | ' + siteName;
+    const ogImage = typeof ogImageUrl !== 'undefined' ? ogImageUrl : '/images/setsumaru-logo.png';
+    const ogUrl = typeof canonicalUrl !== 'undefined' ? canonicalUrl : '';
+  %>
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="<%= siteName %>" />
+  <meta property="og:title" content="<%= ogTitle %>" />
+  <meta property="og:description" content="<%= pageDescription %>" />
+  <meta property="og:image" content="<%= ogImage %>" />
+  <% if (ogUrl) { %>
+    <meta property="og:url" content="<%= ogUrl %>" />
+  <% } %>
+  <meta property="og:locale" content="ja_JP" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="<%= ogTitle %>" />
+  <meta name="twitter:description" content="<%= pageDescription %>" />
+  <meta name="twitter:image" content="<%= ogImage %>" />
+
+  <!-- Favicon & Icons -->
+  <link rel="icon" type="image/png" href="/images/setsumaru-logo.png" />
+  <link rel="apple-touch-icon" href="/images/setsumaru-logo.png" />
+  <link rel="shortcut icon" href="/images/setsumaru-logo.png" />
+
+  <!-- Theme Color (ブラウザのテーマカラー) -->
+  <meta name="theme-color" content="#4C6B5C" />
+  <meta name="msapplication-TileColor" content="#4C6B5C" />
+
+  <!-- Stylesheets -->
   <link rel="stylesheet" href="/styles/styles.css" />
   <% if (extraCSS) { %>
     <link rel="stylesheet" href="<%= extraCSS %>" />
