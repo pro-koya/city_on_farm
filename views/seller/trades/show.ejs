@@ -244,6 +244,16 @@
 
     <p class="td-status-hint" id="statusMsg" aria-live="polite"></p>
   </section>
+
+  <!-- 納品書ボタン -->
+  <section class="td-card" style="margin-top: 20px;">
+    <h2 class="td-card__title">書類発行</h2>
+    <div class="td-actions">
+      <button class="btn btn--ghost" type="button" id="showDeliveryNoteBtn">
+        納品書を表示
+      </button>
+    </div>
+  </section>
 </main>
 
 <script>
@@ -323,6 +333,21 @@
         setMsg('更新に失敗しました。時間をおいて再度お試しください。', false);
       } finally {
         submit?.removeAttribute('disabled');
+      }
+    });
+  })();
+
+  // 納品書ボタン
+  (function(){
+    const showDeliveryNoteBtn = document.getElementById('showDeliveryNoteBtn');
+    const orderId = '<%= order.id %>';
+
+    showDeliveryNoteBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (orderId) {
+        // 出品者/管理者用のルートを使用（価格非表示）
+        // 価格を表示したい場合は ?showPrice=1 を追加
+        window.open(`/admin/orders/${orderId}/delivery-note.pdf`, '_blank');
       }
     });
   })();

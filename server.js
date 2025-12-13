@@ -7837,6 +7837,48 @@ async function fetchInvoiceData(query, { orderNo, userId }) {
   };
 }
 
+/**
+ * 納品書用に注文一式を取得して正規化
+ */
+async function fetchDeliveryNoteData(query, { orderNo, userId }) {
+  // 領収書と同じロジックでデータ取得（再利用）
+  const data = await fetchInvoiceData(query, { orderNo, userId });
+
+  // 納品書固有の情報を追加（将来的に shipped_at などを追加可能）
+  // 現時点では created_at を納品日として使用
+  data.order.shippedAt = data.order.createdAt; // 将来 shipped_at カラム追加時に切り替え
+  data.order.note = data.order.note || ''; // 備考欄
+
+  return data;
+}
+
+/**
+ * 納品書テンプレをサーバ側で描画し、PDFを返す（バッファ）
+ *
+ * @param {Object} opts
+ * @param {string} opts.orderNo - 注文番号
+ * @param {string} opts.baseUrl - 相対パス解決用ベースURL
+ * @param {string} opts.userId - ユーザーID（権限チェック用）
+ * @param {boolean} opts.showPrice - 価格表示フラグ（デフォルト false）
+ * @returns {Promise<Buffer>}
+ */
+async function generateDeliveryNotePdf({ orderNo, baseUrl, userId, showPrice = false }) {
+  // ① データ取得
+  const { order, buyer, seller, sellerPartner, shippingAddress, billingAddress, items, summary } =
+    await fetchDeliveryNoteData(dbQuery, { orderNo, userId });
+
+  // ② EJS レンダリング
+  const html = await ejs.renderFile(
+    path.join(__dirname, 'views', 'delivery-notes', 'delivery-note.ejs'),
+    { order, buyer, seller, sellerPartner, shippingAddress, billingAddress, items, summary, showPrice },
+    { async: true }
+  );
+
+  // ③ Puppeteer で PDF 化
+  const pdfBuffer = await htmlToPdfBuffer(html, baseUrl);
+  return pdfBuffer;
+}
+
 async function resolveChromiumExecutable() {
 
   // 1) 環境変数があれば最優先（※存在確認つき）
@@ -7987,6 +8029,79 @@ app.get('/orders/:no/invoice.pdf', requireAuth, async (req, res, next) => {
   } catch (err) {
     console.error('invoice.pdf error:', err);
     if (err.code === 'NOT_FOUND') return res.status(404).render('errors/404', { title: '領収書が見つかりません' });
+    next(err);
+  }
+});
+
+/* ================================
+ *  ⑤ 納品書PDF ルート
+ *  GET /orders/:no/delivery-note.pdf
+ * ============================== */
+app.get('/orders/:no/delivery-note.pdf', requireAuth, async (req, res, next) => {
+  try {
+    const orderNo = String(req.params.no || '').trim();
+    if (!orderNo) return res.status(400).send('Bad Request');
+
+    // クエリパラメータで価格表示ON/OFF（デフォルトOFF）
+    const showPrice = req.query.showPrice === '1' || req.query.showPrice === 'true';
+
+    const baseUrl = `${req.protocol}://${req.get('host')}/`;
+
+    const pdfBuffer = await generateDeliveryNotePdf({
+      orderNo,
+      baseUrl,
+      userId: req.session.user.id,
+      showPrice
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="delivery-note-${orderNo}.pdf"`);
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error('delivery-note.pdf error:', err);
+    if (err.code === 'NOT_FOUND' || err.code === 'ORDER_NOT_FOUND') {
+      return res.status(404).render('errors/404', { title: '納品書が見つかりません' });
+    }
+    next(err);
+  }
+});
+
+/* ================================
+ *  ⑥ 納品書PDF ルート（管理者/出品者用）
+ *  GET /admin/orders/:no/delivery-note.pdf
+ * ============================== */
+app.get('/admin/orders/:no/delivery-note.pdf', requireAuth, requireRole(['admin', 'seller']), async (req, res, next) => {
+  try {
+    const orderNo = String(req.params.no || '').trim();
+    if (!orderNo) return res.status(400).send('Bad Request');
+
+    // クエリパラメータで価格表示ON/OFF（デフォルトOFF）
+    const showPrice = req.query.showPrice === '1' || req.query.showPrice === 'true';
+
+    const baseUrl = `${req.protocol}://${req.get('host')}/`;
+
+    // 管理者/出品者は全ての注文の納品書を発行可能
+    // ただし、出品者は自分が出品した商品の注文のみに制限することも可能
+    // ここでは簡易的に全ての注文を許可（必要に応じて権限チェックを追加）
+    const pdfBuffer = await generateDeliveryNotePdf({
+      orderNo,
+      baseUrl,
+      userId: req.session.user.id,
+      showPrice
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="delivery-note-${orderNo}.pdf"`);
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error('admin delivery-note.pdf error:', err);
+    if (err.code === 'NOT_FOUND' || err.code === 'ORDER_NOT_FOUND') {
+      return res.status(404).render('errors/404', { title: '納品書が見つかりません' });
+    }
     next(err);
   }
 });

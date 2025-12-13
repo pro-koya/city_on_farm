@@ -1,0 +1,355 @@
+:root {
+  --ink: #111;
+  --muted: #666;
+  --border: #e5e7eb;
+  --brand: #0ea5e9;
+  --main: #4C6B5C;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  font-family: "Noto Sans CJK JP", "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.delivery-note-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 16px 16px 24px;
+  background: white;
+}
+
+/* ========== ヘッダー：出品者情報（左）と納品日（右） ========== */
+.delivery-note-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+
+.header-left {
+  flex: 1;
+}
+
+.issuer-name {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.issuer-tax-id,
+.issuer-address,
+.issuer-phone,
+.issuer-email {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.header-right {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.delivery-date {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* ========== タイトルとお届け先ブロック ========== */
+.delivery-note-main-block {
+  text-align: center;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--border);
+}
+
+.delivery-note-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 10px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+
+.recipient-block {
+  margin-top: 8px;
+  text-align: left;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.recipient-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.recipient-info {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.recipient-info div {
+  margin-bottom: 2px;
+}
+
+/* ========== セクション ========== */
+.delivery-note-section {
+  margin-bottom: 16px;
+  page-break-inside: avoid;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink);
+}
+
+/* ========== 注文情報（グリッドレイアウト） ========== */
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  margin: 0;
+  padding: 0;
+}
+
+.info-item {
+  display: flex;
+  gap: 8px;
+}
+
+.info-item dt {
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.info-item dd {
+  margin: 0;
+  flex: 1;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+/* ========== 金額リスト（金額明細） ========== */
+.amount-list {
+  margin: 0;
+  padding: 0;
+}
+
+.amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.amount-row:last-child {
+  border-bottom: none;
+}
+
+.amount-row dt {
+  margin: 0;
+  font-weight: 500;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.amount-row.tax-breakdown dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.amount-row.total-row {
+  background-color: #f9fafb;
+  padding: 10px 8px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+}
+
+.amount-row.total-row dt {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.amount-value {
+  margin: 0;
+  text-align: right;
+  font-weight: 500;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.amount-value strong {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+/* ========== 商品明細テーブル ========== */
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 11px;
+}
+
+.items-table thead {
+  background-color: #f9fafb;
+}
+
+.items-table th {
+  padding: 7px 4px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 10px;
+  color: #334155;
+  border: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.items-table td {
+  padding: 6px 4px;
+  border: 1px solid var(--border);
+  vertical-align: top;
+  font-size: 11px;
+}
+
+.items-table tbody tr {
+  page-break-inside: avoid;
+}
+
+.items-table tbody tr:nth-child(even) {
+  background-color: #fafafa;
+}
+
+/* テーブル列幅 */
+.col-name {
+  width: 50%;
+}
+
+.col-quantity {
+  width: 15%;
+  text-align: right;
+}
+
+.col-price {
+  width: 18%;
+  text-align: right;
+}
+
+.col-total {
+  width: 17%;
+  text-align: right;
+}
+
+/* 商品名（長文折り返し対応） */
+.product-name {
+  font-weight: 500;
+  word-wrap: break-word;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.product-unit {
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* 数値は右寄せ */
+.num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* 備考欄 */
+.note-content {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink);
+  padding: 8px;
+  background-color: #f9fafb;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* その他 */
+.muted {
+  color: var(--muted);
+}
+
+.text-center {
+  text-align: center;
+}
+
+/* ========== 印刷用スタイル ========== */
+@media print {
+  .delivery-note-page {
+    margin: 0;
+    padding: 12px 12px 20px;
+    max-width: 100%;
+  }
+
+  .delivery-note-section {
+    margin-bottom: 14px;
+    page-break-inside: avoid;
+  }
+
+  .items-table {
+    font-size: 10px;
+  }
+
+  .items-table th,
+  .items-table td {
+    padding: 5px 3px;
+  }
+
+  .section-title {
+    font-size: 13px;
+  }
+
+  .delivery-note-title {
+    font-size: 22px;
+  }
+
+  /* ページ区切りを避ける */
+  .items-table tbody tr {
+    page-break-inside: avoid;
+  }
+
+  /* ヘッダーとフッターを印刷しない */
+  @page {
+    margin: 12mm;
+  }
+}
+
+/* ========== 画面表示用の調整 ========== */
+@media screen {
+  .delivery-note-page {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+  }
+}
