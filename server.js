@@ -6496,6 +6496,63 @@ app.get('/checkout/confirm', async (req, res, next) => {
     const paymentMethod_ja = jaLabel('payment_method', draft.paymentMethod) || draft.paymentMethod;
     const shipTime_ja = shipTimeLabel(draft.shipTime || '');
 
+    // pickupの場合、partnerの受け取り住所を取得
+    let pickupAddress = null;
+    let partnerName = null;
+    if (shipMethod === 'pickup' && items.length > 0) {
+      // 最初の商品から出品者を取得
+      const firstProduct = items[0];
+      const productRow = await dbQuery(
+        `SELECT p.seller_id FROM products p WHERE p.id = $1::uuid LIMIT 1`,
+        [firstProduct.id]
+      );
+      if (productRow.length > 0) {
+        const sellerUserId = productRow[0].seller_id;
+        const sellerUser = await dbQuery(
+          `SELECT partner_id FROM users WHERE id = $1::uuid LIMIT 1`,
+          [sellerUserId]
+        );
+        if (sellerUser.length > 0 && sellerUser[0].partner_id) {
+          const partner = await dbQuery(
+            `SELECT pickup_address_id, postal_code, prefecture, city, address1, address2, phone, name
+             FROM partners
+             WHERE id = $1::uuid
+             LIMIT 1`,
+            [sellerUser[0].partner_id]
+          );
+          if (partner.length > 0) {
+            const p = partner[0];
+            partnerName = p.name;
+            if (p.pickup_address_id) {
+              // 設定された受け取り住所を取得
+              const pickupAddrRows = await dbQuery(
+                `SELECT id, full_name, postal_code, prefecture, city, address_line1, address_line2, phone
+                 FROM addresses
+                 WHERE id = $1::uuid AND scope = 'user'
+                 LIMIT 1`,
+                [p.pickup_address_id]
+              );
+              if (pickupAddrRows.length > 0) {
+                pickupAddress = pickupAddrRows[0];
+              }
+            }
+            // pickup_address_idが設定されていない場合は、partnerの基本住所を使用
+            if (!pickupAddress && p.postal_code) {
+              pickupAddress = {
+                full_name: p.name || '受け取り場所',
+                postal_code: p.postal_code,
+                prefecture: p.prefecture,
+                city: p.city,
+                address_line1: p.address1,
+                address_line2: p.address2,
+                phone: p.phone
+              };
+            }
+          }
+        }
+      }
+    }
+
     req.session.flash = null;
     res.render('checkout/confirm', {
       title: 'ご注文内容の確認',
@@ -6505,6 +6562,8 @@ app.get('/checkout/confirm', async (req, res, next) => {
       sellerId,
       shippingAddress,
       billingAddress,
+      pickupAddress,
+      partnerName,
       shipMethod: draft.shipMethod,
       shipMethod_ja: shipMethod_ja,
       shipDate: draft.shipDate || null,
@@ -6581,7 +6640,7 @@ function addrHtml(a){
 }
 
 // 購入者向け
-function buildBuyerMail({orderNo, createdAt, buyer, items, totals, shippingAddress, billingAddress, paymentMethodJa, shipMethodJa, etaAt, coupon, shipTimeJa}){
+function buildBuyerMail({orderNo, createdAt, buyer, items, totals, shippingAddress, billingAddress, paymentMethodJa, shipMethodJa, etaAt, coupon, shipTimeJa, pickupAddress, isPickup = false}){
   const linesText = items.map(it => `・${it.title} × ${it.quantity} … ${it.price.toLocaleString()}円`).join('\n');
   const linesHtml = items.map(it => `<li>${esc(it.title)} × ${it.quantity} … ${it.price.toLocaleString()}円</li>`).join('');
   const etaDateStr = etaAt ? new Date(etaAt).toLocaleDateString('ja-JP') : '';
@@ -6610,13 +6669,16 @@ ${linesText}
 送料：${totals.shipping_fee.toLocaleString()}円
 合計：${totals.total.toLocaleString()}円
 
-【配送先】
+${isPickup ? `【受け取り場所】
+${pickupAddress ? addrBlock(pickupAddress) : '（受け取り場所の詳細は出品者からご連絡があります）'}
+
+` : `【配送先】
 ${addrBlock(shippingAddress)}
 
 【請求先】
 ${billingAddress ? addrBlock(billingAddress) : '（配送先と同じ）'}
 
-本メールは自動送信です。ご不明点があればご連絡ください。
+`}本メールは自動送信です。ご不明点があればご連絡ください。
 `;
 
   const html = `
@@ -6641,20 +6703,23 @@ ${billingAddress ? addrBlock(billingAddress) : '（配送先と同じ）'}
 <b>合計：${totals.total.toLocaleString()}円</b>
 </p>
 
-<h3>配送先</h3>
+${isPickup ? `<h3>受け取り場所</h3>
+${pickupAddress ? addrHtml(pickupAddress) : '<p>（受け取り場所の詳細は出品者からご連絡があります）</p>'}
+
+` : `<h3>配送先</h3>
 ${addrHtml(shippingAddress)}
 
 <h3>請求先</h3>
 ${billingAddress ? addrHtml(billingAddress) : '（配送先と同じ）'}
 
-<p style="color:#666">※本メールは自動送信です。ご不明点があればご連絡ください。</p>
+`}<p style="color:#666">※本メールは自動送信です。ご不明点があればご連絡ください。</p>
 `;
 
   return { subject, text, html };
 }
 
 // 出品者向け
-function buildSellerMail({orderNo, createdAt, seller, buyer, items, totals, shippingAddress, paymentMethodJa, shipMethodJa, etaAt, shipTimeJa}){
+function buildSellerMail({orderNo, createdAt, seller, buyer, items, totals, shippingAddress, paymentMethodJa, shipMethodJa, etaAt, shipTimeJa, pickupAddress, isPickup = false}){
   const linesText = items.map(it => `・${it.title} × ${it.quantity} … ${it.price.toLocaleString()}円`).join('\n');
   const linesHtml = items.map(it => `<li>${esc(it.title)} × ${it.quantity} … ${it.price.toLocaleString()}円</li>`).join('');
   const etaDateStr = etaAt ? new Date(etaAt).toLocaleDateString('ja-JP') : '';
@@ -6681,10 +6746,13 @@ ${linesText}
 送料：${totals.shipping_fee.toLocaleString()}円
 合計：${totals.total.toLocaleString()}円
 
-【配送先】
+${isPickup ? `【受け取り場所】
+${pickupAddress ? addrBlock(pickupAddress) : '（受け取り場所が設定されていません）'}
+
+` : `【配送先】
 ${addrBlock(shippingAddress)}
 
-本メールは通知専用です。対応をお願いします。
+`}本メールは通知専用です。対応をお願いします。
 `;
 
   const html = `
@@ -6708,10 +6776,13 @@ ${addrBlock(shippingAddress)}
 <b>合計：${totals.total.toLocaleString()}円</b>
 </p>
 
-<h3>配送先</h3>
+${isPickup ? `<h3>受け取り場所</h3>
+${pickupAddress ? addrHtml(pickupAddress) : '<p>（受け取り場所が設定されていません）</p>'}
+
+` : `<h3>配送先</h3>
 ${addrHtml(shippingAddress)}
 
-<p style="color:#666">※本メールは通知専用です。対応をお願いします。</p>
+`}<p style="color:#666">※本メールは通知専用です。対応をお願いします。</p>
 `;
 
   return { subject, text, html };
@@ -6991,11 +7062,77 @@ app.post('/checkout/confirm', async (req, res, next) => {
     const paymentMethodJa = jaLabel('payment_method', safePaymentMethod);
     const shipMethodJa    = jaLabel('ship_method', draft.shipMethod);
 
+    // メール送信用の住所情報を取得
+    let shippingAddress = null;
+    if (shipMethod === 'delivery' && draft.shippingAddressId) {
+      shippingAddress = await findUserAddress(uid, draft.shippingAddressId);
+    }
+    
+    // billingAddressは既に取得済みだが、念のため再取得（スコープの問題を回避）
+    let mailBillingAddress = null;
+    if (shipMethod === 'pickup' || !billSame) {
+      if (draft.billingAddressId) {
+        mailBillingAddress = await findUserAddress(uid, draft.billingAddressId);
+      }
+    } else if (shippingAddress) {
+      // billSameの場合は配送先と同じ
+      mailBillingAddress = shippingAddress;
+    }
+
     // 出品者宛先の算出
     const firstProd      = byId.get(targetPairs[0].productId);
     const sellerUserId   = firstProd?.seller_id;
     const { seller, to: sellerTos } = await getSellerRecipientsBySellerUserId(sellerUserId);
     const shipTimeJa = shipTimeLabel(rawShipTimeCode);
+
+    // pickupの場合、partnerの受け取り住所を取得
+    let pickupAddress = null;
+    if (shipMethod === 'pickup' && sellerUserId) {
+      const sellerUser = await dbQuery(
+        `SELECT partner_id FROM users WHERE id = $1::uuid LIMIT 1`,
+        [sellerUserId]
+      );
+      if (sellerUser.length > 0 && sellerUser[0].partner_id) {
+        const partner = await dbQuery(
+          `SELECT pickup_address_id, postal_code, prefecture, city, address1, address2, phone, name
+           FROM partners
+           WHERE id = $1::uuid
+           LIMIT 1`,
+          [sellerUser[0].partner_id]
+        );
+        if (partner.length > 0) {
+          const p = partner[0];
+          const partnerName = p.name;
+          if (p.pickup_address_id) {
+            // 設定された受け取り住所を取得
+            const pickupAddrRows = await dbQuery(
+              `SELECT id, full_name, postal_code, prefecture, city, address_line1, address_line2, phone
+               FROM addresses
+               WHERE id = $1::uuid AND scope = 'user'
+               LIMIT 1`,
+              [p.pickup_address_id]
+            );
+            if (pickupAddrRows.length > 0) {
+              pickupAddress = pickupAddrRows[0];
+              // partner名で上書き
+              pickupAddress.full_name = partnerName || '受け取り場所';
+            }
+          }
+          // pickup_address_idが設定されていない場合は、partnerの基本住所を使用
+          if (!pickupAddress && p.postal_code) {
+            pickupAddress = {
+              full_name: partnerName || '受け取り場所',
+              postal_code: p.postal_code,
+              prefecture: p.prefecture,
+              city: p.city,
+              address_line1: p.address1,
+              address_line2: p.address2,
+              phone: p.phone
+            };
+          }
+        }
+      }
+    }
 
     // —— メール送信：購入者 / 出品者（並列送信でもOK）
     const tasks = [];
@@ -7004,8 +7141,10 @@ app.post('/checkout/confirm', async (req, res, next) => {
     try {
       const buyerMail = buildBuyerMail({
         orderNo, createdAt, buyer, items, totals,
-        shippingAddress, billingAddress,
-        paymentMethodJa, shipMethodJa, etaAt, coupon, shipTimeJa
+        shippingAddress, billingAddress: mailBillingAddress,
+        paymentMethodJa, shipMethodJa, etaAt, coupon, shipTimeJa,
+        pickupAddress: shipMethod === 'pickup' ? pickupAddress : null,
+        isPickup: shipMethod === 'pickup'
       });
 
       tasks.push(
@@ -7031,8 +7170,10 @@ app.post('/checkout/confirm', async (req, res, next) => {
       if (sellerTos.length){
         const sellerMail = buildSellerMail({
           orderNo, createdAt, seller, buyer, items, totals,
-          shippingAddress,
-          paymentMethodJa, shipMethodJa, etaAt, shipTimeJa
+          shippingAddress: shippingAddress,
+          paymentMethodJa, shipMethodJa, etaAt, shipTimeJa,
+          pickupAddress: shipMethod === 'pickup' ? pickupAddress : null,
+          isPickup: shipMethod === 'pickup'
         });
 
         tasks.push(
@@ -7152,6 +7293,64 @@ app.get('/checkout/complete', async (req, res, next) => {
       total: order.total
     };
 
+    // pickupの場合、partnerの受け取り住所を取得
+    let pickupAddress = null;
+    let partnerName = null;
+    const isPickup = order.ship_method === 'pickup';
+    if (isPickup && items.length > 0) {
+      // 最初の商品から出品者を取得
+      const firstProduct = items[0];
+      const productRow = await dbQuery(
+        `SELECT p.seller_id FROM products p WHERE p.id = $1::uuid LIMIT 1`,
+        [firstProduct.id]
+      );
+      if (productRow.length > 0) {
+        const sellerUserId = productRow[0].seller_id;
+        const sellerUser = await dbQuery(
+          `SELECT partner_id FROM users WHERE id = $1::uuid LIMIT 1`,
+          [sellerUserId]
+        );
+        if (sellerUser.length > 0 && sellerUser[0].partner_id) {
+          const partner = await dbQuery(
+            `SELECT pickup_address_id, postal_code, prefecture, city, address1, address2, phone, name
+             FROM partners
+             WHERE id = $1::uuid
+             LIMIT 1`,
+            [sellerUser[0].partner_id]
+          );
+          if (partner.length > 0) {
+            const p = partner[0];
+            partnerName = p.name;
+            if (p.pickup_address_id) {
+              // 設定された受け取り住所を取得
+              const pickupAddrRows = await dbQuery(
+                `SELECT id, full_name, postal_code, prefecture, city, address_line1, address_line2, phone
+                 FROM addresses
+                 WHERE id = $1::uuid AND scope = 'user'
+                 LIMIT 1`,
+                [p.pickup_address_id]
+              );
+              if (pickupAddrRows.length > 0) {
+                pickupAddress = pickupAddrRows[0];
+              }
+            }
+            // pickup_address_idが設定されていない場合は、partnerの基本住所を使用
+            if (!pickupAddress && p.postal_code) {
+              pickupAddress = {
+                full_name: p.name || '受け取り場所',
+                postal_code: p.postal_code,
+                prefecture: p.prefecture,
+                city: p.city,
+                address_line1: p.address1,
+                address_line2: p.address2,
+                phone: p.phone
+              };
+            }
+          }
+        }
+      }
+    }
+
     const shipTimeJa = shipTimeLabel(order.ship_time_code);
 
     // EJS が期待する形へ整形
@@ -7182,6 +7381,8 @@ app.get('/checkout/complete', async (req, res, next) => {
       items,
       shippingAddress,
       billingAddress,
+      pickupAddress,
+      partnerName,
       coupon
     });
   } catch (e) {
@@ -7204,7 +7405,8 @@ app.get('/orders/:no', requireAuth, async (req, res, next) => {
       `
       SELECT
         o.*,
-        COALESCE(o.order_number, o.id::text) AS ord_no
+        COALESCE(o.order_number, o.id::text) AS ord_no,
+        o.receipt_name
       FROM orders o
       WHERE (o.order_number = $1 OR o.id::text = $1)
         AND o.buyer_id = $2
@@ -7272,6 +7474,64 @@ app.get('/orders/:no', requireAuth, async (req, res, next) => {
     // 請求先が無ければ「配送先と同一」とみなす（A方針）
     const billingAddress  = addrRows.find(a => a.address_type === 'billing') || null;
 
+    // ─ 4) pickupの場合、partnerの受け取り住所を取得
+    let pickupAddress = null;
+    let partnerName = null;
+    const isPickup = order.ship_method === 'pickup';
+    if (isPickup && itemRows.length > 0) {
+      // 最初の商品から出品者を取得
+      const firstProductId = itemRows[0].product_id;
+      const productRow = await dbQuery(
+        `SELECT p.seller_id FROM products p WHERE p.id = $1::uuid LIMIT 1`,
+        [firstProductId]
+      );
+      if (productRow.length > 0) {
+        const sellerUserId = productRow[0].seller_id;
+        const sellerUser = await dbQuery(
+          `SELECT partner_id FROM users WHERE id = $1::uuid LIMIT 1`,
+          [sellerUserId]
+        );
+        if (sellerUser.length > 0 && sellerUser[0].partner_id) {
+          const partner = await dbQuery(
+            `SELECT pickup_address_id, postal_code, prefecture, city, address1, address2, phone, name
+             FROM partners
+             WHERE id = $1::uuid
+             LIMIT 1`,
+            [sellerUser[0].partner_id]
+          );
+          if (partner.length > 0) {
+            const p = partner[0];
+            partnerName = p.name;
+            if (p.pickup_address_id) {
+              // 設定された受け取り住所を取得
+              const pickupAddrRows = await dbQuery(
+                `SELECT id, full_name, postal_code, prefecture, city, address_line1, address_line2, phone
+                 FROM addresses
+                 WHERE id = $1::uuid AND scope = 'user'
+                 LIMIT 1`,
+                [p.pickup_address_id]
+              );
+              if (pickupAddrRows.length > 0) {
+                pickupAddress = pickupAddrRows[0];
+              }
+            }
+            // pickup_address_idが設定されていない場合は、partnerの基本住所を使用
+            if (!pickupAddress && p.postal_code) {
+              pickupAddress = {
+                full_name: p.name || '受け取り場所',
+                postal_code: p.postal_code,
+                prefecture: p.prefecture,
+                city: p.city,
+                address_line1: p.address1,
+                address_line2: p.address2,
+                phone: p.phone
+              };
+            }
+          }
+        }
+      }
+    }
+
     // ─ 6) 合計
     const totals = {
       subtotal: Number(order.subtotal || 0),
@@ -7290,20 +7550,92 @@ app.get('/orders/:no', requireAuth, async (req, res, next) => {
       status === 'delivered' ? 3 :
       0;
 
+    // receipt_nameを取得
+    const receiptName = order.receipt_name || null;
+
+    // 初期値としてユーザー名を設定（receipt_nameが無い場合）
+    const defaultReceiptName = req.session.user?.name || '';
+
     // EJS へ
     res.render('orders/show', {
       title: '注文詳細',
       order: {
         ...order,
         orderNumber: order.ord_no,
-        statusRank
+        statusRank,
+        receiptName
       },
       items,
       totals,
       shippingAddress,
       // 請求先が無ければ null のまま → EJS 側で「同一です」表示
-      billingAddress: billingAddress
+      billingAddress: billingAddress,
+      pickupAddress,
+      partnerName,
+      currentUser: req.session.user,
+      defaultReceiptName,
+      csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ========= 領収書宛名保存 =========
+app.post('/orders/:no/receipt-name', requireAuth, csrfProtect, async (req, res, next) => {
+  try {
+    const orderNo = String(req.params.no || '').trim();
+    if (!orderNo) return res.status(400).json({ ok: false, message: '注文番号が不正です' });
+
+    const uid = req.session.user.id;
+    const receiptName = String(req.body.receipt_name || '').trim();
+
+    // バリデーション
+    if (receiptName.length === 0 || receiptName.length > 40) {
+      return res.status(400).json({ 
+        ok: false, 
+        message: '宛名は1〜40文字で入力してください' 
+      });
+    }
+
+    // XSS対策：危険文字をエスケープ（HTMLエンティティ化）
+    const escapeHtml = (str) => {
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return str.replace(/[&<>"']/g, m => map[m]);
+    };
+    const sanitized = escapeHtml(receiptName);
+
+    // 注文の所有権確認
+    const by = isUuid(orderNo) ? 'id' : 'order_number';
+    const orderRows = await dbQuery(
+      `
+      SELECT o.id, o.buyer_id
+      FROM orders o
+      WHERE ${by} = $1 AND o.buyer_id = $2
+      LIMIT 1
+      `,
+      [orderNo, uid]
+    );
+
+    if (!orderRows.length) {
+      return res.status(404).json({ ok: false, message: '注文が見つかりません' });
+    }
+
+    const orderId = orderRows[0].id;
+
+    // receipt_nameを更新
+    await dbQuery(
+      `UPDATE orders SET receipt_name = $1 WHERE id = $2::uuid`,
+      [sanitized, orderId]
+    );
+
+    res.json({ ok: true, receipt_name: sanitized });
   } catch (e) {
     next(e);
   }
@@ -7344,6 +7676,8 @@ async function fetchInvoiceData(query, { orderNo, userId }) {
         o.total,
         o.payment_method,
         o.payment_status,
+        o.ship_method,
+        o.receipt_name,
         o.created_at
       FROM orders o
       WHERE ${by} = $1
@@ -7383,7 +7717,8 @@ async function fetchInvoiceData(query, { orderNo, userId }) {
         oi.price::int,
         (oi.price * oi.quantity)::int AS line_total,
         p.title AS product_name,
-        p.unit  AS unit
+        p.unit  AS unit,
+        oi.seller_id
       FROM order_items oi
       JOIN products p ON p.id = oi.product_id
       WHERE oi.order_id = $1
@@ -7391,6 +7726,42 @@ async function fetchInvoiceData(query, { orderNo, userId }) {
     `,
     [o.id]
   );
+
+  // ---- 出品者（seller）情報を取得（最初の商品のsellerから）----
+  let seller = null;
+  let sellerPartner = null;
+  if (itemRows.length > 0) {
+    const firstSellerId = itemRows[0].seller_id;
+    if (firstSellerId) {
+      const sellerRows = await query(
+        `
+        SELECT u.id, u.name, u.partner_id
+        FROM users u
+        WHERE u.id = $1
+        LIMIT 1
+        `,
+        [firstSellerId]
+      );
+      if (sellerRows.length > 0) {
+        seller = sellerRows[0];
+        if (seller.partner_id) {
+          const partnerRows = await query(
+            `
+            SELECT 
+              id, name, tax_id, postal_code, prefecture, city, address1, address2, phone, email
+            FROM partners
+            WHERE id = $1
+            LIMIT 1
+            `,
+            [seller.partner_id]
+          );
+          if (partnerRows.length > 0) {
+            sellerPartner = partnerRows[0];
+          }
+        }
+      }
+    }
+  }
 
   // ---- 住所（shipping / billing）----
   const addrRows = await query(
@@ -7423,7 +7794,9 @@ async function fetchInvoiceData(query, { orderNo, userId }) {
     status: o.status_ja || o.status,
     createdAt: o.created_at,
     paymentMethod: o.payment_method_ja || o.payment_method || '',
-    paymentStatus: o.payment_status_ja || o.payment_status || ''
+    paymentStatus: o.payment_status_ja || o.payment_status || '',
+    shipMethod: o.ship_method || null,
+    receiptName: o.receipt_name || null
   };
 
   const items = itemRows.map(r => ({
@@ -7433,13 +7806,30 @@ async function fetchInvoiceData(query, { orderNo, userId }) {
     quantity: Number(r.quantity || 0),
     unitPrice: Number(r.price || 0),
     lineTotal: Number(r.line_total || 0),
+    // 税率は10%固定（将来的に商品ごとの税率に対応可能）
+    taxRate: 10
   }));
 
-  const summary = { subtotal, discount, shippingFee, tax, total };
+  // 税率計算（10%固定と仮定）
+  // 税込金額から税抜金額を計算: 税込 = 税抜 * 1.1 → 税抜 = 税込 / 1.1
+  const taxableAmount = Math.round(subtotal / 1.1); // 10%対象金額（税抜）
+  const calculatedTax = subtotal - taxableAmount; // 消費税額
+
+  const summary = { 
+    subtotal, 
+    discount, 
+    shippingFee, 
+    tax, 
+    total,
+    taxableAmount, // 10%対象金額（税抜）
+    calculatedTax  // 計算された消費税額
+  };
 
   return {
     order,
     buyer,
+    seller,
+    sellerPartner,
     shippingAddress,
     billingAddress,
     items,
@@ -7522,7 +7912,7 @@ async function htmlToPdfBuffer(html, baseUrl) {
     );
 
     await page.setContent(htmlWithBase, {
-      waitUntil: ['load', 'domcontentloaded', 'networkidle0']
+      waitUntil: ['load', 'domcontentloaded']
     });
     await page.evaluate(() => document.fonts && document.fonts.ready);
 
@@ -7552,13 +7942,13 @@ async function htmlToPdfBuffer(html, baseUrl) {
  */
 async function generateInvoicePdf({ orderNo, baseUrl, userId }) {
   // ① データ取得（手順(1)で実装した関数を利用）
-  const { order, buyer, shippingAddress, billingAddress, items, summary } =
+  const { order, buyer, seller, sellerPartner, shippingAddress, billingAddress, items, summary } =
     await fetchInvoiceData(dbQuery, { orderNo, userId });
 
   // ② EJS レンダリング（手順(2)のテンプレを使用）
   const html = await ejs.renderFile(
     path.join(__dirname, 'views', 'invoices', 'invoice.ejs'),
-    { order, buyer, shippingAddress, billingAddress, items, summary },
+    { order, buyer, seller, sellerPartner, shippingAddress, billingAddress, items, summary },
     { async: true }
   );
 
@@ -8368,7 +8758,7 @@ app.get(
            id, name, kana, type, status, email, phone, website,
            billing_email, billing_terms, tax_id,
            postal_code, prefecture, city, address1, address2,
-           note, icon_url, icon_r2_key, created_at, updated_at
+           note, icon_url, icon_r2_key, pickup_address_id, created_at, updated_at
          FROM partners
          WHERE id = $1::uuid
          LIMIT 1`,
@@ -8387,6 +8777,36 @@ app.get(
           ORDER BY created_at DESC`,
         [id]
       );
+
+      // 受け取り住所候補（このpartnerに紐づくユーザーが登録した住所）
+      const userIds = users.map(u => u.id);
+      let availableAddresses = [];
+      if (userIds.length > 0) {
+        const placeholders = userIds.map((_, i) => `$${i + 1}`).join(',');
+        availableAddresses = await dbQuery(
+          `SELECT id, full_name, postal_code, prefecture, city, address_line1, address_line2, phone, is_default
+             FROM addresses
+            WHERE user_id IN (${placeholders})
+              AND scope = 'user'
+            ORDER BY is_default DESC, created_at DESC`,
+          userIds
+        );
+      }
+
+      // 現在設定されている受け取り住所
+      let pickupAddress = null;
+      if (partner.pickup_address_id) {
+        const pickupAddrRows = await dbQuery(
+          `SELECT id, full_name, postal_code, prefecture, city, address_line1, address_line2, phone
+             FROM addresses
+            WHERE id = $1::uuid
+              AND user_id IN (${userIds.length > 0 ? userIds.map((_, i) => `$${i + 2}`).join(',') : 'NULL'})
+              AND scope = 'user'
+            LIMIT 1`,
+          [partner.pickup_address_id, ...userIds]
+        );
+        pickupAddress = pickupAddrRows[0] || null;
+      }
 
       const user = req.session.user; // ログイン中ユーザー（admin / seller 両対応）
 
@@ -8408,6 +8828,8 @@ app.get(
         allPaymentMethods: allMethod,
         availabilitySummary,
         shippingSummary,
+        availableAddresses,
+        pickupAddress,
         csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
       });
     } catch (e) {
@@ -8454,6 +8876,31 @@ app.post(
       const note = String(req.body.note || '').trim() || null;
       const icon_url = String(req.body.icon_url || '').trim() || null;
       const icon_r2_key = String(req.body.icon_r2_key || '').trim() || null;
+      const pickup_address_id = String(req.body.pickup_address_id || '').trim() || null;
+
+      // pickup_address_idのバリデーション（該当partnerのユーザーが登録した住所か確認）
+      let validPickupAddressId = null;
+      if (pickup_address_id && isUuid(pickup_address_id)) {
+        const users = await dbQuery(
+          `SELECT id FROM users WHERE partner_id = $1::uuid`,
+          [id]
+        );
+        const userIds = users.map(u => u.id);
+        if (userIds.length > 0) {
+          const placeholders = userIds.map((_, i) => `$${i + 2}`).join(',');
+          const addrCheck = await dbQuery(
+            `SELECT id FROM addresses
+             WHERE id = $1::uuid
+               AND user_id IN (${placeholders})
+               AND scope = 'user'
+             LIMIT 1`,
+            [pickup_address_id, ...userIds]
+          );
+          if (addrCheck.length > 0) {
+            validPickupAddressId = pickup_address_id;
+          }
+        }
+      }
 
       // 更新実行
       const result = await dbQuery(
@@ -8474,10 +8921,11 @@ app.post(
            note = $13,
            icon_url = $14,
            icon_r2_key = $15,
+           pickup_address_id = $16,
            updated_at = now()
-         WHERE id = $16::uuid
+         WHERE id = $17::uuid
          RETURNING id`,
-        [name, kana, type, email, phone, website, tax_id, postal_code, prefecture, city, address1, address2, note, icon_url, icon_r2_key, id]
+        [name, kana, type, email, phone, website, tax_id, postal_code, prefecture, city, address1, address2, note, icon_url, icon_r2_key, validPickupAddressId, id]
       );
 
       if (!result.length) {

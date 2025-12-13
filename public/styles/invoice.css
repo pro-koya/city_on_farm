@@ -1,65 +1,375 @@
-:root { --ink:#111; --muted:#666; --border:#e5e7eb; --brand:#0ea5e9; --main:#4C6B5C; }
-*{ box-sizing:border-box; }
-html,body{ margin:0; padding:0; color:var(--ink); font-family:"Noto Sans CJK JP", "Noto Sans JP", sans-serif; }
-.page{
-    max-width:980px; margin:24px auto; padding:0 16px 48px;
+:root {
+  --ink: #111;
+  --muted: #666;
+  --border: #e5e7eb;
+  --brand: #0ea5e9;
+  --main: #4C6B5C;
 }
-.doc-head{
-    display:flex; align-items:flex-start; justify-content:space-between; gap:16px; border-bottom:2px solid var(--border); padding-bottom:16px; margin-bottom:20px;
+
+* {
+  box-sizing: border-box;
 }
-.brand{
-    display:flex; align-items:center; gap:12px;
+
+html, body {
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  font-family: "Noto Sans CJK JP", "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
 }
-.brand .logo{
-    width:40px; height:40px; border-radius:8px; background:var(--main); display:inline-block;
+
+.invoice-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 16px 16px 24px;
+  background: white;
 }
-.brand .title{
-    font-size:20px; font-weight:700;
+
+/* ========== ヘッダー：領収者情報（左）と発行日（右） ========== */
+.invoice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
 }
-.doc-meta{
-    text-align:right; font-size:12px; color:var(--muted);
+
+.header-left {
+  flex: 1;
 }
-h1{
-    font-size:28px; margin:8px 0 0; letter-spacing:.05em;
+
+.issuer-name {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--ink);
+  margin-bottom: 2px;
 }
-.meta-grid{
-    display:grid; grid-template-columns: 30% auto; gap: 8px;
+
+.issuer-tax-id,
+.issuer-address,
+.issuer-phone {
+  color: var(--muted);
+  line-height: 1.6;
 }
-.card{
-    border:1px solid var(--border); border-radius:10px; padding:14px 16px;
+
+.header-right {
+  text-align: right;
+  flex-shrink: 0;
 }
-.card h3{ margin:0 0 8px; font-size:14px; letter-spacing:.04em; color:#0f172a; }
-.addr-lines, .buyer-lines{ font-size:14px; }
-.muted{ color:var(--muted); }
-table{
-    width:100%; border-collapse:collapse; margin:8px 0 12px;
+
+.issue-date {
+  color: var(--muted);
+  font-size: 11px;
 }
-thead th{
-    font-size:12px; font-weight:600; text-align:left; color:#334155; border-bottom:1px solid var(--border); padding:10px 8px;
+
+/* ========== タイトルと宛名・金額ブロック（コンパクト化） ========== */
+.invoice-main-block {
+  text-align: center;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--border);
 }
-tbody td{
-    font-size:14px; border-bottom:1px dashed var(--border); padding:12px 8px; vertical-align:top;
+
+.invoice-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 10px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
 }
-.num{ text-align:left; white-space:nowrap; }
-.summary{
-    width: 100%; margin-top: 8px; border:1px solid var(--border); border-radius:10px; padding:12px 16px;
+
+.recipient-amount-block {
+  margin-top: 8px;
 }
-.sum-card{ display: grid; grid-template-columns: 1fr 1fr; gap: 6px;}
-.sum-row{
-    display:flex; align-items:center; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); font-size: 14px;
+
+.recipient-line {
+  margin-bottom: 6px;
 }
-.sum-row.total{ font-size:16px; font-weight:700; }
-.badge{
-    display:inline-block; padding:2px 8px; border-radius:999px; background:#eff6ff; color:#1d4ed8; font-size:11px; margin-left:6px;
+
+.recipient-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
 }
-.foot-note{ font-size:12px; color:var(--muted); margin-top:24px; }
-.print-actions{ margin:12px 0 0; text-align:right; }
-.btn{
-    display:inline-block; padding:8px 14px; border-radius:8px; border:1px solid var(--border); background:white; cursor:pointer; font-size:14px;
+
+.amount-line {
+  margin-bottom: 4px;
 }
-.btn-primary{ background:var(--brand); color:white; border-color:var(--brand); }
-@media print{
-    .print-actions{ display:none; }
-    .page{ margin:0; padding:0; }
-    .card, .sum-card{ border-color:#ddd; }
+
+.amount-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.amount-label {
+  font-size: 13px;
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+.note-line {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ========== セクション ========== */
+.invoice-section {
+  margin-bottom: 16px;
+  page-break-inside: avoid;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink);
+}
+
+/* ========== 利用情報（グリッドレイアウト） ========== */
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  margin: 0;
+  padding: 0;
+}
+
+.info-item {
+  display: flex;
+  gap: 8px;
+}
+
+.info-item dt {
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.info-item dd {
+  margin: 0;
+  flex: 1;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+/* ========== 金額リスト（金額明細） ========== */
+.amount-list {
+  margin: 0;
+  padding: 0;
+}
+
+.amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.amount-row:last-child {
+  border-bottom: none;
+}
+
+.amount-row dt {
+  margin: 0;
+  font-weight: 500;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.amount-row.tax-breakdown dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.amount-row.total-row {
+  background-color: #f9fafb;
+  padding: 10px 8px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+}
+
+.amount-row.total-row dt {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.amount-value {
+  margin: 0;
+  text-align: right;
+  font-weight: 500;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.amount-value strong {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+/* ========== 注記（小さめ文字） ========== */
+.invoice-note-small {
+  font-size: 10px;
+  color: var(--muted);
+  margin: 8px 0 0;
+  line-height: 1.5;
+}
+
+/* ========== 配送情報 ========== */
+.shipping-info {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.shipping-info div {
+  margin-bottom: 2px;
+}
+
+/* ========== 商品明細テーブル ========== */
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 11px;
+}
+
+.items-table thead {
+  background-color: #f9fafb;
+}
+
+.items-table th {
+  padding: 7px 4px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 10px;
+  color: #334155;
+  border: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.items-table td {
+  padding: 6px 4px;
+  border: 1px solid var(--border);
+  vertical-align: top;
+  font-size: 11px;
+}
+
+.items-table tbody tr {
+  page-break-inside: avoid;
+}
+
+.items-table tbody tr:nth-child(even) {
+  background-color: #fafafa;
+}
+
+/* テーブル列幅（コンパクト化） */
+.col-name {
+  width: 42%;
+}
+
+.col-quantity {
+  width: 12%;
+  text-align: right;
+}
+
+.col-price {
+  width: 18%;
+  text-align: right;
+}
+
+.col-tax-rate {
+  width: 10%;
+  text-align: right;
+}
+
+.col-total {
+  width: 18%;
+  text-align: right;
+}
+
+/* 商品名（長文折り返し対応） */
+.product-name {
+  font-weight: 500;
+  word-wrap: break-word;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.product-unit {
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* 数値は右寄せ */
+.num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* その他 */
+.muted {
+  color: var(--muted);
+}
+
+.text-center {
+  text-align: center;
+}
+
+/* ========== 印刷用スタイル ========== */
+@media print {
+  .invoice-page {
+    margin: 0;
+    padding: 12px 12px 20px;
+    max-width: 100%;
+  }
+
+  .invoice-section {
+    margin-bottom: 14px;
+    page-break-inside: avoid;
+  }
+
+  .items-table {
+    font-size: 10px;
+  }
+
+  .items-table th,
+  .items-table td {
+    padding: 5px 3px;
+  }
+
+  .section-title {
+    font-size: 13px;
+  }
+
+  .invoice-title {
+    font-size: 22px;
+  }
+
+  /* ページ区切りを避ける */
+  .items-table tbody tr {
+    page-break-inside: avoid;
+  }
+
+  /* ヘッダーとフッターを印刷しない */
+  @page {
+    margin: 12mm;
+  }
+}
+
+/* ========== 画面表示用の調整 ========== */
+@media screen {
+  .invoice-page {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+  }
 }
