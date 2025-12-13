@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-12-12T18:37:53.276Z
+> Generated at: 2025-12-13T18:32:02.448Z
 
 ---
 
@@ -930,6 +930,7 @@
 | 30 | `payment_provider` | `text` | YES |  |  |
 | 31 | `payment_external_id` | `text` | YES |  |  |
 | 32 | `ship_time_code` | `text` | YES |  |  |
+| 33 | `receipt_name` | `text` | YES |  | 領収書の宛名（1〜40文字） |
 
 > **Enum `order_status` values**: `pending`, `paid`, `shipped`, `cancelled`, `confirmed`, `processing`, `delivered`, `canceled`, `refunded`, `fulfilled`
 > **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`
@@ -939,7 +940,7 @@
 
 **Constraints**
 
-- **CHECK**: `orders_amounts_check`, `orders_bill_same_not_null`, `orders_buyer_id_not_null`, `orders_coupon_discount_not_null`, `orders_created_at_not_null`, `orders_discount_not_null`, `orders_id_not_null`, `orders_payment_status_not_null`, `orders_shipment_status_not_null`, `orders_shipping_fee_not_null`, `orders_status_not_null`, `orders_subtotal_not_null`, `orders_tax_not_null`, `orders_total_not_null`, `orders_updated_at_not_null`
+- **CHECK**: `orders_amounts_check`, `orders_bill_same_not_null`, `orders_buyer_id_not_null`, `orders_coupon_discount_not_null`, `orders_created_at_not_null`, `orders_discount_not_null`, `orders_id_not_null`, `orders_payment_status_not_null`, `orders_receipt_name_length_check`, `orders_shipment_status_not_null`, `orders_shipping_fee_not_null`, `orders_status_not_null`, `orders_subtotal_not_null`, `orders_tax_not_null`, `orders_total_not_null`, `orders_updated_at_not_null`
 - **FOREIGN KEY**: `orders_buyer_id_fkey`, `orders_group_id_fkey`, `orders_seller_id_fkey`
 - **PRIMARY KEY**: `orders_pkey`
 - **UNIQUE**: `orders_order_number_key`, `uq_orders_order_number`
@@ -1240,6 +1241,9 @@ _No indexes_
 | 25 | `min_order_amount` | `integer` | NO | 0 |  |
 | 26 | `shipping_policy` | `jsonb` | NO | '{}'::jsonb |  |
 | 27 | `seller_intro_summary` | `text` | YES |  |  |
+| 30 | `icon_url` | `text` | YES |  |  |
+| 31 | `icon_r2_key` | `text` | YES |  |  |
+| 32 | `pickup_address_id` | `uuid` | YES |  | 畑受け取りで使用する住所ID（addresses.idを参照） |
 
 > **Enum `partner_type` values**: `restaurant`, `retailer`, `wholesale`, `corporate`, `individual`, `other`
 > **Enum `partner_status` values**: `active`, `inactive`, `prospect`, `suspended`

@@ -194,6 +194,7 @@ public,orders,29,ship_to,jsonb,jsonb,,,,YES,'{}'::jsonb,
 public,orders,30,payment_provider,text,text,,,,YES,,
 public,orders,31,payment_external_id,text,text,,,,YES,,
 public,orders,32,ship_time_code,text,text,,,,YES,,
+public,orders,33,receipt_name,text,text,,,,YES,,領収書の宛名（1〜40文字）
 public,orders_with_legacy_address,1,id,uuid,uuid,,,,YES,,
 public,orders_with_legacy_address,2,buyer_id,uuid,uuid,,,,YES,,
 public,orders_with_legacy_address,3,status,USER-DEFINED,order_status,,,,YES,,
@@ -281,6 +282,9 @@ public,partners,24,payment_methods,ARRAY,_payment_method,,,,NO,ARRAY['card'::pay
 public,partners,25,min_order_amount,integer,int4,,32,0,NO,0,
 public,partners,26,shipping_policy,jsonb,jsonb,,,,NO,'{}'::jsonb,
 public,partners,27,seller_intro_summary,text,text,,,,YES,,
+public,partners,30,icon_url,text,text,,,,YES,,
+public,partners,31,icon_r2_key,text,text,,,,YES,,
+public,partners,32,pickup_address_id,uuid,uuid,,,,YES,,畑受け取りで使用する住所ID（addresses.idを参照）
 public,password_reset_tokens,1,id,uuid,uuid,,,,NO,gen_random_uuid(),
 public,password_reset_tokens,2,user_id,uuid,uuid,,,,NO,,
 public,password_reset_tokens,3,token_hash,text,text,,,,NO,,
