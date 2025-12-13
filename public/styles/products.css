@@ -287,34 +287,83 @@ main.page {
   text-decoration: none;
   color: inherit;
   position: relative;
+  transition: all 0.3s ease;
 }
 
 .rail__track > .card, .ranking-panel > .card {
-  width: 220px;
+  width: 210px;
+}
+
+.card__link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+}
+
+.card:active {
+  transform: translateY(-2px);
 }
 
 .card img {
   width: 100%;
-  height: 180px;
+  height: 150px;
   object-fit: cover;
-  display: block
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.card:hover img {
+  transform: scale(1.05);
 }
 
 .card__body {
-  padding: .6rem .7rem .8rem
+  padding: 0.5rem 0.6rem 0.65rem;
 }
 
 .card__name {
   font-weight: 700;
-  font-size: .95rem;
-  margin: 0 0 .25rem
+  font-size: 0.9rem;
+  margin: 0 0 0.2rem;
+  line-height: 1.35;
 }
 
 .card__meta {
   display: flex;
   justify-content: space-between;
   color: #374151;
-  font-size: .9rem
+  font-size: 0.85rem;
+  margin-bottom: 0.35rem;
+}
+
+/* 出品者名 */
+.card__seller {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.2;
+  margin-top: 0.3rem;
+}
+
+.card__seller-icon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  stroke: var(--muted);
+}
+
+.card__seller-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .badge--new {

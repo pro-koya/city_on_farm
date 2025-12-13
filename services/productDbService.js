@@ -99,6 +99,8 @@ async function fetchProductsWithCount(dbQuery, {
         p.id, p.slug, p.title, p.price, p.unit, p.stock,
         p.is_organic, p.is_seasonal, p.published_at, p.created_at,
         c.name AS category_name,
+        u.name AS seller_name,
+        pa.name AS seller_partner_name,
         (SELECT url
             FROM product_images i
             WHERE i.product_id = p.id
@@ -106,6 +108,8 @@ async function fetchProductsWithCount(dbQuery, {
             LIMIT 1) AS image_url
         FROM products p
         LEFT JOIN categories c ON c.id = p.category_id
+        LEFT JOIN users u ON u.id = p.seller_id
+        LEFT JOIN partners pa ON pa.id = u.partner_id
         WHERE ${where.length ? where.join(' AND ') : 'TRUE'}
         ORDER BY ${orderBy}
         LIMIT $${params.length + 1} OFFSET $${params.length + 2}

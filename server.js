@@ -1973,13 +1973,15 @@ async function getPopularProducts(dbQuery, { range = '7d', limit = 12, sellerId 
   // 除外: canceled, cancelled, refunded
   // 支払いステータス: paid, completed を含む
   const rows = await dbQuery(
-    `SELECT 
+    `SELECT
        p.id,
        p.title,
        p.price,
        p.unit,
        p.stock,
        p.favorite_count,
+       u.name AS seller_name,
+       pa.name AS seller_partner_name,
        (SELECT url FROM product_images pi WHERE pi.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url,
        SUM(oi.quantity)::int AS quantity_sold,
        COUNT(DISTINCT o.id)::int AS order_count,
@@ -1988,14 +1990,16 @@ async function getPopularProducts(dbQuery, { range = '7d', limit = 12, sellerId 
      FROM order_items oi
      JOIN orders o ON o.id = oi.order_id
      JOIN products p ON p.id = oi.product_id
+     LEFT JOIN users u ON u.id = p.seller_id
+     LEFT JOIN partners pa ON pa.id = u.partner_id
      WHERE p.status = 'public'
        AND o.status NOT IN ('canceled', 'cancelled', 'refunded')
        AND o.payment_status IN ('paid', 'completed')
        ${dateCondition}
        ${sellerCondition}
-     GROUP BY p.id, p.title, p.price, p.unit, p.stock, p.favorite_count
+     GROUP BY p.id, p.title, p.price, p.unit, p.stock, p.favorite_count, u.name, pa.name
      HAVING SUM(oi.quantity) > 0
-     ORDER BY 
+     ORDER BY
        SUM(oi.quantity) DESC,
        SUM(oi.price * oi.quantity) DESC,
        p.favorite_count DESC,
@@ -2012,18 +2016,22 @@ async function getPopularProducts(dbQuery, { range = '7d', limit = 12, sellerId 
  * =======================================================*/
 async function getTopFavorites(dbQuery, { limit = 12 } = {}) {
   const rows = await dbQuery(
-    `SELECT 
+    `SELECT
        p.id,
        p.title,
        p.price,
        p.unit,
        p.stock,
        p.favorite_count,
+       u.name AS seller_name,
+       pa.name AS seller_partner_name,
        (SELECT url FROM product_images pi WHERE pi.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
      FROM products p
+     LEFT JOIN users u ON u.id = p.seller_id
+     LEFT JOIN partners pa ON pa.id = u.partner_id
      WHERE p.status = 'public'
        AND p.favorite_count > 0
-     ORDER BY 
+     ORDER BY
        p.favorite_count DESC,
        p.created_at DESC
      LIMIT $1::int`,
