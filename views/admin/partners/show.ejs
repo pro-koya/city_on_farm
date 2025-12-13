@@ -58,6 +58,19 @@
       <!-- 表示モード -->
       <div id="partnerViewMode">
         <dl class="kv">
+          <!-- アイコン画像 -->
+          <div class="kv--full">
+            <dt>アイコン画像</dt>
+            <dd>
+              <% if (partner.icon_url) { %>
+                <img src="<%= partner.icon_url %>" alt="<%= partner.name %>のアイコン"
+                     style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--main);">
+              <% } else { %>
+                <span class="muted">未設定</span>
+              <% } %>
+            </dd>
+          </div>
+
           <div><dt>名称</dt><dd><%= partner.name %></dd></div>
           <% if (partner.kana) { %><div><dt>カナ</dt><dd><%= partner.kana %></dd></div><% } %>
           <div><dt>種別</dt><dd><%= partner.type %></dd></div>
@@ -85,6 +98,41 @@
         <form action="/admin/partners/<%= partner.id %>/edit" method="POST" class="form h-adr" id="partnerEditForm">
           <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
           <span class="p-country-name" style="display: none;">Japan</span>
+
+          <!-- アイコン画像アップロード -->
+          <div class="field">
+            <label for="partner_icon">アイコン画像</label>
+            <div class="uploader-wrap">
+              <!-- 現在のアイコンプレビュー -->
+              <div id="iconPreview" style="margin-bottom: 12px;">
+                <% if (partner.icon_url) { %>
+                  <img src="<%= partner.icon_url %>" alt="現在のアイコン"
+                       style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--main);">
+                <% } %>
+              </div>
+
+              <!-- hiddenフィールド -->
+              <input type="hidden" id="partner_icon_url" name="icon_url" value="<%= partner.icon_url || '' %>">
+              <input type="hidden" id="partner_icon_r2_key" name="icon_r2_key" value="<%= partner.icon_r2_key || '' %>">
+
+              <!-- ボタン群 -->
+              <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                <button type="button" class="btn btn--ghost btn--sm" id="uploadIconBtn">新しい画像をアップロード</button>
+                <button type="button" class="btn btn--ghost btn--sm" id="selectFromLibraryBtn">ライブラリから選択</button>
+                <% if (partner.icon_url) { %>
+                  <button type="button" class="btn btn--ghost btn--sm" id="removeIconBtn">削除</button>
+                <% } else { %>
+                  <button type="button" class="btn btn--ghost btn--sm" id="removeIconBtn" style="display: none;">削除</button>
+                <% } %>
+              </div>
+
+              <!-- ファイル選択input（非表示） -->
+              <input type="file" id="iconFileInput" accept="image/jpeg,image/png,image/webp,image/avif,image/gif" style="display: none;">
+
+              <!-- メッセージ表示 -->
+              <div id="iconUploadMsg" style="font-size: 0.875rem; color: var(--muted); margin-top: 4px;"></div>
+            </div>
+          </div>
 
           <div class="field">
             <label for="partner_name">名称 *</label>
@@ -435,5 +483,6 @@
 </main>
 
 <script src="https://yubinbango.github.io/yubinbango/yubinbango.js" charset="UTF-8"></script>
+<script src="/js/uploader-r2.js"></script>
 <script src="/js/partner-show.js"></script>
 <%- include('../../partials/footer') %>
