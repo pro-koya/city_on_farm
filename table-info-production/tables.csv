@@ -18,11 +18,11 @@ public,option_labels,,8
 public,order_addresses,,14
 public,order_groups,,6
 public,order_items,,8
-public,orders,,32
+public,orders,,33
 public,partner_allowed_payment_methods,,4
 public,partner_date_availabilities,,8
 public,partner_weekday_availabilities,,8
-public,partners,取引先（主に飲食店などの法人・団体・個人事業主）,27
+public,partners,取引先（主に飲食店などの法人・団体・個人事業主）,30
 public,password_reset_tokens,,6
 public,payments,,8
 public,product_images,,12
