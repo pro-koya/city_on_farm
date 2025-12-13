@@ -88,6 +88,23 @@
               <div><%= [partner.prefecture, partner.city, partner.address1, partner.address2].filter(Boolean).join(' ') || '—' %></div>
             </div>
           </dd></div>
+          <div class="kv--full">
+            <dt>畑受け取り住所</dt>
+            <dd>
+              <% if (pickupAddress) { %>
+                <div class="addr" style="margin-top: 0.5rem;">
+                  <div><strong><%= pickupAddress.full_name %></strong></div>
+                  <div>〒 <%= pickupAddress.postal_code %></div>
+                  <div><%= [pickupAddress.prefecture, pickupAddress.city, pickupAddress.address_line1, pickupAddress.address_line2].filter(Boolean).join(' ') %></div>
+                  <% if (pickupAddress.phone) { %>
+                    <div style="margin-top: 0.25rem; color: var(--muted); font-size: 0.875rem;">TEL: <%= pickupAddress.phone %></div>
+                  <% } %>
+                </div>
+              <% } else { %>
+                <span class="muted">未設定（基本住所が使用されます）</span>
+              <% } %>
+            </dd>
+          </div>
           <div class="kv--full"><dt>メモ</dt><dd><%= partner.note || '—' %></dd></div>
         </dl>
       </div>
@@ -199,6 +216,30 @@
               <label for="partner_address2">建物名・部屋</label>
               <input type="text" id="partner_address2" name="address2" value="<%= partner.address2 || '' %>" class="p-extended-address">
             </div>
+          </div>
+
+          <!-- 畑受け取り住所設定 -->
+          <div class="field" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb;">
+            <label for="partner_pickup_address_id">畑受け取り住所</label>
+            <p class="field-hint" style="font-size: 0.875rem; color: var(--muted); margin-bottom: 0.5rem;">
+              畑で受け取りを選択した注文で使用する住所を設定します。未設定の場合は基本住所が使用されます。
+            </p>
+            <select id="partner_pickup_address_id" name="pickup_address_id" class="pulldown">
+              <option value="">未設定（基本住所を使用）</option>
+              <% if (typeof availableAddresses !== 'undefined' && availableAddresses && availableAddresses.length > 0) { %>
+                <% availableAddresses.forEach(addr => { %>
+                  <option value="<%= addr.id %>" <%= (partner.pickup_address_id && String(partner.pickup_address_id) === String(addr.id)) ? 'selected' : '' %>>
+                    <%= addr.full_name %> - 〒<%= addr.postal_code %> <%= [addr.prefecture, addr.city, addr.address_line1].filter(Boolean).join(' ') %>
+                    <% if (addr.is_default) { %>（デフォルト）<% } %>
+                  </option>
+                <% }) %>
+              <% } %>
+            </select>
+            <% if (typeof availableAddresses !== 'undefined' && availableAddresses && availableAddresses.length === 0) { %>
+              <p class="field-hint" style="font-size: 0.875rem; color: var(--muted); margin-top: 0.5rem;">
+                この取引先に紐づくユーザーが登録した住所がありません。ユーザー管理ページから住所を登録してください。
+              </p>
+            <% } %>
           </div>
 
           <div class="field">

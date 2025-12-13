@@ -72,7 +72,7 @@
                alt="<%= p.seller_partner_name || p.seller_name %>のアイコン">
         <% } else { %>
           <!-- フォールバック：SVGアイコン -->
-          <svg class="card__seller-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg class="card__seller-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
             <circle cx="12" cy="7" r="4"></circle>
           </svg>
@@ -83,7 +83,7 @@
       <!-- ランキング情報（人気ランキング表示時） -->
       <% if (typeof showRank !== 'undefined' && showRank && p.quantity_sold != null) { %>
         <div class="card__stats" style="margin-top: 6px; font-size: 0.85rem; color: var(--muted);">
-          <span>売れた個数: <%= p.quantity_sold || 0 %>個</span>
+          <span>販売数: <%= p.quantity_sold || 0 %></span>
           <% if (p.order_count != null) { %>
             <span style="margin-left: 8px;">注文数: <%= p.order_count || 0 %>件</span>
           <% } %>
