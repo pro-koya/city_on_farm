@@ -323,7 +323,7 @@ main.page {
 }
 
 .card__body {
-  padding: 0.5rem 0.6rem 0.65rem;
+  padding: 0.6rem 0.7rem 0.7rem;
 }
 
 .card__name {
@@ -345,32 +345,43 @@ main.page {
 .card__seller {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.5rem;
   color: var(--muted);
-  font-size: 0.75rem;
-  line-height: 1.2;
-  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid #f3f4f6;
 }
 
 .card__seller-icon {
   flex-shrink: 0;
-  width: 14px;
-  height: 14px;
+  width: 24px;
+  height: 24px;
   stroke: var(--muted);
+  opacity: 0.7;
 }
 
 /* 出品者アイコン画像 */
 .card__seller-icon-img {
-  width: 14px;
-  height: 14px;
-  max-width: 14px;
-  max-height: 14px;
-  min-width: 14px;
-  min-height: 14px;
+  width: 24px;
+  height: 24px;
+  max-width: 24px;
+  max-height: 24px;
+  min-width: 24px;
+  min-height: 24px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
   display: block;
+  border: 2px solid #f3f4f6;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.card:hover .card__seller-icon-img {
+  border-color: #e5e7eb;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .card__seller-name {
@@ -378,6 +389,8 @@ main.page {
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+  font-weight: 500;
+  color: #4b5563;
 }
 
 .badge--new {

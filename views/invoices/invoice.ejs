@@ -4,178 +4,164 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>領収書 <%= order.orderNo %>
-  </title>
+  <title>領収書 <%= order.orderNo %></title>
   <% if (typeof baseUrl !=='undefined' && baseUrl) { %>
     <base href="<%= baseUrl %>">
-    <% } %>
-      <link rel="stylesheet" href="/styles/invoice.css">
+  <% } %>
+  <link rel="stylesheet" href="/styles/invoice.css">
 </head>
 
 <body>
-  <div class="page">
-
-    <div class="doc-head">
-      <div class="brand">
-        <!-- サイトのロゴがあれば img を置き換えてください -->
-        <span class="logo" aria-hidden="true"></span>
-        <div>
-          <div class="title">新・今日の食卓</div>
-          <div class="muted" style="font-size:12px;">公式ストア</div>
-        </div>
-      </div>
-      <div class="doc-meta">
-        <h1>領収書</h1>
-        <div>注文番号：<strong>
-            <%= order.orderNo %>
-          </strong></div>
-        <div>発行日：<%= new Date(order.createdAt).toLocaleDateString('ja-JP') %>
-        </div>
-        <div>支払方法：<%= order.paymentMethod || '—' %> <span class="badge">
-              <%= order.paymentStatus || '' %>
-            </span></div>
-      </div>
-    </div>
-
-    <div class="meta-grid">
-      <div class="card">
-        <h3>購入者</h3>
-        <div class="buyer-lines">
-          <% if (buyer.partner_id) { %>
-            店舗名：<%= buyer.partner_name %>
+  <div class="invoice-page">
+    <!-- ヘッダー：領収者情報（左）と発行日（右） -->
+    <div class="invoice-header">
+      <div class="header-left">
+        <% if (sellerPartner) { %>
+          <div class="issuer-name"><%= sellerPartner.name || '新・今日の食卓' %></div>
+          <% if (sellerPartner.tax_id) { %>
+            <div class="issuer-tax-id">登録番号：<%= sellerPartner.tax_id %></div>
           <% } %>
-          <% if (buyer.name) { %>
-            <div>
-              <%= buyer.name %> 様
-            </div>
-            <% } %>
-              <% if (buyer.email) { %>
-                <div class="muted">
-                  <%= buyer.email %>
-                </div>
-                <% } %>
-        </div>
-      </div>
-      <div class="card">
-        <h3>請求先住所</h3>
-        <div class="addr-lines">
-          <% if (billingAddress && billingAddress.lines && billingAddress.lines.length) { %>
-            <% billingAddress.lines.forEach(function(l){ %>
-              <div>
-                <%= l %>
-              </div>
-              <% }) %>
-                <% } else { %>
-                  <div class="muted">未設定</div>
-                  <% } %>
-        </div>
-      </div>
-      <div class="card">
-        <h3>注文情報</h3>
-        <div class="addr-lines">
-          <div>注文日時：<%= new Date(order.createdAt).toLocaleString('ja-JP') %>
+          <div class="issuer-address">
+            〒<%= sellerPartner.postal_code || '' %>　<%= [sellerPartner.prefecture, sellerPartner.city, sellerPartner.address1, sellerPartner.address2].filter(Boolean).join('') %>
           </div>
-          <div>ステータス：<%= order.status %>
-          </div>
-        </div>
+          <% if (sellerPartner.phone) { %>
+            <div class="issuer-phone">TEL：<%= sellerPartner.phone %></div>
+          <% } %>
+        <% } else { %>
+          <div class="issuer-name">新・今日の食卓</div>
+        <% } %>
       </div>
-      <div class="card">
-        <h3>配送先住所</h3>
-        <div class="addr-lines">
-          <% if (shippingAddress && shippingAddress.lines && shippingAddress.lines.length) { %>
-            <% shippingAddress.lines.forEach(function(l){ %>
-              <div>
-                <%= l %>
-              </div>
-              <% }) %>
-                <% } else { %>
-                  <div class="muted">未設定</div>
-                  <% } %>
+      <div class="header-right">
+        <div class="issue-date">発行日：<%= new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' }) %></div>
+      </div>
+    </div>
+
+    <!-- タイトルと宛名・金額ブロック -->
+    <div class="invoice-main-block">
+      <h1 class="invoice-title">領収書</h1>
+
+      <div class="recipient-amount-block">
+        <div class="recipient-line">
+          <% if (order.receiptName) { %>
+            <span class="recipient-name"><%= order.receiptName %> 様</span>
+          <% } else if (buyer && buyer.name) { %>
+            <span class="recipient-name"><%= buyer.name %> 様</span>
+          <% } else { %>
+            <span class="recipient-name">お客様</span>
+          <% } %>
+        </div>
+
+        <div class="amount-line">
+          <span class="amount-value">¥<%= (summary.total || 0).toLocaleString('ja-JP') %></span>
+          <span class="amount-label">（税込）</span>
+        </div>
+
+        <div class="note-line">
+          但し：<% if (sellerPartner && sellerPartner.name) { %><%= sellerPartner.name %><% } else { %>新・今日の食卓<% } %>との取引として
         </div>
       </div>
     </div>
 
-    <% const yen=(n)=>'¥' + Number(n||0).toLocaleString('ja-JP'); %>
-      <div class="summary">
-        <div><!-- 余白（注意書きなどに利用可） --></div>
-        <div class="sum-card">
-          <div class="sum-row">
-            <div>小計</div>
-            <div class="num">
-              <%= yen(summary.subtotal) %>
-            </div>
-          </div>
-          <div class="sum-row">
-            <div>値引</div>
-            <div class="num">- <%= yen(summary.discount) %>
-            </div>
-          </div>
-          <div class="sum-row">
-            <div>送料</div>
-            <div class="num">
-              <%= yen(summary.shippingFee) %>
-            </div>
-          </div>
-          <div class="sum-row">
-            <div>消費税</div>
-            <div class="num">
-              <%= yen(summary.tax) %>
-            </div>
-          </div>
-          <div class="sum-row total">
-            <div>合計</div>
-            <div class="num">
-              <%= yen(summary.total) %>
-            </div>
-          </div>
+    <!-- 利用情報（コンパクト化） -->
+    <section class="invoice-section">
+      <h2 class="section-title">ご利用明細</h2>
+      <dl class="info-grid">
+        <div class="info-item">
+          <dt>注文番号</dt>
+          <dd><%= order.orderNo %></dd>
         </div>
-      </div>
+        <div class="info-item">
+          <dt>注文日</dt>
+          <dd><%= new Date(order.createdAt).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' }) %></dd>
+        </div>
+        <div class="info-item">
+          <dt>お支払い方法</dt>
+          <dd><%= order.paymentMethod || '—' %></dd>
+        </div>
+        <div class="info-item">
+          <dt>配送方法</dt>
+          <dd><%= order.shipMethod === 'pickup' ? '畑で受け取り' : (order.shipMethod === 'delivery' ? '宅配便' : (order.shipMethod || '—')) %></dd>
+        </div>
+      </dl>
+    </section>
 
-      <table aria-label="明細">
+    <!-- 金額明細（注文合計と支払い内訳を統合） -->
+    <section class="invoice-section">
+      <h2 class="section-title">金額明細</h2>
+      <dl class="amount-list">
+        <div class="amount-row">
+          <dt>商品小計（税込）</dt>
+          <dd class="amount-value"><%= (summary.subtotal || 0).toLocaleString('ja-JP') %>円</dd>
+        </div>
+        <div class="amount-row tax-breakdown">
+          <dt>　└ うち消費税（10%）</dt>
+          <dd class="amount-value"><%= (summary.calculatedTax || 0).toLocaleString('ja-JP') %>円</dd>
+        </div>
+        <div class="amount-row total-row">
+          <dt>お支払い金額</dt>
+          <dd class="amount-value"><strong>¥<%= (summary.total || 0).toLocaleString('ja-JP') %></strong></dd>
+        </div>
+      </dl>
+    </section>
+
+    <!-- 配送先情報 -->
+    <% if ((shippingAddress && shippingAddress.lines && shippingAddress.lines.length) || (billingAddress && billingAddress.lines && billingAddress.lines.length)) { %>
+    <section class="invoice-section">
+      <h2 class="section-title">配送先</h2>
+      <div class="shipping-info">
+        <% if (shippingAddress && shippingAddress.lines && shippingAddress.lines.length) { %>
+          <% shippingAddress.lines.forEach(function(line){ %>
+            <div><%= line %></div>
+          <% }) %>
+        <% } else if (billingAddress && billingAddress.lines && billingAddress.lines.length) { %>
+          <% billingAddress.lines.forEach(function(line){ %>
+            <div><%= line %></div>
+          <% }) %>
+        <% } %>
+      </div>
+    </section>
+    <% } %>
+
+    <!-- 商品明細 -->
+    <section class="invoice-section">
+      <h2 class="section-title">商品明細</h2>
+      <table class="items-table" aria-label="商品明細">
         <thead>
           <tr>
-            <th style="width:52%;">商品名</th>
-            <th style="width:12%;">数量</th>
-            <th style="width:18%;">単価</th>
-            <th style="width:18%;">金額</th>
+            <th class="col-name">商品名</th>
+            <th class="col-quantity">数量</th>
+            <th class="col-price">単価</th>
+            <th class="col-tax-rate">税率</th>
+            <th class="col-total">小計</th>
           </tr>
         </thead>
         <tbody>
           <% if (items && items.length) { %>
             <% items.forEach(function(it){ %>
               <tr>
-                <td>
-                  <div><strong>
-                      <%= it.name %>
-                    </strong></div>
+                <td class="col-name">
+                  <div class="product-name"><%= it.name %></div>
                   <% if (it.unit) { %>
-                    <div class="muted" style="font-size:12px;">単位：<%= it.unit %>
-                    </div>
-                    <% } %>
-                </td>
-                <td class="num">
-                  <%= it.quantity %>
-                </td>
-                <td class="num">
-                  <%= yen(it.unitPrice) %>
-                </td>
-                <td class="num">
-                  <%= yen(it.lineTotal) %>
-                </td>
-              </tr>
-              <% }); %>
-                <% } else { %>
-                  <tr>
-                    <td colspan="4" class="muted">明細がありません。</td>
-                  </tr>
+                    <div class="product-unit">単位：<%= it.unit %></div>
                   <% } %>
+                </td>
+                <td class="col-quantity num"><%= it.quantity %></td>
+                <td class="col-price num">¥<%= (it.unitPrice || 0).toLocaleString('ja-JP') %></td>
+                <td class="col-tax-rate num"><%= it.taxRate || 10 %>%</td>
+                <td class="col-total num">¥<%= (it.lineTotal || 0).toLocaleString('ja-JP') %></td>
+              </tr>
+            <% }) %>
+          <% } else { %>
+            <tr>
+              <td colspan="5" class="muted text-center">明細がありません。</td>
+            </tr>
+          <% } %>
         </tbody>
       </table>
-
-      <p class="foot-note">
-        この領収書は「新・今日の食卓」でのご注文に基づき自動発行されています。<br />
-        会社名の記載や但し書きなど特別な記載が必要な場合は、サポートまでご連絡ください。
+      <p class="invoice-note-small">
+        ※表示金額は全て税込です
       </p>
+    </section>
 
   </div>
 </body>

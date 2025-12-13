@@ -19,15 +19,15 @@ html, body {
   line-height: 1.5;
 }
 
-.invoice-page {
+.delivery-note-page {
   max-width: 800px;
   margin: 0 auto;
   padding: 16px 16px 24px;
   background: white;
 }
 
-/* ========== ヘッダー：領収者情報（左）と発行日（右） ========== */
-.invoice-header {
+/* ========== ヘッダー：出品者情報（左）と納品日（右） ========== */
+.delivery-note-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -50,7 +50,8 @@ html, body {
 
 .issuer-tax-id,
 .issuer-address,
-.issuer-phone {
+.issuer-phone,
+.issuer-email {
   color: var(--muted);
   line-height: 1.6;
 }
@@ -60,20 +61,20 @@ html, body {
   flex-shrink: 0;
 }
 
-.issue-date {
+.delivery-date {
   color: var(--muted);
   font-size: 11px;
 }
 
-/* ========== タイトルと宛名・金額ブロック（コンパクト化） ========== */
-.invoice-main-block {
+/* ========== タイトルとお届け先ブロック ========== */
+.delivery-note-main-block {
   text-align: center;
   margin-bottom: 16px;
   padding-bottom: 14px;
   border-bottom: 2px solid var(--border);
 }
 
-.invoice-title {
+.delivery-note-title {
   font-size: 24px;
   font-weight: 700;
   margin: 0 0 10px;
@@ -81,43 +82,33 @@ html, body {
   color: var(--ink);
 }
 
-.recipient-amount-block {
+.recipient-block {
   margin-top: 8px;
+  text-align: left;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-.recipient-line {
-  margin-bottom: 6px;
-}
-
-.recipient-name {
-  font-size: 15px;
+.recipient-label {
+  font-size: 12px;
   font-weight: 600;
-  color: var(--ink);
-}
-
-.amount-line {
+  color: var(--muted);
   margin-bottom: 4px;
 }
 
-.amount-value {
-  font-size: 22px;
-  font-weight: 700;
+.recipient-info {
+  font-size: 13px;
+  line-height: 1.7;
   color: var(--ink);
 }
 
-.amount-label {
-  font-size: 13px;
-  color: var(--muted);
-  margin-left: 4px;
-}
-
-.note-line {
-  font-size: 12px;
-  color: var(--muted);
+.recipient-info div {
+  margin-bottom: 2px;
 }
 
 /* ========== セクション ========== */
-.invoice-section {
+.delivery-note-section {
   margin-bottom: 16px;
   page-break-inside: avoid;
 }
@@ -131,7 +122,7 @@ html, body {
   color: var(--ink);
 }
 
-/* ========== 利用情報（グリッドレイアウト） ========== */
+/* ========== 注文情報（グリッドレイアウト） ========== */
 .info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -215,25 +206,6 @@ html, body {
   font-size: 15px;
 }
 
-/* ========== 注記（小さめ文字） ========== */
-.invoice-note-small {
-  font-size: 10px;
-  color: var(--muted);
-  margin: 8px 0 0;
-  line-height: 1.5;
-}
-
-/* ========== 配送情報 ========== */
-.shipping-info {
-  font-size: 12px;
-  line-height: 1.7;
-  color: var(--ink);
-}
-
-.shipping-info div {
-  margin-bottom: 2px;
-}
-
 /* ========== 商品明細テーブル ========== */
 .items-table {
   width: 100%;
@@ -271,13 +243,13 @@ html, body {
   background-color: #fafafa;
 }
 
-/* テーブル列幅（コンパクト化） */
+/* テーブル列幅 */
 .col-name {
-  width: 42%;
+  width: 50%;
 }
 
 .col-quantity {
-  width: 12%;
+  width: 15%;
   text-align: right;
 }
 
@@ -286,13 +258,8 @@ html, body {
   text-align: right;
 }
 
-.col-tax-rate {
-  width: 10%;
-  text-align: right;
-}
-
 .col-total {
-  width: 18%;
+  width: 17%;
   text-align: right;
 }
 
@@ -316,6 +283,19 @@ html, body {
   white-space: nowrap;
 }
 
+/* 備考欄 */
+.note-content {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink);
+  padding: 8px;
+  background-color: #f9fafb;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
 /* その他 */
 .muted {
   color: var(--muted);
@@ -327,13 +307,13 @@ html, body {
 
 /* ========== 印刷用スタイル ========== */
 @media print {
-  .invoice-page {
+  .delivery-note-page {
     margin: 0;
     padding: 12px 12px 20px;
     max-width: 100%;
   }
 
-  .invoice-section {
+  .delivery-note-section {
     margin-bottom: 14px;
     page-break-inside: avoid;
   }
@@ -351,7 +331,7 @@ html, body {
     font-size: 13px;
   }
 
-  .invoice-title {
+  .delivery-note-title {
     font-size: 22px;
   }
 
@@ -368,7 +348,7 @@ html, body {
 
 /* ========== 画面表示用の調整 ========== */
 @media screen {
-  .invoice-page {
+  .delivery-note-page {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     border-radius: 4px;
   }

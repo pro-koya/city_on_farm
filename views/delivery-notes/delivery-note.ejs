@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>納品書 <%= order.orderNo %></title>
+  <% if (typeof baseUrl !=='undefined' && baseUrl) { %>
+    <base href="<%= baseUrl %>">
+  <% } %>
+  <link rel="stylesheet" href="/styles/delivery-note.css">
+</head>
+
+<body>
+  <div class="delivery-note-page">
+    <!-- ヘッダー：出品者情報（左）と納品日（右） -->
+    <div class="delivery-note-header">
+      <div class="header-left">
+        <% if (sellerPartner) { %>
+          <div class="issuer-name"><%= sellerPartner.name || '新・今日の食卓' %></div>
+          <% if (sellerPartner.tax_id) { %>
+            <div class="issuer-tax-id">登録番号：<%= sellerPartner.tax_id %></div>
+          <% } %>
+          <div class="issuer-address">
+            〒<%= sellerPartner.postal_code || '' %>　<%= [sellerPartner.prefecture, sellerPartner.city, sellerPartner.address1, sellerPartner.address2].filter(Boolean).join('') %>
+          </div>
+          <% if (sellerPartner.phone) { %>
+            <div class="issuer-phone">TEL：<%= sellerPartner.phone %></div>
+          <% } %>
+          <% if (sellerPartner.email) { %>
+            <div class="issuer-email">Email：<%= sellerPartner.email %></div>
+          <% } %>
+        <% } else { %>
+          <div class="issuer-name">新・今日の食卓</div>
+        <% } %>
+      </div>
+      <div class="header-right">
+        <%
+          // 納品日：shipped_at があればそれを使用、なければ created_at
+          const deliveryDate = order.shippedAt || order.createdAt;
+          const formattedDate = new Date(deliveryDate).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+        %>
+        <div class="delivery-date">納品日：<%= formattedDate %></div>
+      </div>
+    </div>
+
+    <!-- タイトルとお届け先ブロック -->
+    <div class="delivery-note-main-block">
+      <h1 class="delivery-note-title">納品書</h1>
+
+      <div class="recipient-block">
+        <% if (shippingAddress && shippingAddress.lines && shippingAddress.lines.length) { %>
+          <div class="recipient-label">お届け先</div>
+          <div class="recipient-info">
+            <% shippingAddress.lines.forEach(function(line){ %>
+              <div><%= line %></div>
+            <% }) %>
+          </div>
+        <% } else if (billingAddress && billingAddress.lines && billingAddress.lines.length) { %>
+          <div class="recipient-label">お届け先</div>
+          <div class="recipient-info">
+            <% billingAddress.lines.forEach(function(line){ %>
+              <div><%= line %></div>
+            <% }) %>
+          </div>
+        <% } else if (order.shipMethod === 'pickup') { %>
+          <div class="recipient-label">受取方法</div>
+          <div class="recipient-info">
+            <div>畑で受け取り</div>
+          </div>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- 注文情報 -->
+    <section class="delivery-note-section">
+      <h2 class="section-title">ご注文情報</h2>
+      <dl class="info-grid">
+        <div class="info-item">
+          <dt>注文番号</dt>
+          <dd><%= order.orderNo %></dd>
+        </div>
+        <div class="info-item">
+          <dt>注文日</dt>
+          <dd><%= new Date(order.createdAt).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' }) %></dd>
+        </div>
+        <div class="info-item">
+          <dt>配送方法</dt>
+          <dd><%= order.shipMethod === 'pickup' ? '畑で受け取り' : (order.shipMethod === 'delivery' ? '宅配便' : (order.shipMethod || '—')) %></dd>
+        </div>
+        <% if (order.paymentMethod) { %>
+          <div class="info-item">
+            <dt>お支払い方法</dt>
+            <dd><%= order.paymentMethod || '—' %></dd>
+          </div>
+        <% } %>
+      </dl>
+    </section>
+
+    <!-- 商品明細 -->
+    <section class="delivery-note-section">
+      <h2 class="section-title">商品明細</h2>
+      <table class="items-table" aria-label="商品明細">
+        <thead>
+          <tr>
+            <th class="col-name">商品名</th>
+            <th class="col-quantity">数量</th>
+            <% if (showPrice) { %>
+              <th class="col-price">単価</th>
+              <th class="col-total">小計</th>
+            <% } %>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (items && items.length) { %>
+            <% items.forEach(function(it){ %>
+              <tr>
+                <td class="col-name">
+                  <div class="product-name"><%= it.name %></div>
+                  <% if (it.unit) { %>
+                    <div class="product-unit">単位：<%= it.unit %></div>
+                  <% } %>
+                </td>
+                <td class="col-quantity num"><%= it.quantity %></td>
+                <% if (showPrice) { %>
+                  <td class="col-price num">¥<%= (it.unitPrice || 0).toLocaleString('ja-JP') %></td>
+                  <td class="col-total num">¥<%= (it.lineTotal || 0).toLocaleString('ja-JP') %></td>
+                <% } %>
+              </tr>
+            <% }) %>
+          <% } else { %>
+            <tr>
+              <td colspan="<%= showPrice ? 4 : 2 %>" class="muted text-center">明細がありません。</td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 金額合計（showPrice=1の時のみ） -->
+    <% if (showPrice && summary) { %>
+      <section class="delivery-note-section">
+        <h2 class="section-title">金額合計</h2>
+        <dl class="amount-list">
+          <div class="amount-row">
+            <dt>商品小計（税込）</dt>
+            <dd class="amount-value"><%= (summary.subtotal || 0).toLocaleString('ja-JP') %>円</dd>
+          </div>
+          <div class="amount-row tax-breakdown">
+            <dt>　└ うち消費税（10%）</dt>
+            <dd class="amount-value"><%= (summary.calculatedTax || 0).toLocaleString('ja-JP') %>円</dd>
+          </div>
+          <div class="amount-row total-row">
+            <dt>合計金額</dt>
+            <dd class="amount-value"><strong>¥<%= (summary.total || 0).toLocaleString('ja-JP') %></strong></dd>
+          </div>
+        </dl>
+      </section>
+    <% } %>
+
+    <!-- 備考 -->
+    <% if (order.note && order.note.trim()) { %>
+      <section class="delivery-note-section">
+        <h2 class="section-title">備考</h2>
+        <div class="note-content">
+          <%= order.note %>
+        </div>
+      </section>
+    <% } %>
+
+  </div>
+</body>
+
+</html>

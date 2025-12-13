@@ -41,9 +41,6 @@
             <dt>受け取り方法</dt>
             <dd>
               <span class="pill"><%= shipMethod_ja || (shipMethod === 'pickup' ? '畑で受け取り' : '配送') %></span>
-              <% if (shipMethod === 'pickup') { %>
-                <p class="help">受け取り場所は出品者指定の畑です。確定後のメールをご確認ください。</p>
-              <% } %>
             </dd>
           </div>
 
@@ -85,7 +82,20 @@
         </div>
 
         <% if (shipMethod === 'pickup') { %>
-          <p class="muted">畑受け取りを選択しています。場所の詳細は確定メールでご案内します。</p>
+          <% if (typeof pickupAddress !== 'undefined' && pickupAddress) { %>
+            <div class="addr">
+              <div class="addr__name"><strong><%= typeof partnerName !== 'undefined' && partnerName ? partnerName : (pickupAddress.full_name || '受け取り場所') %></strong></div>
+              <div class="addr__lines">
+                〒<%= pickupAddress.postal_code %>　
+                <%= pickupAddress.prefecture %><%= pickupAddress.city %><%= pickupAddress.address_line1 || pickupAddress.address1 || '' %> <%= pickupAddress.address_line2 || pickupAddress.address2 || '' %>
+              </div>
+              <% if (pickupAddress.phone) { %>
+                <div style="margin-top: 0.5rem; color: var(--muted); font-size: 0.875rem;">TEL: <%= pickupAddress.phone %></div>
+              <% } %>
+            </div>
+          <% } else { %>
+            <p class="muted">畑受け取りを選択しています。場所の詳細は確定メールでご案内します。</p>
+          <% } %>
         <% } else { %>
           <% if (shippingAddress) { %>
             <div class="addr">
