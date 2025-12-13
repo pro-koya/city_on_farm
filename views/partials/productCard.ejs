@@ -65,10 +65,18 @@
 
       <!-- 出品者名 -->
       <div class="card__seller">
-        <svg class="card__seller-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-          <circle cx="12" cy="7" r="4"></circle>
-        </svg>
+        <% if (p.seller_partner_icon_url) { %>
+          <!-- アイコン画像がある場合 -->
+          <img class="card__seller-icon-img"
+               src="<%= p.seller_partner_icon_url %>"
+               alt="<%= p.seller_partner_name || p.seller_name %>のアイコン">
+        <% } else { %>
+          <!-- フォールバック：SVGアイコン -->
+          <svg class="card__seller-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        <% } %>
         <span class="card__seller-name"><%= p.seller_partner_name || p.seller_name || '出品者不明' %></span>
       </div>
 

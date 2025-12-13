@@ -1982,6 +1982,7 @@ async function getPopularProducts(dbQuery, { range = '7d', limit = 12, sellerId 
        p.favorite_count,
        u.name AS seller_name,
        pa.name AS seller_partner_name,
+       pa.icon_url AS seller_partner_icon_url,
        (SELECT url FROM product_images pi WHERE pi.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url,
        SUM(oi.quantity)::int AS quantity_sold,
        COUNT(DISTINCT o.id)::int AS order_count,
@@ -1997,7 +1998,7 @@ async function getPopularProducts(dbQuery, { range = '7d', limit = 12, sellerId 
        AND o.payment_status IN ('paid', 'completed')
        ${dateCondition}
        ${sellerCondition}
-     GROUP BY p.id, p.title, p.price, p.unit, p.stock, p.favorite_count, u.name, pa.name
+     GROUP BY p.id, p.title, p.price, p.unit, p.stock, p.favorite_count, u.name, pa.name, pa.icon_url
      HAVING SUM(oi.quantity) > 0
      ORDER BY
        SUM(oi.quantity) DESC,
@@ -2025,6 +2026,7 @@ async function getTopFavorites(dbQuery, { limit = 12 } = {}) {
        p.favorite_count,
        u.name AS seller_name,
        pa.name AS seller_partner_name,
+       pa.icon_url AS seller_partner_icon_url,
        (SELECT url FROM product_images pi WHERE pi.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
      FROM products p
      LEFT JOIN users u ON u.id = p.seller_id
@@ -8366,7 +8368,7 @@ app.get(
            id, name, kana, type, status, email, phone, website,
            billing_email, billing_terms, tax_id,
            postal_code, prefecture, city, address1, address2,
-           note, created_at, updated_at
+           note, icon_url, icon_r2_key, created_at, updated_at
          FROM partners
          WHERE id = $1::uuid
          LIMIT 1`,
@@ -8450,6 +8452,8 @@ app.post(
       const address1 = String(req.body.address1 || '').trim() || null;
       const address2 = String(req.body.address2 || '').trim() || null;
       const note = String(req.body.note || '').trim() || null;
+      const icon_url = String(req.body.icon_url || '').trim() || null;
+      const icon_r2_key = String(req.body.icon_r2_key || '').trim() || null;
 
       // 更新実行
       const result = await dbQuery(
@@ -8468,10 +8472,12 @@ app.post(
            address1 = $11,
            address2 = $12,
            note = $13,
+           icon_url = $14,
+           icon_r2_key = $15,
            updated_at = now()
-         WHERE id = $14::uuid
+         WHERE id = $16::uuid
          RETURNING id`,
-        [name, kana, type, email, phone, website, tax_id, postal_code, prefecture, city, address1, address2, note, id]
+        [name, kana, type, email, phone, website, tax_id, postal_code, prefecture, city, address1, address2, note, icon_url, icon_r2_key, id]
       );
 
       if (!result.length) {

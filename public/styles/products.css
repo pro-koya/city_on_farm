@@ -359,6 +359,15 @@ main.page {
   stroke: var(--muted);
 }
 
+/* 出品者アイコン画像 */
+.card__seller-icon-img {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
 .card__seller-name {
   overflow: hidden;
   text-overflow: ellipsis;

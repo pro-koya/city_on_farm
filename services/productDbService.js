@@ -101,6 +101,7 @@ async function fetchProductsWithCount(dbQuery, {
         c.name AS category_name,
         u.name AS seller_name,
         pa.name AS seller_partner_name,
+        pa.icon_url AS seller_partner_icon_url,
         (SELECT url
             FROM product_images i
             WHERE i.product_id = p.id
