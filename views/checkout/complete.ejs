@@ -170,9 +170,23 @@
     <div class="addr-card">
       <h2 class="section-title"><%= isPickup ? '受け取り先' : '配送先' %></h2>
       <% if (isPickup) { %>
-        <p class="muted">
-          畑受け取りを選択されています。受け取り場所の詳細は、確定メールをご確認ください。
-        </p>
+        <% if (typeof pickupAddress !== 'undefined' && pickupAddress) { %>
+          <address>
+            <div><strong><%= typeof partnerName !== 'undefined' && partnerName ? partnerName : (pickupAddress.full_name || '受け取り場所') %></strong></div>
+            <div>〒<%= pickupAddress.postal_code %></div>
+            <div><%= pickupAddress.prefecture %><%= pickupAddress.city %><%= pickupAddress.address_line1 || pickupAddress.address1 || '' %></div>
+            <% if (pickupAddress.address_line2 || pickupAddress.address2) { %>
+              <div><%= pickupAddress.address_line2 || pickupAddress.address2 %></div>
+            <% } %>
+            <% if (pickupAddress.phone) { %>
+              <div style="margin-top: 0.5rem; color: var(--muted); font-size: 0.875rem;">TEL: <%= pickupAddress.phone %></div>
+            <% } %>
+          </address>
+        <% } else { %>
+          <p class="muted">
+            畑受け取りを選択されています。受け取り場所の詳細は、確定メールをご確認ください。
+          </p>
+        <% } %>
       <% } else if (shippingAddress) { %>
         <address>
           <div><%= shippingAddress.full_name %>（<%= shippingAddress.phone %>）</div>

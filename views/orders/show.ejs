@@ -197,51 +197,107 @@
 
       <!-- お届け先・請求先 -->
       <section class="card">
-      <div class="card__head">
-        <h2><%= isPickup ? '受け取り状況' : '配送状況' %></h2>
-      </div>
-
-      <div class="shipment-summary">
-        <div class="shipment-summary__row">
-          <span class="label"><%= isPickup ? '受け取り方法' : '配送方法' %>：</span>
-          <span class="value">
-            <span class="pill pill--soft"><%= shipMethodLabel %></span>
-          </span>
+        <div class="card__head">
+          <h2><%= isPickup ? '受け取り先' : '配送先' %></h2>
         </div>
 
-        <% if (etaAt || order.ship_time_ja) { %>
-          <div class="shipment-summary__row">
-            <span class="label"><%= isPickup ? '受け取りの目安' : 'お届け予定' %>：</span>
-            <span class="value">
-              <%= etaAt ? new Date(etaAt).toLocaleDateString('ja-JP') : '' %>
-              <%= order.ship_time_ja ? ` ${order.ship_time_ja}` : '' %>
-            </span>
-          </div>
-        <% } %>
-
-        <% if (order.deliveryStatus) { %>
-          <div class="shipment-summary__row">
-            <span class="label"><%= isPickup ? '現在の状況' : '配送状況' %>：</span>
-            <span class="value">
-              <% if (isPickup) { %>
-                <%= order.deliveryStatus === 'delivered' ? '受取完了' : '未受取' %>
-              <% } else { %>
-                <%= order.deliveryStatus %>
+        <% if (isPickup) { %>
+          <% if (typeof pickupAddress !== 'undefined' && pickupAddress) { %>
+            <div class="addr" style="margin-top: 0.5rem;">
+              <div class="addr__name"><strong><%= typeof partnerName !== 'undefined' && partnerName ? partnerName : (pickupAddress.full_name || '受け取り場所') %></strong></div>
+              <div class="addr__lines">
+                〒<%= pickupAddress.postal_code %>　
+                <%= pickupAddress.prefecture %><%= pickupAddress.city %><%= pickupAddress.address_line1 || pickupAddress.address1 || '' %> <%= pickupAddress.address_line2 || pickupAddress.address2 || '' %>
+              </div>
+              <% if (pickupAddress.phone) { %>
+                <div style="margin-top: 0.5rem; color: var(--muted); font-size: 0.875rem;">TEL: <%= pickupAddress.phone %></div>
               <% } %>
+            </div>
+          <% } else { %>
+            <p class="muted">受け取り場所の詳細は確定メールをご確認ください。</p>
+          <% } %>
+        <% } else { %>
+          <% if (shippingAddress) { %>
+            <div class="addr" style="margin-top: 0.5rem;">
+              <div class="addr__name"><%= shippingAddress.full_name %>（<%= shippingAddress.phone %>）</div>
+              <div class="addr__lines">
+                〒<%= shippingAddress.postal_code %>　
+                <%= shippingAddress.prefecture %><%= shippingAddress.city %><%= shippingAddress.address_line1 %> <%= shippingAddress.address_line2 || '' %>
+              </div>
+            </div>
+          <% } else { %>
+            <p class="muted">配送先が登録されていません。</p>
+          <% } %>
+        <% } %>
+      </section>
+
+      <!-- 請求先（配送の場合のみ表示） -->
+      <% if (!isPickup) { %>
+        <section class="card">
+          <div class="card__head">
+            <h2>請求先</h2>
+          </div>
+          <% if (!billingAddress) { %>
+            <p class="muted">配送先と同じ</p>
+          <% } else { %>
+            <div class="addr" style="margin-top: 0.5rem;">
+              <div class="addr__name"><%= billingAddress.full_name %>（<%= billingAddress.phone %>）</div>
+              <div class="addr__lines">
+                〒<%= billingAddress.postal_code %>　
+                <%= billingAddress.prefecture %><%= billingAddress.city %><%= billingAddress.address_line1 %> <%= billingAddress.address_line2 || '' %>
+              </div>
+            </div>
+          <% } %>
+        </section>
+      <% } %>
+
+      <!-- 配送状況・受け取り状況 -->
+      <section class="card">
+        <div class="card__head">
+          <h2><%= isPickup ? '受け取り状況' : '配送状況' %></h2>
+        </div>
+
+        <div class="shipment-summary">
+          <div class="shipment-summary__row">
+            <span class="label"><%= isPickup ? '受け取り方法' : '配送方法' %>：</span>
+            <span class="value">
+              <span class="pill pill--soft"><%= shipMethodLabel %></span>
             </span>
           </div>
-        <% } %>
-      </div>
 
-      <% if (!order.deliveryStatus) { %>
-        <p class="muted shipment-note">
-          <%= isPickup
-            ? '畑での受け取り準備が整い次第、詳細をご連絡いたします。'
-            : '出荷準備が整い次第、配送情報をご連絡いたします。'
-          %>
-        </p>
-      <% } %>
-    </section>
+          <% if (etaAt || order.ship_time_ja) { %>
+            <div class="shipment-summary__row">
+              <span class="label"><%= isPickup ? '受け取りの目安' : 'お届け予定' %>：</span>
+              <span class="value">
+                <%= etaAt ? new Date(etaAt).toLocaleDateString('ja-JP') : '' %>
+                <%= order.ship_time_ja ? ` ${order.ship_time_ja}` : '' %>
+              </span>
+            </div>
+          <% } %>
+
+          <% if (order.deliveryStatus) { %>
+            <div class="shipment-summary__row">
+              <span class="label"><%= isPickup ? '現在の状況' : '配送状況' %>：</span>
+              <span class="value">
+                <% if (isPickup) { %>
+                  <%= order.deliveryStatus === 'delivered' ? '受取完了' : '未受取' %>
+                <% } else { %>
+                  <%= order.deliveryStatus %>
+                <% } %>
+              </span>
+            </div>
+          <% } %>
+        </div>
+
+        <% if (!order.deliveryStatus) { %>
+          <p class="muted shipment-note">
+            <%= isPickup
+              ? '畑での受け取り準備が整い次第、詳細をご連絡いたします。'
+              : '出荷準備が整い次第、配送情報をご連絡いたします。'
+            %>
+          </p>
+        <% } %>
+      </section>
 
     <!-- 右：支払い/操作 -->
     <aside class="grid__right">
@@ -260,14 +316,20 @@
           </dl>
 
           <div class="side-actions">
-            <a
+            <button
               class="btn btn--ghost"
-              target="_blank"
-              rel="noopener"
-              href="/orders/<%= orderNo %>/invoice.pdf"
+              id="showInvoiceBtn"
+              type="button"
             >
               領収書を表示
-            </a>
+            </button>
+            <button
+              class="btn btn--ghost"
+              id="showDeliveryNoteBtn"
+              type="button"
+            >
+              納品書を表示
+            </button>
           </div>
         </section>
 
@@ -284,5 +346,41 @@
   </section>
 </main>
 
+<!-- 領収書宛名入力モーダル -->
+<div id="receiptNameModal" class="modal" style="display: none;">
+  <div class="modal__overlay"></div>
+  <div class="modal__content">
+    <div class="modal__header">
+      <h2>領収書の宛名を入力</h2>
+      <button class="modal__close" type="button" aria-label="閉じる">&times;</button>
+    </div>
+    <div class="modal__body">
+      <form id="receiptNameForm">
+        <div class="field">
+          <label for="receipt_name_input">宛名</label>
+          <input
+            type="text"
+            id="receipt_name_input"
+            name="receipt_name"
+            value="<%= order.receiptName || (typeof defaultReceiptName !== 'undefined' && defaultReceiptName ? defaultReceiptName : '') %>"
+            maxlength="40"
+            required
+            placeholder="例：山田太郎"
+          />
+          <p class="field-hint">1〜40文字で入力してください</p>
+          <div id="receiptNameError" class="field-error" style="display: none;"></div>
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" id="cancelReceiptNameBtn">キャンセル</button>
+          <button type="submit" class="btn btn--primary">確定して領収書を表示</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+  <meta name="csrf-token" content="<%= csrfToken %>">
+<% } %>
 <script src="/js/order-show.js"></script>
 <%- include('../partials/footer') %>
