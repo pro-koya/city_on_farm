@@ -63,6 +63,23 @@
         <span><%= p.unit || '' %></span>
       </div>
 
+      <!-- 出品者名 -->
+      <div class="card__seller">
+        <% if (p.seller_partner_icon_url) { %>
+          <!-- アイコン画像がある場合 -->
+          <img class="card__seller-icon-img"
+               src="<%= p.seller_partner_icon_url %>"
+               alt="<%= p.seller_partner_name || p.seller_name %>のアイコン">
+        <% } else { %>
+          <!-- フォールバック：SVGアイコン -->
+          <svg class="card__seller-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        <% } %>
+        <span class="card__seller-name"><%= p.seller_partner_name || p.seller_name || '出品者不明' %></span>
+      </div>
+
       <!-- ランキング情報（人気ランキング表示時） -->
       <% if (typeof showRank !== 'undefined' && showRank && p.quantity_sold != null) { %>
         <div class="card__stats" style="margin-top: 6px; font-size: 0.85rem; color: var(--muted);">
@@ -84,24 +101,4 @@
       <% } %>
     </div>
   </a>
-
-  <!-- カート追加フォーム -->
-  <form class="buy buyForm" action="/cart/add" method="POST" data-stock="<%= p.stock %>" novalidate>
-    <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <% } %>
-    <input type="hidden" name="productId" value="<%= p.id %>">
-    <label class="qty" for="qty">
-      数量
-      <div class="stepper" role="group" aria-label="数量の増減">
-        <button type="button" class="stepper__btn" data-step="-1" aria-label="数量を減らす">−</button>
-        <input class="qty-data" name="qty" type="number" min="1" value="1" data-max="<%= p.stock %>" max="<%= p.stock %>" inputmode="numeric" pattern="[0-9]*">
-        <button type="button" class="stepper__btn" data-step="1" aria-label="数量を増やす">＋</button>
-      </div>
-    </label>
-
-    <div class="cta">
-      <button class="btn btn--buy" type="submit" <%= p.stock>0?'':'disabled' %>>カート追加</button>
-    </div>
-  </form>
 </div>

@@ -173,7 +173,7 @@ a.link{text-decoration:underline;text-underline-offset:2px}
 .card img{width:100%;height:160px;object-fit:cover;display:block}
 .card__body{padding:.7rem .8rem}
 .card .name{margin:0 0 .2rem;font-size:.98rem}
-.card .meta{display:flex;gap:.6rem;color:#374151}
+.card .meta{display:flex;align-items:center;gap:.6rem;color:#374151}
 
 /* JOURNAL */
 .journal{padding:8px 0 20px}
