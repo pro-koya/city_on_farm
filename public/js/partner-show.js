@@ -245,4 +245,110 @@ document.addEventListener('DOMContentLoaded', () => {
       iconMsg.style.color = 'var(--muted)';
     });
   }
+
+  // ========== ライブラリから選択 ==========
+  if (iconLibraryBtn) {
+    iconLibraryBtn.addEventListener('click', async () => {
+      try {
+        await openIconLibrary();
+      } catch (e) {
+        console.error('[icon library] error:', e);
+        alert('画像ライブラリの読み込みに失敗しました。');
+      }
+    });
+  }
+
+  async function openIconLibrary() {
+    const modal = buildIconLibraryModal();
+    document.body.appendChild(modal.wrap);
+    await loadIconLibraryPage(modal, 1, '');
+  }
+
+  function buildIconLibraryModal() {
+    const wrap = document.createElement('div');
+    wrap.className = 'uploader-lib__wrap';
+    wrap.innerHTML = `
+      <style>
+        .uploader-lib__wrap{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:1200}
+        .uploader-lib{background:#fff;max-width:960px;width:92vw;max-height:86vh;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.3);display:flex;flex-direction:column}
+        .uploader-lib__head{display:flex;gap:.5rem;align-items:center;justify-content:space-between;padding:.75rem 1rem;border-bottom:1px solid #e5e7eb}
+        .uploader-lib__title{margin:0;font-size:1rem}
+        .uploader-lib__body{padding: .75rem 1rem; overflow:auto}
+        .uploader-lib__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:.6rem}
+        .uploader-lib__item{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;cursor:pointer;background:#fff;transition:all 0.2s ease}
+        .uploader-lib__item:hover{border-color:#4C6B5C;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+        .uploader-lib__item img{display:block;width:100%;height:100px;object-fit:cover}
+        .uploader-lib__foot{display:flex;justify-content:space-between;align-items:center;padding:.6rem 1rem;border-top:1px solid #e5e7eb}
+        .uploader-lib__search{display:flex;gap:.4rem}
+        .uploader-lib__search input{border:1px solid #e5e7eb;border-radius:999px;padding:.4rem .75rem;min-width:220px}
+        .uploader-lib__btn{background:#4C6B5C;color:#fff;border:1px solid #4C6B5C;border-radius:999px;padding:.4rem .9rem;cursor:pointer}
+        .uploader-lib__close{background:#fff;color:#4C6B5C;border:1px solid #e5e7eb;border-radius:999px;padding:.35rem .8rem;cursor:pointer}
+        .uploader-lib__empty{color:#6b7280;padding:.6rem 0}
+      </style>
+      <div class="uploader-lib" role="dialog" aria-modal="true" aria-label="画像ライブラリ">
+        <div class="uploader-lib__head">
+          <h3 class="uploader-lib__title">画像ライブラリ</h3>
+          <button type="button" class="uploader-lib__close">閉じる</button>
+        </div>
+        <div class="uploader-lib__body">
+          <div class="uploader-lib__grid" id="iconLibGrid"><div class="uploader-lib__empty">読み込み中…</div></div>
+        </div>
+        <div class="uploader-lib__foot">
+          <div class="uploader-lib__search">
+            <input type="search" id="iconLibQ" placeholder="検索（ファイル名など）">
+            <button class="uploader-lib__btn" id="iconLibSearch">検索</button>
+          </div>
+          <div>
+            <button class="uploader-lib__close">閉じる</button>
+          </div>
+        </div>
+      </div>
+    `;
+    const close = () => wrap.remove();
+    wrap.querySelectorAll('.uploader-lib__close').forEach(b => b.addEventListener('click', close));
+    wrap.addEventListener('click', (e) => { if (e.target === wrap) close(); });
+    wrap.q = wrap.querySelector('#iconLibQ');
+    wrap.btn = wrap.querySelector('#iconLibSearch');
+    wrap.grid = wrap.querySelector('#iconLibGrid');
+    wrap.btn.addEventListener('click', () => loadIconLibraryPage({ wrap, grid: wrap.grid, q: wrap.q }, 1, wrap.q.value.trim()));
+    return { wrap, grid: wrap.grid, q: wrap.q };
+  }
+
+  async function loadIconLibraryPage(modal, page = 1, q = '') {
+    const url = new URL('/uploads/library', location.origin);
+    if (q) url.searchParams.set('q', q);
+    url.searchParams.set('page', page);
+    
+    const csrfToken = document.querySelector('input[name="_csrf"]')?.value || '';
+    const res = await fetch(url.toString(), {
+      headers: { 'Accept': 'application/json', 'CSRF-Token': csrfToken }
+    });
+    
+    if (!res.ok) throw new Error('library fetch failed');
+    const data = await res.json();
+    const items = Array.isArray(data?.items) ? data.items : [];
+
+    modal.grid.innerHTML = '';
+    if (!items.length) {
+      modal.grid.innerHTML = `<div class="uploader-lib__empty">該当する画像がありません。</div>`;
+      return;
+    }
+
+    items.forEach(img => {
+      const card = document.createElement('div');
+      card.className = 'uploader-lib__item';
+      card.innerHTML = `<img src="${img.url}" alt=""><div style="padding:.4rem .5rem;font-size:.75rem;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${img.r2_key || ''}</div>`;
+      card.addEventListener('click', () => {
+        // 選択された画像を設定
+        updateIconPreview(img.url);
+        iconUrlInput.value = img.url;
+        iconR2KeyInput.value = img.r2_key || '';
+        iconMsg.textContent = '画像を選択しました';
+        iconMsg.style.color = 'var(--accent)';
+        if (iconRemoveBtn) iconRemoveBtn.style.display = 'inline-block';
+        modal.wrap.remove();
+      });
+      modal.grid.appendChild(card);
+    });
+  }
 });

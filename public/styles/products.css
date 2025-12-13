@@ -363,9 +363,14 @@ main.page {
 .card__seller-icon-img {
   width: 14px;
   height: 14px;
+  max-width: 14px;
+  max-height: 14px;
+  min-width: 14px;
+  min-height: 14px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
+  display: block;
 }
 
 .card__seller-name {
