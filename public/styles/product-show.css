@@ -6,6 +6,7 @@
   --danger: #e11d48;
   --hi: #D6EADF;
   --white: #fff;
+  --border:#828282;
   --muted: #6b7280;
   --radius: 14px;
   --shadow: 0 8px 24px rgba(0, 0, 0, .08);
@@ -471,7 +472,7 @@ body {
 .spec-table {
   width: 100%;
   border-collapse: separate;
-  border-spacing: 5px;
+  border-spacing: 0;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   overflow: hidden
@@ -479,7 +480,7 @@ body {
 
 table th,
 table td {
-  border-radius: 5px;
+  border-radius: 0;
   text-align: center;
   padding: 10px 0;
 }
@@ -487,26 +488,17 @@ table td {
 .spec-table th,
 .spec-table td {
   padding: .7rem .9rem;
-  border-bottom: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-bottom: .25px solid var(--border);
+  border-radius: 0;
 }
 
 .spec-table th {
   width: 35%;
-  background-color: var(--main);
-  color: var(--white);
-  border: solid 1px var(--main);
+  border-right: .25px solid var(--border);
 }
 
 .spec-table td {
   width: 65%;
-  background-color: var(--white);
-  border: 1px solid var(--white);
-}
-
-.spec-table tr:nth-child(even)>td {
-  background: var(--hi);
-  border: 1px solid var(--hi);
 }
 
 .criteria h4 {
@@ -832,6 +824,10 @@ table td {
 
   .rail .card {
     width: clamp(200px, 70vw, 260px)
+  }
+
+  .details p, .spec-table th, .spec-table td {
+    font-size: 0.9rem;
   }
 }
 

@@ -396,11 +396,11 @@ section {
 }
 
 .navbar-container {
-  height: 60px;
+  height: 65px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.8rem 1.2rem;
+  padding: 0 1.2rem;
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -409,14 +409,14 @@ section {
   display: flex;        /* 中身を縦中央にしたいなら */
   align-items: center;
   font-size: 1.3rem;
-  padding-top: 2px;
+  padding-top: 0;
   font-weight: bold;
   color: var(--color-white);
   text-decoration: none;
 }
 
 .navbar-logo img {
-  height: 50px;         /* 高さだけ指定 */
+  height: 65px;         /* 高さだけ指定 */
   width: auto;          /* 横幅は自動で縦横比維持 */
   max-width: 100%;      /* 親よりはみ出さない保険 */
   display: block;       /* 余計な隙間防止（任意） */

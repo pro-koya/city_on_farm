@@ -2,3 +2,7 @@
 # .gitignore
 gmail_token.json
 .env
+
+# Logs
+logs/*.log
+!logs/.gitkeep

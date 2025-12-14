@@ -159,6 +159,16 @@
 
             <div class="ql-editer-group">
                 <div id="editorToolbar">
+                    <!-- 見出し -->
+                    <span class="ql-formats">
+                        <select class="ql-header">
+                            <option value="3">見出し3</option>
+                            <option value="4">見出し4</option>
+                            <option value="5">見出し5</option>
+                            <option selected>通常</option>
+                        </select>
+                    </span>
+
                     <!-- 文字装飾 -->
                     <span class="ql-formats">
                         <button class="ql-bold"></button>
@@ -176,12 +186,6 @@
                     <span class="ql-formats">
                         <button class="ql-link"></button>
                         <button class="ql-image"></button>
-                    </span>
-
-                    <!-- 見出し（h2/h3） -->
-                    <span class="ql-formats">
-                        <button class="ql-header" value="2"></button>
-                        <button class="ql-header" value="3"></button>
                     </span>
                 </div>
 
@@ -250,32 +254,6 @@
                     placeholder="任意の説明"></textarea>
                 </div>
             </div>
-        </div>
-
-        <!-- ⑧ 画像スライドショー（任意・1つまで） -->
-        <div class="field">
-        <label>
-            画像スライドショー（任意）
-        </label>
-        <p class="hint">
-            畑の1年間の移り変わりや、作業の様子をスライドショーで見せることができます。
-            最大5枚まで入力できます。1枚も入力しない場合、このスライドショーは表示されません。
-        </p>
-
-        <div class="sp-slider-editor">
-            <% const sliderUrls = (profile && profile.slider_image_urls) || []; %>
-
-            <% for (let i = 0; i < 5; i++) { %>
-            <div class="sp-slider-editor__row">
-                <p class="hint">スライド <%= i + 1 %></p>
-                <input
-                type="text"
-                name="slider_image_urls[]"
-                placeholder="https://example.com/slide<%= i + 1 %>.jpg"
-                value="<%= sliderUrls[i] || '' %>">
-            </div>
-            <% } %>
-        </div>
         </div>
 
         <div class="sp-form__foot">

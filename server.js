@@ -1,6 +1,15 @@
 // server.js
 const path = require('path');
 try { require('dotenv').config(); } catch { /* no-op */ }
+
+const logger = require('./services/logger');
+
+// 必須環境変数のチェック
+if (!process.env.SESSION_SECRET) {
+  logger.error('SESSION_SECRET environment variable is required');
+  process.exit(1);
+}
+
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
@@ -16,7 +25,6 @@ const { PutObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { r2, R2_BUCKET, R2_PUBLIC_BASE_URL } = require('./r2');
 const { randomUUID } = require('crypto');
-const upload = multer();
 const { generateAuthUrl, getTokenFromCode, getAuthedClient } = require('./services/gmailClient');
 const { gmailSend } = require('./services/mailer');
 
@@ -41,6 +49,22 @@ const EXT_BY_MIME = {
   'image/gif': 'gif'
 };
 
+/* ========== Multer (File Upload) ========== */
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024,  // 10MB
+    files: 8  // 最大8ファイル
+  },
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_IMAGE_MIME.has(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('許可されていないファイル形式です。JPEG、PNG、WebP、AVIF、GIF のみアップロード可能です。'), false);
+    }
+  }
+});
+
 /* ========== View / Static ========== */
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -57,12 +81,48 @@ app.use(
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'",  // インラインスクリプトを許可（既存コードのため）
+        "https://accounts.google.com",  // Google OAuth
+        "https://www.google.com"  // Google reCAPTCHA (使用している場合)
+      ],
+      styleSrc: [
+        "'self'",
+        "'unsafe-inline'"  // インラインスタイルを許可
+      ],
+      imgSrc: [
+        "'self'",
+        "https:",  // HTTPS画像を許可
+        "data:",   // Data URI を許可
+        "blob:"    // Blob URL を許可
+      ],
+      fontSrc: [
+        "'self'",
+        "data:"
+      ],
+      connectSrc: [
+        "'self'",
+        "https://accounts.google.com"  // Google OAuth
+      ],
+      frameSrc: [
+        "https://accounts.google.com",  // Google OAuth
+        "https://www.google.com"  // Google reCAPTCHA
+      ],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: isProd ? [] : null  // 本番環境のみHTTPSへアップグレード
+    }
+  }
+}));
 
 /* ========== Session ========== */
 app.use(session({
   name: 'cof.sid',
-  secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -477,6 +537,23 @@ ${url}
     }
 }
 
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,  // 15分
+  max: 5,                     // 最大5回の試行
+  skipSuccessfulRequests: true,  // 成功したログインはカウントしない
+  message: 'ログイン試行回数が上限に達しました。15分後に再試行してください。',
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,  // 1時間
+  max: 50,                    // 1時間に最大50回のアップロード
+  message: 'アップロード回数が上限に達しました。1時間後に再試行してください。',
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 /* =========================================================
  *  認証
  * =======================================================*/
@@ -495,6 +572,7 @@ app.get('/login', (req, res) => {
 // POST /login
 app.post(
   '/login',
+  loginLimiter,
   csrfProtect,
   [
     body('email').trim().isEmail().withMessage('有効なメールアドレスを入力してください。').normalizeEmail({
@@ -2611,6 +2689,7 @@ app.post(
   '/seller/listing-new',
   requireAuth,
   requireRole(['seller']),
+  uploadLimiter,
   upload.array('images', 8),
   [
     body('title').trim().isLength({ min: 1, max: 80 }).withMessage('商品名を入力してください（80文字以内）。'),
@@ -2956,6 +3035,7 @@ app.post(
   '/seller/listing-edit/:id',
   requireAuth,
   requireRole(['seller', 'admin']),
+  uploadLimiter,
   upload.fields([{ name: 'images', maxCount: 8 }]),
   [
     body('title').trim().isLength({ min: 1, max: 80 }).withMessage('商品名を入力してください（80文字以内）。'),
@@ -5489,11 +5569,14 @@ app.get('/seller/listings',
       );
       const partner_id = u[0].partner_id;
 
-      // 並び順
-      let orderBy = 'p.updated_at DESC NULLS LAST';
-      if (sort === 'priceAsc')  orderBy = 'p.price ASC, p.updated_at DESC';
-      if (sort === 'priceDesc') orderBy = 'p.price DESC, p.updated_at DESC';
-      if (sort === 'stockAsc')  orderBy = 'p.stock ASC, p.updated_at DESC';
+      // 並び順（ホワイトリスト化でSQLインジェクション対策）
+      const allowedSorts = {
+        'priceAsc': 'p.price ASC, p.updated_at DESC',
+        'priceDesc': 'p.price DESC, p.updated_at DESC',
+        'stockAsc': 'p.stock ASC, p.updated_at DESC',
+        'updated': 'p.updated_at DESC NULLS LAST'
+      };
+      const orderBy = allowedSorts[sort] || 'p.updated_at DESC NULLS LAST';
 
       // WHEREの構築
       let where = [];
@@ -10754,6 +10837,8 @@ app.get(
         ends_at: '',
         body_html: '',
         body_raw: '',
+        table_labels: [],
+        table_values: []
       },
       fieldErrors: {},
       globalError: ''
@@ -10783,6 +10868,25 @@ app.post(
       body_html: req.body.body_html || '',
       body_raw: req.body.body_raw || '',
     };
+
+    // テーブルデータを配列として処理
+    const tableLabelsRaw = req.body['table_labels[]'] || req.body.table_labels || [];
+    const tableValuesRaw = req.body['table_values[]'] || req.body.table_values || [];
+    const tableLabels = Array.isArray(tableLabelsRaw) ? tableLabelsRaw : [tableLabelsRaw];
+    const tableValues = Array.isArray(tableValuesRaw) ? tableValuesRaw : [tableValuesRaw];
+
+    // 空の行を除外してペアを作成
+    const tablePairs = [];
+    for (let i = 0; i < Math.max(tableLabels.length, tableValues.length); i++) {
+      const label = (tableLabels[i] || '').trim();
+      const value = (tableValues[i] || '').trim();
+      if (label || value) {
+        tablePairs.push({ label, value });
+      }
+    }
+
+    values.table_labels = tableLabels;
+    values.table_values = tableValues;
 
     // スラッグが未入力なら title から自動生成
     if (!values.slug) {
@@ -10819,11 +10923,11 @@ app.post(
         INSERT INTO campaigns
           (slug, title, eyebrow, teaser_text, hero_image_url,
            body_html, body_raw, status, starts_at, ends_at,
-           published_at, created_by)
+           published_at, created_by, table_labels, table_values)
         VALUES
           ($1,$2,$3,$4,$5,
            $6,$7,$8,$9,$10,
-           $11,$12)
+           $11,$12,$13,$14)
         RETURNING id
         `,
         [
@@ -10838,7 +10942,9 @@ app.post(
           startsAt,
           endsAt,
           publishedAt,
-          adminId
+          adminId,
+          JSON.stringify(tableLabels.filter(l => l.trim())),
+          JSON.stringify(tableValues.filter(v => v.trim()))
         ]
       );
 
@@ -10883,7 +10989,8 @@ app.get(
           status,
           starts_at, ends_at,
           published_at,
-          created_at, updated_at
+          created_at, updated_at,
+          table_labels, table_values
         FROM campaigns
         WHERE id = $1::uuid
         LIMIT 1
@@ -10894,6 +11001,14 @@ app.get(
         return res.status(404).render('errors/404', { title: 'キャンペーンが見つかりません' });
       }
       const c = rows[0];
+
+      // テーブルデータをJSONBから配列に変換
+      const tableLabels = c.table_labels
+        ? (Array.isArray(c.table_labels) ? c.table_labels : JSON.parse(c.table_labels || '[]'))
+        : [];
+      const tableValues = c.table_values
+        ? (Array.isArray(c.table_values) ? c.table_values : JSON.parse(c.table_values || '[]'))
+        : [];
 
       const values = {
         id: c.id,
@@ -10914,7 +11029,9 @@ app.get(
             : '',
         published_at: c.published_at
           ? new Date(c.published_at).toLocaleString('ja-JP')
-          : ''
+          : '',
+        table_labels: tableLabels,
+        table_values: tableValues
       };
 
       res.render('admin/campaigns/edit', {
@@ -10954,6 +11071,15 @@ app.post(
       body_raw: req.body.body_raw || '',
       published_at: '' // 表示用
     };
+
+    // テーブルデータを配列として処理
+    const tableLabelsRaw = req.body['table_labels[]'] || req.body.table_labels || [];
+    const tableValuesRaw = req.body['table_values[]'] || req.body.table_values || [];
+    const tableLabels = Array.isArray(tableLabelsRaw) ? tableLabelsRaw : [tableLabelsRaw];
+    const tableValues = Array.isArray(tableValuesRaw) ? tableValuesRaw : [tableValuesRaw];
+
+    values.table_labels = tableLabels;
+    values.table_values = tableValues;
 
     if (!values.slug) values.slug = slugify(values.title || '');
 
@@ -11004,6 +11130,8 @@ app.post(
                starts_at = $10,
                ends_at = $11,
                published_at = $12,
+               table_labels = $13,
+               table_values = $14,
                updated_at = now()
          WHERE id = $1::uuid
          RETURNING published_at
@@ -11020,7 +11148,9 @@ app.post(
           values.status,
           startsAt,
           endsAt,
-          publishedAt
+          publishedAt,
+          JSON.stringify(tableLabels.filter(l => l.trim())),
+          JSON.stringify(tableValues.filter(v => v.trim()))
         ]
       );
 
@@ -11188,13 +11318,12 @@ app.get('/admin/coupons',
     const sort       = (req.query.sort || '').trim();   // '', 'usage_desc' などを将来使う想定
 
     const params = [];
-    let where = '1=1';
+    const whereClauses = [];
 
     // キーワード検索（code / name）
     if (keyword) {
-      params.push(`%${keyword}%`);
-      where += ` AND (c.code ILIKE $${params.length}
-                 OR c.name ILIKE $${params.length})`;
+      params.push(`%${keyword}%`, `%${keyword}%`);
+      whereClauses.push(`(c.code ILIKE $${params.length - 1} OR c.name ILIKE $${params.length})`);
     }
 
     // ステータスフィルタ
@@ -11202,19 +11331,22 @@ app.get('/admin/coupons',
       params.push(new Date());
       const idx = params.length;
       // starts_at / ends_at の「現在有効」
-      where += ` AND c.is_active = true
-                 AND (c.starts_at IS NULL OR c.starts_at <= $${idx})
-                 AND (c.ends_at   IS NULL OR c.ends_at   >= $${idx})`;
+      whereClauses.push(`c.is_active = true`);
+      whereClauses.push(`(c.starts_at IS NULL OR c.starts_at <= $${idx})`);
+      whereClauses.push(`(c.ends_at IS NULL OR c.ends_at >= $${idx})`);
     } else if (status === 'inactive') {
-      where += ` AND (c.is_active = false
-                  OR (c.ends_at IS NOT NULL AND c.ends_at < now()))`;
+      whereClauses.push(`(c.is_active = false OR (c.ends_at IS NOT NULL AND c.ends_at < now()))`);
     }
 
-    // ソート条件
-    let orderBy = 'c.created_at DESC';
-    if (sort === 'usage_desc') {
-      orderBy = 'usage_stats.usage_count DESC, c.created_at DESC';
-    }
+    const where = whereClauses.length > 0 ? whereClauses.join(' AND ') : '1=1';
+
+    // ソート条件（ホワイトリスト化）
+    const allowedSorts = {
+      'usage_desc': 'usage_stats.usage_count DESC, c.created_at DESC',
+      'created_asc': 'c.created_at ASC',
+      'created_desc': 'c.created_at DESC'
+    };
+    const orderBy = allowedSorts[sort] || 'c.created_at DESC';
 
     // 一覧データ取得（使用回数＋最終使用日時付き）
     const listSql = `
@@ -11690,7 +11822,14 @@ app.use((req, res) => {
 });
 
 app.use((err, req, res, next) => {
-  console.error(err);
+  // エラー情報をログに記録（機密情報は除外）
+  logger.error('Server error occurred', {
+    message: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    userId: req.session?.user?.id
+  });
   res.status(500).send('サーバーエラーが発生しました。');
 });
 
