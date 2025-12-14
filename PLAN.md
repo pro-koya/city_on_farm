@@ -1,118 +1,180 @@
-0. 目的
-	•	注文に対して「納品書」をPDFで発行できるようにする
-	•	飲食店向け運用が多いため、1ページに収まるようコンパクトに（明細が多い場合はページ分割）
-	•	価格を載せる版 / 載せない版を切り替えられるように（初期は載せないでもOK。将来拡張しやすく）
+Stripe 決済導入 実装タスク
+
+0. 前提・方針
+	•	カード情報は自社で保持しない（PCI負荷を避ける）
+	•	Stripe Checkout でカード情報を収集（3DS/CVCはStripeが標準対応）
+	•	決済状態の確定は Webhook を正 とする（フロントは参考）
+	•	既存の orders に payment_status / payment_provider / payment_external_id / payment_txid 等がある前提で拡張
+	•	まずは 単一注文（出品者別checkout） を決済対象とする（Connectは後回し）
 
 ⸻
 
-1. 仕様（納品書の要件）
+1. 依存関係の追加
 
-1-1. 基本
-	•	URL例：
-	•	GET /orders/:id/delivery-note（ログイン必須、本人の注文のみ）
-	•	管理/出品者側も発行するなら別途 GET /admin/orders/:id/delivery-note など
-	•	PDFファイル名：
-	•	delivery-note-<order_number>.pdf（order_numberがなければ order.id）
-	•	表示内容（納品書に必要な情報）
-	•	タイトル「納品書」
-	•	納品日（基本は 発送日/引渡日。無ければ created_at を暫定利用し、将来 shipment_at 等へ拡張できる設計に）
-	•	注文番号
-	•	出品者情報（seller_name、住所、電話、メールなど取得できる範囲）
-	•	お届け先（shippingAddress：氏名/郵便番号/住所/電話）
-	•	明細（商品名、数量、単位）
-	•	備考欄（注文のnoteがあれば表示）
-	•	金額は基本非表示（納品書）
-	•	ただし将来のため ?showPrice=1 で単価・金額・合計も表示できるように実装（デフォルトは0）
+1-1. パッケージ
+	•	stripe SDK を追加
+	例）npm i stripe
 
-1-2. ページ構成
-	•	注文商品数が少ない場合（目安 5件程度）は 1ページに収める
-	•	多い場合は明細表を2ページ目以降へ（領収書でやったページ分割のロジックを流用）
-	•	PDFレイアウトは楽天の納品書に近い「見出し大きすぎない」「余白小さめ」「表はコンパクト」
+1-2. 環境変数（開発/本番で分離）
 
-⸻
+.env（例）
+	•	STRIPE_SECRET_KEY=sk_test_...
+	•	STRIPE_WEBHOOK_SECRET=whsec_...
+	•	APP_URL=http://localhost:3000（本番は https://…）
+	•	STRIPE_SUCCESS_URL=/checkout/complete?no={ORDER_NO}（最終的にURL合成）
+	•	STRIPE_CANCEL_URL=/checkout?seller={SELLER_ID}
 
-2. 実装方針（既存領収書実装を流用）
+2. DB設計（最小追加）
 
-2-1. 既存の領収書実装を調査して踏襲
-	•	どのライブラリでPDF生成しているか確認（例：pdfkit / puppeteer / playwright / html-pdf 等）
-	•	既存と同じ方式で納品書も実装する
-	•	例：HTML(EJS) → headless browserでPDF化 なら、納品書も views/pdf/delivery-note.ejs を作る
-	•	例：pdfkit直書きなら、同様に描画関数を追加する
+2-1. ordersに追加（なければ）
+	•	payment_provider text（‘stripe’）
+	•	payment_external_id text（Checkout Session ID or PaymentIntent ID）
+	•	payment_txid text（Charge ID等）
+	•	payment_status payment_status enum（既存利用）
+	•	status order_status enum（既存利用）
 
-2-2. コード構成（推奨）
-	•	ルート：
-	•	routes/orders.js などに GET /orders/:id/delivery-note
-	•	サービス層：
-	•	services/pdfService.js に renderDeliveryNotePdf(orderId, options) を追加
-	•	テンプレート：
-	•	views/pdf/delivery-note.ejs
-	•	CSS：
-	•	public/styles/pdf-delivery-note.css（領収書CSSと共通化できるなら共通CSS＋差分でもOK）
+2-2. インデックス追加（Webhook高速化）
+	•	orders(payment_provider, payment_external_id) に index
+	•	orders(order_number) に index（なければ）
+	•	既にある orders.coupon_code indexは別途対応済み想定
 
-⸻
+SQL例：
+CREATE INDEX IF NOT EXISTS ix_orders_payment_external
+ON public.orders (payment_provider, payment_external_id);
 
-3. DB/取得データ要件
+CREATE INDEX IF NOT EXISTS ix_orders_order_number
+ON public.orders (order_number);
 
-納品書発行に必要な情報を既存SQLから取得して組み立てること。
 
-3-1. 注文本体
+3. サーバ側：Stripe クライアント初期化
+	•	lib/stripe.js を作る（共通化）
+	例）
+const Stripe = require('stripe');
+module.exports = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
 
-orders から：
-	•	id, order_number, created_at, note, ship_method, ship_to(あれば), seller_id, seller_name
-	•	可能なら shipment_status / delivery_status / shipped_at 相当（無ければ created_at で代替）
+4. 画面遷移：決済フロー設計
 
-3-2. 明細
-
-order_items JOIN products で：
-	•	商品名(title), quantity, unit（products.unit）, product_id
-	•	価格は showPrice=1 の時だけ（oi.price）利用
-
-3-3. お届け先
-
-order_addresses から shipping を取得（なければ orders.ship_to をフォールバック）
-	•	full_name, phone, postal_code, prefecture, city, address_line1, address_line2
-
-3-4. 出品者情報
-
-既存で seller 情報を取る関数があるはず（領収書の出品者表示に使っているロジックを流用）
-	•	seller_name, 住所, 電話, メールなど
-	•	なければ最低限 seller_name だけでも表示（将来拡張OK）
+4-1. 現状フローに Stripe を挿入
+	•	/checkout/confirm で注文をDBに作成（現状）
+	•	支払い方法が card の場合：
+	•	注文作成後に Stripe Checkout Session を作る
+	•	orders.payment_provider='stripe'
+	•	orders.payment_external_id = session.id
+	•	orders.payment_status='unpaid'
+	•	res.redirect(session.url) で Stripe へ遷移
+	•	支払い方法が cod の場合：
+	•	これまで通り /checkout/complete?no=... へ
 
 ⸻
 
-4. UI/UX（画面側）
-	•	注文完了ページ or 注文詳細ページに「納品書を発行」ボタンを追加
-	•	/orders/:id/delivery-note へ遷移（別タブ推奨）
-	•	未ログイン/権限なしの場合は 403 or ログインへ誘導
+5. Checkout Session 作成（/checkout/confirm 内）
+
+5-1. line_items 生成
+	•	DBに保存した order_items を参照して line_items を構築（改ざん防止）
+	•	金額は 整数（JPY）
+	•	商品名：title
+	•	単価：price
+	•	数量：quantity
+
+5-2. 送料・割引の扱い（推奨）
+	•	送料：Checkoutの shipping_options か line_items に “送料” として追加
+	•	割引：最初は line_items に “割引” を負の金額で入れない（Stripe的に非推奨）
+	•	まずは **Stripe側に割引を出さず、合計が一致するよう「注文合計=Stripe合計」**を最優先
+	•	可能なら Stripe Coupon / Promotion Code に寄せる（将来）
+
+※現段階の要件では「既存のクーポン適用済 totals を Stripe に反映」できればOK
+実装は「商品合計 + 送料 - 割引 = Stripe請求額」になるよう line_items を組む（割引用 line_item を作る方式）
+
+5-3. metadata に識別子を入れる
+	•	metadata: { order_id, order_number, seller_id, user_id }
+	•	Webhookで照合するため必須
+
+5-4. success/cancel URL
+	•	success: ${APP_URL}/checkout/complete?no=${orderNo}
+	•	cancel: ${APP_URL}/checkout?seller=${sellerId}
 
 ⸻
 
-5. セキュリティ要件（重要）
-	•	buyer が自分の注文しか出力できないこと（buyer_idで照合）
-	•	管理者/出品者発行の場合も権限チェック（seller_id一致 or admin）
-	•	PDF生成時にテンプレへ渡す値は必ずサニタイズ（EJSエスケープ利用）
+6. Webhook 実装（最重要）
+
+6-1. 受信用エンドポイント
+	•	POST /webhooks/stripe
+	•	Raw body を検証する必要がある（express.json()の前に）
+	•	例：app.post('/webhooks/stripe', express.raw({type:'application/json'}), handler)
+	•	stripe.webhooks.constructEvent(req.body, sig, webhookSecret) で検証
+
+6-2. ハンドリング対象イベント（最低限）
+	•	checkout.session.completed
+	•	支払い成功（ただし非同期支払いの可能性もある）
+	•	orders.payment_status='paid' に更新（または processing）
+	•	payment_intent.succeeded
+	•	最終成功として扱う
+	•	payment_status='paid', status の更新もここを正にするのが安全
+	•	payment_intent.payment_failed
+	•	payment_status='failed'
+	•	charge.refunded or refund.updated
+	•	payment_status='refunded'（既存enumに合わせる）
+
+6-3. DB更新のルール
+	•	orders.payment_provider='stripe' AND payment_external_id=session.id で対象注文取得
+	•	取得できない場合は metadata.order_number でも検索
+	•	payment_txid は PaymentIntent / Charge ID を保存
+
+6-4. 冪等性（必須）
+	•	Webhookは複数回届く
+	•	更新SQLは「同じ状態なら上書きしても安全」な形に
+	•	可能なら stripe_events テーブルを作り event.id を保存して重複排除（推奨）
+	•	最小構成なら「payment_external_id をキーに update」でも可
 
 ⸻
 
-6. 実装タスク（やることリスト）
-	1.	既存領収書PDF生成方式を確認し、それと同じ方式で納品書PDF生成を追加
-	2.	納品書テンプレ delivery-note.ejs を作成し、コンパクトなレイアウトを実装
-	3.	明細行数が多い時にページ分割（ヘッダは毎ページ繰り返し）
-	4.	ルート GET /orders/:id/delivery-note を実装（buyer本人限定）
-	5.	注文詳細 or 完了画面にリンク追加（ボタン）
-	6.	?showPrice=1 で価格列をONできるように（デフォルトOFF）
-	7.	テスト：
-	•	5件以下→1ページ
-	•	10件→2ページ
-	•	ship_method=pickup（配送先が無い）→「受取情報」形式に切替 or 配送先欄を非表示
+7. 注文ステータス（あなたのトリガーと整合）
+	•	Webhookで payment_status を更新すると、既存トリガーで orders.status が変わる想定
+	•	トリガー仕様に合わせて Webhook の更新値を統一
+	•	成功：payment_status='paid'
+	•	失敗：payment_status='failed'
+	•	返金：payment_status='refunded'
+	•	キャンセル：payment_status='canceled'（必要時）
+	•	配送側は別運用（納品書や配送完了時に更新）
 
 ⸻
 
-7. 仕上げ（期待する成果物）
-	•	追加/修正されるファイルを明示し、差分を提示してください：
-	•	ルート追加
-	•	SQL/取得処理追加
-	•	EJSテンプレ追加
-	•	PDF用CSS追加
-	•	注文詳細/完了画面へのボタン追加
-実装後は、PDFの見た目が「見出し過大」「余白過多」にならないようにレイアウトの確認をして下さい。
+8. UI（最小変更）
+
+8-1. checkout画面の支払い方法に「クレジットカード」を追加
+	•	allowedPayments の設定に card を追加
+	•	表示ラベル：クレジットカード
+
+8-2. /checkout/complete の文言（任意）
+	•	payment_method === 'card' の場合
+	•	「決済が完了しました」または「決済確認中です（数分）」の説明
+	•	Webhook遅延に備えて「処理中」の表示を許容
+
+⸻
+
+9. テスト観点（必須）
+
+9-1. ローカル
+	•	Stripe CLI を使用して Webhook を転送
+	•	stripe listen --forward-to localhost:3000/webhooks/stripe
+	•	テスト決済で
+	•	paid
+	•	failed
+	•	refund
+が orders に反映されること
+
+9-2. 本番前
+	•	Webhook Secret を本番用に差し替え
+	•	APP_URL を本番ドメインに
+	•	success/cancel URL を本番で動作確認
+
+⸻
+
+10. 実装チェックリスト（完了条件）
+	•	Stripe SDK導入 & env設定
+	•	ordersのインデックス追加（payment_external等）
+	•	/checkout/confirm で card 決済時に Checkout Session 作成→Stripeへリダイレクト
+	•	Webhookで payment_status 更新（paid/failed/refunded）
+	•	冪等性の考慮（最低限：安全な更新）
+	•	ローカルで Stripe CLI による疎通確認
+	•	既存トリガーとステータス整合が取れている
