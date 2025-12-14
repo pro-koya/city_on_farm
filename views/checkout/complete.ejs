@@ -47,6 +47,19 @@
       </div>
     </div>
 
+    <% if (order?.payment_method === 'card') { %>
+      <div class="complete-payment-notice" style="margin: 1.5rem 0; padding: 1rem; border-radius: 8px; background: <%= order.payment_status === 'paid' ? '#f0f9ff' : order.payment_status === 'failed' ? '#fef2f2' : '#fefce8' %>; border: 1px solid <%= order.payment_status === 'paid' ? '#bfdbfe' : order.payment_status === 'failed' ? '#fecaca' : '#fde68a' %>;">
+        <% if (order.payment_status === 'paid') { %>
+          <p style="margin: 0; color: #0369a1; font-weight: 500;">✓ クレジットカード決済が完了しました</p>
+        <% } else if (order.payment_status === 'failed') { %>
+          <p style="margin: 0; color: #dc2626; font-weight: 500;">⚠ 決済に失敗しました。お手数ですがお問い合わせください。</p>
+        <% } else { %>
+          <p style="margin: 0; color: #ca8a04; font-weight: 500;">⏳ 決済確認中です（数分かかる場合があります）</p>
+          <p style="margin: 0.5rem 0 0; font-size: 0.875rem; color: #854d0e;">決済が完了しましたら、注文詳細ページに反映されます。</p>
+        <% } %>
+      </div>
+    <% } %>
+
     <div class="complete-actions" aria-label="操作">
       <a class="btn btn-primary" href="/orders/<%= order?.id || '' %>">注文詳細を見る</a>
       <a class="btn" href="/products/list">お買い物を続ける</a>

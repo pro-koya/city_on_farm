@@ -27,6 +27,7 @@ const { r2, R2_BUCKET, R2_PUBLIC_BASE_URL } = require('./r2');
 const { randomUUID } = require('crypto');
 const { generateAuthUrl, getTokenFromCode, getAuthedClient } = require('./services/gmailClient');
 const { gmailSend } = require('./services/mailer');
+const stripe = require('./lib/stripe');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -77,6 +78,228 @@ app.use(
   )
 );
 
+/* ========== Stripe Webhook (Raw Body Required) ========== */
+// Webhookエンドポイントは express.json() の前に配置する必要がある
+app.post(
+  '/webhooks/stripe',
+  express.raw({ type: 'application/json' }),
+  async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    if (!webhookSecret) {
+      logger.error('STRIPE_WEBHOOK_SECRET is not set');
+      return res.status(500).send('Webhook secret not configured');
+    }
+
+    let event;
+
+    try {
+      // Stripe署名を検証
+      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } catch (err) {
+      logger.error('Webhook signature verification failed', { error: err.message });
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    try {
+      // イベントタイプに応じて処理
+      switch (event.type) {
+        case 'checkout.session.completed': {
+          const session = event.data.object;
+          logger.info('Checkout session completed', {
+            sessionId: session.id,
+            paymentStatus: session.payment_status
+          });
+
+          // セッションIDで注文を検索
+          const orders = await dbQuery(
+            `SELECT id, order_number, payment_status
+             FROM orders
+             WHERE payment_provider = 'stripe'
+               AND payment_external_id = $1`,
+            [session.id]
+          );
+
+          if (!orders.length) {
+            // metadata から order_number で検索
+            const orderNumber = session.metadata?.order_number;
+            if (orderNumber) {
+              const ordersByNumber = await dbQuery(
+                `SELECT id, order_number, payment_status
+                 FROM orders
+                 WHERE order_number = $1`,
+                [orderNumber]
+              );
+              if (ordersByNumber.length) {
+                orders.push(ordersByNumber[0]);
+              }
+            }
+          }
+
+          if (!orders.length) {
+            logger.warn('Order not found for checkout session', { sessionId: session.id });
+            return res.json({ received: true });
+          }
+
+          const order = orders[0];
+
+          // payment_status を更新（決済完了）
+          await dbQuery(
+            `UPDATE orders
+             SET payment_status = 'paid',
+                 payment_txid = $1,
+                 updated_at = now()
+             WHERE id = $2
+               AND payment_status != 'paid'`,
+            [session.payment_intent, order.id]
+          );
+
+          logger.info('Order payment status updated to paid', {
+            orderId: order.id,
+            orderNumber: order.order_number
+          });
+          break;
+        }
+
+        case 'payment_intent.succeeded': {
+          const paymentIntent = event.data.object;
+          logger.info('PaymentIntent succeeded', {
+            paymentIntentId: paymentIntent.id
+          });
+
+          // payment_txid で注文を検索
+          const orders = await dbQuery(
+            `SELECT id, order_number, payment_status
+             FROM orders
+             WHERE payment_txid = $1`,
+            [paymentIntent.id]
+          );
+
+          if (!orders.length) {
+            logger.warn('Order not found for payment intent', {
+              paymentIntentId: paymentIntent.id
+            });
+            return res.json({ received: true });
+          }
+
+          const order = orders[0];
+
+          // payment_status を確実に paid に更新
+          await dbQuery(
+            `UPDATE orders
+             SET payment_status = 'paid',
+                 updated_at = now()
+             WHERE id = $1
+               AND payment_status != 'paid'`,
+            [order.id]
+          );
+
+          logger.info('Order payment confirmed', {
+            orderId: order.id,
+            orderNumber: order.order_number
+          });
+          break;
+        }
+
+        case 'payment_intent.payment_failed': {
+          const paymentIntent = event.data.object;
+          logger.error('PaymentIntent failed', {
+            paymentIntentId: paymentIntent.id,
+            lastError: paymentIntent.last_payment_error
+          });
+
+          // payment_txid で注文を検索
+          const orders = await dbQuery(
+            `SELECT id, order_number, payment_status
+             FROM orders
+             WHERE payment_txid = $1
+                OR payment_external_id = $2`,
+            [paymentIntent.id, paymentIntent.id]
+          );
+
+          if (!orders.length) {
+            logger.warn('Order not found for failed payment intent', {
+              paymentIntentId: paymentIntent.id
+            });
+            return res.json({ received: true });
+          }
+
+          const order = orders[0];
+
+          // payment_status を failed に更新
+          await dbQuery(
+            `UPDATE orders
+             SET payment_status = 'failed',
+                 updated_at = now()
+             WHERE id = $1`,
+            [order.id]
+          );
+
+          logger.info('Order payment marked as failed', {
+            orderId: order.id,
+            orderNumber: order.order_number
+          });
+          break;
+        }
+
+        case 'charge.refunded': {
+          const charge = event.data.object;
+          logger.info('Charge refunded', {
+            chargeId: charge.id,
+            amount: charge.amount_refunded
+          });
+
+          // payment_txid で注文を検索
+          const orders = await dbQuery(
+            `SELECT id, order_number, payment_status
+             FROM orders
+             WHERE payment_txid = $1`,
+            [charge.payment_intent]
+          );
+
+          if (!orders.length) {
+            logger.warn('Order not found for refunded charge', {
+              chargeId: charge.id
+            });
+            return res.json({ received: true });
+          }
+
+          const order = orders[0];
+
+          // payment_status を refunded に更新
+          await dbQuery(
+            `UPDATE orders
+             SET payment_status = 'refunded',
+                 updated_at = now()
+             WHERE id = $1`,
+            [order.id]
+          );
+
+          logger.info('Order payment marked as refunded', {
+            orderId: order.id,
+            orderNumber: order.order_number
+          });
+          break;
+        }
+
+        default:
+          logger.debug('Unhandled webhook event type', { type: event.type });
+      }
+
+      // Stripeに成功を返す
+      res.json({ received: true });
+    } catch (err) {
+      logger.error('Webhook processing error', {
+        error: err.message,
+        stack: err.stack,
+        eventType: event.type
+      });
+      res.status(500).json({ error: 'Webhook processing failed' });
+    }
+  }
+);
+
 /* ========== Parsers / Security ========== */
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
@@ -88,12 +311,15 @@ app.use(helmet({
       scriptSrc: [
         "'self'",
         "'unsafe-inline'",  // インラインスクリプトを許可（既存コードのため）
+        "https://cdn.jsdelivr.net",  // flatpickr などのCDNスクリプト
+        "https://yubinbango.github.io",  // yubinbango.js (郵便番号自動入力)
         "https://accounts.google.com",  // Google OAuth
         "https://www.google.com"  // Google reCAPTCHA (使用している場合)
       ],
       styleSrc: [
         "'self'",
-        "'unsafe-inline'"  // インラインスタイルを許可
+        "'unsafe-inline'",  // インラインスタイルを許可
+        "https://cdn.jsdelivr.net"  // flatpickr などのCDNスタイルシート
       ],
       imgSrc: [
         "'self'",
@@ -112,6 +338,10 @@ app.use(helmet({
       frameSrc: [
         "https://accounts.google.com",  // Google OAuth
         "https://www.google.com"  // Google reCAPTCHA
+      ],
+      formAction: [
+        "'self'",
+        ...(isProd ? [] : ["http://localhost:3000"])  // 開発環境では localhost も許可
       ],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: isProd ? [] : null  // 本番環境のみHTTPSへアップグレード
@@ -5790,9 +6020,9 @@ async function fetchSellerConfig(sellerUserId) {
   const allMethod = await loadAllPaymentMethods('payment_method', 'payment_method');
   const allMap = new Map(allMethod.map(m => [m.code, m]));
 
-  // 出品者ごとの許可メソッド（無ければ cod デフォルト）
+  // 出品者ごとの許可メソッド（無ければ cod, card デフォルト）
   const rows = await getAllowedMethodsForUser(sellerUserId, allMethod);
-  const allowedCodes = rows.length ? rows.map(r => String(r.method)) : ['cod'];
+  const allowedCodes = rows.length ? rows.map(r => String(r.method)) : ['cod', 'card'];
 
   // 日本語ラベル付きで整形
   const allowedPaymentMethods = allowedCodes.map(code => {
@@ -7283,7 +7513,113 @@ app.post('/checkout/confirm', async (req, res, next) => {
     // 失敗ログを確実に出したい・Ethereal プレビューを見たいなら settle
     await Promise.allSettled(tasks);
 
-    // 完了へ
+    // ========== Stripe決済の場合はCheckout Sessionを作成 ==========
+    if (safePaymentMethod === 'card') {
+      try {
+        // Stripe Checkout Session用のline_itemsを構築
+        const lineItems = [];
+
+        // 割引を含めた合計金額を計算（既にtotal変数に格納されている）
+        // total = subtotal - discount + shipping_fee
+
+        // 割引がある場合、Stripeでは直接負の金額を扱えないため、
+        // 「割引後の商品小計」として1つのline_itemにまとめる
+        if (discount > 0) {
+          const discountedSubtotal = Math.max(0, subtotal - discount);
+          lineItems.push({
+            price_data: {
+              currency: 'jpy',
+              product_data: {
+                name: `商品代金（割引適用済: ${coupon?.code || ''}）`
+              },
+              unit_amount: discountedSubtotal
+            },
+            quantity: 1
+          });
+        } else {
+          // 割引がない場合は通常通り商品を個別に追加
+          for (const p of targetPairs) {
+            const prod = byId.get(p.productId);
+            lineItems.push({
+              price_data: {
+                currency: 'jpy',
+                product_data: {
+                  name: prod.title
+                },
+                unit_amount: prod.price
+              },
+              quantity: p.quantity
+            });
+          }
+        }
+
+        // 送料を追加（0円でない場合）
+        if (shipping_fee > 0) {
+          lineItems.push({
+            price_data: {
+              currency: 'jpy',
+              product_data: {
+                name: '送料'
+              },
+              unit_amount: shipping_fee
+            },
+            quantity: 1
+          });
+        }
+
+        const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
+
+        // Stripe Checkout Session を作成
+        const session = await stripe.checkout.sessions.create({
+          payment_method_types: ['card'],
+          line_items: lineItems,
+          mode: 'payment',
+          success_url: `${appUrl}/checkout/complete?no=${encodeURIComponent(orderNo)}`,
+          cancel_url: `${appUrl}/checkout?seller=${encodeURIComponent(sellerId)}`,
+          metadata: {
+            order_id: String(orderId),
+            order_number: orderNo,
+            seller_id: String(sellerId),
+            user_id: String(uid)
+          }
+        });
+
+        // orders テーブルを更新してStripe情報を保存
+        await dbQuery(
+          `UPDATE orders
+           SET payment_provider = 'stripe',
+               payment_external_id = $1,
+               updated_at = now()
+           WHERE id = $2`,
+          [session.id, orderId]
+        );
+
+        logger.info('Stripe Checkout Session created', {
+          sessionId: session.id,
+          orderId,
+          orderNumber: orderNo
+        });
+
+        // Stripeの決済ページにリダイレクト
+        return res.redirect(session.url);
+      } catch (err) {
+        logger.error('Failed to create Stripe Checkout Session', {
+          error: err.message,
+          stack: err.stack,
+          orderId,
+          orderNumber: orderNo
+        });
+
+        // Stripe決済失敗時は従来通りの完了ページへ
+        req.session.flash = {
+          type: 'warning',
+          message: '決済画面の準備に失敗しました。注文は作成されていますが、お手数ですが別の支払い方法をご利用ください。'
+        };
+        return res.redirect(`/checkout/complete?no=${encodeURIComponent(orderNo)}`);
+      }
+    }
+
+    // 完了へ（代金引換など、Stripe以外の決済方法の場合）
     return res.redirect(`/checkout/complete?no=${encodeURIComponent(orderNo)}`);
   } catch (e) {
     try { await client.query('ROLLBACK'); } catch {}
@@ -7313,7 +7649,8 @@ app.get('/checkout/complete', async (req, res, next) => {
     const orderRows = await dbQuery(
       `SELECT o.id, o.order_number AS order_no, o.buyer_id,
               o.status, o.subtotal, o.discount, o.shipping_fee, o.total, o.ship_time_code,
-              o.created_at, o.eta_at, o.payment_method, o.ship_method, o.coupon_code
+              o.created_at, o.eta_at, o.payment_method, o.ship_method, o.coupon_code,
+              o.payment_status
          FROM orders o
         WHERE (o.order_number = $1 OR o.id::text = $1)
           ${uid ? 'AND o.buyer_id = $2::uuid' : ''}
@@ -7448,6 +7785,7 @@ app.get('/checkout/complete', async (req, res, next) => {
       created_at: order.created_at,
       eta_at: order.eta_at,
       payment_method: order.payment_method,
+      payment_status: order.payment_status,
       ship_method: order.ship_method,
       payment_method_ja: jaLabel('payment_method', order.payment_method) || null,
       ship_method_ja: jaLabel('ship_method', order.ship_method) || null,
