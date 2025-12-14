@@ -11,7 +11,6 @@
   // Quill ImageResize モジュール登録
   // =========================
   (function registerImageResize() {
-    // johnny-quill-image-resize-module は default にクラスが入る場合がある
     const IR =
       window.ImageResize &&
       (window.ImageResize.default || window.ImageResize);
@@ -36,8 +35,6 @@
       theme: 'snow',
       modules: {
         toolbar: '#editorToolbar',
-        // ★ johnny-quill-image-resize-module はシンプルに {} でOK
-        //   （modules: ['Resize', ...] を渡すと "e is not a constructor" になることがある）
         imageResize: {}
       },
       placeholder: 'ここに自己紹介やこだわりを書いていきましょう。',
@@ -70,101 +67,6 @@
     const range = quill.getSelection(true) || { index: quill.getLength(), length: 0 };
     quill.insertEmbed(range.index, 'image', url, 'user');
     quill.setSelection(range.index + 1, 0, 'user');
-  }
-
-  // 現在位置取得（無ければ末尾）
-  function getCurrentIndex() {
-    const range = quill.getSelection(true);
-    return range ? range.index : quill.getLength();
-  }
-
-  // 表テンプレート挿入
-  function insertTableTemplate() {
-    if (!quill) return;
-    const index = getCurrentIndex();
-
-    const html = `
-      <table class="sp-table">
-        <thead>
-          <tr>
-            <th>項目</th>
-            <th>内容</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>例）栽培方法</td>
-            <td>例）減農薬・有機肥料を中心に栽培しています。</td>
-          </tr>
-          <tr>
-            <td>例）こだわり</td>
-            <td>例）収穫のタイミングを厳密に見極めています。</td>
-          </tr>
-        </tbody>
-      </table>
-      <p><br></p>
-    `;
-
-    quill.clipboard.dangerouslyPasteHTML(index, html, 'user');
-    quill.setSelection(index + 1, 0, 'user');
-  }
-
-  // 画像グリッドテンプレート挿入
-  function insertImageGridTemplate() {
-    if (!quill) return;
-    const index = getCurrentIndex();
-
-    const html = `
-      <div class="sp-img-grid">
-        <div class="sp-img-grid__item">
-          画像1（この枠内をクリックして、上の画像ボタンから画像を挿入）
-        </div>
-        <div class="sp-img-grid__item">
-          画像2（この枠内をクリックして、上の画像ボタンから画像を挿入）
-        </div>
-        <div class="sp-img-grid__item">
-          画像3（必要なければ削除してOKです）
-        </div>
-      </div>
-      <p><br></p>
-    `;
-
-    quill.clipboard.dangerouslyPasteHTML(index, html, 'user');
-    quill.setSelection(index + 1, 0, 'user');
-  }
-
-  // スライドショーテンプレート挿入（ページにつき 1 個だけ）
-  function insertSliderTemplate() {
-    if (!quill) return;
-
-    // すでに存在するかチェック
-    const existing = quill.root.querySelector('.sp-slider[data-sp-slider="1"]');
-    if (existing) {
-      alert('画像スライドショーは1ページにつき1つまで配置できます。既存のスライドショーを削除してから再度お試しください。');
-      return;
-    }
-
-    const index = getCurrentIndex();
-
-    const html = `
-      <div class="sp-slider" data-sp-slider="1">
-        <div class="sp-slider__track">
-          <div class="sp-slider__item">
-            スライド1（ここをクリックして画像を挿入）
-          </div>
-          <div class="sp-slider__item">
-            スライド2（必要な分だけ複製／削除して使えます）
-          </div>
-          <div class="sp-slider__item">
-            スライド3
-          </div>
-        </div>
-      </div>
-      <p><br></p>
-    `;
-
-    quill.clipboard.dangerouslyPasteHTML(index, html, 'user');
-    quill.setSelection(index + 1, 0, 'user');
   }
 
   // =========================

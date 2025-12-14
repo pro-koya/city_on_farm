@@ -45,7 +45,8 @@
     "puppeteer": "^22.13.1",
     "rss-parser": "^3.13.0",
     "sanitize-html": "^2.17.0",
-    "turndown": "^7.2.2"
+    "turndown": "^7.2.2",
+    "winston": "^3.19.0"
   },
   "devDependencies": {
     "csv-parse": "^6.1.0"
