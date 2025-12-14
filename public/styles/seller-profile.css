@@ -298,6 +298,12 @@ html, body {
   font-size:1.05rem; margin:1.1rem 0 .5rem;
   color:#111827;
 }
+.seller-intro h5{
+  font-size:0.95rem; margin:1rem 0 .4rem;
+  color:#111827;
+  font-weight:700;
+  padding-left: 1rem;
+}
 
 .seller-pane__title{font-size:18px;line-height:1.25;margin:0}
 
@@ -405,6 +411,50 @@ html, body {
 .np__content .callout.info{background:#f3f8ff;border-color:#cfe2ff}
 .np__content .callout.warn{background:#fff8f3;border-color:#ffd8b5}
 .np__content .callout.tip {background:#f6fff3;border-color:#cfeec2}
+
+/* ===== 表のスタイル ===== */
+.seller-intro table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.2rem 0;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  font-size: 0.95rem;
+}
+
+.seller-intro table caption {
+  caption-side: top;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #0f172a;
+  text-align: left;
+  padding: 0.6rem 0.8rem 0.4rem;
+  background: linear-gradient(180deg, #f9fafb, #ffffff);
+}
+
+.seller-intro th,
+.seller-intro td {
+  border: 1px solid #e5e7eb;
+  padding: 0.7rem 0.9rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.seller-intro th {
+  background: linear-gradient(180deg, #f9fafb, #f3f4f6);
+  font-weight: 700;
+  color: #111827;
+}
+
+.seller-intro tbody tr:hover {
+  background: #f9fafb;
+  transition: background 0.15s ease;
+}
+
+.seller-intro tbody tr:nth-child(even) {
+  background: rgba(249, 250, 251, 0.5);
+}
 
 /* ===== レスポンシブ ===== */
 @media (max-width: 768px) {

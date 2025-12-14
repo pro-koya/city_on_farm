@@ -350,10 +350,17 @@
 
 .campaign-body__rich h2,
 .campaign-body__rich h3,
-.campaign-body__rich h4 {
+.campaign-body__rich h4,
+.campaign-body__rich h5 {
   margin-top: 1.3em;
   margin-bottom: .4em;
+  font-weight: 600;
+  color: #111827;
 }
+
+.campaign-body__rich h3 { font-size: 1.02rem; }
+.campaign-body__rich h4 { font-size: 0.95rem; }
+.campaign-body__rich h5 { font-size: 0.88rem; }
 
 .campaign-body__rich p {
   margin: .4em 0;
@@ -377,18 +384,43 @@
 .campaign-body__rich table {
   border-collapse: collapse;
   width: 100%;
-  margin: 8px 0 10px;
+  margin: 10px 0 12px;
   font-size: 0.9rem;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+}
+
+.campaign-body__rich table caption {
+  caption-side: top;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #111827;
+  text-align: left;
+  padding: 0.5rem 0.7rem 0.3rem;
+  background: linear-gradient(180deg, #f9fafb, #ffffff);
 }
 
 .campaign-body__rich th,
 .campaign-body__rich td {
   border: 1px solid #d1d5db;
-  padding: 6px 8px;
+  padding: 7px 9px;
+  text-align: left;
+  vertical-align: top;
 }
 
 .campaign-body__rich th {
-  background: #f3f4f6;
+  background: linear-gradient(180deg, #f9fafb, #f3f4f6);
+  font-weight: 700;
+  color: #111827;
+}
+
+.campaign-body__rich tbody tr:hover {
+  background: #f9fafb;
+}
+
+.campaign-body__rich tbody tr:nth-child(even) {
+  background: rgba(249, 250, 251, 0.3);
 }
 
 /* ===== テーブル風ブロック（cm-table） ===== */
@@ -627,13 +659,31 @@ input[type="text"], input[type="number"], select, textarea, input[type="datetime
 .editor .ql-editor table {
   border-collapse: collapse;
   width: 100%;
-  margin: 8px 0;
+  margin: 10px 0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.editor .ql-editor table caption {
+  caption-side: top;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #111827;
+  text-align: left;
+  padding: 0.4rem 0.6rem 0.2rem;
+  background: linear-gradient(180deg, #f9fafb, #ffffff);
 }
 
 .editor .ql-editor table td,
 .editor .ql-editor table th {
   border: 1px solid #d1d5db;
-  padding: 4px 6px;
+  padding: 6px 8px;
+  vertical-align: top;
+}
+
+.editor .ql-editor table th {
+  background: linear-gradient(180deg, #f9fafb, #f3f4f6);
+  font-weight: 700;
 }
 
 /* エラー / ヒント */
@@ -690,4 +740,39 @@ input[type="text"], input[type="number"], select, textarea, input[type="datetime
 .quil_field {
     display: flex;
     flex-direction: column;
+}
+
+/* キャンペーン詳細表エディタ */
+.campaign-table-editor {
+  display: grid;
+  gap: .6rem;
+  margin-top: .3rem;
+}
+
+.campaign-table-editor__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr);
+  gap: .4rem;
+}
+
+.campaign-table-editor__row input,
+.campaign-table-editor__row textarea {
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  padding: .5rem .65rem;
+  font-size: .9rem;
+  outline: none;
+  background: #fff;
+}
+
+.campaign-table-editor__row input:focus,
+.campaign-table-editor__row textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(76, 107, 92, .16);
+}
+
+@media (max-width: 768px) {
+  .campaign-table-editor__row {
+    grid-template-columns: 1fr;
+  }
 }

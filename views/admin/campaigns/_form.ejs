@@ -151,6 +151,53 @@
           <p class="muted"><%= values.published_at %></p>
         </div>
       <% } %>
+
+      <!-- 詳細表（任意） -->
+      <div class="field">
+        <label>詳細表（任意）</label>
+        <p class="hint">
+          キャンペーンの詳細情報を表形式で表示できます。
+          未入力の場合、この表は表示されません。
+        </p>
+
+        <div class="campaign-table-editor">
+          <div class="campaign-table-editor__row">
+            <input
+              type="text"
+              name="table_labels[]"
+              placeholder="例）開催期間"
+              value="<%- (values.table_labels && values.table_labels[0]) || '' %>">
+            <textarea
+              name="table_values[]"
+              rows="2"
+              placeholder="例）2024年1月1日〜1月31日"><%- (values.table_values && values.table_values[0]) || '' %></textarea>
+          </div>
+
+          <div class="campaign-table-editor__row">
+            <input
+              type="text"
+              name="table_labels[]"
+              placeholder="例）対象商品"
+              value="<%- (values.table_labels && values.table_labels[1]) || '' %>">
+            <textarea
+              name="table_values[]"
+              rows="2"
+              placeholder="例）全商品対象"><%- (values.table_values && values.table_values[1]) || '' %></textarea>
+          </div>
+
+          <div class="campaign-table-editor__row">
+            <input
+              type="text"
+              name="table_labels[]"
+              placeholder="任意の項目"
+              value="<%- (values.table_labels && values.table_labels[2]) || '' %>">
+            <textarea
+              name="table_values[]"
+              rows="2"
+              placeholder="任意の説明"><%- (values.table_values && values.table_values[2]) || '' %></textarea>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- 右：リッチテキスト -->
@@ -160,9 +207,10 @@
         <div id="campaignToolbar" class="editor-toolbar">
           <span class="ql-formats">
             <select class="ql-header">
-              <option value="1"></option>
-              <option value="2"></option>
-              <option selected></option>
+              <option value="3">見出し3</option>
+              <option value="4">見出し4</option>
+              <option value="5">見出し5</option>
+              <option selected>通常</option>
             </select>
           </span>
           <span class="ql-formats">
