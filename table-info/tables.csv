@@ -1,6 +1,6 @@
 table_schema,table_name,table_comment,column_count
 public,addresses,,18
-public,campaigns,,15
+public,campaigns,,17
 public,cart_items,,10
 public,carts,,5
 public,categories,,6

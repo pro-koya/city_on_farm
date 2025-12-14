@@ -32,6 +32,8 @@ public,campaigns,12,ends_at,timestamp with time zone,timestamptz,,,,YES,,
 public,campaigns,13,created_by,uuid,uuid,,,,YES,,
 public,campaigns,14,created_at,timestamp with time zone,timestamptz,,,,NO,now(),
 public,campaigns,15,updated_at,timestamp with time zone,timestamptz,,,,NO,now(),
+public,campaigns,16,table_labels,jsonb,jsonb,,,,YES,'[]'::jsonb,キャンペーン詳細表のラベル配列
+public,campaigns,17,table_values,jsonb,jsonb,,,,YES,'[]'::jsonb,キャンペーン詳細表の値配列
 public,cart_items,1,id,uuid,uuid,,,,NO,gen_random_uuid(),
 public,cart_items,2,cart_id,uuid,uuid,,,,NO,,
 public,cart_items,3,product_id,uuid,uuid,,,,NO,,
