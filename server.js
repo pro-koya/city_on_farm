@@ -72,7 +72,7 @@ const ejs = require('ejs');
 const fs = require('fs');
 const { PutObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
-const { r2, R2_BUCKET, R2_PUBLIC_BASE_URL } = require('./r2');
+const { r2, R2_BUCKET, R2_PUBLIC_BASE_URL, isR2Configured } = require('./r2');
 const { randomUUID } = require('crypto');
 const { generateAuthUrl, getTokenFromCode, getAuthedClient } = require('./services/gmailClient');
 const { gmailSend } = require('./services/mailer');
@@ -388,8 +388,10 @@ app.use(helmet({
         "https://www.google.com"  // Google reCAPTCHA
       ],
       formAction: [
-        "'self'",
-        ...(isProd ? [] : ["http://localhost:3000"])  // 開発環境では localhost も許可
+        ...(isProd
+          ? (APP_ORIGIN ? [APP_ORIGIN] : [])
+          : ["http://localhost:3000"]
+        ),
       ],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: isProd ? [] : null  // 本番環境のみHTTPSへアップグレード
@@ -8684,6 +8686,10 @@ app.post('/uploads/sign', requireAuth /* 任意: requireRole('seller') */, async
     }
 
     // ---- 2) 新規アップロード用の署名を発行 ----
+    if (!isR2Configured || !r2) {
+      return res.status(503).json({ ok: false, message: 'R2ストレージが設定されていません。' });
+    }
+
     const key = buildR2Key({ scope: 'products', sellerId: sellerId || 'anon', productId, ext });
 
     const cmd = new PutObjectCommand({
@@ -8709,6 +8715,10 @@ app.post('/uploads/confirm', requireAuth /* 任意: requireRole('seller') */, as
     if (!key) return res.status(400).json({ ok:false, message:'key が必要です。' });
 
     // R2に存在するか軽く確認（HeadObject）
+    if (!isR2Configured || !r2) {
+      return res.status(503).json({ ok: false, message: 'R2ストレージが設定されていません。' });
+    }
+
     let head = null;
     try {
       head = await r2.send(new HeadObjectCommand({ Bucket: R2_BUCKET, Key: key }));
