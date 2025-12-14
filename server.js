@@ -2,12 +2,61 @@
 const path = require('path');
 try { require('dotenv').config(); } catch { /* no-op */ }
 
+// ============================================================
+// 【1】起動直後のエラーハンドリング設定
+// ============================================================
+process.on('uncaughtException', (error) => {
+  console.error('=== UNCAUGHT EXCEPTION ===');
+  console.error('Error:', error);
+  console.error('Stack:', error.stack);
+  console.error('==========================');
+  // 本番環境ではプロセスを終了、開発環境では継続（デバッグのため）
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  }
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('=== UNHANDLED REJECTION ===');
+  console.error('Reason:', reason);
+  if (reason instanceof Error) {
+    console.error('Stack:', reason.stack);
+  }
+  console.error('Promise:', promise);
+  console.error('============================');
+  // 本番環境ではプロセスを終了、開発環境では継続（デバッグのため）
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  }
+});
+
+// ============================================================
+// 【2】環境変数の防御的チェック
+// ============================================================
 const logger = require('./services/logger');
 
-// 必須環境変数のチェック
+const missingEnvVars = [];
 if (!process.env.SESSION_SECRET) {
-  logger.error('SESSION_SECRET environment variable is required');
+  missingEnvVars.push('SESSION_SECRET');
+}
+if (!process.env.DATABASE_URL && !process.env.External_Database_URL && !process.env.PGURL) {
+  missingEnvVars.push('DATABASE_URL (または External_Database_URL または PGURL)');
+}
+if (!process.env.STRIPE_SECRET_KEY) {
+  missingEnvVars.push('STRIPE_SECRET_KEY');
+}
+
+if (missingEnvVars.length > 0) {
+  const errorMsg = `以下の環境変数が設定されていません:\n${missingEnvVars.map(v => `  - ${v}`).join('\n')}\n\nサーバーを起動できません。環境変数を設定してください。`;
+  logger.error(errorMsg);
+  console.error(errorMsg);
   process.exit(1);
+}
+
+// PORT はデフォルト値があるため警告のみ
+const PORT = process.env.PORT || 3000;
+if (!process.env.PORT) {
+  logger.warn(`PORT 環境変数が設定されていません。デフォルト値 ${PORT} を使用します。`);
 }
 
 const express = require('express');
@@ -30,7 +79,6 @@ const { gmailSend } = require('./services/mailer');
 const stripe = require('./lib/stripe');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
 app.set('trust proxy', 1);
 
@@ -8339,19 +8387,30 @@ async function resolveChromiumExecutable() {
 }
 
 // Node.js の環境（Render等）で必要になりがちな起動オプション
+// 【2】本番環境（Docker/Render）でのみ特別な起動オプションを適用
 async function buildLaunchOptions() {
+  const isProd = process.env.NODE_ENV === 'production';
   let executablePath = await resolveChromiumExecutable();
+  
+  const baseArgs = [
+    '--font-render-hinting=medium',
+    '--disable-gpu',
+    '--lang=ja-JP'
+  ];
+  
+  // 本番環境（Docker/Render）でのみ必須のオプション
+  if (isProd) {
+    baseArgs.push(
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage'
+    );
+  }
+  
   return {
     headless: 'new',
     executablePath: executablePath || undefined,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--font-render-hinting=medium',
-      '--disable-gpu',
-      '--disable-dev-shm-usage',
-      '--lang=ja-JP'
-    ]
+    args: baseArgs
   };
 }
 
@@ -12174,6 +12233,34 @@ app.use((err, req, res, next) => {
 /* =========================================================
  *  Start
  * =======================================================*/
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+try {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+    logger.info(`Server started successfully on port ${PORT}`, {
+      nodeEnv: process.env.NODE_ENV || 'development',
+      port: PORT
+    });
+  }).on('error', (error) => {
+    console.error('=== SERVER LISTEN ERROR ===');
+    console.error('Error:', error);
+    console.error('Stack:', error.stack);
+    console.error('Port:', PORT);
+    console.error('==========================');
+    logger.error('Failed to start server', {
+      error: error.message,
+      stack: error.stack,
+      port: PORT
+    });
+    process.exit(1);
+  });
+} catch (error) {
+  console.error('=== SERVER STARTUP ERROR ===');
+  console.error('Error:', error);
+  console.error('Stack:', error.stack);
+  console.error('===========================');
+  logger.error('Failed to start server', {
+    error: error.message,
+    stack: error.stack
+  });
+  process.exit(1);
+}
