@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-12-13T18:27:24.660Z
+> Generated at: 2025-12-14T18:28:29.983Z
 
 ---
 
@@ -83,6 +83,8 @@
 | 13 | `created_by` | `uuid` | YES |  |  |
 | 14 | `created_at` | `timestamp with time zone` | NO | now() |  |
 | 15 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+| 16 | `table_labels` | `jsonb` | YES | '[]'::jsonb | キャンペーン詳細表のラベル配列 |
+| 17 | `table_values` | `jsonb` | YES | '[]'::jsonb | キャンペーン詳細表の値配列 |
 
 **Constraints**
 
@@ -995,6 +997,21 @@
   
   ```sql
   CREATE INDEX idx_orders_status_updated_at ON public.orders USING btree (status, updated_at DESC)
+  ```
+- `ix_orders_order_number`
+  
+  ```sql
+  CREATE INDEX ix_orders_order_number ON public.orders USING btree (order_number)
+  ```
+- `ix_orders_payment_external`
+  
+  ```sql
+  CREATE INDEX ix_orders_payment_external ON public.orders USING btree (payment_provider, payment_external_id)
+  ```
+- `ix_orders_payment_status`
+  
+  ```sql
+  CREATE INDEX ix_orders_payment_status ON public.orders USING btree (payment_status)
   ```
 - `ix_orders_status_created`
   

@@ -82,6 +82,9 @@ public,orders,idx_orders_seller_created,"CREATE INDEX idx_orders_seller_created 
 public,orders,idx_orders_shipment_status,CREATE INDEX idx_orders_shipment_status ON public.orders USING btree (shipment_status),f,f
 public,orders,idx_orders_status,CREATE INDEX idx_orders_status ON public.orders USING btree (status),f,f
 public,orders,idx_orders_status_updated_at,"CREATE INDEX idx_orders_status_updated_at ON public.orders USING btree (status, updated_at DESC)",f,f
+public,orders,ix_orders_order_number,CREATE INDEX ix_orders_order_number ON public.orders USING btree (order_number),f,f
+public,orders,ix_orders_payment_external,"CREATE INDEX ix_orders_payment_external ON public.orders USING btree (payment_provider, payment_external_id)",f,f
+public,orders,ix_orders_payment_status,CREATE INDEX ix_orders_payment_status ON public.orders USING btree (payment_status),f,f
 public,orders,ix_orders_status_created,"CREATE INDEX ix_orders_status_created ON public.orders USING btree (status, created_at)",f,f
 public,orders,orders_order_number_key,CREATE UNIQUE INDEX orders_order_number_key ON public.orders USING btree (order_number),t,f
 public,orders,orders_pkey,CREATE UNIQUE INDEX orders_pkey ON public.orders USING btree (id),t,t
