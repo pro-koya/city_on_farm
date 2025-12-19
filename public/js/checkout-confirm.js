@@ -4,6 +4,16 @@
 
   if (!form || !place) return;
 
+  document.addEventListener('submit', (e) => {
+    const f = e.target;
+    console.log('[SUBMIT CAPTURE]', {
+      id: f.id,
+      actionAttr: f.getAttribute('action'),
+      action: f.action,
+      method: f.method
+    });
+  }, true);
+
   // 二重送信ガード＆UX向上
   form.addEventListener('submit', (e) => {
     // 簡易バリデーション（サーバでも最終確認します）
