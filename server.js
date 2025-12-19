@@ -2,12 +2,61 @@
 const path = require('path');
 try { require('dotenv').config(); } catch { /* no-op */ }
 
+// ============================================================
+// 【1】起動直後のエラーハンドリング設定
+// ============================================================
+process.on('uncaughtException', (error) => {
+  console.error('=== UNCAUGHT EXCEPTION ===');
+  console.error('Error:', error);
+  console.error('Stack:', error.stack);
+  console.error('==========================');
+  // 本番環境ではプロセスを終了、開発環境では継続（デバッグのため）
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  }
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('=== UNHANDLED REJECTION ===');
+  console.error('Reason:', reason);
+  if (reason instanceof Error) {
+    console.error('Stack:', reason.stack);
+  }
+  console.error('Promise:', promise);
+  console.error('============================');
+  // 本番環境ではプロセスを終了、開発環境では継続（デバッグのため）
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  }
+});
+
+// ============================================================
+// 【2】環境変数の防御的チェック
+// ============================================================
 const logger = require('./services/logger');
 
-// 必須環境変数のチェック
+const missingEnvVars = [];
 if (!process.env.SESSION_SECRET) {
-  logger.error('SESSION_SECRET environment variable is required');
+  missingEnvVars.push('SESSION_SECRET');
+}
+if (!process.env.DATABASE_URL && !process.env.External_Database_URL && !process.env.PGURL) {
+  missingEnvVars.push('DATABASE_URL (または External_Database_URL または PGURL)');
+}
+if (!process.env.STRIPE_SECRET_KEY) {
+  missingEnvVars.push('STRIPE_SECRET_KEY');
+}
+
+if (missingEnvVars.length > 0) {
+  const errorMsg = `以下の環境変数が設定されていません:\n${missingEnvVars.map(v => `  - ${v}`).join('\n')}\n\nサーバーを起動できません。環境変数を設定してください。`;
+  logger.error(errorMsg);
+  console.error(errorMsg);
   process.exit(1);
+}
+
+// PORT はデフォルト値があるため警告のみ
+const PORT = process.env.PORT || 3000;
+if (!process.env.PORT) {
+  logger.warn(`PORT 環境変数が設定されていません。デフォルト値 ${PORT} を使用します。`);
 }
 
 const express = require('express');
@@ -23,14 +72,15 @@ const ejs = require('ejs');
 const fs = require('fs');
 const { PutObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
-const { r2, R2_BUCKET, R2_PUBLIC_BASE_URL } = require('./r2');
+const { r2, R2_BUCKET, R2_PUBLIC_BASE_URL, isR2Configured } = require('./r2');
 const { randomUUID } = require('crypto');
 const { generateAuthUrl, getTokenFromCode, getAuthedClient } = require('./services/gmailClient');
 const { gmailSend } = require('./services/mailer');
+const stripe = require('./lib/stripe');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
+const APP_ORIGIN = process.env.APP_ORIGIN || (isProd ? null : 'http://localhost:3000');
 app.set('trust proxy', 1);
 
 // Renderの接続文字列（環境変数に置くのが推奨）
@@ -77,23 +127,249 @@ app.use(
   )
 );
 
+/* ========== Stripe Webhook (Raw Body Required) ========== */
+// Webhookエンドポイントは express.json() の前に配置する必要がある
+app.post(
+  '/webhooks/stripe',
+  express.raw({ type: 'application/json' }),
+  async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    if (!webhookSecret) {
+      logger.error('STRIPE_WEBHOOK_SECRET is not set');
+      return res.status(500).send('Webhook secret not configured');
+    }
+
+    let event;
+
+    try {
+      // Stripe署名を検証
+      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } catch (err) {
+      logger.error('Webhook signature verification failed', { error: err.message });
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    try {
+      // イベントタイプに応じて処理
+      switch (event.type) {
+        case 'checkout.session.completed': {
+          const session = event.data.object;
+          logger.info('Checkout session completed', {
+            sessionId: session.id,
+            paymentStatus: session.payment_status
+          });
+
+          // セッションIDで注文を検索
+          const orders = await dbQuery(
+            `SELECT id, order_number, payment_status
+             FROM orders
+             WHERE payment_provider = 'stripe'
+               AND payment_external_id = $1`,
+            [session.id]
+          );
+
+          if (!orders.length) {
+            // metadata から order_number で検索
+            const orderNumber = session.metadata?.order_number;
+            if (orderNumber) {
+              const ordersByNumber = await dbQuery(
+                `SELECT id, order_number, payment_status
+                 FROM orders
+                 WHERE order_number = $1`,
+                [orderNumber]
+              );
+              if (ordersByNumber.length) {
+                orders.push(ordersByNumber[0]);
+              }
+            }
+          }
+
+          if (!orders.length) {
+            logger.warn('Order not found for checkout session', { sessionId: session.id });
+            return res.json({ received: true });
+          }
+
+          const order = orders[0];
+
+          // payment_status を更新（決済完了）
+          await dbQuery(
+            `UPDATE orders
+             SET payment_status = 'paid',
+                 payment_txid = $1,
+                 updated_at = now()
+             WHERE id = $2
+               AND payment_status != 'paid'`,
+            [session.payment_intent, order.id]
+          );
+
+          logger.info('Order payment status updated to paid', {
+            orderId: order.id,
+            orderNumber: order.order_number
+          });
+          break;
+        }
+
+        case 'payment_intent.succeeded': {
+          const paymentIntent = event.data.object;
+          logger.info('PaymentIntent succeeded', {
+            paymentIntentId: paymentIntent.id
+          });
+
+          // payment_txid で注文を検索
+          const orders = await dbQuery(
+            `SELECT id, order_number, payment_status
+             FROM orders
+             WHERE payment_txid = $1`,
+            [paymentIntent.id]
+          );
+
+          if (!orders.length) {
+            logger.warn('Order not found for payment intent', {
+              paymentIntentId: paymentIntent.id
+            });
+            return res.json({ received: true });
+          }
+
+          const order = orders[0];
+
+          // payment_status を確実に paid に更新
+          await dbQuery(
+            `UPDATE orders
+             SET payment_status = 'paid',
+                 updated_at = now()
+             WHERE id = $1
+               AND payment_status != 'paid'`,
+            [order.id]
+          );
+
+          logger.info('Order payment confirmed', {
+            orderId: order.id,
+            orderNumber: order.order_number
+          });
+          break;
+        }
+
+        case 'payment_intent.payment_failed': {
+          const paymentIntent = event.data.object;
+          logger.error('PaymentIntent failed', {
+            paymentIntentId: paymentIntent.id,
+            lastError: paymentIntent.last_payment_error
+          });
+
+          // payment_txid で注文を検索
+          const orders = await dbQuery(
+            `SELECT id, order_number, payment_status
+             FROM orders
+             WHERE payment_txid = $1
+                OR payment_external_id = $2`,
+            [paymentIntent.id, paymentIntent.id]
+          );
+
+          if (!orders.length) {
+            logger.warn('Order not found for failed payment intent', {
+              paymentIntentId: paymentIntent.id
+            });
+            return res.json({ received: true });
+          }
+
+          const order = orders[0];
+
+          // payment_status を failed に更新
+          await dbQuery(
+            `UPDATE orders
+             SET payment_status = 'failed',
+                 updated_at = now()
+             WHERE id = $1`,
+            [order.id]
+          );
+
+          logger.info('Order payment marked as failed', {
+            orderId: order.id,
+            orderNumber: order.order_number
+          });
+          break;
+        }
+
+        case 'charge.refunded': {
+          const charge = event.data.object;
+          logger.info('Charge refunded', {
+            chargeId: charge.id,
+            amount: charge.amount_refunded
+          });
+
+          // payment_txid で注文を検索
+          const orders = await dbQuery(
+            `SELECT id, order_number, payment_status
+             FROM orders
+             WHERE payment_txid = $1`,
+            [charge.payment_intent]
+          );
+
+          if (!orders.length) {
+            logger.warn('Order not found for refunded charge', {
+              chargeId: charge.id
+            });
+            return res.json({ received: true });
+          }
+
+          const order = orders[0];
+
+          // payment_status を refunded に更新
+          await dbQuery(
+            `UPDATE orders
+             SET payment_status = 'refunded',
+                 updated_at = now()
+             WHERE id = $1`,
+            [order.id]
+          );
+
+          logger.info('Order payment marked as refunded', {
+            orderId: order.id,
+            orderNumber: order.order_number
+          });
+          break;
+        }
+
+        default:
+          logger.debug('Unhandled webhook event type', { type: event.type });
+      }
+
+      // Stripeに成功を返す
+      res.json({ received: true });
+    } catch (err) {
+      logger.error('Webhook processing error', {
+        error: err.message,
+        stack: err.stack,
+        eventType: event.type
+      });
+      res.status(500).json({ error: 'Webhook processing failed' });
+    }
+  }
+);
+
 /* ========== Parsers / Security ========== */
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(helmet({
   contentSecurityPolicy: {
+    useDefaults: false,
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: [
         "'self'",
         "'unsafe-inline'",  // インラインスクリプトを許可（既存コードのため）
+        "https://cdn.jsdelivr.net",  // flatpickr などのCDNスクリプト
+        "https://yubinbango.github.io",  // yubinbango.js (郵便番号自動入力)
         "https://accounts.google.com",  // Google OAuth
         "https://www.google.com"  // Google reCAPTCHA (使用している場合)
       ],
       styleSrc: [
         "'self'",
-        "'unsafe-inline'"  // インラインスタイルを許可
+        "'unsafe-inline'",  // インラインスタイルを許可
+        "https://cdn.jsdelivr.net"  // flatpickr などのCDNスタイルシート
       ],
       imgSrc: [
         "'self'",
@@ -113,6 +389,7 @@ app.use(helmet({
         "https://accounts.google.com",  // Google OAuth
         "https://www.google.com"  // Google reCAPTCHA
       ],
+      formAction: ["'self'", "https://checkout.stripe.com"],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: isProd ? [] : null  // 本番環境のみHTTPSへアップグレード
     }
@@ -5362,113 +5639,6 @@ const TIME_SLOT_MASTER = {
   pickup: PICKUP_TIME_SLOTS
 };
 
-// /* ----------------------------
-//  *  POST /cart/apply-coupon クーポン適用
-//  *  body: { code }
-//  *  例: SUM10 → 10%OFF
-//  * -------------------------- */
-// app.post('/checkout/apply-coupon', async (req, res, next) => {
-//   console.log('4914行目のアプライクーポン');
-//   try {
-//     const { code, shipMethod, sellerId } = req.body || {};
-//     const cart = ensureCart(req);
-//     const _shipMethod = shipMethod || 'delivery';
-//     const userId = req.session?.user?.id || null;
-
-//     // ★ どの出品者カートかで items を取得する
-//     let items = [];
-//     if (sellerId) {
-//       const allPairs = await loadCartItems(req); // いつも /checkout で使っているやつ
-//       const selectedIds = getSelectedIdsBySeller(req, sellerId);
-//       const pairs = filterPairsBySelectedAndSeller(allPairs, selectedIds, sellerId);
-//       items = await fetchCartItemsWithDetails(pairs);
-//     } else {
-//       // sellerId が無い場合は従来通り cart.items から（フォールバック）
-//       items = await fetchCartItemsWithDetails(cart.items || []);
-//     }
-
-//     const subtotal = items.reduce((a, it) => a + (toInt(it.price, 0) * toInt(it.quantity, 1)), 0);
-
-//     // ★ code プロパティの「有無」で再計算/適用/解除を分ける
-//     const hasCodeKey = Object.prototype.hasOwnProperty.call(req.body || {}, 'code');
-
-//     // ① 再計算のみ（shipMethod 変更時）
-//     if (!hasCodeKey) {
-//       const coupon = cart.coupon || null;
-//       const totals = calcTotals(items, coupon, { shipMethod: _shipMethod });
-//       return res.json({
-//         ok: true,
-//         applied: !!coupon,
-//         totals,
-//         message: ''
-//       });
-//     }
-
-//     // ② 解除（code === '' など falsy）
-//     if (!code) {
-//       cart.coupon = null;
-//       const totals = calcTotals(items, null, { shipMethod: _shipMethod });
-//       return res.json({
-//         ok: true,
-//         applied: false,
-//         totals,
-//         message: 'クーポンを解除しました。'
-//       });
-//     }
-
-//     // ③ 新規適用（code あり）
-//     // すでに適用済みなら注意だけ出して totals はそのまま
-//     if (cart.coupon && cart.coupon.code) {
-//       const totals = calcTotals(items, cart.coupon, { shipMethod: _shipMethod });
-//       return res.json({
-//         ok: true,
-//         applied: true,
-//         totals,
-//         message: `既にクーポン（${cart.coupon.code}）が適用されています。解除してから別のコードを適用してください。`,
-//         locked: true
-//       });
-//     }
-
-//     const norm = String(code).trim();
-//     const coupon = await findCouponByCode(norm);
-//     if (!coupon) {
-//       const totals = calcTotals(items, null, { shipMethod: _shipMethod });
-//       return res.json({ ok: true, applied: false, totals, message: '無効なクーポンです。' });
-//     }
-
-//     const v = await validateCouponForUser(coupon, { userId, subtotal, shipMethod: _shipMethod });
-//     if (!v.ok) {
-//       const totals = calcTotals(items, null, { shipMethod: _shipMethod });
-//       let msg = 'このクーポンはご利用いただけません。';
-//       if (v.reason === 'MIN_SUBTOTAL') msg = `小計が最低利用金額（¥${Number(v.data?.min||0).toLocaleString()}）に達していません。`;
-//       if (v.reason === 'GLOBAL_LIMIT') msg = 'このクーポンは規定回数に達しました。';
-//       if (v.reason === 'PER_USER_LIMIT') msg = 'お一人様のご利用上限に達しています。';
-//       if (v.reason === 'SHIP_METHOD')   msg = 'このクーポンは現在の受け取り方法ではご利用いただけません。';
-//       return res.json({ ok: true, applied: false, totals, message: msg });
-//     }
-
-//     // セッション保存
-//     cart.coupon = {
-//       code: coupon.code,
-//       type: coupon.discount_type,
-//       value: Number(coupon.discount_value) || 0,
-//       maxDiscount: Number(coupon.max_discount) || null,
-//       minSubtotal: Number(coupon.min_subtotal) || 0,
-//     };
-
-//     let totals = calcTotals(items, cart.coupon, { shipMethod: _shipMethod });
-//     if (cart.coupon.maxDiscount && totals.discount > cart.coupon.maxDiscount) {
-//       const diff = totals.discount - cart.coupon.maxDiscount;
-//       totals.discount = cart.coupon.maxDiscount;
-//       totals.total = Math.max(0, totals.total + diff);
-//     }
-
-//     return res.json({ ok: true, applied: true, totals, message: 'クーポンを適用しました。' });
-//   } catch (e) {
-//     next(e);
-//   }
-// });
-
 async function getUserCartId(sessionUserId) {
   const rows = await dbQuery(
     `
@@ -5790,9 +5960,9 @@ async function fetchSellerConfig(sellerUserId) {
   const allMethod = await loadAllPaymentMethods('payment_method', 'payment_method');
   const allMap = new Map(allMethod.map(m => [m.code, m]));
 
-  // 出品者ごとの許可メソッド（無ければ cod デフォルト）
+  // 出品者ごとの許可メソッド（無ければ cod, card デフォルト）
   const rows = await getAllowedMethodsForUser(sellerUserId, allMethod);
-  const allowedCodes = rows.length ? rows.map(r => String(r.method)) : ['cod'];
+  const allowedCodes = rows.length ? rows.map(r => String(r.method)) : ['cod', 'card'];
 
   // 日本語ラベル付きで整形
   const allowedPaymentMethods = allowedCodes.map(code => {
@@ -6918,6 +7088,7 @@ async function getSellerRecipientsBySellerUserId(sellerUserId){
  *  POST /checkout/confirm  注文を確定
  * -------------------------- */
 app.post('/checkout/confirm', async (req, res, next) => {
+  console.log('[POST /checkout/confirm] HIT', new Date().toISOString());
   const client = await pool.connect();
   try {
     if (!req.session?.user) {
@@ -7283,7 +7454,113 @@ app.post('/checkout/confirm', async (req, res, next) => {
     // 失敗ログを確実に出したい・Ethereal プレビューを見たいなら settle
     await Promise.allSettled(tasks);
 
-    // 完了へ
+    // ========== Stripe決済の場合はCheckout Sessionを作成 ==========
+    if (safePaymentMethod === 'card') {
+      try {
+        // Stripe Checkout Session用のline_itemsを構築
+        const lineItems = [];
+
+        // 割引を含めた合計金額を計算（既にtotal変数に格納されている）
+        // total = subtotal - discount + shipping_fee
+
+        // 割引がある場合、Stripeでは直接負の金額を扱えないため、
+        // 「割引後の商品小計」として1つのline_itemにまとめる
+        if (discount > 0) {
+          const discountedSubtotal = Math.max(0, subtotal - discount);
+          lineItems.push({
+            price_data: {
+              currency: 'jpy',
+              product_data: {
+                name: `商品代金（割引適用済: ${coupon?.code || ''}）`
+              },
+              unit_amount: discountedSubtotal
+            },
+            quantity: 1
+          });
+        } else {
+          // 割引がない場合は通常通り商品を個別に追加
+          for (const p of targetPairs) {
+            const prod = byId.get(p.productId);
+            lineItems.push({
+              price_data: {
+                currency: 'jpy',
+                product_data: {
+                  name: prod.title
+                },
+                unit_amount: prod.price
+              },
+              quantity: p.quantity
+            });
+          }
+        }
+
+        // 送料を追加（0円でない場合）
+        if (shipping_fee > 0) {
+          lineItems.push({
+            price_data: {
+              currency: 'jpy',
+              product_data: {
+                name: '送料'
+              },
+              unit_amount: shipping_fee
+            },
+            quantity: 1
+          });
+        }
+
+        const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
+
+        // Stripe Checkout Session を作成
+        const session = await stripe.checkout.sessions.create({
+          payment_method_types: ['card'],
+          line_items: lineItems,
+          mode: 'payment',
+          success_url: `${appUrl}/checkout/complete?no=${encodeURIComponent(orderNo)}`,
+          cancel_url: `${appUrl}/checkout?seller=${encodeURIComponent(sellerId)}`,
+          metadata: {
+            order_id: String(orderId),
+            order_number: orderNo,
+            seller_id: String(sellerId),
+            user_id: String(uid)
+          }
+        });
+
+        // orders テーブルを更新してStripe情報を保存
+        await dbQuery(
+          `UPDATE orders
+           SET payment_provider = 'stripe',
+               payment_external_id = $1,
+               updated_at = now()
+           WHERE id = $2`,
+          [session.id, orderId]
+        );
+
+        logger.info('Stripe Checkout Session created', {
+          sessionId: session.id,
+          orderId,
+          orderNumber: orderNo
+        });
+
+        // Stripeの決済ページにリダイレクト
+        return res.redirect(session.url);
+      } catch (err) {
+        logger.error('Failed to create Stripe Checkout Session', {
+          error: err.message,
+          stack: err.stack,
+          orderId,
+          orderNumber: orderNo
+        });
+
+        // Stripe決済失敗時は従来通りの完了ページへ
+        req.session.flash = {
+          type: 'warning',
+          message: '決済画面の準備に失敗しました。注文は作成されていますが、お手数ですが別の支払い方法をご利用ください。'
+        };
+        return res.redirect(`/checkout/complete?no=${encodeURIComponent(orderNo)}`);
+      }
+    }
+
+    // 完了へ（代金引換など、Stripe以外の決済方法の場合）
     return res.redirect(`/checkout/complete?no=${encodeURIComponent(orderNo)}`);
   } catch (e) {
     try { await client.query('ROLLBACK'); } catch {}
@@ -7313,7 +7590,8 @@ app.get('/checkout/complete', async (req, res, next) => {
     const orderRows = await dbQuery(
       `SELECT o.id, o.order_number AS order_no, o.buyer_id,
               o.status, o.subtotal, o.discount, o.shipping_fee, o.total, o.ship_time_code,
-              o.created_at, o.eta_at, o.payment_method, o.ship_method, o.coupon_code
+              o.created_at, o.eta_at, o.payment_method, o.ship_method, o.coupon_code,
+              o.payment_status
          FROM orders o
         WHERE (o.order_number = $1 OR o.id::text = $1)
           ${uid ? 'AND o.buyer_id = $2::uuid' : ''}
@@ -7448,6 +7726,7 @@ app.get('/checkout/complete', async (req, res, next) => {
       created_at: order.created_at,
       eta_at: order.eta_at,
       payment_method: order.payment_method,
+      payment_status: order.payment_status,
       ship_method: order.ship_method,
       payment_method_ja: jaLabel('payment_method', order.payment_method) || null,
       ship_method_ja: jaLabel('ship_method', order.ship_method) || null,
@@ -8001,19 +8280,30 @@ async function resolveChromiumExecutable() {
 }
 
 // Node.js の環境（Render等）で必要になりがちな起動オプション
+// 【2】本番環境（Docker/Render）でのみ特別な起動オプションを適用
 async function buildLaunchOptions() {
+  const isProd = process.env.NODE_ENV === 'production';
   let executablePath = await resolveChromiumExecutable();
+  
+  const baseArgs = [
+    '--font-render-hinting=medium',
+    '--disable-gpu',
+    '--lang=ja-JP'
+  ];
+  
+  // 本番環境（Docker/Render）でのみ必須のオプション
+  if (isProd) {
+    baseArgs.push(
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage'
+    );
+  }
+  
   return {
     headless: 'new',
     executablePath: executablePath || undefined,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--font-render-hinting=medium',
-      '--disable-gpu',
-      '--disable-dev-shm-usage',
-      '--lang=ja-JP'
-    ]
+    args: baseArgs
   };
 }
 
@@ -8287,6 +8577,10 @@ app.post('/uploads/sign', requireAuth /* 任意: requireRole('seller') */, async
     }
 
     // ---- 2) 新規アップロード用の署名を発行 ----
+    if (!isR2Configured || !r2) {
+      return res.status(503).json({ ok: false, message: 'R2ストレージが設定されていません。' });
+    }
+
     const key = buildR2Key({ scope: 'products', sellerId: sellerId || 'anon', productId, ext });
 
     const cmd = new PutObjectCommand({
@@ -8312,6 +8606,10 @@ app.post('/uploads/confirm', requireAuth /* 任意: requireRole('seller') */, as
     if (!key) return res.status(400).json({ ok:false, message:'key が必要です。' });
 
     // R2に存在するか軽く確認（HeadObject）
+    if (!isR2Configured || !r2) {
+      return res.status(503).json({ ok: false, message: 'R2ストレージが設定されていません。' });
+    }
+
     let head = null;
     try {
       head = await r2.send(new HeadObjectCommand({ Bucket: R2_BUCKET, Key: key }));
@@ -11836,6 +12134,34 @@ app.use((err, req, res, next) => {
 /* =========================================================
  *  Start
  * =======================================================*/
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+try {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+    logger.info(`Server started successfully on port ${PORT}`, {
+      nodeEnv: process.env.NODE_ENV || 'development',
+      port: PORT
+    });
+  }).on('error', (error) => {
+    console.error('=== SERVER LISTEN ERROR ===');
+    console.error('Error:', error);
+    console.error('Stack:', error.stack);
+    console.error('Port:', PORT);
+    console.error('==========================');
+    logger.error('Failed to start server', {
+      error: error.message,
+      stack: error.stack,
+      port: PORT
+    });
+    process.exit(1);
+  });
+} catch (error) {
+  console.error('=== SERVER STARTUP ERROR ===');
+  console.error('Error:', error);
+  console.error('Stack:', error.stack);
+  console.error('===========================');
+  logger.error('Failed to start server', {
+    error: error.message,
+    stack: error.stack
+  });
+  process.exit(1);
+}
