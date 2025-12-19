@@ -80,6 +80,7 @@ const stripe = require('./lib/stripe');
 
 const app = express();
 const isProd = process.env.NODE_ENV === 'production';
+const APP_ORIGIN = process.env.APP_ORIGIN || (isProd ? null : 'http://localhost:3000');
 app.set('trust proxy', 1);
 
 // Renderの接続文字列（環境変数に置くのが推奨）
@@ -354,6 +355,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(helmet({
   contentSecurityPolicy: {
+    useDefaults: false,
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: [
@@ -387,12 +389,7 @@ app.use(helmet({
         "https://accounts.google.com",  // Google OAuth
         "https://www.google.com"  // Google reCAPTCHA
       ],
-      formAction: [
-        ...(isProd
-          ? (APP_ORIGIN ? [APP_ORIGIN] : [])
-          : ["http://localhost:3000"]
-        ),
-      ],
+      formAction: ["'self'", "https://checkout.stripe.com"],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: isProd ? [] : null  // 本番環境のみHTTPSへアップグレード
     }
@@ -5642,113 +5639,6 @@ const TIME_SLOT_MASTER = {
   pickup: PICKUP_TIME_SLOTS
 };
 
-// /* ----------------------------
-//  *  POST /cart/apply-coupon クーポン適用
-//  *  body: { code }
-//  *  例: SUM10 → 10%OFF
-//  * -------------------------- */
-// app.post('/checkout/apply-coupon', async (req, res, next) => {
-//   console.log('4914行目のアプライクーポン');
-//   try {
-//     const { code, shipMethod, sellerId } = req.body || {};
-//     const cart = ensureCart(req);
-//     const _shipMethod = shipMethod || 'delivery';
-//     const userId = req.session?.user?.id || null;
-
-//     // ★ どの出品者カートかで items を取得する
-//     let items = [];
-//     if (sellerId) {
-//       const allPairs = await loadCartItems(req); // いつも /checkout で使っているやつ
-//       const selectedIds = getSelectedIdsBySeller(req, sellerId);
-//       const pairs = filterPairsBySelectedAndSeller(allPairs, selectedIds, sellerId);
-//       items = await fetchCartItemsWithDetails(pairs);
-//     } else {
-//       // sellerId が無い場合は従来通り cart.items から（フォールバック）
-//       items = await fetchCartItemsWithDetails(cart.items || []);
-//     }
-
-//     const subtotal = items.reduce((a, it) => a + (toInt(it.price, 0) * toInt(it.quantity, 1)), 0);
-
-//     // ★ code プロパティの「有無」で再計算/適用/解除を分ける
-//     const hasCodeKey = Object.prototype.hasOwnProperty.call(req.body || {}, 'code');
-
-//     // ① 再計算のみ（shipMethod 変更時）
-//     if (!hasCodeKey) {
-//       const coupon = cart.coupon || null;
-//       const totals = calcTotals(items, coupon, { shipMethod: _shipMethod });
-//       return res.json({
-//         ok: true,
-//         applied: !!coupon,
-//         totals,
-//         message: ''
-//       });
-//     }
-
-//     // ② 解除（code === '' など falsy）
-//     if (!code) {
-//       cart.coupon = null;
-//       const totals = calcTotals(items, null, { shipMethod: _shipMethod });
-//       return res.json({
-//         ok: true,
-//         applied: false,
-//         totals,
-//         message: 'クーポンを解除しました。'
-//       });
-//     }
-
-//     // ③ 新規適用（code あり）
-//     // すでに適用済みなら注意だけ出して totals はそのまま
-//     if (cart.coupon && cart.coupon.code) {
-//       const totals = calcTotals(items, cart.coupon, { shipMethod: _shipMethod });
-//       return res.json({
-//         ok: true,
-//         applied: true,
-//         totals,
-//         message: `既にクーポン（${cart.coupon.code}）が適用されています。解除してから別のコードを適用してください。`,
-//         locked: true
-//       });
-//     }
-
-//     const norm = String(code).trim();
-//     const coupon = await findCouponByCode(norm);
-//     if (!coupon) {
-//       const totals = calcTotals(items, null, { shipMethod: _shipMethod });
-//       return res.json({ ok: true, applied: false, totals, message: '無効なクーポンです。' });
-//     }
-
-//     const v = await validateCouponForUser(coupon, { userId, subtotal, shipMethod: _shipMethod });
-//     if (!v.ok) {
-//       const totals = calcTotals(items, null, { shipMethod: _shipMethod });
-//       let msg = 'このクーポンはご利用いただけません。';
-//       if (v.reason === 'MIN_SUBTOTAL') msg = `小計が最低利用金額（¥${Number(v.data?.min||0).toLocaleString()}）に達していません。`;
-//       if (v.reason === 'GLOBAL_LIMIT') msg = 'このクーポンは規定回数に達しました。';
-//       if (v.reason === 'PER_USER_LIMIT') msg = 'お一人様のご利用上限に達しています。';
-//       if (v.reason === 'SHIP_METHOD')   msg = 'このクーポンは現在の受け取り方法ではご利用いただけません。';
-//       return res.json({ ok: true, applied: false, totals, message: msg });
-//     }
-
-//     // セッション保存
-//     cart.coupon = {
-//       code: coupon.code,
-//       type: coupon.discount_type,
-//       value: Number(coupon.discount_value) || 0,
-//       maxDiscount: Number(coupon.max_discount) || null,
-//       minSubtotal: Number(coupon.min_subtotal) || 0,
-//     };
-
-//     let totals = calcTotals(items, cart.coupon, { shipMethod: _shipMethod });
-//     if (cart.coupon.maxDiscount && totals.discount > cart.coupon.maxDiscount) {
-//       const diff = totals.discount - cart.coupon.maxDiscount;
-//       totals.discount = cart.coupon.maxDiscount;
-//       totals.total = Math.max(0, totals.total + diff);
-//     }
-
-//     return res.json({ ok: true, applied: true, totals, message: 'クーポンを適用しました。' });
-//   } catch (e) {
-//     next(e);
-//   }
-// });
-
 async function getUserCartId(sessionUserId) {
   const rows = await dbQuery(
     `
@@ -7198,6 +7088,7 @@ async function getSellerRecipientsBySellerUserId(sellerUserId){
  *  POST /checkout/confirm  注文を確定
  * -------------------------- */
 app.post('/checkout/confirm', async (req, res, next) => {
+  console.log('[POST /checkout/confirm] HIT', new Date().toISOString());
   const client = await pool.connect();
   try {
     if (!req.session?.user) {
