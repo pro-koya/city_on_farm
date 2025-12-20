@@ -364,12 +364,15 @@ app.use(helmet({
         "https://cdn.jsdelivr.net",  // flatpickr などのCDNスクリプト
         "https://yubinbango.github.io",  // yubinbango.js (郵便番号自動入力)
         "https://accounts.google.com",  // Google OAuth
-        "https://www.google.com"  // Google reCAPTCHA (使用している場合)
+        "https://www.google.com",  // Google reCAPTCHA (使用している場合)
+        "https://checkout.stripe.com",  // Stripe Checkout
+        "https://cdn.quilljs.com"
       ],
       styleSrc: [
         "'self'",
         "'unsafe-inline'",  // インラインスタイルを許可
-        "https://cdn.jsdelivr.net"  // flatpickr などのCDNスタイルシート
+        "https://cdn.jsdelivr.net",  // flatpickr などのCDNスタイルシート
+        "https://cdn.quilljs.com"
       ],
       imgSrc: [
         "'self'",
@@ -383,11 +386,14 @@ app.use(helmet({
       ],
       connectSrc: [
         "'self'",
-        "https://accounts.google.com"  // Google OAuth
+        "https://accounts.google.com",  // Google OAuth
+        "https://checkout.stripe.com"  // Stripe Checkout
       ],
       frameSrc: [
+        "'self'",
         "https://accounts.google.com",  // Google OAuth
-        "https://www.google.com"  // Google reCAPTCHA
+        "https://www.google.com",  // Google reCAPTCHA
+        "https://checkout.stripe.com"  // Stripe Checkout
       ],
       formAction: ["'self'", "https://checkout.stripe.com"],
       objectSrc: ["'none'"],
