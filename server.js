@@ -420,7 +420,15 @@ app.use(session({
 // デフォルトの ignoreMethods(['GET','HEAD','OPTIONS']) を使う
 // これで「閲覧系は発行のみ・更新系(POST等)は検証」になる
 const csrfBrowseOnly = csrf();
-app.use(csrfBrowseOnly);
+
+// Stripe webhookなど、外部からのPOSTリクエストを受け付けるパスを除外
+app.use((req, res, next) => {
+  // webhookエンドポイントはCSRF保護をスキップ
+  if (req.path === '/webhooks/stripe') {
+    return next();
+  }
+  csrfBrowseOnly(req, res, next);
+});
 
 // ルート単位で multer 後に検証したい場合のハンドラ
 const csrfProtect = csrf();
