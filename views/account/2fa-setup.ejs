@@ -1,0 +1,259 @@
+<%- include('../partials/header', { title: typeof isReconfiguring !== 'undefined' && isReconfiguring ? '二要素認証の再設定' : '二要素認証の設定', extraCSS: '', extraCSS2: '' }) %>
+
+<main style="max-width: 640px; margin: 120px auto 64px; padding: 0 16px;">
+  <section style="background:#fff; border-radius:16px; box-shadow:0 8px 24px rgba(0,0,0,.08); padding:32px 28px;">
+    <h1 style="margin:0 0 8px; font-size:1.6rem; text-align:center;"><%= typeof isReconfiguring !== 'undefined' && isReconfiguring ? '二要素認証の再設定' : '二要素認証の設定' %></h1>
+    <% if (typeof isReconfiguring !== 'undefined' && isReconfiguring) { %>
+      <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px; margin: 0 0 20px 0;">
+        <p style="margin: 0; color: #856404; font-size: 0.875rem; line-height: 1.5;">
+          <strong>注意:</strong> 既に2FAが有効になっています。再設定すると、現在の設定が上書きされます。既存の認証アプリの設定は無効になります。
+        </p>
+      </div>
+    <% } %>
+    <p style="color:#666; margin:0 0 28px; text-align:center; font-size:0.9rem;">
+      アカウントのセキュリティを強化するために、二要素認証を設定します
+    </p>
+
+    <!-- Step 1: QRコードスキャン -->
+    <div id="step1" style="margin-bottom:32px;">
+      <h2 style="font-size:1.1rem; margin:0 0 16px; display:flex; align-items:center; gap:8px;">
+        <span style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; background:#4C6B5C; color:#fff; border-radius:50%; font-size:0.9rem;">1</span>
+        認証アプリでQRコードをスキャン
+      </h2>
+
+      <div style="text-align:center; margin-bottom:20px; padding:20px; background:#f8f9fa; border-radius:12px;">
+        <img src="<%= qrCodeDataURL %>" alt="QR Code" style="max-width:240px; width:100%; height:auto; border:8px solid #fff; box-shadow:0 4px 12px rgba(0,0,0,.1); border-radius:8px;">
+      </div>
+
+      <div style="background:#fffbf0; border:1px solid #ffd700; border-radius:8px; padding:16px; margin-bottom:16px;">
+        <p style="margin:0 0 8px; font-weight:600; font-size:0.9rem; color:#996600;">
+          📱 対応アプリ
+        </p>
+        <ul style="margin:0; padding-left:20px; font-size:0.85rem; color:#666;">
+          <li>Google Authenticator</li>
+          <li>Authy</li>
+          <li>1Password</li>
+          <li>Microsoft Authenticator</li>
+        </ul>
+      </div>
+
+      <details style="margin-bottom:16px;">
+        <summary style="cursor:pointer; font-size:0.9rem; color:#666; padding:8px 0;">
+          QRコードをスキャンできない場合
+        </summary>
+        <div style="margin-top:12px; padding:12px; background:#f8f9fa; border-radius:8px;">
+          <p style="margin:0 0 8px; font-size:0.85rem; font-weight:600;">以下のキーを手動で入力してください：</p>
+          <code id="manualSecret" style="display:block; padding:10px; background:#fff; border:1px solid #ddd; border-radius:6px; font-family:monospace; font-size:0.9rem; word-break:break-all;">
+            <%= secret %>
+          </code>
+          <button
+            type="button"
+            onclick="copySecret()"
+            style="margin-top:8px; padding:6px 12px; background:#4C6B5C; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:0.85rem;"
+          >
+            📋 コピー
+          </button>
+        </div>
+      </details>
+    </div>
+
+    <!-- Step 2: 認証コード入力 -->
+    <div id="step2" style="margin-bottom:32px;">
+      <h2 style="font-size:1.1rem; margin:0 0 16px; display:flex; align-items:center; gap:8px;">
+        <span style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; background:#4C6B5C; color:#fff; border-radius:50%; font-size:0.9rem;">2</span>
+        認証コードを入力して確認
+      </h2>
+
+      <form id="enable2FAForm" style="margin-bottom:20px;">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <div style="margin-bottom:20px;">
+          <label for="token" style="display:block; margin-bottom:8px; font-weight:600; font-size:0.9rem;">
+            認証コード（6桁）
+          </label>
+          <input
+            type="text"
+            id="token"
+            name="token"
+            maxlength="6"
+            pattern="[0-9]{6}"
+            autocomplete="off"
+            inputmode="numeric"
+            required
+            style="width:100%; padding:14px; border:1px solid #ddd; border-radius:8px; font-size:1.5rem; text-align:center; letter-spacing:0.3em; font-family:monospace;"
+            placeholder="000000"
+          >
+          <p style="color:#666; font-size:0.8rem; margin:6px 0 0;">
+            認証アプリに表示されている6桁のコードを入力してください
+          </p>
+        </div>
+
+        <div id="errorMessage" style="display:none; background:#fee; border:1px solid #fcc; border-radius:8px; padding:12px; margin-bottom:16px;">
+          <p style="color:#c33; margin:0; font-size:0.9rem;" id="errorText"></p>
+        </div>
+
+        <button
+          type="submit"
+          id="submitBtn"
+          class="button button-primary"
+          style="width:100%; padding:14px; font-size:1rem; border-radius:8px; cursor:pointer;"
+        >
+          二要素認証を有効化
+        </button>
+      </form>
+    </div>
+
+    <div style="margin-top:24px; padding-top:20px; border-top:1px solid #eee; text-align:center;">
+      <a href="/admin/users/me#security" style="color:#999; font-size:0.85rem;">← 設定をキャンセル</a>
+    </div>
+  </section>
+</main>
+
+<!-- バックアップコード表示モーダル -->
+<div id="backupCodesModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; overflow-y:auto; padding:20px;">
+  <div style="max-width:560px; margin:40px auto; background:#fff; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,0.3); padding:32px 28px;">
+    <h2 style="margin:0 0 16px; font-size:1.4rem; text-align:center; color:#16a34a;">
+      ✓ 二要素認証が有効になりました
+    </h2>
+
+    <div style="background:#fffbf0; border:2px solid #ffd700; border-radius:12px; padding:20px; margin-bottom:24px;">
+      <p style="margin:0 0 12px; font-weight:700; font-size:1rem; color:#996600;">
+        ⚠️ バックアップコードを保存してください
+      </p>
+      <p style="margin:0; font-size:0.85rem; color:#666; line-height:1.6;">
+        認証アプリを利用できない場合、これらのコードでログインできます。<br>
+        <strong>各コードは1回のみ使用可能です。</strong>安全な場所に保存してください。
+      </p>
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <div id="backupCodesList" style="background:#f8f9fa; border:1px solid #ddd; border-radius:8px; padding:16px; font-family:monospace; font-size:1rem; line-height:1.8;">
+        <!-- JavaScriptで埋め込まれます -->
+      </div>
+    </div>
+
+    <div style="display:flex; gap:12px; margin-bottom:16px;">
+      <button
+        type="button"
+        onclick="copyBackupCodes()"
+        style="flex:1; padding:12px; background:#4C6B5C; color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:0.9rem;"
+      >
+        📋 すべてコピー
+      </button>
+      <button
+        type="button"
+        onclick="downloadBackupCodes()"
+        style="flex:1; padding:12px; background:#2563eb; color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:0.9rem;"
+      >
+        💾 ダウンロード
+      </button>
+    </div>
+
+    <button
+      type="button"
+      onclick="closeBackupCodesModal()"
+      style="width:100%; padding:14px; background:#666; color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:1rem;"
+    >
+      保存しました - 完了
+    </button>
+  </div>
+</div>
+
+<script>
+let backupCodesData = [];
+
+// 秘密鍵をコピー
+function copySecret() {
+  const secret = document.getElementById('manualSecret').textContent.trim();
+  navigator.clipboard.writeText(secret).then(() => {
+    alert('秘密鍵をコピーしました');
+  });
+}
+
+// 2FA有効化フォーム送信
+document.getElementById('enable2FAForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+
+  const submitBtn = document.getElementById('submitBtn');
+  const errorDiv = document.getElementById('errorMessage');
+  const errorText = document.getElementById('errorText');
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = '検証中...';
+  errorDiv.style.display = 'none';
+
+  try {
+    const formData = new FormData(this);
+    const response = await fetch('/account/2fa/enable', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        _csrf: formData.get('_csrf'),
+        token: formData.get('token')
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+      // バックアップコードを表示
+      backupCodesData = data.backupCodes;
+      showBackupCodesModal(data.backupCodes);
+    } else {
+      errorText.textContent = data.message || '認証に失敗しました';
+      errorDiv.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.textContent = '二要素認証を有効化';
+    }
+  } catch (err) {
+    console.error(err);
+    errorText.textContent = '通信エラーが発生しました';
+    errorDiv.style.display = 'block';
+    submitBtn.disabled = false;
+    submitBtn.textContent = '二要素認証を有効化';
+  }
+});
+
+// バックアップコードモーダルを表示
+function showBackupCodesModal(codes) {
+  const list = document.getElementById('backupCodesList');
+  list.innerHTML = codes.map((code, i) => `${i + 1}. ${code}`).join('<br>');
+  document.getElementById('backupCodesModal').style.display = 'block';
+}
+
+// バックアップコードをコピー
+function copyBackupCodes() {
+  const text = backupCodesData.join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    alert('バックアップコードをコピーしました');
+  });
+}
+
+// バックアップコードをダウンロード
+function downloadBackupCodes() {
+  const text = `セッツマルシェ - 二要素認証バックアップコード\n\n${backupCodesData.map((c, i) => `${i + 1}. ${c}`).join('\n')}\n\n生成日時: ${new Date().toLocaleString('ja-JP')}`;
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `2fa-backup-codes-${Date.now()}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// モーダルを閉じて完了
+function closeBackupCodesModal() {
+  if (confirm('バックアップコードを保存しましたか？\n\n保存していない場合、後から確認することはできません。')) {
+    window.location.href = '/admin/users/me#security';
+  }
+}
+
+// 数字のみ入力を許可
+document.getElementById('token').addEventListener('input', function(e) {
+  this.value = this.value.replace(/[^0-9]/g, '');
+});
+</script>
+
+<%- include('../partials/footer') %>

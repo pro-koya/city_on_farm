@@ -1,0 +1,145 @@
+<%- include('../partials/header', { title: '二要素認証', extraCSS: '', extraCSS2: '' }) %>
+
+<main style="max-width: 480px; margin: 120px auto 64px; padding: 0 16px;">
+  <section style="background:#fff; border-radius:16px; box-shadow:0 8px 24px rgba(0,0,0,.08); padding:32px 28px;">
+    <h1 style="margin:0 0 8px; font-size:1.6rem; text-align:center;">二要素認証</h1>
+    <p style="color:#666; margin:0 0 24px; text-align:center; font-size:0.9rem;">
+      認証アプリに表示されている6桁のコードを入力してください
+    </p>
+
+    <% if (error) { %>
+      <div style="background:#fee; border:1px solid #fcc; border-radius:8px; padding:12px; margin-bottom:20px;">
+        <p style="color:#c33; margin:0; font-size:0.9rem;"><%= error %></p>
+      </div>
+    <% } %>
+
+    <% if (!useBackupCode) { %>
+      <!-- 通常の2FAコード入力 -->
+      <form id="verify2FAForm" method="POST" action="/login/2fa/verify" style="margin-bottom:20px;">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <div style="margin-bottom:20px;">
+          <label for="token" style="display:block; margin-bottom:6px; font-weight:600; font-size:0.9rem;">
+            認証コード
+          </label>
+          <input
+            type="text"
+            id="token"
+            name="token"
+            maxlength="6"
+            pattern="[0-9]{6}"
+            autocomplete="one-time-code"
+            inputmode="numeric"
+            required
+            style="width:100%; padding:12px; border:1px solid #ddd; border-radius:8px; font-size:1.5rem; text-align:center; letter-spacing:0.3em; font-family:monospace;"
+            placeholder="000000"
+            autofocus
+          >
+          <p style="color:#666; font-size:0.8rem; margin:6px 0 0;">
+            Google Authenticator、Authy、1Password等のアプリに表示されているコードを入力してください
+          </p>
+        </div>
+
+        <button
+          type="submit"
+          class="button button-primary"
+          style="width:100%; padding:14px; font-size:1rem; border-radius:8px; cursor:pointer;"
+        >
+          認証する
+        </button>
+      </form>
+
+      <div style="text-align:center; margin-top:16px;">
+        <a href="?useBackup=true" style="color:#666; font-size:0.9rem; text-decoration:underline;">
+          バックアップコードを使用
+        </a>
+      </div>
+
+    <% } else { %>
+      <!-- バックアップコード入力 -->
+      <form id="verifyBackupForm" method="POST" action="/login/2fa/backup" style="margin-bottom:20px;">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <div style="margin-bottom:20px;">
+          <label for="backupCode" style="display:block; margin-bottom:6px; font-weight:600; font-size:0.9rem;">
+            バックアップコード
+          </label>
+          <input
+            type="text"
+            id="backupCode"
+            name="backupCode"
+            maxlength="8"
+            pattern="[A-F0-9]{8}"
+            required
+            style="width:100%; padding:12px; border:1px solid #ddd; border-radius:8px; font-size:1.2rem; text-align:center; letter-spacing:0.2em; font-family:monospace; text-transform:uppercase;"
+            placeholder="XXXXXXXX"
+            autofocus
+          >
+          <p style="color:#666; font-size:0.8rem; margin:6px 0 0;">
+            2FA設定時に保存したバックアップコードを入力してください
+          </p>
+        </div>
+
+        <button
+          type="submit"
+          class="button button-primary"
+          style="width:100%; padding:14px; font-size:1rem; border-radius:8px; cursor:pointer;"
+        >
+          認証する
+        </button>
+      </form>
+
+      <div style="text-align:center; margin-top:16px;">
+        <a href="?" style="color:#666; font-size:0.9rem; text-decoration:underline;">
+          認証コードで認証
+        </a>
+      </div>
+    <% } %>
+
+    <div style="margin-top:24px; padding-top:20px; border-top:1px solid #eee; text-align:center;">
+      <a href="/login" style="color:#999; font-size:0.85rem;">← ログイン画面に戻る</a>
+    </div>
+  </section>
+
+  <div style="margin-top:32px; padding:20px; background:#f8f9fa; border-radius:12px; text-align:center;">
+    <p style="margin:0 0 8px; font-size:0.85rem; color:#666;">
+      🔒 セキュリティのため、二要素認証を設定しています
+    </p>
+    <p style="margin:0; font-size:0.8rem; color:#999;">
+      認証アプリを起動できない場合は、バックアップコードをご使用ください
+    </p>
+  </div>
+</main>
+
+<script>
+// 自動フォーカスと入力補助
+(function() {
+  const tokenInput = document.getElementById('token');
+  const backupInput = document.getElementById('backupCode');
+  const activeInput = tokenInput || backupInput;
+
+  if (activeInput) {
+    activeInput.focus();
+
+    // 数字のみ入力を許可（トークンの場合）
+    if (tokenInput) {
+      tokenInput.addEventListener('input', function(e) {
+        this.value = this.value.replace(/[^0-9]/g, '');
+        if (this.value.length === 6) {
+          // 6桁入力したら自動送信（オプション）
+          // document.getElementById('verify2FAForm').submit();
+        }
+      });
+    }
+
+    // 大文字化（バックアップコードの場合）
+    if (backupInput) {
+      backupInput.addEventListener('input', function(e) {
+        this.value = this.value.toUpperCase().replace(/[^A-F0-9]/g, '');
+      });
+    }
+  }
+})();
+</script>
+
+<%- include('../partials/footer') %>

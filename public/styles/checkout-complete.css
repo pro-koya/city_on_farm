@@ -31,26 +31,14 @@ a:hover {
 .complete-hero {
     max-width: 1200px;
     margin: 40px auto 32px;
-    padding: 28px 24px 24px;
+    padding: 32px 24px 28px;
     text-align: center;
-    border-radius: 24px;
+    border-radius: 12px;
     position: relative;
-    overflow: hidden;
     color: #0f172a;
-    background:
-      radial-gradient(circle at 0 0, rgba(163,201,168,.45), transparent 60%),
-      radial-gradient(circle at 100% 0, rgba(56,114,237,.3), transparent 60%),
-      #f9fafb;
-    box-shadow: 0 18px 45px rgba(15,23,42,.12);
-}
-
-.complete-hero::after {
-    content:"";
-    position:absolute;
-    inset:0;
-    background: linear-gradient(135deg, rgba(255,255,255,.4), transparent 40%, rgba(56,114,237,.08));
-    mix-blend-mode: screen;
-    pointer-events:none;
+    background: var(--color-white);
+    border: 1px solid #eee;
+    box-shadow: 0 10px 24px rgba(15,23,42,.06);
 }
 
 .complete-hero__icon {
@@ -110,6 +98,93 @@ a:hover {
     font-size: .85rem;
 }
 .btn-link:hover { opacity:.9; }
+
+/* 決済通知カード */
+.complete-payment-notice {
+    margin: 1.5rem auto;
+    padding: 16px 18px;
+    border-radius: 12px;
+    background: var(--color-white);
+    border: 1px solid #eee;
+    box-shadow: 0 8px 20px rgba(15,23,42,.04);
+    max-width: 600px;
+}
+
+.complete-payment-notice__title {
+    margin: 0 0 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.complete-payment-notice__message {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #4b5563;
+    line-height: 1.5;
+}
+
+/* 決済ステータス別の装飾 */
+.complete-payment-notice--paid .complete-payment-notice__title {
+    color: #059669;
+}
+.complete-payment-notice--paid::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #10b981;
+    border-radius: 12px 0 0 12px;
+}
+.complete-payment-notice--paid {
+    position: relative;
+    border-left: 4px solid #10b981;
+}
+
+.complete-payment-notice--pending .complete-payment-notice__title {
+    color: #d97706;
+}
+.complete-payment-notice--pending {
+    position: relative;
+    border-left: 4px solid #f59e0b;
+}
+
+.complete-payment-notice--failed .complete-payment-notice__title {
+    color: #dc2626;
+}
+.complete-payment-notice--failed {
+    position: relative;
+    border-left: 4px solid #ef4444;
+}
+
+.payment-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-size: 14px;
+}
+
+.payment-icon--paid {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.payment-icon--pending {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.payment-icon--failed {
+    background: #fee2e2;
+    color: #dc2626;
+}
 
 /* アクションボタン */
 .complete-actions {
