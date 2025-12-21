@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-12-20T18:27:07.908Z
+> Generated at: 2025-12-21T18:28:40.459Z
 
 ---
 
@@ -556,6 +556,58 @@
 
 ---
 
+### `public.login_history`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `user_id` | `uuid` | YES |  |  |
+| 3 | `email` | `varchar(255)` | NO |  |  |
+| 4 | `success` | `boolean` | NO |  |  |
+| 5 | `ip_address` | `inet` | YES |  |  |
+| 6 | `user_agent` | `text` | YES |  |  |
+| 7 | `failure_reason` | `text` | YES |  |  |
+| 8 | `two_factor_used` | `boolean` | YES | false |  |
+| 9 | `created_at` | `timestamp without time zone` | YES | CURRENT_TIMESTAMP |  |
+
+**Constraints**
+
+- **CHECK**: `login_history_email_not_null`, `login_history_id_not_null`, `login_history_success_not_null`
+- **FOREIGN KEY**: `login_history_user_id_fkey`
+- **PRIMARY KEY**: `login_history_pkey`
+
+**Indexes**
+
+- `idx_login_history_created_at`
+  
+  ```sql
+  CREATE INDEX idx_login_history_created_at ON public.login_history USING btree (created_at)
+  ```
+- `idx_login_history_ip`
+  
+  ```sql
+  CREATE INDEX idx_login_history_ip ON public.login_history USING btree (ip_address)
+  ```
+- `idx_login_history_success`
+  
+  ```sql
+  CREATE INDEX idx_login_history_success ON public.login_history USING btree (success, created_at)
+  ```
+- `idx_login_history_user_id`
+  
+  ```sql
+  CREATE INDEX idx_login_history_user_id ON public.login_history USING btree (user_id)
+  ```
+- `login_history_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX login_history_pkey ON public.login_history USING btree (id)
+  ```
+
+---
+
 ### `public.notification_reads`
 
 ユーザーごとの通知既読状態
@@ -932,6 +984,8 @@
 | 31 | `payment_external_id` | `text` | YES |  |  |
 | 32 | `ship_time_code` | `text` | YES |  |  |
 | 33 | `receipt_name` | `text` | YES |  | 領収書の宛名（1〜40文字） |
+| 34 | `transfer_id` | `uuid` | YES |  | 紐付けられた送金記録のID |
+| 35 | `transfer_status` | `varchar(20)` | YES | 'pending'::character varying | pending: 未送金, included: 送金記録に含まれた, transferred: 送金完了 |
 
 > **Enum `order_status` values**: `pending`, `paid`, `shipped`, `cancelled`, `confirmed`, `processing`, `delivered`, `canceled`, `refunded`, `fulfilled`
 > **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`
@@ -942,7 +996,7 @@
 **Constraints**
 
 - **CHECK**: `orders_amounts_check`, `orders_bill_same_not_null`, `orders_buyer_id_not_null`, `orders_coupon_discount_not_null`, `orders_created_at_not_null`, `orders_discount_not_null`, `orders_id_not_null`, `orders_payment_status_not_null`, `orders_receipt_name_length_check`, `orders_shipment_status_not_null`, `orders_shipping_fee_not_null`, `orders_status_not_null`, `orders_subtotal_not_null`, `orders_tax_not_null`, `orders_total_not_null`, `orders_updated_at_not_null`
-- **FOREIGN KEY**: `orders_buyer_id_fkey`, `orders_group_id_fkey`, `orders_seller_id_fkey`
+- **FOREIGN KEY**: `orders_buyer_id_fkey`, `orders_group_id_fkey`, `orders_seller_id_fkey`, `orders_transfer_id_fkey`
 - **PRIMARY KEY**: `orders_pkey`
 - **UNIQUE**: `orders_order_number_key`, `uq_orders_order_number`
 
@@ -997,6 +1051,16 @@
   
   ```sql
   CREATE INDEX idx_orders_status_updated_at ON public.orders USING btree (status, updated_at DESC)
+  ```
+- `idx_orders_transfer_id`
+  
+  ```sql
+  CREATE INDEX idx_orders_transfer_id ON public.orders USING btree (transfer_id)
+  ```
+- `idx_orders_transfer_status`
+  
+  ```sql
+  CREATE INDEX idx_orders_transfer_status ON public.orders USING btree (transfer_status)
   ```
 - `ix_orders_order_number`
   
@@ -1129,6 +1193,62 @@ _No indexes_
 
 ---
 
+### `public.partner_bank_accounts`
+
+取引先の銀行口座情報（売上送金先）
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `partner_id` | `uuid` | NO |  |  |
+| 3 | `bank_name` | `varchar(100)` | NO |  |  |
+| 4 | `bank_code` | `varchar(4)` | YES |  |  |
+| 5 | `branch_name` | `varchar(100)` | NO |  |  |
+| 6 | `branch_code` | `varchar(3)` | YES |  |  |
+| 7 | `account_type` | `varchar(20)` | NO |  | 口座種別: ordinary(普通), current(当座), savings(貯蓄) |
+| 8 | `account_number` | `varchar(7)` | NO |  |  |
+| 9 | `account_holder_name` | `varchar(100)` | NO |  |  |
+| 10 | `is_verified` | `boolean` | YES | false | 管理者による確認済みフラグ |
+| 11 | `verified_at` | `timestamp without time zone` | YES |  |  |
+| 12 | `verified_by` | `uuid` | YES |  |  |
+| 13 | `note` | `text` | YES |  |  |
+| 14 | `created_at` | `timestamp without time zone` | YES | now() |  |
+| 15 | `updated_at` | `timestamp without time zone` | YES | now() |  |
+
+**Constraints**
+
+- **CHECK**: `partner_bank_accounts_account_holder_name_not_null`, `partner_bank_accounts_account_number_not_null`, `partner_bank_accounts_account_type_not_null`, `partner_bank_accounts_bank_name_not_null`, `partner_bank_accounts_branch_name_not_null`, `partner_bank_accounts_id_not_null`, `partner_bank_accounts_partner_id_not_null`
+- **FOREIGN KEY**: `partner_bank_accounts_partner_id_fkey`, `partner_bank_accounts_verified_by_fkey`
+- **PRIMARY KEY**: `partner_bank_accounts_pkey`
+- **UNIQUE**: `partner_bank_accounts_partner_id_key`
+
+**Indexes**
+
+- `idx_partner_bank_accounts_partner_id`
+  
+  ```sql
+  CREATE INDEX idx_partner_bank_accounts_partner_id ON public.partner_bank_accounts USING btree (partner_id)
+  ```
+- `idx_partner_bank_accounts_verified`
+  
+  ```sql
+  CREATE INDEX idx_partner_bank_accounts_verified ON public.partner_bank_accounts USING btree (is_verified)
+  ```
+- `partner_bank_accounts_partner_id_key`
+  
+  ```sql
+  CREATE UNIQUE INDEX partner_bank_accounts_partner_id_key ON public.partner_bank_accounts USING btree (partner_id)
+  ```
+- `partner_bank_accounts_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX partner_bank_accounts_pkey ON public.partner_bank_accounts USING btree (id)
+  ```
+
+---
+
 ### `public.partner_date_availabilities`
 
 **Columns**
@@ -1169,6 +1289,70 @@ _No indexes_
   
   ```sql
   CREATE UNIQUE INDEX uq_partner_date ON public.partner_date_availabilities USING btree (partner_id, kind, date, start_time, end_time)
+  ```
+
+---
+
+### `public.partner_transfers`
+
+取引先への送金履歴（手動送金の記録）
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `partner_id` | `uuid` | NO |  |  |
+| 3 | `bank_account_id` | `uuid` | YES |  |  |
+| 4 | `transfer_period_start` | `date` | NO |  |  |
+| 5 | `transfer_period_end` | `date` | NO |  |  |
+| 6 | `transfer_scheduled_date` | `date` | NO |  | 送金予定日（隔週月曜日） |
+| 7 | `total_order_amount` | `integer` | NO |  |  |
+| 8 | `platform_fee_rate` | `numeric(5,2)` | YES | 0.00 |  |
+| 9 | `platform_fee_amount` | `integer` | YES | 0 |  |
+| 10 | `transfer_amount` | `integer` | NO |  |  |
+| 11 | `order_count` | `integer` | NO |  |  |
+| 12 | `order_ids` | `ARRAY` | NO |  | 送金対象の注文ID配列 |
+| 13 | `status` | `varchar(20)` | NO | 'pending'::character varying | pending: 送金待ち, processing: 処理中, completed: 完了, failed: 失敗, cancelled: キャンセル |
+| 14 | `transferred_at` | `timestamp without time zone` | YES |  |  |
+| 15 | `transferred_by` | `uuid` | YES |  |  |
+| 16 | `transfer_note` | `text` | YES |  |  |
+| 17 | `error_message` | `text` | YES |  |  |
+| 18 | `created_at` | `timestamp without time zone` | YES | now() |  |
+| 19 | `updated_at` | `timestamp without time zone` | YES | now() |  |
+
+**Constraints**
+
+- **CHECK**: `check_order_count`, `check_transfer_amount`, `check_transfer_period`, `partner_transfers_id_not_null`, `partner_transfers_order_count_not_null`, `partner_transfers_order_ids_not_null`, `partner_transfers_partner_id_not_null`, `partner_transfers_status_not_null`, `partner_transfers_total_order_amount_not_null`, `partner_transfers_transfer_amount_not_null`, `partner_transfers_transfer_period_end_not_null`, `partner_transfers_transfer_period_start_not_null`, `partner_transfers_transfer_scheduled_date_not_null`
+- **FOREIGN KEY**: `partner_transfers_bank_account_id_fkey`, `partner_transfers_partner_id_fkey`, `partner_transfers_transferred_by_fkey`
+- **PRIMARY KEY**: `partner_transfers_pkey`
+
+**Indexes**
+
+- `idx_partner_transfers_partner_id`
+  
+  ```sql
+  CREATE INDEX idx_partner_transfers_partner_id ON public.partner_transfers USING btree (partner_id)
+  ```
+- `idx_partner_transfers_period`
+  
+  ```sql
+  CREATE INDEX idx_partner_transfers_period ON public.partner_transfers USING btree (transfer_period_start, transfer_period_end)
+  ```
+- `idx_partner_transfers_scheduled_date`
+  
+  ```sql
+  CREATE INDEX idx_partner_transfers_scheduled_date ON public.partner_transfers USING btree (transfer_scheduled_date)
+  ```
+- `idx_partner_transfers_status`
+  
+  ```sql
+  CREATE INDEX idx_partner_transfers_status ON public.partner_transfers USING btree (status)
+  ```
+- `partner_transfers_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX partner_transfers_pkey ON public.partner_transfers USING btree (id)
   ```
 
 ---
@@ -2037,6 +2221,58 @@ _No indexes_
 
 ---
 
+### `public.trusted_devices`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `user_id` | `uuid` | YES |  |  |
+| 3 | `device_token` | `varchar(255)` | NO |  |  |
+| 4 | `device_name` | `text` | YES |  |  |
+| 5 | `ip_address` | `inet` | YES |  |  |
+| 6 | `last_used_at` | `timestamp without time zone` | YES |  |  |
+| 7 | `expires_at` | `timestamp without time zone` | NO |  |  |
+| 8 | `created_at` | `timestamp without time zone` | YES | CURRENT_TIMESTAMP |  |
+
+**Constraints**
+
+- **CHECK**: `trusted_devices_device_token_not_null`, `trusted_devices_expires_at_not_null`, `trusted_devices_id_not_null`
+- **FOREIGN KEY**: `trusted_devices_user_id_fkey`
+- **PRIMARY KEY**: `trusted_devices_pkey`
+- **UNIQUE**: `trusted_devices_device_token_key`
+
+**Indexes**
+
+- `idx_trusted_devices_expires`
+  
+  ```sql
+  CREATE INDEX idx_trusted_devices_expires ON public.trusted_devices USING btree (expires_at)
+  ```
+- `idx_trusted_devices_token`
+  
+  ```sql
+  CREATE INDEX idx_trusted_devices_token ON public.trusted_devices USING btree (device_token)
+  ```
+- `idx_trusted_devices_user_id`
+  
+  ```sql
+  CREATE INDEX idx_trusted_devices_user_id ON public.trusted_devices USING btree (user_id)
+  ```
+- `trusted_devices_device_token_key`
+  
+  ```sql
+  CREATE UNIQUE INDEX trusted_devices_device_token_key ON public.trusted_devices USING btree (device_token)
+  ```
+- `trusted_devices_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX trusted_devices_pkey ON public.trusted_devices USING btree (id)
+  ```
+
+---
+
 ### `public.user_allowed_payment_methods`
 
 **Columns**
@@ -2129,6 +2365,14 @@ _No indexes_
 | 18 | `account_type` | `text` | NO | 'individual'::text |  |
 | 19 | `email_verified_at` | `timestamp with time zone` | YES |  |  |
 | 20 | `email_verify_token` | `text` | YES |  |  |
+| 21 | `two_factor_secret` | `varchar(255)` | YES |  |  |
+| 22 | `two_factor_enabled` | `boolean` | YES | false |  |
+| 23 | `two_factor_backup_codes` | `ARRAY` | YES |  |  |
+| 24 | `two_factor_enabled_at` | `timestamp without time zone` | YES |  |  |
+| 25 | `account_locked_at` | `timestamp without time zone` | YES |  |  |
+| 26 | `account_locked_reason` | `text` | YES |  |  |
+| 27 | `failed_login_attempts` | `integer` | YES | 0 |  |
+| 28 | `last_failed_login_at` | `timestamp without time zone` | YES |  |  |
 
 **Constraints**
 
@@ -2138,6 +2382,11 @@ _No indexes_
 
 **Indexes**
 
+- `idx_users_account_locked`
+  
+  ```sql
+  CREATE INDEX idx_users_account_locked ON public.users USING btree (account_locked_at) WHERE (account_locked_at IS NOT NULL)
+  ```
 - `idx_users_city_trgm`
   
   ```sql
@@ -2157,6 +2406,11 @@ _No indexes_
   
   ```sql
   CREATE INDEX idx_users_prefecture_city ON public.users USING btree (prefecture, city)
+  ```
+- `idx_users_two_factor_enabled`
+  
+  ```sql
+  CREATE INDEX idx_users_two_factor_enabled ON public.users USING btree (two_factor_enabled)
   ```
 - `users_email_key`
   
