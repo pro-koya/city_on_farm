@@ -424,7 +424,8 @@ const csrfBrowseOnly = csrf();
 // Stripe webhookなど、外部からのPOSTリクエストを受け付けるパスを除外
 app.use((req, res, next) => {
   // webhookエンドポイントはCSRF保護をスキップ
-  if (req.path === '/webhooks/stripe') {
+  if (req.path === '/webhooks/stripe' || req.url === '/webhooks/stripe') {
+    logger.debug('Skipping CSRF for webhook:', { path: req.path, url: req.url, method: req.method });
     return next();
   }
   csrfBrowseOnly(req, res, next);
