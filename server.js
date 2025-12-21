@@ -133,6 +133,19 @@ app.post(
   '/webhooks/stripe',
   express.raw({ type: 'application/json' }),
   async (req, res) => {
+    logger.info('Stripe webhook received:', {
+      path: req.path,
+      url: req.url,
+      method: req.method,
+      headers: {
+        'stripe-signature': req.headers['stripe-signature'] ? 'present' : 'missing',
+        'content-type': req.headers['content-type'],
+        'content-length': req.headers['content-length']
+      },
+      bodySize: req.body ? req.body.length : 0,
+      timestamp: new Date().toISOString()
+    });
+
     const sig = req.headers['stripe-signature'];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -146,8 +159,19 @@ app.post(
     try {
       // Stripe署名を検証
       event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+      logger.info('Stripe webhook signature verified:', {
+        eventId: event.id,
+        eventType: event.type,
+        timestamp: new Date().toISOString()
+      });
     } catch (err) {
-      logger.error('Webhook signature verification failed', { error: err.message });
+      logger.error('Webhook signature verification failed', {
+        error: err.message,
+        stack: err.stack,
+        signaturePresent: !!sig,
+        bodySize: req.body ? req.body.length : 0,
+        timestamp: new Date().toISOString()
+      });
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
@@ -337,12 +361,19 @@ app.post(
       }
 
       // Stripeに成功を返す
+      logger.info('Stripe webhook processed successfully:', {
+        eventId: event.id,
+        eventType: event.type,
+        timestamp: new Date().toISOString()
+      });
       res.json({ received: true });
     } catch (err) {
       logger.error('Webhook processing error', {
         error: err.message,
         stack: err.stack,
-        eventType: event.type
+        eventType: event?.type || 'unknown',
+        eventId: event?.id || 'unknown',
+        timestamp: new Date().toISOString()
       });
       res.status(500).json({ error: 'Webhook processing failed' });
     }
@@ -425,9 +456,42 @@ const csrfBrowseOnly = csrf();
 app.use((req, res, next) => {
   // webhookエンドポイントはCSRF保護をスキップ
   if (req.path === '/webhooks/stripe' || req.url === '/webhooks/stripe') {
-    logger.debug('Skipping CSRF for webhook:', { path: req.path, url: req.url, method: req.method });
+    logger.info('Skipping CSRF for webhook:', {
+      path: req.path,
+      url: req.url,
+      method: req.method,
+      headers: {
+        'stripe-signature': req.headers['stripe-signature'] ? 'present' : 'missing',
+        'content-type': req.headers['content-type'],
+        'user-agent': req.headers['user-agent'],
+        'origin': req.headers['origin'],
+        'referer': req.headers['referer']
+      },
+      timestamp: new Date().toISOString()
+    });
     return next();
   }
+  
+  // CSRF保護を適用する前に、CSRFエラーが発生した場合のログを追加
+  const originalNext = next;
+  next = (err) => {
+    if (err && err.code === 'EBADCSRFTOKEN') {
+      logger.warn('CSRF token validation failed:', {
+        path: req.path,
+        url: req.url,
+        method: req.method,
+        headers: {
+          'origin': req.headers['origin'],
+          'referer': req.headers['referer'],
+          'user-agent': req.headers['user-agent']
+        },
+        hasCsrfToken: !!req.body?._csrf,
+        timestamp: new Date().toISOString()
+      });
+    }
+    originalNext(err);
+  };
+  
   csrfBrowseOnly(req, res, next);
 });
 
