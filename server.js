@@ -83,6 +83,24 @@ const isProd = process.env.NODE_ENV === 'production';
 const APP_ORIGIN = process.env.APP_ORIGIN || (isProd ? null : 'http://localhost:3000');
 app.set('trust proxy', 1);
 
+// すべてのリクエストをログに記録（デバッグ用）
+app.use((req, res, next) => {
+  if (req.path === '/webhooks/stripe' || req.url === '/webhooks/stripe') {
+    console.log('[DEBUG] Request received for /webhooks/stripe:', {
+      method: req.method,
+      path: req.path,
+      url: req.url,
+      headers: {
+        'content-type': req.headers['content-type'],
+        'stripe-signature': req.headers['stripe-signature'] ? 'present' : 'missing',
+        'user-agent': req.headers['user-agent']
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
+  next();
+});
+
 // Renderの接続文字列（環境変数に置くのが推奨）
 const { pool, dbQuery } = require('./services/db');
 app.locals.db = pool;
@@ -133,6 +151,7 @@ app.post(
   '/webhooks/stripe',
   express.raw({ type: 'application/json' }),
   async (req, res) => {
+    console.log('[DEBUG] /webhooks/stripe handler ENTERED - this should appear if route is matched');
     logger.info('Stripe webhook received:', {
       path: req.path,
       url: req.url,
@@ -456,6 +475,7 @@ const csrfBrowseOnly = csrf();
 app.use((req, res, next) => {
   // webhookエンドポイントはCSRF保護をスキップ
   if (req.path === '/webhooks/stripe' || req.url === '/webhooks/stripe') {
+    console.log('[DEBUG] CSRF middleware: Skipping CSRF for webhook');
     logger.info('Skipping CSRF for webhook:', {
       path: req.path,
       url: req.url,
@@ -476,6 +496,12 @@ app.use((req, res, next) => {
   const originalNext = next;
   next = (err) => {
     if (err && err.code === 'EBADCSRFTOKEN') {
+      console.log('[DEBUG] CSRF ERROR detected:', {
+        path: req.path,
+        url: req.url,
+        method: req.method,
+        errorCode: err.code
+      });
       logger.warn('CSRF token validation failed:', {
         path: req.path,
         url: req.url,
