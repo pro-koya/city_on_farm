@@ -43,6 +43,11 @@ public,favorites,ix_favorites_user,"CREATE INDEX ix_favorites_user ON public.fav
 public,favorites,ux_favorites_user_product,"CREATE UNIQUE INDEX ux_favorites_user_product ON public.favorites USING btree (user_id, product_id)",t,f
 public,global_allowed_payment_methods,global_allowed_payment_methods_pkey,CREATE UNIQUE INDEX global_allowed_payment_methods_pkey ON public.global_allowed_payment_methods USING btree (method),t,t
 public,gmail_tokens,gmail_tokens_pkey,CREATE UNIQUE INDEX gmail_tokens_pkey ON public.gmail_tokens USING btree (id),t,t
+public,login_history,idx_login_history_created_at,CREATE INDEX idx_login_history_created_at ON public.login_history USING btree (created_at),f,f
+public,login_history,idx_login_history_ip,CREATE INDEX idx_login_history_ip ON public.login_history USING btree (ip_address),f,f
+public,login_history,idx_login_history_success,"CREATE INDEX idx_login_history_success ON public.login_history USING btree (success, created_at)",f,f
+public,login_history,idx_login_history_user_id,CREATE INDEX idx_login_history_user_id ON public.login_history USING btree (user_id),f,f
+public,login_history,login_history_pkey,CREATE UNIQUE INDEX login_history_pkey ON public.login_history USING btree (id),t,t
 public,notification_reads,idx_notification_reads_notification,CREATE INDEX idx_notification_reads_notification ON public.notification_reads USING btree (notification_id),f,f
 public,notification_reads,idx_notification_reads_user,"CREATE INDEX idx_notification_reads_user ON public.notification_reads USING btree (user_id, read_at DESC)",f,f
 public,notification_reads,notification_reads_pkey,CREATE UNIQUE INDEX notification_reads_pkey ON public.notification_reads USING btree (id),t,t
@@ -82,6 +87,8 @@ public,orders,idx_orders_seller_created,"CREATE INDEX idx_orders_seller_created 
 public,orders,idx_orders_shipment_status,CREATE INDEX idx_orders_shipment_status ON public.orders USING btree (shipment_status),f,f
 public,orders,idx_orders_status,CREATE INDEX idx_orders_status ON public.orders USING btree (status),f,f
 public,orders,idx_orders_status_updated_at,"CREATE INDEX idx_orders_status_updated_at ON public.orders USING btree (status, updated_at DESC)",f,f
+public,orders,idx_orders_transfer_id,CREATE INDEX idx_orders_transfer_id ON public.orders USING btree (transfer_id),f,f
+public,orders,idx_orders_transfer_status,CREATE INDEX idx_orders_transfer_status ON public.orders USING btree (transfer_status),f,f
 public,orders,ix_orders_coupon_code,CREATE INDEX ix_orders_coupon_code ON public.orders USING btree (coupon_code),f,f
 public,orders,ix_orders_order_number,CREATE INDEX ix_orders_order_number ON public.orders USING btree (order_number),f,f
 public,orders,ix_orders_payment_external,"CREATE INDEX ix_orders_payment_external ON public.orders USING btree (payment_provider, payment_external_id)",f,f
@@ -92,9 +99,18 @@ public,orders,orders_pkey,CREATE UNIQUE INDEX orders_pkey ON public.orders USING
 public,orders,uq_orders_order_number,CREATE UNIQUE INDEX uq_orders_order_number ON public.orders USING btree (order_number),t,f
 public,partner_allowed_payment_methods,idx_papm_partner,CREATE INDEX idx_papm_partner ON public.partner_allowed_payment_methods USING btree (partner_id),f,f
 public,partner_allowed_payment_methods,partner_allowed_payment_methods_pkey,"CREATE UNIQUE INDEX partner_allowed_payment_methods_pkey ON public.partner_allowed_payment_methods USING btree (partner_id, method)",t,t
+public,partner_bank_accounts,idx_partner_bank_accounts_partner_id,CREATE INDEX idx_partner_bank_accounts_partner_id ON public.partner_bank_accounts USING btree (partner_id),f,f
+public,partner_bank_accounts,idx_partner_bank_accounts_verified,CREATE INDEX idx_partner_bank_accounts_verified ON public.partner_bank_accounts USING btree (is_verified),f,f
+public,partner_bank_accounts,partner_bank_accounts_partner_id_key,CREATE UNIQUE INDEX partner_bank_accounts_partner_id_key ON public.partner_bank_accounts USING btree (partner_id),t,f
+public,partner_bank_accounts,partner_bank_accounts_pkey,CREATE UNIQUE INDEX partner_bank_accounts_pkey ON public.partner_bank_accounts USING btree (id),t,t
 public,partner_date_availabilities,idx_partner_date_availabilities_partner,"CREATE INDEX idx_partner_date_availabilities_partner ON public.partner_date_availabilities USING btree (partner_id, kind, date)",f,f
 public,partner_date_availabilities,partner_date_availabilities_pkey,CREATE UNIQUE INDEX partner_date_availabilities_pkey ON public.partner_date_availabilities USING btree (id),t,t
 public,partner_date_availabilities,uq_partner_date,"CREATE UNIQUE INDEX uq_partner_date ON public.partner_date_availabilities USING btree (partner_id, kind, date, start_time, end_time)",t,f
+public,partner_transfers,idx_partner_transfers_partner_id,CREATE INDEX idx_partner_transfers_partner_id ON public.partner_transfers USING btree (partner_id),f,f
+public,partner_transfers,idx_partner_transfers_period,"CREATE INDEX idx_partner_transfers_period ON public.partner_transfers USING btree (transfer_period_start, transfer_period_end)",f,f
+public,partner_transfers,idx_partner_transfers_scheduled_date,CREATE INDEX idx_partner_transfers_scheduled_date ON public.partner_transfers USING btree (transfer_scheduled_date),f,f
+public,partner_transfers,idx_partner_transfers_status,CREATE INDEX idx_partner_transfers_status ON public.partner_transfers USING btree (status),f,f
+public,partner_transfers,partner_transfers_pkey,CREATE UNIQUE INDEX partner_transfers_pkey ON public.partner_transfers USING btree (id),t,t
 public,partner_weekday_availabilities,idx_partner_weekday_availabilities_partner,"CREATE INDEX idx_partner_weekday_availabilities_partner ON public.partner_weekday_availabilities USING btree (partner_id, kind, weekday)",f,f
 public,partner_weekday_availabilities,partner_weekday_availabilities_pkey,CREATE UNIQUE INDEX partner_weekday_availabilities_pkey ON public.partner_weekday_availabilities USING btree (id),t,t
 public,partner_weekday_availabilities,uq_partner_weekday,"CREATE UNIQUE INDEX uq_partner_weekday ON public.partner_weekday_availabilities USING btree (partner_id, kind, weekday, start_time, end_time)",t,f
@@ -166,13 +182,20 @@ public,tags,idx_tags_name,CREATE INDEX idx_tags_name ON public.tags USING btree 
 public,tags,tags_name_key,CREATE UNIQUE INDEX tags_name_key ON public.tags USING btree (name),t,f
 public,tags,tags_pkey,CREATE UNIQUE INDEX tags_pkey ON public.tags USING btree (id),t,t
 public,tags,tags_slug_key,CREATE UNIQUE INDEX tags_slug_key ON public.tags USING btree (slug),t,f
+public,trusted_devices,idx_trusted_devices_expires,CREATE INDEX idx_trusted_devices_expires ON public.trusted_devices USING btree (expires_at),f,f
+public,trusted_devices,idx_trusted_devices_token,CREATE INDEX idx_trusted_devices_token ON public.trusted_devices USING btree (device_token),f,f
+public,trusted_devices,idx_trusted_devices_user_id,CREATE INDEX idx_trusted_devices_user_id ON public.trusted_devices USING btree (user_id),f,f
+public,trusted_devices,trusted_devices_device_token_key,CREATE UNIQUE INDEX trusted_devices_device_token_key ON public.trusted_devices USING btree (device_token),t,f
+public,trusted_devices,trusted_devices_pkey,CREATE UNIQUE INDEX trusted_devices_pkey ON public.trusted_devices USING btree (id),t,t
 public,user_allowed_payment_methods,idx_uapm_user,CREATE INDEX idx_uapm_user ON public.user_allowed_payment_methods USING btree (user_id),f,f
 public,user_allowed_payment_methods,user_allowed_payment_methods_pkey,"CREATE UNIQUE INDEX user_allowed_payment_methods_pkey ON public.user_allowed_payment_methods USING btree (user_id, method)",t,t
 public,user_recent_products,idx_user_recent_products_user_time,"CREATE INDEX idx_user_recent_products_user_time ON public.user_recent_products USING btree (user_id, viewed_at DESC)",f,f
 public,user_recent_products,user_recent_products_pkey,"CREATE UNIQUE INDEX user_recent_products_pkey ON public.user_recent_products USING btree (user_id, product_id)",t,t
+public,users,idx_users_account_locked,CREATE INDEX idx_users_account_locked ON public.users USING btree (account_locked_at) WHERE (account_locked_at IS NOT NULL),f,f
 public,users,idx_users_city_trgm,CREATE INDEX idx_users_city_trgm ON public.users USING gin (city gin_trgm_ops),f,f
 public,users,idx_users_partner,CREATE INDEX idx_users_partner ON public.users USING btree (partner_id),f,f
 public,users,idx_users_postal_norm,CREATE INDEX idx_users_postal_norm ON public.users USING btree (postal_norm),f,f
 public,users,idx_users_prefecture_city,"CREATE INDEX idx_users_prefecture_city ON public.users USING btree (prefecture, city)",f,f
+public,users,idx_users_two_factor_enabled,CREATE INDEX idx_users_two_factor_enabled ON public.users USING btree (two_factor_enabled),f,f
 public,users,users_email_key,CREATE UNIQUE INDEX users_email_key ON public.users USING btree (email),t,f
 public,users,users_pkey,CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id),t,t
