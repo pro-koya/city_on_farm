@@ -85,11 +85,33 @@ app.set('trust proxy', 1);
 
 // すべてのリクエストをログに記録（デバッグ用）
 app.use((req, res, next) => {
-  if (req.path === '/webhooks/stripe' || req.url === '/webhooks/stripe') {
-    console.log('[DEBUG] Request received for /webhooks/stripe:', {
+  // POSTリクエストをすべてログに記録
+  if (req.method === 'POST') {
+    console.log('[DEBUG] POST request received:', {
       method: req.method,
       path: req.path,
       url: req.url,
+      originalUrl: req.originalUrl,
+      baseUrl: req.baseUrl,
+      headers: {
+        'content-type': req.headers['content-type'],
+        'stripe-signature': req.headers['stripe-signature'] ? 'present' : 'missing',
+        'user-agent': req.headers['user-agent'],
+        'origin': req.headers['origin'],
+        'referer': req.headers['referer']
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  // webhookエンドポイントへのリクエストを特に詳細にログ
+  if (req.path === '/webhooks/stripe' || req.url === '/webhooks/stripe' || req.originalUrl === '/webhooks/stripe') {
+    console.log('[DEBUG] WEBHOOK REQUEST DETECTED:', {
+      method: req.method,
+      path: req.path,
+      url: req.url,
+      originalUrl: req.originalUrl,
+      baseUrl: req.baseUrl,
       headers: {
         'content-type': req.headers['content-type'],
         'stripe-signature': req.headers['stripe-signature'] ? 'present' : 'missing',
@@ -474,11 +496,30 @@ const csrfBrowseOnly = csrf();
 // Stripe webhookなど、外部からのPOSTリクエストを受け付けるパスを除外
 app.use((req, res, next) => {
   // webhookエンドポイントはCSRF保護をスキップ
-  if (req.path === '/webhooks/stripe' || req.url === '/webhooks/stripe') {
-    console.log('[DEBUG] CSRF middleware: Skipping CSRF for webhook');
+  // パスのマッチングを複数の方法で確認（Renderのリバースプロキシ対応）
+  const isWebhookPath = 
+    req.path === '/webhooks/stripe' || 
+    req.url === '/webhooks/stripe' || 
+    req.originalUrl === '/webhooks/stripe' ||
+    (req.path && req.path.includes('webhooks/stripe')) ||
+    (req.url && req.url.includes('webhooks/stripe')) ||
+    (req.originalUrl && req.originalUrl.includes('webhooks/stripe'));
+  
+  // Stripeのwebhookリクエストを識別（stripe-signatureヘッダーの存在）
+  const hasStripeSignature = !!req.headers['stripe-signature'];
+  
+  if (isWebhookPath || hasStripeSignature) {
+    console.log('[DEBUG] CSRF middleware: Skipping CSRF for webhook', {
+      isWebhookPath,
+      hasStripeSignature,
+      path: req.path,
+      url: req.url,
+      originalUrl: req.originalUrl
+    });
     logger.info('Skipping CSRF for webhook:', {
       path: req.path,
       url: req.url,
+      originalUrl: req.originalUrl,
       method: req.method,
       headers: {
         'stripe-signature': req.headers['stripe-signature'] ? 'present' : 'missing',
