@@ -77,6 +77,9 @@ const { randomUUID } = require('crypto');
 const { generateAuthUrl, getTokenFromCode, getAuthedClient } = require('./services/gmailClient');
 const { gmailSend } = require('./services/mailer');
 const stripe = require('./lib/stripe');
+// 2FA関連ユーティリティ
+const twoFA = require('./services/2fa');
+const loginSecurity = require('./services/login-security');
 
 const app = express();
 const isProd = process.env.NODE_ENV === 'production';
@@ -980,6 +983,38 @@ const uploadLimiter = rateLimit({
 /* =========================================================
  *  認証
  * =======================================================*/
+
+/**
+ * ログイン履歴を記録
+ */
+async function recordLoginAttempt({
+  userId = null,
+  email,
+  success,
+  ipAddress,
+  userAgent,
+  failureReason = null,
+  twoFactorUsed = false
+}) {
+  try {
+    await dbQuery(
+      `INSERT INTO login_history
+       (user_id, email, success, ip_address, user_agent, failure_reason, two_factor_used)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [userId, email, success, ipAddress, userAgent, failureReason, twoFactorUsed]
+    );
+  } catch (err) {
+    console.error('Failed to record login attempt:', err);
+  }
+}
+
+/**
+ * アカウントがロックされているかチェック
+ */
+function isAccountLocked(user) {
+  return user.account_locked_at !== null && user.account_locked_at !== undefined;
+}
+
 // GET /login（CSRF付与）
 app.get('/login', (req, res) => {
   res.set('Cache-Control', 'no-store');
@@ -992,7 +1027,7 @@ app.get('/login', (req, res) => {
   });
 });
 
-// POST /login
+// POST /login - 強化版（2FA対応、ログイン履歴記録、アカウントロック）
 app.post(
   '/login',
   loginLimiter,
@@ -1008,7 +1043,9 @@ app.post(
   async (req, res, next) => {
     try {
       const errors = validationResult(req);
-      const { email, password } = req.body;
+      const { email, password, trustDevice } = req.body;
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      const userAgent = req.headers['user-agent'] || '';
 
       if (!errors.isEmpty()) {
         const fieldErrors = {};
@@ -1023,11 +1060,73 @@ app.post(
         });
       }
 
-      const rows = await dbQuery(`SELECT id, name, email, password_hash, roles, seller_intro_summary, email_verified_at FROM users WHERE email = $1 LIMIT 1`, [email]);
+      // ユーザー情報取得（2FA関連カラムも含める）
+      const rows = await dbQuery(
+        `SELECT id, name, email, password_hash, roles, seller_intro_summary, email_verified_at,
+                two_factor_enabled, two_factor_secret, two_factor_backup_codes,
+                account_locked_at, account_locked_reason, failed_login_attempts
+         FROM users
+         WHERE email = $1
+         LIMIT 1`,
+        [email]
+      );
       const user = rows[0];
+
+      // パスワード検証
       const ok = user ? await bcrypt.compare(password, user.password_hash) : false;
 
       if (!ok) {
+        // ログイン失敗を記録
+        await recordLoginAttempt({
+          userId: user?.id,
+          email,
+          success: false,
+          ipAddress,
+          userAgent,
+          failureReason: 'パスワード誤り'
+        });
+
+        // 失敗回数をインクリメント
+        if (user) {
+          const failedAttempts = (user.failed_login_attempts || 0) + 1;
+          await dbQuery(
+            `UPDATE users
+             SET failed_login_attempts = $1,
+                 last_failed_login_at = CURRENT_TIMESTAMP
+             WHERE id = $2`,
+            [failedAttempts, user.id]
+          );
+
+          // 10回失敗でアカウントロック
+          if (failedAttempts >= 10) {
+            await dbQuery(
+              `UPDATE users
+               SET account_locked_at = CURRENT_TIMESTAMP,
+                   account_locked_reason = 'ログイン試行回数超過'
+               WHERE id = $1`,
+              [user.id]
+            );
+
+            // ロック通知メール送信（非同期）
+            try {
+              await gmailSend({
+                to: user.email,
+                subject: '【重要】アカウントがロックされました - セッツマルシェ',
+                html: `
+                  <p>${user.name} 様</p>
+                  <p>セキュリティのため、お客様のアカウントをロックしました。</p>
+                  <p><strong>理由:</strong> ログイン試行回数が上限（10回）に達しました。</p>
+                  <p>もしお客様ご自身によるログイン試行でない場合は、第三者による不正アクセスの可能性があります。</p>
+                  <p>アカウントのロック解除については、お問い合わせフォームよりご連絡ください。</p>
+                  <p>---<br>セッツマルシェ</p>
+                `
+              });
+            } catch (mailErr) {
+              console.error('Failed to send account lock email:', mailErr);
+            }
+          }
+        }
+
         const msg = 'メールアドレスまたはパスワードが正しくありません。';
         return res.status(401).render('auth/login', {
           title: 'ログイン',
@@ -1039,7 +1138,38 @@ app.post(
         });
       }
 
+      // アカウントロックチェック
+      if (isAccountLocked(user)) {
+        await recordLoginAttempt({
+          userId: user.id,
+          email,
+          success: false,
+          ipAddress,
+          userAgent,
+          failureReason: 'アカウントロック中'
+        });
+
+        return res.status(403).render('auth/login', {
+          title: 'ログイン',
+          csrfToken: req.csrfToken(),
+          values: { email },
+          fieldErrors: {},
+          globalError: `アカウントがロックされています。理由: ${user.account_locked_reason || '不明'}。お問い合わせフォームよりご連絡ください。`,
+          showResendLink: false
+        });
+      }
+
+      // メールアドレス未検証チェック
       if (!user.email_verified_at) {
+        await recordLoginAttempt({
+          userId: user.id,
+          email,
+          success: false,
+          ipAddress,
+          userAgent,
+          failureReason: 'メールアドレス未検証'
+        });
+
         req.session.pendingVerifyUserId = user.id;
         req.session.pendingVerifyEmail = user.email;
         const msg = 'メールアドレスの確認が完了していません。メールアドレスを認証してください。';
@@ -1052,11 +1182,303 @@ app.post(
         });
       }
 
-      req.session.user = { id: user.id, name: user.name, email: user.email, roles: user.roles || [] };
+      // パスワード認証成功 - 失敗回数をリセット
+      await dbQuery(
+        `UPDATE users
+         SET failed_login_attempts = 0,
+             last_failed_login_at = NULL
+         WHERE id = $1`,
+        [user.id]
+      );
+
+      // 2FA有効化チェック
+      if (user.two_factor_enabled) {
+        // 信頼済みデバイスチェック
+        const deviceToken = req.cookies['trusted_device'];
+        let isTrustedDevice = false;
+
+        if (deviceToken) {
+          const trustedDevices = await dbQuery(
+            `SELECT id FROM trusted_devices
+             WHERE user_id = $1
+               AND device_token = $2
+               AND expires_at > CURRENT_TIMESTAMP`,
+            [user.id, deviceToken]
+          );
+
+          if (trustedDevices.length > 0) {
+            isTrustedDevice = true;
+            // 最終使用日時を更新
+            await dbQuery(
+              `UPDATE trusted_devices
+               SET last_used_at = CURRENT_TIMESTAMP
+               WHERE id = $1`,
+              [trustedDevices[0].id]
+            );
+          }
+        }
+
+        if (!isTrustedDevice) {
+          // 2FA検証が必要 - 一時セッションに保存
+          req.session.pending2FA = {
+            userId: user.id,
+            email: user.email,
+            name: user.name,
+            roles: user.roles || [],
+            trustDevice: trustDevice === 'on'
+          };
+
+          return res.redirect('/login/2fa');
+        }
+      }
+
+      // ログイン成功を記録
+      await recordLoginAttempt({
+        userId: user.id,
+        email,
+        success: true,
+        ipAddress,
+        userAgent,
+        twoFactorUsed: user.two_factor_enabled
+      });
+
+      // セッションにユーザー情報を保存
+      req.session.user = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        roles: user.roles || []
+      };
+
       await mergeSessionCartToDb(req, user.id);
       await mergeSessionRecentToDb(req);
       await attachContactsToUserAfterLogin(user);
+
       const roles = user.roles || [];
+      return res.redirect(roles.includes('seller') ? '/dashboard/seller' : '/dashboard/buyer');
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ============================================================
+// 2FAログイン検証ルート
+// ============================================================
+
+// 2FA検証用のRate Limiter
+const twoFALimiter = rateLimit({
+  windowMs: 60 * 1000,  // 1分
+  max: 5,                // 最大5回
+  message: '試行回数が上限に達しました。1分後に再試行してください。',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const backupCodeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 3,
+  message: '試行回数が上限に達しました。1分後に再試行してください。',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// GET /login/2fa - 2FA検証画面
+app.get('/login/2fa', (req, res) => {
+  if (!req.session.pending2FA) {
+    return res.redirect('/login');
+  }
+
+  res.set('Cache-Control', 'no-store');
+  res.render('auth/login-2fa', {
+    title: '二要素認証',
+    csrfToken: typeof req.csrfToken === 'function' ? req.csrfToken() : null,
+    email: req.session.pending2FA.email,
+    error: '',
+    useBackupCode: false
+  });
+});
+
+// POST /login/2fa/verify - 2FAトークン検証
+app.post(
+  '/login/2fa/verify',
+  csrfProtect,
+  twoFALimiter,
+  async (req, res, next) => {
+    try {
+      if (!req.session.pending2FA) {
+        return res.redirect('/login');
+      }
+
+      const { token } = req.body;
+      const { userId, email, name, roles, trustDevice } = req.session.pending2FA;
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      const userAgent = req.headers['user-agent'] || '';
+
+      // ユーザー情報取得
+      const rows = await dbQuery(
+        `SELECT two_factor_secret FROM users WHERE id = $1`,
+        [userId]
+      );
+      const user = rows[0];
+
+      if (!user || !user.two_factor_secret) {
+        return res.status(400).render('auth/login-2fa', {
+          title: '二要素認証',
+          csrfToken: req.csrfToken(),
+          email,
+          error: '2FA設定が見つかりません。',
+          useBackupCode: false
+        });
+      }
+
+      // 秘密鍵を復号化
+      const secret = twoFA.decrypt2FASecret(user.two_factor_secret);
+
+      // トークン検証
+      const valid = twoFA.verify2FAToken(secret, token);
+
+      if (!valid) {
+        await recordLoginAttempt({
+          userId,
+          email,
+          success: false,
+          ipAddress,
+          userAgent,
+          failureReason: '2FA検証失敗'
+        });
+
+        return res.status(401).render('auth/login-2fa', {
+          title: '二要素認証',
+          csrfToken: req.csrfToken(),
+          email,
+          error: '認証コードが正しくありません。',
+          useBackupCode: false
+        });
+      }
+
+      // 2FA検証成功
+      await recordLoginAttempt({
+        userId,
+        email,
+        success: true,
+        ipAddress,
+        userAgent,
+        twoFactorUsed: true
+      });
+
+      // 信頼済みデバイスとして保存
+      if (trustDevice) {
+        const deviceToken = twoFA.generateDeviceToken();
+        const deviceName = twoFA.parseDeviceName(userAgent);
+
+        await dbQuery(
+          `INSERT INTO trusted_devices
+           (user_id, device_token, device_name, ip_address, last_used_at, expires_at)
+           VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '30 days')`,
+          [userId, deviceToken, deviceName, ipAddress]
+        );
+
+        // Cookieに保存（30日間）
+        res.cookie('trusted_device', deviceToken, {
+          maxAge: 30 * 24 * 60 * 60 * 1000, // 30日
+          httpOnly: true,
+          secure: isProd,
+          sameSite: 'lax'
+        });
+      }
+
+      // セッションにユーザー情報を保存
+      req.session.user = { id: userId, name, email, roles };
+      delete req.session.pending2FA;
+
+      await mergeSessionCartToDb(req, userId);
+      await mergeSessionRecentToDb(req);
+
+      return res.redirect(roles.includes('seller') ? '/dashboard/seller' : '/dashboard/buyer');
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /login/2fa/backup - バックアップコード検証
+app.post(
+  '/login/2fa/backup',
+  csrfProtect,
+  backupCodeLimiter,
+  async (req, res, next) => {
+    try {
+      if (!req.session.pending2FA) {
+        return res.redirect('/login');
+      }
+
+      const { backupCode } = req.body;
+      const { userId, email, name, roles } = req.session.pending2FA;
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      const userAgent = req.headers['user-agent'] || '';
+
+      // ユーザー情報取得
+      const rows = await dbQuery(
+        `SELECT two_factor_backup_codes FROM users WHERE id = $1`,
+        [userId]
+      );
+      const user = rows[0];
+
+      if (!user || !user.two_factor_backup_codes) {
+        return res.status(400).render('auth/login-2fa', {
+          title: '二要素認証',
+          csrfToken: req.csrfToken(),
+          email,
+          error: 'バックアップコードが見つかりません。',
+          useBackupCode: true
+        });
+      }
+
+      // バックアップコード検証
+      const result = await twoFA.verifyBackupCode(backupCode, user.two_factor_backup_codes);
+
+      if (!result.valid) {
+        await recordLoginAttempt({
+          userId,
+          email,
+          success: false,
+          ipAddress,
+          userAgent,
+          failureReason: 'バックアップコード検証失敗'
+        });
+
+        return res.status(401).render('auth/login-2fa', {
+          title: '二要素認証',
+          csrfToken: req.csrfToken(),
+          email,
+          error: 'バックアップコードが正しくありません。',
+          useBackupCode: true
+        });
+      }
+
+      // バックアップコード使用成功 - 使用済みコードを削除
+      const updatedCodes = user.two_factor_backup_codes.filter((_, index) => index !== result.index);
+      await dbQuery(
+        `UPDATE users SET two_factor_backup_codes = $1 WHERE id = $2`,
+        [updatedCodes, userId]
+      );
+
+      await recordLoginAttempt({
+        userId,
+        email,
+        success: true,
+        ipAddress,
+        userAgent,
+        twoFactorUsed: true
+      });
+
+      req.session.user = { id: userId, name, email, roles };
+      delete req.session.pending2FA;
+
+      await mergeSessionCartToDb(req, userId);
+      await mergeSessionRecentToDb(req);
+
       return res.redirect(roles.includes('seller') ? '/dashboard/seller' : '/dashboard/buyer');
     } catch (err) {
       next(err);
@@ -2166,6 +2588,346 @@ app.get('/contact/thanks', (req, res) => {
     title: 'お問い合わせありがとうございました',
     inquiryNo: req.query.no || ''    // またはサーバ側で整形した受付番号
   });
+});
+
+// ============================================================
+// アカウント設定・プロフィール
+// ============================================================
+
+// GET /account/profile - アカウント設定（プロフィール）画面
+app.get('/account/profile', requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.session.user.id;
+    
+    // ユーザー情報取得（2FA状態も含める）
+    const userRows = await dbQuery(
+      `SELECT id, name, email, phone, two_factor_enabled
+       FROM users WHERE id = $1`,
+      [userId]
+    );
+    const user = userRows[0];
+    
+    if (!user) {
+      return res.status(404).render('errors/404', { title: '見つかりません' });
+    }
+
+    // 住所一覧取得
+    const addresses = await dbQuery(
+      `SELECT id, full_name, phone, postal_code, prefecture, city, address_line1, address_line2, address_type, is_default
+       FROM addresses
+       WHERE user_id = $1 AND scope = 'user'
+       ORDER BY is_default DESC, created_at DESC`,
+      [userId]
+    );
+
+    res.render('account/profile', {
+      title: 'アカウント設定',
+      user,
+      addresses: addresses || [],
+      csrfToken: typeof req.csrfToken === 'function' ? req.csrfToken() : null
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================
+// 2FA設定関連ルート
+// ============================================================
+
+// GET /account/2fa/setup - 2FA設定画面
+app.get('/account/2fa/setup', requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.session.user.id;
+
+    // ユーザーの2FA状態を確認
+    const rows = await dbQuery(
+      `SELECT two_factor_enabled FROM users WHERE id = $1`,
+      [userId]
+    );
+    const user = rows[0];
+
+    // 既に有効化済みの場合でも、再設定を許可する（リダイレクトしない）
+    // ユーザーが再設定したい場合は、まず無効化してから設定する必要がある
+
+    // 新しい秘密鍵を生成
+    const { secret, otpauth_url } = twoFA.generate2FASecret(req.session.user.email);
+
+    // QRコードを生成
+    const qrCodeDataURL = await twoFA.generateQRCode(otpauth_url);
+
+    // セッションに一時保存（検証後に保存）
+    req.session.pending2FASecret = secret;
+
+    res.set('Cache-Control', 'no-store');
+    res.render('account/2fa-setup', {
+      title: user.two_factor_enabled ? '二要素認証の再設定' : '二要素認証の設定',
+      qrCodeDataURL,
+      secret,
+      isReconfiguring: user.two_factor_enabled || false,
+      csrfToken: typeof req.csrfToken === 'function' ? req.csrfToken() : null
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /account/2fa/enable - 2FA有効化
+app.post('/account/2fa/enable', requireAuth, csrfProtect, async (req, res, next) => {
+  try {
+    const userId = req.session.user.id;
+    const { token } = req.body;
+    const secret = req.session.pending2FASecret;
+
+    if (!secret) {
+      return res.status(400).json({
+        ok: false,
+        message: 'セッションが期限切れです。もう一度設定画面を開いてください。'
+      });
+    }
+
+    // トークン検証
+    const valid = twoFA.verify2FAToken(secret, token, 2); // window=2 で少し緩めに検証
+
+    if (!valid) {
+      return res.status(401).json({
+        ok: false,
+        message: '認証コードが正しくありません。もう一度お試しください。'
+      });
+    }
+
+    // バックアップコードを生成
+    const backupCodes = await twoFA.generateBackupCodes();
+    const hashedBackupCodes = await twoFA.hashBackupCodes(backupCodes);
+
+    // 秘密鍵を暗号化
+    const encryptedSecret = twoFA.encrypt2FASecret(secret);
+
+    // DBに保存
+    await dbQuery(
+      `UPDATE users
+       SET two_factor_enabled = true,
+           two_factor_secret = $1,
+           two_factor_backup_codes = $2,
+           two_factor_enabled_at = CURRENT_TIMESTAMP
+       WHERE id = $3`,
+      [encryptedSecret, hashedBackupCodes, userId]
+    );
+
+    // セッションから削除
+    delete req.session.pending2FASecret;
+
+    res.json({
+      ok: true,
+      backupCodes // プレーンテキストで返す（これが最後のチャンス）
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /account/2fa/disable - 2FA無効化
+app.post('/account/2fa/disable', requireAuth, (req, res, next) => {
+  // CSRF保護を手動で適用（エラーハンドリングのため）
+  csrfProtect(req, res, (err) => {
+    if (err) {
+      console.error('[2FA無効化] CSRFエラー:', {
+        code: err.code,
+        message: err.message,
+        headers: {
+          'x-csrf-token': req.headers['x-csrf-token'] ? 'present' : 'missing',
+          'csrf-token': req.headers['csrf-token'] ? 'present' : 'missing',
+          'x-requested-with': req.headers['x-requested-with']
+        }
+      });
+      return res.status(403).json({
+        ok: false,
+        message: 'CSRFトークンが無効です。ページを再読み込みしてください。'
+      });
+    }
+    next();
+  });
+}, async (req, res, next) => {
+  try {
+    const userId = req.session.user.id;
+    const { password } = req.body;
+
+    console.log('[2FA無効化] リクエスト:', { userId, hasPassword: !!password });
+
+    if (!password) {
+      return res.status(400).json({
+        ok: false,
+        message: 'パスワードを入力してください。'
+      });
+    }
+
+    // パスワード確認
+    const rows = await dbQuery(
+      `SELECT password_hash FROM users WHERE id = $1`,
+      [userId]
+    );
+    const user = rows[0];
+
+    if (!user) {
+      return res.status(404).json({
+        ok: false,
+        message: 'ユーザーが見つかりません。'
+      });
+    }
+
+    const ok = await bcrypt.compare(password, user.password_hash);
+
+    if (!ok) {
+      return res.status(401).json({
+        ok: false,
+        message: 'パスワードが正しくありません。'
+      });
+    }
+
+    // 2FAを無効化
+    await dbQuery(
+      `UPDATE users
+       SET two_factor_enabled = false,
+           two_factor_secret = NULL,
+           two_factor_backup_codes = NULL,
+           two_factor_enabled_at = NULL
+       WHERE id = $1`,
+      [userId]
+    );
+
+    // 信頼済みデバイスも削除
+    await dbQuery(
+      `DELETE FROM trusted_devices WHERE user_id = $1`,
+      [userId]
+    );
+
+    console.log('[2FA無効化] 成功:', { userId });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[2FA無効化] エラー:', err);
+    next(err);
+  }
+});
+
+// POST /account/2fa/regenerate - バックアップコード再生成
+app.post('/account/2fa/regenerate', requireAuth, csrfProtect, async (req, res, next) => {
+  try {
+    const userId = req.session.user.id;
+    const { password } = req.body;
+
+    // パスワード確認
+    const rows = await dbQuery(
+      `SELECT password_hash, two_factor_enabled FROM users WHERE id = $1`,
+      [userId]
+    );
+    const user = rows[0];
+
+    if (!user.two_factor_enabled) {
+      return res.status(400).json({
+        ok: false,
+        message: '2FAが有効化されていません。'
+      });
+    }
+
+    const ok = await bcrypt.compare(password, user.password_hash);
+
+    if (!ok) {
+      return res.status(401).json({
+        ok: false,
+        message: 'パスワードが正しくありません。'
+      });
+    }
+
+    // 新しいバックアップコードを生成
+    const backupCodes = await twoFA.generateBackupCodes();
+    const hashedBackupCodes = await twoFA.hashBackupCodes(backupCodes);
+
+    // DBを更新
+    await dbQuery(
+      `UPDATE users
+       SET two_factor_backup_codes = $1
+       WHERE id = $2`,
+      [hashedBackupCodes, userId]
+    );
+
+    res.json({
+      ok: true,
+      backupCodes
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /account/trusted-devices - 信頼済みデバイス一覧
+app.get('/account/trusted-devices', requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.session.user.id;
+
+    console.log('[信頼済みデバイス取得] リクエスト:', { userId });
+
+    const devices = await dbQuery(
+      `SELECT id, device_name, ip_address, last_used_at, expires_at, created_at
+       FROM trusted_devices
+       WHERE user_id = $1 AND expires_at > CURRENT_TIMESTAMP
+       ORDER BY last_used_at DESC`,
+      [userId]
+    );
+
+    console.log('[信頼済みデバイス取得] 成功:', { userId, count: devices.length });
+    res.json({ ok: true, devices });
+  } catch (err) {
+    console.error('[信頼済みデバイス取得] エラー:', err);
+    next(err);
+  }
+});
+
+// DELETE /account/trusted-devices/:deviceId - 信頼済みデバイス削除
+app.delete('/account/trusted-devices/:deviceId', requireAuth, csrfProtect, async (req, res, next) => {
+  try {
+    const userId = req.session.user.id;
+    const deviceId = req.params.deviceId;
+
+    const result = await dbQuery(
+      `DELETE FROM trusted_devices
+       WHERE id = $1 AND user_id = $2
+       RETURNING id`,
+      [deviceId, userId]
+    );
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        message: 'デバイスが見つかりません。'
+      });
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /account/login-history - ログイン履歴
+app.get('/account/login-history', requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.session.user.id;
+    const limit = parseInt(req.query.limit) || 20;
+
+    const history = await dbQuery(
+      `SELECT id, success, ip_address, user_agent, failure_reason,
+              two_factor_used, created_at
+       FROM login_history
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2`,
+      [userId, limit]
+    );
+
+    res.json({ ok: true, history });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // GET /my/contacts
@@ -10015,7 +10777,7 @@ app.get('/admin/users/:id', requireAuth, async (req,res,next)=>{
     const uid = req.params.id === 'me' ? req.session.user.id : req.params.id;
     const isSelf = uid === req.session.user.id;
 
-    const user = (await dbQuery(`SELECT id, name, email, roles, partner_id, created_at, updated_at, email_verified_at FROM users WHERE id=$1`, [uid]))[0];
+    const user = (await dbQuery(`SELECT id, name, email, roles, partner_id, created_at, updated_at, email_verified_at, two_factor_enabled, two_factor_enabled_at FROM users WHERE id=$1`, [uid]))[0];
     if (!user) return res.status(404).send('not found');
 
     let partner;
@@ -10077,6 +10839,53 @@ app.get('/admin/users/:id', requireAuth, async (req,res,next)=>{
 });
 
 // ユーザー更新（基本情報）
+// POST /admin/users/:id/unlock - アカウントロック解除（管理者のみ）
+app.post('/admin/users/:id/unlock', requireAuth, requireRole(['admin']), csrfProtect, async (req, res, next) => {
+  try {
+    const userId = req.params.id;
+
+    // アカウントロック解除
+    await dbQuery(
+      `UPDATE users
+       SET account_locked_at = NULL,
+           account_locked_reason = NULL,
+           failed_login_attempts = 0,
+           last_failed_login_at = NULL
+       WHERE id = $1`,
+      [userId]
+    );
+
+    // ユーザーにメール通知
+    const userRows = await dbQuery(
+      `SELECT email, name FROM users WHERE id = $1`,
+      [userId]
+    );
+    const user = userRows[0];
+
+    if (user) {
+      try {
+        await gmailSend({
+          to: user.email,
+          subject: 'アカウントのロックが解除されました - セッツマルシェ',
+          html: `
+            <p>${user.name} 様</p>
+            <p>管理者により、お客様のアカウントのロックが解除されました。</p>
+            <p>再度ログインが可能になりました。</p>
+            <p>もしロック解除に心当たりがない場合は、お問い合わせフォームよりご連絡ください。</p>
+            <p>---<br>セッツマルシェ</p>
+          `
+        });
+      } catch (mailErr) {
+        console.error('Failed to send unlock email:', mailErr);
+      }
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.post('/admin/users/:id', requireAuth, csrfProtect, async (req,res,next)=>{
   try{
     const uid = req.params.id;

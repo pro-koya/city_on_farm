@@ -109,6 +109,79 @@
         <p class="error" id="pwErr" aria-live="polite"></p>
       </form>
     </article>
+
+    <!-- セキュリティ設定（2FA） -->
+    <article class="card" id="security">
+      <div class="card__head">
+        <h2>セキュリティ</h2>
+      </div>
+      <div class="card__body">
+        <div style="margin-bottom: 24px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <div>
+              <h3 style="font-size: 1rem; font-weight: 600; margin: 0 0 4px 0;">二要素認証（2FA）</h3>
+              <p style="color: #666; font-size: 0.875rem; margin: 0; line-height: 1.5;">
+                アカウントのセキュリティを強化するために、二要素認証を設定できます。<br>
+                Google Authenticator、Authy、1Passwordなどの認証アプリを使用します。
+              </p>
+            </div>
+          </div>
+
+          <% if (user.two_factor_enabled) { %>
+            <div style="background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border: 2px solid #4caf50; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="color: #2e7d32;">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="currentColor"/>
+                </svg>
+                <div>
+                  <p style="margin: 0; color: #2e7d32; font-weight: 600; font-size: 0.95rem;">
+                    二要素認証が有効になっています
+                  </p>
+                  <% if (user.two_factor_enabled_at) { %>
+                    <p style="margin: 4px 0 0 0; color: #4caf50; font-size: 0.8rem;">
+                      有効化日: <%= new Date(user.two_factor_enabled_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' }) %>
+                    </p>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <a href="/account/2fa/setup" class="btn btn--primary" style="text-decoration: none; flex: 1; min-width: 120px; text-align: center;">
+                設定を変更
+              </a>
+              <!-- <button type="button" id="btnDisable2FA" class="btn btn--ghost" style="flex: 1; min-width: 120px;">
+                2FAを無効化
+              </button> -->
+            </div>
+          <% } else { %>
+            <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+              <p style="margin: 0; color: #856404; font-size: 0.875rem; line-height: 1.5;">
+                <strong>推奨:</strong> アカウントのセキュリティを強化するために、二要素認証の設定をお勧めします。
+              </p>
+            </div>
+            <a href="/account/2fa/setup" class="btn btn--primary" style="display: inline-block; text-decoration: none;">
+              🔒 2FAを設定する
+            </a>
+          <% } %>
+        </div>
+
+        <!-- 信頼済みデバイス（2FA有効時のみ表示） -->
+        <% if (user.two_factor_enabled) { %>
+          <!-- <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 20px;">
+            <h3 style="font-size: 0.95rem; font-weight: 600; margin: 0 0 12px 0;">信頼済みデバイス</h3>
+            <p style="color: #666; font-size: 0.875rem; margin: 0 0 12px 0;">
+              「このデバイスを信頼する」を選択したデバイスは、30日間2FAをスキップできます。
+            </p>
+            <div id="trustedDevicesList" style="margin-bottom: 12px;">
+              <p class="muted small" style="margin: 0;">読み込み中...</p>
+            </div>
+            <button type="button" id="btnRefreshDevices" class="btn btn--ghost small" style="font-size: 0.875rem;">
+              更新
+            </button>
+          </div> -->
+        <% } %>
+      </div>
+    </article>
     <% } %>
 
     <!-- 所属取引先（コンパクト＆視認性UP） -->
