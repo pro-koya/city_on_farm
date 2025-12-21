@@ -1,7 +1,22 @@
 (() => {
   const $ = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
-  const csrf = $('input[name="_csrf"]')?.value || '';
+  
+  // CSRFトークンを取得する関数（確実に取得するため）
+  function getCsrfToken() {
+    const inputs = $$('input[name="_csrf"]');
+    if (inputs.length > 0) {
+      return inputs[0].value;
+    }
+    // メタタグから取得を試みる
+    const meta = $('meta[name="csrf-token"]');
+    if (meta) {
+      return meta.getAttribute('content');
+    }
+    console.warn('CSRFトークンが見つかりません');
+    return '';
+  }
+  
   const userId = location.pathname.split('/').filter(Boolean).pop(); // /admin/users/:id
   let pendingPartnerPayload = null;
 
@@ -407,5 +422,198 @@
   payment_form.addEventListener('submit', () => {
     const btn = payment_form.querySelector('button[type="submit"]');
     if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
+  });
+  // ===== 2FA無効化 =====
+  const btnDisable2FA = $('#btnDisable2FA');
+  if (btnDisable2FA) {
+    btnDisable2FA.addEventListener('click', async () => {
+      const password = prompt('セキュリティのため、パスワードを入力してください:');
+      if (!password) return;
+
+      // CSRFトークンを取得
+      const csrfToken = getCsrfToken();
+      
+      if (!csrfToken) {
+        alert('セキュリティトークンが見つかりません。ページを再読み込みしてください。');
+        console.error('CSRFトークンが見つかりません');
+        return;
+      }
+
+      // ボタンを無効化
+      btnDisable2FA.disabled = true;
+      const originalText = btnDisable2FA.textContent;
+      btnDisable2FA.textContent = '処理中...';
+
+      try {
+        console.log('2FA無効化リクエスト送信:', { csrfToken: csrfToken.substring(0, 10) + '...' });
+        
+        const res = await fetch('/account/2fa/disable', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-Token': csrfToken,
+            'CSRF-Token': csrfToken  // 両方送信して互換性を確保
+          },
+          body: JSON.stringify({ password }),
+          credentials: 'same-origin'
+        });
+        
+        console.log('2FA無効化レスポンス:', { status: res.status, statusText: res.statusText });
+        
+        const data = await res.json().catch((err) => {
+          console.error('JSON解析エラー:', err);
+          return { ok: false, message: 'サーバーからの応答を解析できませんでした。' };
+        });
+        
+        console.log('2FA無効化レスポンスデータ:', data);
+        
+        if (!res.ok || !data.ok) {
+          alert(data.message || '2FA無効化に失敗しました。\nステータス: ' + res.status);
+          console.error('2FA無効化エラー:', { status: res.status, data });
+          btnDisable2FA.disabled = false;
+          btnDisable2FA.textContent = originalText;
+          return;
+        }
+        
+        alert('2FAを無効化しました。');
+        location.reload();
+      } catch (err) {
+        console.error('2FA無効化通信エラー:', err);
+        alert('通信に失敗しました。\n' + (err.message || '不明なエラー'));
+        btnDisable2FA.disabled = false;
+        btnDisable2FA.textContent = originalText;
+      }
+    });
+  }
+
+  // ===== 信頼済みデバイス一覧 =====
+  const trustedDevicesList = $('#trustedDevicesList');
+  const btnRefreshDevices = $('#btnRefreshDevices');
+  
+  async function loadTrustedDevices() {
+    if (!trustedDevicesList) {
+      console.log('trustedDevicesList要素が見つかりません');
+      return;
+    }
+    
+    // 読み込み中表示
+    trustedDevicesList.innerHTML = '<p class="muted small" style="margin: 0;">読み込み中...</p>';
+    
+    try {
+      console.log('信頼済みデバイス取得リクエスト送信');
+      
+      const res = await fetch('/account/trusted-devices', {
+        method: 'GET',
+        headers: { 
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        },
+        credentials: 'same-origin'
+      });
+      
+      console.log('信頼済みデバイス取得レスポンス:', { status: res.status, statusText: res.statusText, ok: res.ok });
+      
+      if (!res.ok) {
+        const errorText = await res.text().catch(() => '');
+        console.error('信頼済みデバイス取得エラー:', { status: res.status, statusText: res.statusText, body: errorText });
+        trustedDevicesList.innerHTML = '<p class="muted small" style="color: #e11d48;">読み込みに失敗しました。(' + res.status + ' ' + res.statusText + ')</p>';
+        return;
+      }
+      
+      const data = await res.json().catch((err) => {
+        console.error('JSON解析エラー:', err);
+        return { ok: false, message: 'サーバーからの応答を解析できませんでした。' };
+      });
+      
+      console.log('信頼済みデバイス取得レスポンスデータ:', data);
+      
+      if (!data.ok) {
+        console.error('信頼済みデバイス取得エラー:', data);
+        trustedDevicesList.innerHTML = '<p class="muted small" style="color: #e11d48;">' + (data.message || '読み込みに失敗しました。') + '</p>';
+        return;
+      }
+
+      const devices = data.devices || [];
+      console.log('信頼済みデバイス数:', devices.length);
+      
+      if (devices.length === 0) {
+        trustedDevicesList.innerHTML = '<p class="muted small" style="margin: 0;">信頼済みデバイスはありません。</p>';
+        return;
+      }
+
+      const html = devices.map(device => {
+        const lastUsed = device.last_used_at ? new Date(device.last_used_at).toLocaleDateString('ja-JP') : '未使用';
+        const expires = device.expires_at ? new Date(device.expires_at).toLocaleDateString('ja-JP') : '—';
+        return `
+          <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+              <div>
+                <strong style="font-size: 0.9rem;">${device.device_name || '不明なデバイス'}</strong>
+                <p style="margin: 4px 0 0 0; color: #666; font-size: 0.8rem;">
+                  ${device.ip_address || '—'} • 最終使用: ${lastUsed}
+                </p>
+              </div>
+              <button type="button" class="link-btn danger" data-device-id="${device.id}" style="font-size: 0.8rem;">
+                削除
+              </button>
+            </div>
+            <p style="margin: 0; color: #999; font-size: 0.75rem;">
+              有効期限: ${expires}
+            </p>
+          </div>
+        `;
+      }).join('');
+      
+      trustedDevicesList.innerHTML = html;
+
+      // 削除ボタンのイベントリスナー
+      trustedDevicesList.querySelectorAll('[data-device-id]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const deviceId = btn.dataset.deviceId;
+          if (!confirm('このデバイスを削除しますか？')) return;
+
+          // CSRFトークンを取得
+          const csrfToken = getCsrfToken();
+          
+          if (!csrfToken) {
+            alert('セキュリティトークンが見つかりません。');
+            return;
+          }
+
+          try {
+            const res = await fetch(`/account/trusted-devices/${deviceId}`, {
+              method: 'DELETE',
+              headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-Token': csrfToken,
+                'CSRF-Token': csrfToken  // 両方送信して互換性を確保
+              },
+              credentials: 'same-origin'
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.ok) {
+              alert(data.message || '削除に失敗しました。');
+              return;
+            }
+            loadTrustedDevices();
+          } catch (err) {
+            console.error('デバイス削除エラー:', err);
+            alert('通信に失敗しました。');
+          }
+        });
+      });
+    } catch (err) {
+      console.error('信頼済みデバイス読み込みエラー:', err);
+      trustedDevicesList.innerHTML = '<p class="muted small" style="color: #e11d48;">読み込みに失敗しました。' + (err.message ? '\n' + err.message : '') + '</p>';
+    }
+  }
+
+  if (trustedDevicesList) {
+    loadTrustedDevices();
+  }
+
+  btnRefreshDevices?.addEventListener('click', () => {
+    loadTrustedDevices();
   });
 })();
