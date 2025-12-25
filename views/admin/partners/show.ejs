@@ -438,17 +438,24 @@
         <h2 class="card__title">決済方法（取引先全体）</h2>
       </div>
 
-      <form action="/admin/partners/<%= partner.id %>/payments" method="POST" class="form">
+      <form id="paymentMethodForm" action="/admin/partners/<%= partner.id %>/payments" method="POST" class="form">
         <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
 
+        <!-- エラーメッセージ表示エリア -->
+        <div id="paymentMethodError" class="error" style="display: none; margin-bottom: 1rem; padding: 0.75rem; background: #fee; border: 1px solid #fcc; border-radius: 4px; color: #c33;"></div>
+
         <div class="chips">
-          <% allPaymentMethods.forEach(m => { %>
-            <label class="chip">
-              <input type="checkbox" name="methods" value="<%= m.value %>"
-                    <%= paymentMethods.includes(m.value) ? 'checked' : '' %> >
-              <span><%= m.label_ja %></span>
-            </label>
-          <% }) %>
+          <% if (typeof allPaymentMethods !== 'undefined' && allPaymentMethods && allPaymentMethods.length > 0) { %>
+            <% allPaymentMethods.forEach(m => { %>
+              <label class="chip">
+                <input type="checkbox" name="methods" value="<%= m.value %>"
+                      <%= (typeof paymentMethods !== 'undefined' && paymentMethods && paymentMethods.includes(m.value)) ? 'checked' : '' %> >
+                <span><%= m.label_ja %></span>
+              </label>
+            <% }) %>
+          <% } else { %>
+            <p class="muted small">決済方法の読み込み中...</p>
+          <% } %>
         </div>
 
         <p class="muted small">
@@ -461,6 +468,228 @@
         </div>
       </form>
     </article>
+
+    <!-- 銀行口座情報 -->
+    <% if (user.roles.includes('admin')) { %>
+    <article class="card">
+      <div class="card__head">
+        <h2 class="card__title">銀行口座情報</h2>
+        <% if (bankAccount && bankAccount.is_verified) { %>
+          <span class="badge badge--success">確認済み</span>
+        <% } else if (bankAccount) { %>
+          <span class="badge badge--warning">未確認</span>
+        <% } %>
+      </div>
+
+      <% if (!bankAccount) { %>
+        <div id="bankAccountEmptyView">
+          <p class="muted">銀行口座が登録されていません。クレジットカード決済を有効化するには、口座情報の登録が必要です。</p>
+          <div class="row-right" style="margin-top: 1rem;">
+            <button class="btn btn--primary" onclick="toggleBankAccountForm()">銀行口座を登録</button>
+          </div>
+        </div>
+      <% } else { %>
+        <div id="bankAccountInfoView">
+        <dl class="kv">
+          <div>
+            <dt>銀行名</dt>
+            <dd><%= bankAccount.bank_name %><% if (bankAccount.bank_code) { %>（<%= bankAccount.bank_code %>）<% } %></dd>
+          </div>
+          <div>
+            <dt>支店名</dt>
+            <dd><%= bankAccount.branch_name %><% if (bankAccount.branch_code) { %>（<%= bankAccount.branch_code %>）<% } %></dd>
+          </div>
+          <div>
+            <dt>口座種別</dt>
+            <dd>
+              <% if (bankAccount.account_type === 'ordinary') { %>普通預金
+              <% } else if (bankAccount.account_type === 'current') { %>当座預金
+              <% } else if (bankAccount.account_type === 'savings') { %>貯蓄預金
+              <% } else { %><%= bankAccount.account_type %>
+              <% } %>
+            </dd>
+          </div>
+          <div>
+            <dt>口座番号</dt>
+            <dd><%= bankAccount.account_number %></dd>
+          </div>
+          <div>
+            <dt>口座名義（カナ）</dt>
+            <dd><%= bankAccount.account_holder_name %></dd>
+          </div>
+          <% if (bankAccount.note) { %>
+          <div>
+            <dt>備考</dt>
+            <dd><%= bankAccount.note %></dd>
+          </div>
+          <% } %>
+          <% if (bankAccount.verified_at) { %>
+          <div>
+            <dt>確認日時</dt>
+            <dd><%= new Date(bankAccount.verified_at).toLocaleString('ja-JP') %></dd>
+          </div>
+          <% } %>
+        </dl>
+
+        <div class="row-right" style="margin-top: 1rem;">
+          <% if (!bankAccount.is_verified) { %>
+            <form action="/admin/partners/<%= partner.id %>/bank-account/verify" method="POST" style="display: inline;">
+              <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
+              <button class="btn btn--success" type="submit">確認済みにする</button>
+            </form>
+          <% } %>
+          <button class="btn btn--toggle" onclick="toggleBankAccountForm()">編集</button>
+        </div>
+        </div>
+      <% } %>
+
+      <!-- 銀行口座登録/編集フォーム -->
+      <form
+        id="bankAccountForm"
+        action="/admin/partners/<%= partner.id %>/bank-account"
+        method="POST"
+        class="form"
+        style="display: none; margin-top: 1.5rem;"
+      >
+        <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
+
+        <div class="field">
+          <label for="bank_name">銀行名 <span class="required">*</span></label>
+          <input
+            type="text"
+            id="bank_name"
+            name="bank_name"
+            value="<%= bankAccount ? bankAccount.bank_name : '' %>"
+            required
+            placeholder="例: 三井住友銀行"
+          >
+        </div>
+
+        <div class="field">
+          <label for="bank_code">銀行コード（4桁）</label>
+          <input
+            type="text"
+            id="bank_code"
+            name="bank_code"
+            value="<%= bankAccount ? (bankAccount.bank_code || '') : '' %>"
+            pattern="\d{4}"
+            maxlength="4"
+            placeholder="例: 0009"
+          >
+          <small class="muted">半角数字4桁</small>
+        </div>
+
+        <div class="field">
+          <label for="branch_name">支店名 <span class="required">*</span></label>
+          <input
+            type="text"
+            id="branch_name"
+            name="branch_name"
+            value="<%= bankAccount ? bankAccount.branch_name : '' %>"
+            required
+            placeholder="例: 新宿支店"
+          >
+        </div>
+
+        <div class="field">
+          <label for="branch_code">支店コード（3桁）</label>
+          <input
+            type="text"
+            id="branch_code"
+            name="branch_code"
+            value="<%= bankAccount ? (bankAccount.branch_code || '') : '' %>"
+            pattern="\d{3}"
+            maxlength="3"
+            placeholder="例: 123"
+          >
+          <small class="muted">半角数字3桁</small>
+        </div>
+
+        <div class="field">
+          <label for="account_type">口座種別 <span class="required">*</span></label>
+          <select id="account_type" name="account_type" required>
+            <option value="">選択してください</option>
+            <option value="ordinary" <%= bankAccount && bankAccount.account_type === 'ordinary' ? 'selected' : '' %>>普通預金</option>
+            <option value="current" <%= bankAccount && bankAccount.account_type === 'current' ? 'selected' : '' %>>当座預金</option>
+            <option value="savings" <%= bankAccount && bankAccount.account_type === 'savings' ? 'selected' : '' %>>貯蓄預金</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="account_number">口座番号（7桁） <span class="required">*</span></label>
+          <input
+            type="text"
+            id="account_number"
+            name="account_number"
+            value="<%= bankAccount ? bankAccount.account_number : '' %>"
+            required
+            pattern="\d{7}"
+            maxlength="7"
+            placeholder="例: 1234567"
+          >
+          <small class="muted">半角数字7桁</small>
+        </div>
+
+        <div class="field">
+          <label for="account_holder_name">口座名義（カナ） <span class="required">*</span></label>
+          <input
+            type="text"
+            id="account_holder_name"
+            name="account_holder_name"
+            value="<%= bankAccount ? bankAccount.account_holder_name : '' %>"
+            required
+            placeholder="例: カブシキガイシャセッツマルシェ"
+          >
+          <small class="muted">全角カタカナで入力してください</small>
+        </div>
+
+        <div class="field">
+          <label for="note">備考</label>
+          <textarea
+            id="note"
+            name="note"
+            rows="3"
+            placeholder="その他の情報や注意事項"
+          ><%= bankAccount ? (bankAccount.note || '') : '' %></textarea>
+        </div>
+
+        <div class="row-right">
+          <% if (bankAccount) { %>
+            <button type="button" class="btn btn--secondary" onclick="toggleBankAccountForm()">キャンセル</button>
+          <% } %>
+          <button type="submit" class="btn btn--primary">保存</button>
+        </div>
+      </form>
+    </article>
+
+    <script>
+    function toggleBankAccountForm() {
+      const form = document.getElementById('bankAccountForm');
+      const emptyView = document.getElementById('bankAccountEmptyView');
+      const infoView = document.getElementById('bankAccountInfoView');
+
+      if (form.style.display === 'none' || form.style.display === '') {
+        // フォームを表示
+        form.style.display = 'block';
+        if (emptyView) {
+          emptyView.style.display = 'none';
+        }
+        if (infoView) {
+          infoView.style.display = 'none';
+        }
+      } else {
+        // フォームを非表示
+        form.style.display = 'none';
+        if (emptyView) {
+          emptyView.style.display = 'block';
+        }
+        if (infoView) {
+          infoView.style.display = 'block';
+        }
+      }
+    }
+    </script>
+    <% } %>
     <% } %>
 
     <!-- ユーザー一覧 -->

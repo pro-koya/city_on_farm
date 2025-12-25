@@ -59,13 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
   //   }
   // });
 
-  const payment_form = document.querySelector('form[action*="/admin/partners/"][action$="/payments"]');
-  if (payment_form) {
-    payment_form.addEventListener('submit', () => {
-      const btn = payment_form.querySelector('button[type="submit"]');
-      if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
-    });
-  }
+  // 決済方法フォームの処理は後で実装（paymentMethodFormの処理で統合）
 
   const shipTabs   = document.querySelectorAll('.ship-tab');
   const shipPanels = document.querySelectorAll('.ship-panel');
@@ -349,6 +343,116 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.wrap.remove();
       });
       modal.grid.appendChild(card);
+    });
+  }
+
+  // ===== 決済方法フォームの送信処理 =====
+  const paymentMethodForm = document.getElementById('paymentMethodForm');
+  const paymentMethodError = document.getElementById('paymentMethodError');
+  
+  if (paymentMethodForm) {
+    paymentMethodForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      // エラーメッセージを非表示
+      if (paymentMethodError) {
+        paymentMethodError.style.display = 'none';
+        paymentMethodError.textContent = '';
+      }
+      
+      // フォームデータを取得
+      const formData = new FormData(paymentMethodForm);
+      const csrfToken = formData.get('_csrf');
+      
+      // 選択された決済方法を取得
+      const selectedMethods = Array.from(formData.getAll('methods'));
+      
+      // ボタンを無効化
+      const submitBtn = paymentMethodForm.querySelector('button[type="submit"]');
+      const originalBtnText = submitBtn ? submitBtn.textContent : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '保存中…';
+      }
+      
+      try {
+        const response = await fetch(paymentMethodForm.action, {
+          method: 'POST',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'X-CSRF-Token': csrfToken,
+            'CSRF-Token': csrfToken
+          },
+          body: formData,
+          credentials: 'same-origin'
+        });
+        
+        // レスポンスのContent-Typeを確認
+        const contentType = response.headers.get('content-type');
+        let data;
+        
+        if (contentType && contentType.includes('application/json')) {
+          // JSON形式のレスポンス
+          data = await response.json().catch((err) => {
+            console.error('JSON解析エラー:', err);
+            return { ok: false, message: 'サーバーからの応答を解析できませんでした。' };
+          });
+        } else {
+          // JSON形式でない場合（テキストやHTMLなど）
+          const text = await response.text().catch(() => '');
+          console.error('非JSONレスポンス:', { status: response.status, statusText: response.statusText, body: text });
+          
+          let errorMessage = '決済方法の保存に失敗しました。';
+          if (response.status === 400) {
+            errorMessage = 'リクエストが不正です。';
+          } else if (response.status === 403) {
+            errorMessage = '権限がありません。';
+          } else if (response.status === 500) {
+            errorMessage = 'サーバーエラーが発生しました。';
+          }
+          
+          data = { ok: false, message: errorMessage };
+        }
+        
+        if (!response.ok || !data.ok) {
+          // エラーメッセージを表示
+          if (paymentMethodError) {
+            paymentMethodError.textContent = data.message || '決済方法の保存に失敗しました。';
+            paymentMethodError.style.display = 'block';
+            
+            // エラーメッセージまでスクロール
+            paymentMethodError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } else {
+            alert(data.message || '決済方法の保存に失敗しました。');
+          }
+          
+          // ボタンを再有効化
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalBtnText;
+          }
+          return;
+        }
+        
+        // 成功時はリロード（フラッシュメッセージを表示するため）
+        window.location.reload();
+      } catch (err) {
+        console.error('決済方法保存エラー:', err);
+        if (paymentMethodError) {
+          paymentMethodError.textContent = '通信に失敗しました。もう一度お試しください。';
+          paymentMethodError.style.display = 'block';
+          paymentMethodError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          alert('通信に失敗しました。もう一度お試しください。');
+        }
+        
+        // ボタンを再有効化
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalBtnText;
+        }
+      }
     });
   }
 });
