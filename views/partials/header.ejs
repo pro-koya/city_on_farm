@@ -147,6 +147,12 @@
             <% } %>
           </a>
         </li>
+
+        <!-- 出品者用：マイショップへのリンク -->
+        <% if (currentUser.roles?.includes('seller') && currentUser.partner_id) { %>
+          <li role="none"><a role="menuitem" href="/admin/partners/<%= currentUser.partner_id %>">🏪 マイショップ</a></li>
+        <% } %>
+
         <li role="none"><a role="menuitem"
             href="/dashboard/<%= (currentUser.roles?.includes('seller') ? 'seller' : 'buyer') %>">ダッシュボード</a></li>
         <li><a href="/admin/users/<%= currentUser.id %>">アカウント情報</a></li>

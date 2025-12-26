@@ -5,6 +5,13 @@
 
   <!-- ボタン群 -->
   <div class="btn-grid">
+    <%
+    // 出品者のpartner_idを取得（currentUserから）
+    const partnerId = (typeof currentUser !== 'undefined' && currentUser?.partner_id) ? currentUser.partner_id : '';
+    %>
+    <% if (partnerId) { %>
+      <a class="btn btn--primary" href="/admin/partners/<%= partnerId %>">🏪 マイショップ</a>
+    <% } %>
     <a class="btn" href="/seller/trades?q=&status=processing&payment=all&ship=all&owner=owner_own">未完了の注文</a>
     <a class="btn" href="/seller/trades?q=&status=delivered&payment=all&ship=all&owner=owner_own">完了した注文</a>
     <a class="btn" href="/my/contacts">私の問い合わせ</a>

@@ -6,6 +6,11 @@
 }) %>
 
 <main class="lv">
+  <!-- パンくずリスト -->
+  <% if (typeof breadcrumbItems !== 'undefined' && breadcrumbItems) { %>
+    <%- include('../partials/breadcrumb', { items: breadcrumbItems }) %>
+  <% } %>
+
   <header class="lv__head">
     <h1 class="lv__title"><%= pageTitle || title || '' %></h1>
 

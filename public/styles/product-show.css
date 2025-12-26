@@ -33,8 +33,8 @@ body {
   display: grid;
   gap: 1.2rem;
   grid-template-columns: 1fr;
-  margin-bottom: 1.4rem;
-  padding: 1rem 0;
+  margin-bottom: 1rem;
+  padding: .8rem 0;
 }
 
 @media(min-width:960px) {
