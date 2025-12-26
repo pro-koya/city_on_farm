@@ -98,6 +98,8 @@ public,orders,orders_pkey,CREATE UNIQUE INDEX orders_pkey ON public.orders USING
 public,orders,uq_orders_order_number,CREATE UNIQUE INDEX uq_orders_order_number ON public.orders USING btree (order_number),t,f
 public,partner_allowed_payment_methods,idx_papm_partner,CREATE INDEX idx_papm_partner ON public.partner_allowed_payment_methods USING btree (partner_id),f,f
 public,partner_allowed_payment_methods,partner_allowed_payment_methods_pkey,"CREATE UNIQUE INDEX partner_allowed_payment_methods_pkey ON public.partner_allowed_payment_methods USING btree (partner_id, method)",t,t
+public,partner_allowed_ship_methods,idx_pasm_partner,CREATE INDEX idx_pasm_partner ON public.partner_allowed_ship_methods USING btree (partner_id),f,f
+public,partner_allowed_ship_methods,partner_allowed_ship_methods_pkey,"CREATE UNIQUE INDEX partner_allowed_ship_methods_pkey ON public.partner_allowed_ship_methods USING btree (partner_id, method)",t,t
 public,partner_bank_accounts,idx_partner_bank_accounts_partner_id,CREATE INDEX idx_partner_bank_accounts_partner_id ON public.partner_bank_accounts USING btree (partner_id),f,f
 public,partner_bank_accounts,idx_partner_bank_accounts_verified,CREATE INDEX idx_partner_bank_accounts_verified ON public.partner_bank_accounts USING btree (is_verified),f,f
 public,partner_bank_accounts,partner_bank_accounts_partner_id_key,CREATE UNIQUE INDEX partner_bank_accounts_partner_id_key ON public.partner_bank_accounts USING btree (partner_id),t,f

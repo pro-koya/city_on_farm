@@ -252,6 +252,10 @@ public,partner_allowed_payment_methods,1,partner_id,uuid,uuid,,,,NO,,
 public,partner_allowed_payment_methods,2,method,USER-DEFINED,payment_method,,,,NO,,
 public,partner_allowed_payment_methods,3,created_at,timestamp with time zone,timestamptz,,,,NO,now(),
 public,partner_allowed_payment_methods,4,updated_at,timestamp with time zone,timestamptz,,,,NO,now(),
+public,partner_allowed_ship_methods,1,partner_id,uuid,uuid,,,,NO,,パートナーID
+public,partner_allowed_ship_methods,2,method,USER-DEFINED,ship_method,,,,NO,,"配送方法（delivery: 配送, pickup: 畑受け取り）"
+public,partner_allowed_ship_methods,3,created_at,timestamp with time zone,timestamptz,,,,NO,now(),
+public,partner_allowed_ship_methods,4,updated_at,timestamp with time zone,timestamptz,,,,NO,now(),
 public,partner_bank_accounts,1,id,uuid,uuid,,,,NO,gen_random_uuid(),
 public,partner_bank_accounts,2,partner_id,uuid,uuid,,,,NO,,
 public,partner_bank_accounts,3,bank_name,character varying,varchar,100,,,NO,,

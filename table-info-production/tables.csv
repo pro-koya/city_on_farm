@@ -21,6 +21,7 @@ public,order_groups,,6
 public,order_items,,8
 public,orders,,35
 public,partner_allowed_payment_methods,,4
+public,partner_allowed_ship_methods,パートナーごとの許可された配送方法（配送 or 畑受け取り）,4
 public,partner_bank_accounts,取引先の銀行口座情報（売上送金先）,15
 public,partner_date_availabilities,,8
 public,partner_transfers,取引先への送金履歴（手動送金の記録）,19

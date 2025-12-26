@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-12-25T18:30:09.018Z
+> Generated at: 2025-12-26T18:30:43.161Z
 
 ---
 
@@ -1189,6 +1189,42 @@ _No indexes_
   
   ```sql
   CREATE UNIQUE INDEX partner_allowed_payment_methods_pkey ON public.partner_allowed_payment_methods USING btree (partner_id, method)
+  ```
+
+---
+
+### `public.partner_allowed_ship_methods`
+
+パートナーごとの許可された配送方法（配送 or 畑受け取り）
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `partner_id` | `uuid` | NO |  | パートナーID |
+| 2 | `method` | `ship_method` *(enum)* | NO |  | 配送方法（delivery: 配送, pickup: 畑受け取り） |
+| 3 | `created_at` | `timestamp with time zone` | NO | now() |  |
+| 4 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+
+> **Enum `ship_method` values**: `pickup`, `delivery`
+
+**Constraints**
+
+- **CHECK**: `partner_allowed_ship_methods_created_at_not_null`, `partner_allowed_ship_methods_method_not_null`, `partner_allowed_ship_methods_partner_id_not_null`, `partner_allowed_ship_methods_updated_at_not_null`
+- **FOREIGN KEY**: `partner_allowed_ship_methods_partner_id_fkey`
+- **PRIMARY KEY**: `partner_allowed_ship_methods_pkey`
+
+**Indexes**
+
+- `idx_pasm_partner`
+  
+  ```sql
+  CREATE INDEX idx_pasm_partner ON public.partner_allowed_ship_methods USING btree (partner_id)
+  ```
+- `partner_allowed_ship_methods_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX partner_allowed_ship_methods_pkey ON public.partner_allowed_ship_methods USING btree (partner_id, method)
   ```
 
 ---
