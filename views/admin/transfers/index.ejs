@@ -1,0 +1,204 @@
+<%- include('../../partials/header', { title: title }) %>
+
+<main class="admin-content">
+  <div class="page-header">
+    <h1><%= title %></h1>
+    <a href="/admin/transfers/new" class="btn btn--primary">送金記録を作成</a>
+  </div>
+
+  <!-- フィルター -->
+  <section class="card">
+    <form method="GET" action="/admin/transfers" class="filter-form">
+      <div class="field-group">
+        <div class="field">
+          <label for="status">ステータス</label>
+          <select id="status" name="status">
+            <option value="">全て</option>
+            <option value="pending" <%= status === 'pending' ? 'selected' : '' %>>送金待ち</option>
+            <option value="processing" <%= status === 'processing' ? 'selected' : '' %>>処理中</option>
+            <option value="completed" <%= status === 'completed' ? 'selected' : '' %>>完了</option>
+            <option value="failed" <%= status === 'failed' ? 'selected' : '' %>>失敗</option>
+          </select>
+        </div>
+        <div class="field">
+          <button type="submit" class="btn btn--secondary">絞り込み</button>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <!-- 送金一覧 -->
+  <section class="card">
+    <% if (!transfers || !transfers.length) { %>
+      <p class="muted">送金記録がありません。</p>
+    <% } else { %>
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>送金予定日</th>
+              <th>取引先</th>
+              <th>集計期間</th>
+              <th>注文件数</th>
+              <th>送金額</th>
+              <th>ステータス</th>
+              <th>送金日時</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% transfers.forEach(t => { %>
+              <tr>
+                <td><%= new Date(t.transfer_scheduled_date).toLocaleDateString('ja-JP') %></td>
+                <td><%= t.partner_name || '-' %></td>
+                <td>
+                  <%= new Date(t.transfer_period_start).toLocaleDateString('ja-JP') %> 〜
+                  <%= new Date(t.transfer_period_end).toLocaleDateString('ja-JP') %>
+                </td>
+                <td><%= t.order_count %>件</td>
+                <td>¥<%= Number(t.transfer_amount).toLocaleString() %></td>
+                <td>
+                  <% if (t.status === 'pending') { %>
+                    <span class="badge badge--warning">送金待ち</span>
+                  <% } else if (t.status === 'processing') { %>
+                    <span class="badge badge--info">処理中</span>
+                  <% } else if (t.status === 'completed') { %>
+                    <span class="badge badge--success">完了</span>
+                  <% } else if (t.status === 'failed') { %>
+                    <span class="badge badge--danger">失敗</span>
+                  <% } %>
+                </td>
+                <td>
+                  <% if (t.transferred_at) { %>
+                    <%= new Date(t.transferred_at).toLocaleString('ja-JP') %>
+                  <% } else { %>
+                    -
+                  <% } %>
+                </td>
+                <td>
+                  <a href="/admin/transfers/<%= t.id %>" class="btn btn--small">詳細</a>
+                  <% if (t.status === 'pending') { %>
+                    <form action="/admin/transfers/<%= t.id %>/complete" method="POST" style="display: inline;">
+                      <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
+                      <button type="submit" class="btn btn--small btn--success" onclick="return confirm('送金を完了済みにしますか？')">完了</button>
+                    </form>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ページネーション -->
+      <% if (totalPages > 1) { %>
+        <div class="pagination">
+          <% for (let i = 1; i <= totalPages; i++) { %>
+            <a href="?page=<%= i %>&status=<%= status || '' %>" class="<%= i === page ? 'active' : '' %>"><%= i %></a>
+          <% } %>
+        </div>
+      <% } %>
+    <% } %>
+  </section>
+</main>
+
+<style>
+.admin-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.filter-form {
+  padding: 1rem;
+}
+
+.field-group {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tbl th,
+.tbl td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.tbl th {
+  background-color: #f5f5f5;
+  font-weight: 600;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.badge--warning {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.badge--info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.badge--success {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.badge--danger {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.pagination {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.pagination a {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-decoration: none;
+  color: #333;
+}
+
+.pagination a.active {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.pagination a:hover:not(.active) {
+  background-color: #f5f5f5;
+}
+</style>
+
+<%- include('../../partials/footer') %>

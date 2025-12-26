@@ -86,46 +86,6 @@ const isProd = process.env.NODE_ENV === 'production';
 const APP_ORIGIN = process.env.APP_ORIGIN || (isProd ? null : 'http://localhost:3000');
 app.set('trust proxy', 1);
 
-// すべてのリクエストをログに記録（デバッグ用）
-app.use((req, res, next) => {
-  // POSTリクエストをすべてログに記録
-  if (req.method === 'POST') {
-    console.log('[DEBUG] POST request received:', {
-      method: req.method,
-      path: req.path,
-      url: req.url,
-      originalUrl: req.originalUrl,
-      baseUrl: req.baseUrl,
-      headers: {
-        'content-type': req.headers['content-type'],
-        'stripe-signature': req.headers['stripe-signature'] ? 'present' : 'missing',
-        'user-agent': req.headers['user-agent'],
-        'origin': req.headers['origin'],
-        'referer': req.headers['referer']
-      },
-      timestamp: new Date().toISOString()
-    });
-  }
-  
-  // webhookエンドポイントへのリクエストを特に詳細にログ
-  if (req.path === '/webhooks/stripe' || req.url === '/webhooks/stripe' || req.originalUrl === '/webhooks/stripe') {
-    console.log('[DEBUG] WEBHOOK REQUEST DETECTED:', {
-      method: req.method,
-      path: req.path,
-      url: req.url,
-      originalUrl: req.originalUrl,
-      baseUrl: req.baseUrl,
-      headers: {
-        'content-type': req.headers['content-type'],
-        'stripe-signature': req.headers['stripe-signature'] ? 'present' : 'missing',
-        'user-agent': req.headers['user-agent']
-      },
-      timestamp: new Date().toISOString()
-    });
-  }
-  next();
-});
-
 // Renderの接続文字列（環境変数に置くのが推奨）
 const { pool, dbQuery } = require('./services/db');
 app.locals.db = pool;
@@ -913,8 +873,35 @@ async function getAllowedMethodsForPartner(partnerId) {
   return rows.map(r => r.method);
 }
 
+async function getAllowedShipMethodsForPartner(partnerId) {
+  const rows = await dbQuery(
+    `SELECT method
+       FROM partner_allowed_ship_methods
+      WHERE partner_id=$1::uuid
+      ORDER BY method`, [partnerId]);
+  return rows.map(r => r.method);
+}
+
 // 「列挙」に合わせた全候補（UIでチェックボックスを出す）
 async function loadAllPaymentMethods(enumTypeName, category) {
+  const rows = await dbQuery(`
+    SELECT
+      e.enumlabel              AS code,
+      COALESCE(ol.label_ja, INITCAP(REPLACE(e.enumlabel, '_', ' '))) AS label_ja,
+      COALESCE(ol.sort, 999)  AS sort
+    FROM pg_type t
+    JOIN pg_enum e ON t.oid = e.enumtypid
+    LEFT JOIN public.option_labels ol
+      ON ol.category = $2
+    AND ol.value    = e.enumlabel
+    AND ol.active   = true
+    WHERE t.typname = $1
+    ORDER BY COALESCE(ol.sort, 999), e.enumsortorder
+  `, [enumTypeName, category]);
+  return rows.map(r => ({ value: r.code, label_ja: r.label_ja, sort: r.sort }));
+}
+
+async function loadAllShipMethods(enumTypeName, category) {
   const rows = await dbQuery(`
     SELECT
       e.enumlabel              AS code,
@@ -3630,6 +3617,7 @@ app.get('/products/:id', async (req, res, next) => {
     const rows = await dbQuery(`
       SELECT p.*, c.name AS category_name, u.name AS seller_name,
              pa.name AS seller_partner_name,
+             pa.icon_url AS seller_partner_icon_url,
              prs.rating_avg  AS rating,
              prs.review_count
         FROM products p
@@ -6866,34 +6854,62 @@ function filterPairsBySelectedAndSeller(pairs, selectedIdsSet, sellerId){
 async function fetchSellerConfig(sellerUserId) {
   // 支払い方法マスタ（option_labels ベース）
   const allMethod = await loadAllPaymentMethods('payment_method', 'payment_method');
-  const allMap = new Map(allMethod.map(m => [m.code, m]));
+  const allMap = new Map(allMethod.map(m => [m.value || m.code, m]));
 
-  // 出品者ごとの許可メソッド（無ければ cod, card デフォルト）
-  const rows = await getAllowedMethodsForUser(sellerUserId, allMethod);
-  const allowedCodes = rows.length ? rows.map(r => String(r.method)) : ['cod', 'card'];
+  // ★ 修正: sellerUserIdからpartner_idを取得
+  const userRows = await dbQuery(
+    `SELECT partner_id FROM users WHERE id = $1::uuid LIMIT 1`,
+    [sellerUserId]
+  );
+  const partnerId = userRows.length ? userRows[0].partner_id : sellerUserId;
+
+  let allowedCodes = [];
+  if (partnerId) {
+    // ★ 修正: パートナーの許可された決済方法を取得
+    allowedCodes = await getAllowedMethodsForPartner(partnerId);
+  }
+
+  // ★ 修正: デフォルト値を設定しない（決済方法が未設定の場合は空配列）
+  // これにより、決済方法が1つも許可されていない場合は空配列が返される
+
+  // codとcardのみフィルタリング
+  const filteredCodes = allowedCodes.filter(code => ['cod', 'card'].includes(code));
 
   // 日本語ラベル付きで整形
-  const allowedPaymentMethods = allowedCodes.map(code => {
+  const allowedPaymentMethods = filteredCodes.map(code => {
     const meta = allMap.get(code);
-    const synced = !!rows.find(r => String(r.method) === code)?.synced_from_partner;
     return {
       code,
       label_ja: meta?.label_ja || jaLabel('payment_method', code) || code,
       label_en: meta?.label_en || code,
-      synced_from_partner: synced
+      synced_from_partner: true
     };
   });
 
-  // 配送方法も同じ思想で（必要なら option_labels からの取得に差し替え可）
-  const allowedShipMethods = [
-    { code: 'delivery', label_ja: jaLabel('ship_method', 'delivery') || '配送' },
-    { code: 'pickup',   label_ja: jaLabel('ship_method', 'pickup')   || '畑受け取り' }
-  ];
+  // ★ 配送方法も同じ思想でDBから取得
+  const allShipMethod = await loadAllShipMethods('ship_method', 'ship_method');
+  const allShipMap = new Map(allShipMethod.map(m => [m.value || m.code, m]));
+
+  let allowedShipCodes = [];
+  if (partnerId) {
+    allowedShipCodes = await getAllowedShipMethodsForPartner(partnerId);
+  }
+
+  // 日本語ラベル付きで整形
+  const allowedShipMethods = allowedShipCodes.map(code => {
+    const meta = allShipMap.get(code);
+    return {
+      code,
+      label_ja: meta?.label_ja || jaLabel('ship_method', code) || code,
+      label_en: meta?.label_en || code
+    };
+  });
 
   return {
     // UI 側は .map(m => m.code) で value、 .map(m => m.label_ja) で表示が使える
     allowedPaymentMethods,
-    allowedShipMethods
+    allowedShipMethods,
+    partnerId // ★ 追加: チェックアウトページで使用するため
   };
 }
 
@@ -7037,6 +7053,23 @@ app.get('/checkout', async (req, res, next) => {
     // 出品者の許可決済手段（例：DBから）
     const sellerConfig = await fetchSellerConfig(sellerId);
 
+    // ★ 追加: 決済方法が1つも許可されていない場合はエラー
+    if (!sellerConfig.allowedPaymentMethods || sellerConfig.allowedPaymentMethods.length === 0) {
+      req.session.cart = req.session.cart || {};
+      req.session.cart.errorsBySeller = req.session.cart.errorsBySeller || {};
+      req.session.cart.errorsBySeller[sellerId] = 'この出品者は現在ご利用可能な決済方法がありません。出品者にお問い合わせください。';
+      // 出品者ブロックにスクロールしやすいようハッシュ付きで戻す（任意）
+      return res.redirect(`/cart#seller-${encodeURIComponent(sellerId)}`);
+    }
+
+    // ★ 追加: 配送方法が1つも許可されていない場合はエラー
+    if (!sellerConfig.allowedShipMethods || sellerConfig.allowedShipMethods.length === 0) {
+      req.session.cart = req.session.cart || {};
+      req.session.cart.errorsBySeller = req.session.cart.errorsBySeller || {};
+      req.session.cart.errorsBySeller[sellerId] = 'この出品者は現在ご利用可能な配送方法がありません。出品者にお問い合わせください。';
+      return res.redirect(`/cart#seller-${encodeURIComponent(sellerId)}`);
+    }
+
     const today = new Date();
     const fromDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1); // 明日
     const toDate   = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate() + 30); // 30日後まで
@@ -7058,14 +7091,36 @@ app.get('/checkout', async (req, res, next) => {
     const draft = req.session.checkoutDraftBySeller?.[sellerId] || {};
     const isInitial = !req.session.checkoutDraftBySeller || !req.session.checkoutDraftBySeller[sellerId];
 
+    // 決済方法の検証: draft.paymentMethodが許可された決済方法に含まれているかチェック
+    const allowedPaymentCodes = (sellerConfig.allowedPaymentMethods || []).map(m => m.code);
+    let paymentMethod = 'cod';
+    if (draft.paymentMethod && allowedPaymentCodes.includes(draft.paymentMethod)) {
+      // ドラフトの決済方法が許可されている場合、それを使用
+      paymentMethod = draft.paymentMethod;
+    } else if (sellerConfig.allowedPaymentMethods && sellerConfig.allowedPaymentMethods.length > 0) {
+      // ドラフトがない、または許可されていない場合、最初の許可された決済方法にフォールバック
+      paymentMethod = sellerConfig.allowedPaymentMethods[0].code || 'cod';
+    }
+
+    // 配送方法の検証: draft.shipMethodが許可された配送方法に含まれているかチェック
+    const allowedShipCodes = (sellerConfig.allowedShipMethods || []).map(m => m.code);
+    let shipMethod = 'delivery';
+    if (draft.shipMethod && allowedShipCodes.includes(draft.shipMethod)) {
+      // ドラフトの配送方法が許可されている場合、それを使用
+      shipMethod = draft.shipMethod;
+    } else if (sellerConfig.allowedShipMethods && sellerConfig.allowedShipMethods.length > 0) {
+      // ドラフトがない、または許可されていない場合、最初の許可された配送方法にフォールバック
+      shipMethod = sellerConfig.allowedShipMethods[0].code || 'delivery';
+    }
+
     const form = {
       shippingAddressId: draft.shippingAddressId || defaultAddr?.id || null,
       billSame: !!draft.billSame,
       billingAddressId: draft.billSame ? null : (draft.billingAddressId || null),
-      shipMethod: draft.shipMethod || 'delivery',
+      shipMethod: shipMethod,
       shipDate:   draft.shipDate   || '',
       shipTime:   draft.shipTime   || '',
-      paymentMethod: draft.paymentMethod || sellerConfig.allowedPaymentMethods[0].code || 'cod',
+      paymentMethod: paymentMethod,
       orderNote: draft.orderNote || ''
     };
 
@@ -7096,6 +7151,10 @@ app.get('/checkout', async (req, res, next) => {
       { shipMethod: form.shipMethod, shippingOverride }
     );
 
+    // フラッシュメッセージを取得してセッションからクリア
+    const flash = req.session.flash || null;
+    req.session.flash = null;
+
     res.render('checkout/index', {
       title: 'ご注文手続き',
       items,
@@ -7107,10 +7166,11 @@ app.get('/checkout', async (req, res, next) => {
       form,
       isInitial,
       sellerId,                       // ← ビューへ渡す
-      allowedPayments: sellerConfig.allowedPaymentMethods || [{code: 'cod', label_ja: '代金引換'}],
-      allowedShipMethods: sellerConfig.allowedShipMethods || [{code: 'pickup', label_ja: '畑にて受け取り'}, {code: 'delivery', label_ja: '配送'}],
+      allowedPayments: sellerConfig.allowedPaymentMethods,
+      allowedShipMethods: sellerConfig.allowedShipMethods,
       shipAvailability: shipAvailability || { delivery: [], pickup: [] },
       shipTimeSlots: shipTimeSlots || { delivery: {}, pickup: {} },
+      flash,
       req
     });
   } catch (e) { next(e); }
@@ -7140,21 +7200,21 @@ app.post('/checkout', async (req, res, next) => {
 
     // 出品者の許可設定
     const sellerConfig = await fetchSellerConfig(sellerId);
-    const allowedPayments = sellerConfig.allowedPaymentMethods || [{code: 'cod', label_ja: '代金引換'}];
+    const allowedPayments = sellerConfig.allowedPaymentMethods || [];
     const allowedPaymentCodes = allowedPayments.map(p => String(p.code || '').trim());
-    const allowedShips    = sellerConfig.allowedShipMethods || [{code:'pickup'},{code:'delivery'}];
+    const allowedShips = sellerConfig.allowedShipMethods || [];
     const allowedShipsCodes = allowedShips.map(s => String(s.code || s).trim());
-    
+
     // バリデーション
     if (!agree) {
       req.session.flash = { type:'error', message:'利用規約に同意してください。' };
       return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
-    if (!allowedShipsCodes.includes(String(shipMethod || ''))) {
+    if (!allowedShipsCodes.length || !allowedShipsCodes.includes(String(shipMethod || ''))) {
       req.session.flash = { type:'error', message:'受け取り方法が無効です。' };
       return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
-    if (!allowedPaymentCodes.includes(String(paymentMethod || ''))) {
+    if (!allowedPaymentCodes.length || !allowedPaymentCodes.includes(String(paymentMethod || ''))) {
       req.session.flash = { type:'error', message:'この出品者では選択されたお支払い方法はご利用いただけません。' };
       return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
@@ -10214,13 +10274,70 @@ app.get(
 
       const user = req.session.user; // ログイン中ユーザー（admin / seller 両対応）
 
-      const allMethod = await loadAllPaymentMethods('payment_method', 'payment_method');
-      const partnerMethods = await getAllowedMethodsForPartner(id);
+      // 決済方法の取得（エラーハンドリングとデバッグログを追加）
+      let allMethod = [];
+      let partnerMethods = [];
+      try {
+        console.log(`[GET /admin/partners/:id] 決済方法取得開始: partnerId=${id}`);
+        allMethod = await loadAllPaymentMethods('payment_method', 'payment_method');
+        console.log(`[GET /admin/partners/:id] loadAllPaymentMethods 成功: 件数=${allMethod.length}`, allMethod.map(m => ({ value: m.value, label: m.label_ja })));
+        
+        partnerMethods = await getAllowedMethodsForPartner(id);
+        console.log(`[GET /admin/partners/:id] getAllowedMethodsForPartner 成功: 件数=${partnerMethods.length}`, partnerMethods);
+        
+        if (allMethod.length === 0) {
+          console.warn(`[GET /admin/partners/:id] 警告: 全決済方法が空です。DBにデータがない可能性があります。`);
+        }
+        if (partnerMethods.length === 0) {
+          console.log(`[GET /admin/partners/:id] 情報: この取引先に許可された決済方法はまだ設定されていません。`);
+        }
+      } catch (err) {
+        console.error('[GET /admin/partners/:id] 決済方法取得エラー:', err);
+        console.error('[GET /admin/partners/:id] エラー詳細:', {
+          message: err.message,
+          stack: err.stack,
+          partnerId: id
+        });
+        // エラーが発生しても空配列で続行
+      }
 
       const { weekly, specials } = await loadPartnerAvailabilityForPartner(id); 
       const availabilitySummary = buildAvailabilitySummary(weekly, specials);
 
       const shippingSummary = await loadShippingSummaryForPartner(id);
+
+      // ★ 追加: 銀行口座情報を取得
+      const bankAccountRows = await dbQuery(
+        `SELECT * FROM partner_bank_accounts WHERE partner_id = $1::uuid`,
+        [id]
+      );
+      const bankAccount = bankAccountRows.length ? bankAccountRows[0] : null;
+
+      // 配送方法の取得
+      let allShipMethod = [];
+      let partnerShipMethods = [];
+      try {
+        allShipMethod = await loadAllShipMethods('ship_method', 'ship_method');
+        partnerShipMethods = await getAllowedShipMethodsForPartner(id);
+      } catch (err) {
+        console.error('[GET /admin/partners/:id] 配送方法取得エラー:', err);
+        // エラーが発生しても空配列で続行
+      }
+
+      // テンプレートに渡す前のデータ検証
+      const finalPaymentMethods = partnerMethods || [];
+      const finalAllPaymentMethods = allMethod || [];
+      const finalShipMethods = partnerShipMethods || [];
+      const finalAllShipMethods = allShipMethod || [];
+      console.log(`[GET /admin/partners/:id] テンプレートに渡すデータ:`, {
+        allPaymentMethodsCount: finalAllPaymentMethods.length,
+        paymentMethodsCount: finalPaymentMethods.length,
+        paymentMethods: finalPaymentMethods,
+        allPaymentMethodsSample: finalAllPaymentMethods.slice(0, 3).map(m => ({ value: m.value, label: m.label_ja })),
+        allShipMethodsCount: finalAllShipMethods.length,
+        shipMethodsCount: finalShipMethods.length,
+        shipMethods: finalShipMethods
+      });
 
       res.render('admin/partners/show', {
         title: `取引先詳細 | ${partner.name}`,
@@ -10228,12 +10345,15 @@ app.get(
         users,
         user,
         isMember,
-        paymentMethods: partnerMethods,
-        allPaymentMethods: allMethod,
+        paymentMethods: finalPaymentMethods,
+        allPaymentMethods: finalAllPaymentMethods,
+        shipMethods: finalShipMethods,
+        allShipMethods: finalAllShipMethods,
         availabilitySummary,
         shippingSummary,
         availableAddresses,
         pickupAddress,
+        bankAccount,
         csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
       });
     } catch (e) {
@@ -10374,14 +10494,18 @@ app.post(
            id, name, kana, type, status, email, phone, website,
            billing_email, billing_terms, tax_id,
            postal_code, prefecture, city, address1, address2,
-           note, created_at, updated_at
+           note, icon_url, icon_r2_key, pickup_address_id, created_at, updated_at
          FROM partners
          WHERE id = $1::uuid
          LIMIT 1`,
         [id]
       );
       const partner = partners[0];
+      if (!partner || !r.length) {
+        return res.status(404).json({ ok:false, message:'not found' });
+      }
 
+      // 紐づくユーザー
       const users = await dbQuery(
         `SELECT id, name, email, roles, created_at, updated_at
            FROM users
@@ -10390,11 +10514,75 @@ app.post(
         [id]
       );
 
-      if (!r.length) return res.status(404).json({ ok:false, message:'not found' });
-      // res.json({ ok: true, status: r[0].status });
+      // 受け取り住所候補（このpartnerに紐づくユーザーが登録した住所）
+      const userIds = users.map(u => u.id);
+      let availableAddresses = [];
+      if (userIds.length > 0) {
+        const placeholders = userIds.map((_, i) => `$${i + 1}`).join(',');
+        availableAddresses = await dbQuery(
+          `SELECT id, full_name, postal_code, prefecture, city, address_line1, address_line2, phone, is_default
+             FROM addresses
+            WHERE user_id IN (${placeholders})
+              AND scope = 'user'
+            ORDER BY is_default DESC, created_at DESC`,
+          userIds
+        );
+      }
+
+      // 現在設定されている受け取り住所
+      let pickupAddress = null;
+      if (partner.pickup_address_id) {
+        const pickupAddrRows = await dbQuery(
+          `SELECT id, full_name, postal_code, prefecture, city, address_line1, address_line2, phone
+             FROM addresses
+            WHERE id = $1::uuid
+              AND user_id IN (${userIds.length > 0 ? userIds.map((_, i) => `$${i + 2}`).join(',') : 'NULL'})
+              AND scope = 'user'
+            LIMIT 1`,
+          [partner.pickup_address_id, ...userIds]
+        );
+        pickupAddress = pickupAddrRows[0] || null;
+      }
+
+      const user = req.session.user; // ログイン中ユーザー（admin / seller 両対応）
+      const isMember = await isMemberOfPartner(req, id);
+
+      // 決済方法の取得
+      let allMethod = [];
+      let partnerMethods = [];
+      try {
+        allMethod = await loadAllPaymentMethods('payment_method', 'payment_method');
+        partnerMethods = await getAllowedMethodsForPartner(id);
+      } catch (err) {
+        console.error('[POST /admin/partners/:id/status] 決済方法取得エラー:', err);
+        // エラーが発生しても空配列で続行
+      }
+
+      const { weekly, specials } = await loadPartnerAvailabilityForPartner(id); 
+      const availabilitySummary = buildAvailabilitySummary(weekly, specials);
+
+      const shippingSummary = await loadShippingSummaryForPartner(id);
+
+      // 銀行口座情報を取得
+      const bankAccountRows = await dbQuery(
+        `SELECT * FROM partner_bank_accounts WHERE partner_id = $1::uuid`,
+        [id]
+      );
+      const bankAccount = bankAccountRows.length ? bankAccountRows[0] : null;
+
       res.render('admin/partners/show', {
         title: `取引先詳細 | ${partner.name}`,
-        partner, users,
+        partner,
+        users,
+        user,
+        isMember,
+        paymentMethods: partnerMethods || [],
+        allPaymentMethods: allMethod || [],
+        availabilitySummary,
+        shippingSummary,
+        availableAddresses,
+        pickupAddress,
+        bankAccount,
         csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
       });
     } catch (e) {
@@ -10410,20 +10598,67 @@ app.post(
   async (req, res, next) => {
     try {
       const partnerId = String(req.params.id || '').trim();
-      if (!isUuid(partnerId)) return res.status(400).send('bad partner id');
+      const isAjax = req.xhr || req.get('X-Requested-With') === 'XMLHttpRequest' || req.get('Accept')?.includes('application/json');
+      
+      // エラーメッセージ（重複を避けるため定数化）
+      const BANK_ACCOUNT_REQUIRED_MSG = 'クレジットカード決済を有効化するには、銀行口座を事前に登録してください。';
+      
+      if (!isUuid(partnerId)) {
+        if (isAjax) {
+          return res.status(400).json({ ok: false, message: '無効な取引先IDです。' });
+        }
+        return res.status(400).send('bad partner id');
+      }
 
       // 権限：管理者 or その取引先メンバー
       if (!isAdmin(req) && !(await isMemberOfPartner(req, partnerId))) {
+        if (isAjax) {
+          return res.status(403).json({ ok: false, message: '権限がありません。' });
+        }
         return res.status(403).send('forbidden');
       }
 
       // 受け取り（チェックボックス name="methods"）
-      const allMethod = await loadAllPaymentMethods('payment_method', 'payment_method');
+      let allMethod = [];
+      try {
+        allMethod = await loadAllPaymentMethods('payment_method', 'payment_method');
+      } catch (err) {
+        console.error('[POST /admin/partners/:id/payments] 決済方法取得エラー:', err);
+        if (isAjax) {
+          return res.status(500).json({ ok: false, message: '決済方法の取得に失敗しました。' });
+        }
+        req.session.flash = { type: 'error', message: '決済方法の取得に失敗しました。' };
+        return res.redirect(`/admin/partners/${partnerId}`);
+      }
       const allCodes = allMethod.map(m => m.value);
       const methods = []
         .concat(req.body?.methods || [])
         .map(String).map(s=>s.trim())
         .filter(m => allCodes.includes(m));
+
+      // ★ 追加: クレジットカード決済を有効化する場合、銀行口座が登録されているかチェック
+      if (methods.includes('card')) {
+        const bankAccount = await dbQuery(
+          `SELECT id FROM partner_bank_accounts WHERE partner_id = $1::uuid`,
+          [partnerId]
+        );
+
+        if (!bankAccount.length) {
+          // AJAXリクエストの場合はJSONで返す
+          if (isAjax) {
+            return res.status(400).json({
+              ok: false,
+              message: BANK_ACCOUNT_REQUIRED_MSG
+            });
+          }
+          // 通常のフォーム送信の場合はフラッシュメッセージとリダイレクト
+          req.session.flash = {
+            type: 'error',
+            message: BANK_ACCOUNT_REQUIRED_MSG
+          };
+          return res.redirect(`/admin/partners/${partnerId}`);
+        }
+      }
 
       // トランザクション
       await dbQuery('BEGIN');
@@ -10478,10 +10713,672 @@ app.post(
       }
 
       await dbQuery('COMMIT');
+      
+      // 成功時のレスポンス
+      // フラッシュメッセージをセッションに保存（AJAXリクエストでも保存）
       req.session.flash = { type:'ok', message:'決済方法を更新しました。' };
+      
+      if (isAjax) {
+        return res.json({ ok: true, message: '決済方法を更新しました。' });
+      }
       res.redirect(`/admin/partners/${partnerId}`);
     } catch (e) {
       await dbQuery('ROLLBACK').catch(()=>{});
+      
+      // エラー時のレスポンス
+      const isAjax = req.xhr || req.get('X-Requested-With') === 'XMLHttpRequest' || req.get('Accept')?.includes('application/json');
+      if (isAjax) {
+        console.error('[決済方法更新] エラー:', e);
+        return res.status(500).json({
+          ok: false,
+          message: '決済方法の更新中にエラーが発生しました。'
+        });
+      }
+      next(e);
+    }
+  }
+);
+
+// ========================
+// 配送方法更新API (POST /admin/partners/:id/shipmethods)
+// ========================
+app.post(
+  '/admin/partners/:id/shipmethods',
+  requireAuth, csrfProtect,
+  async (req, res, next) => {
+    try {
+      const partnerId = String(req.params.id || '').trim();
+      const isAjax = req.xhr || req.get('X-Requested-With') === 'XMLHttpRequest' || req.get('Accept')?.includes('application/json');
+
+      if (!isUuid(partnerId)) {
+        if (isAjax) {
+          return res.status(400).json({ ok: false, message: '無効な取引先IDです。' });
+        }
+        return res.status(400).send('bad partner id');
+      }
+
+      // 権限：管理者 or その取引先メンバー
+      if (!isAdmin(req) && !(await isMemberOfPartner(req, partnerId))) {
+        if (isAjax) {
+          return res.status(403).json({ ok: false, message: '権限がありません。' });
+        }
+        return res.status(403).send('forbidden');
+      }
+
+      // 受け取り（チェックボックス name="methods"）
+      let allMethod = [];
+      try {
+        allMethod = await loadAllShipMethods('ship_method', 'ship_method');
+      } catch (err) {
+        console.error('[POST /admin/partners/:id/shipmethods] 配送方法取得エラー:', err);
+        if (isAjax) {
+          return res.status(500).json({ ok: false, message: '配送方法の取得に失敗しました。' });
+        }
+        req.session.flash = { type: 'error', message: '配送方法の取得に失敗しました。' };
+        return res.redirect(`/admin/partners/${partnerId}`);
+      }
+      const allCodes = allMethod.map(m => m.value);
+      const methods = []
+        .concat(req.body?.methods || [])
+        .map(String).map(s=>s.trim())
+        .filter(m => allCodes.includes(m));
+
+      // トランザクション
+      await dbQuery('BEGIN');
+      // 取引先の既存を全削除 → 挿入
+      await dbQuery(`DELETE FROM partner_allowed_ship_methods WHERE partner_id=$1::uuid`, [partnerId]);
+
+      if (methods.length) {
+        const values = methods.map((m,i)=>`($1::uuid,$${i+2}::ship_method)`).join(',');
+        await dbQuery(
+          `INSERT INTO partner_allowed_ship_methods(partner_id, method)
+           VALUES ${values}
+           ON CONFLICT (partner_id, method) DO NOTHING`,
+          [partnerId, ...methods]
+        );
+      }
+
+      await dbQuery('COMMIT');
+
+      // 成功時のレスポンス
+      req.session.flash = { type:'ok', message:'配送方法を更新しました。' };
+
+      if (isAjax) {
+        return res.json({ ok: true, message: '配送方法を更新しました。' });
+      }
+      res.redirect(`/admin/partners/${partnerId}`);
+    } catch (e) {
+      await dbQuery('ROLLBACK').catch(()=>{});
+
+      // エラー時のレスポンス
+      const isAjax = req.xhr || req.get('X-Requested-With') === 'XMLHttpRequest' || req.get('Accept')?.includes('application/json');
+      if (isAjax) {
+        console.error('[配送方法更新] エラー:', e);
+        return res.status(500).json({
+          ok: false,
+          message: '配送方法の更新中にエラーが発生しました。'
+        });
+      }
+      next(e);
+    }
+  }
+);
+
+// ========================
+// 銀行口座管理API
+// ========================
+
+// 取引先の銀行口座情報を登録・更新（管理者のみ）
+app.post(
+  '/admin/partners/:id/bank-account',
+  requireAuth,
+  csrfProtect,
+  async (req, res, next) => {
+    try {
+      const partnerId = String(req.params.id || '').trim();
+      if (!isUuid(partnerId)) return res.status(400).send('invalid partner id');
+
+      // 権限チェック: 管理者のみ
+      if (!isAdmin(req)) {
+        return res.status(403).send('forbidden');
+      }
+
+      // バリデーション
+      const {
+        bank_name,
+        bank_code,
+        branch_name,
+        branch_code,
+        account_type,
+        account_number,
+        account_holder_name,
+        note
+      } = req.body;
+
+      // 必須項目チェック
+      if (!bank_name || !branch_name || !account_type || !account_number || !account_holder_name) {
+        req.session.flash = { type: 'error', message: '必須項目を入力してください。' };
+        return res.redirect(`/admin/partners/${partnerId}`);
+      }
+
+      // 口座種別の検証
+      if (!['ordinary', 'current', 'savings'].includes(account_type)) {
+        req.session.flash = { type: 'error', message: '無効な口座種別です。' };
+        return res.redirect(`/admin/partners/${partnerId}`);
+      }
+
+      // 口座番号の検証（7桁の数字）
+      if (!/^\d{7}$/.test(account_number)) {
+        req.session.flash = { type: 'error', message: '口座番号は7桁の数字で入力してください。' };
+        return res.redirect(`/admin/partners/${partnerId}`);
+      }
+
+      // 銀行コードの検証（4桁の数字、任意）
+      if (bank_code && !/^\d{4}$/.test(bank_code)) {
+        req.session.flash = { type: 'error', message: '銀行コードは4桁の数字で入力してください。' };
+        return res.redirect(`/admin/partners/${partnerId}`);
+      }
+
+      // 支店コードの検証（3桁の数字、任意）
+      if (branch_code && !/^\d{3}$/.test(branch_code)) {
+        req.session.flash = { type: 'error', message: '支店コードは3桁の数字で入力してください。' };
+        return res.redirect(`/admin/partners/${partnerId}`);
+      }
+
+      await dbQuery('BEGIN');
+
+      // 既存の口座情報を確認（UPSERT）
+      const existing = await dbQuery(
+        `SELECT id FROM partner_bank_accounts WHERE partner_id = $1::uuid`,
+        [partnerId]
+      );
+
+      if (existing.length > 0) {
+        // 更新
+        await dbQuery(
+          `UPDATE partner_bank_accounts
+           SET bank_name = $1,
+               bank_code = $2,
+               branch_name = $3,
+               branch_code = $4,
+               account_type = $5,
+               account_number = $6,
+               account_holder_name = $7,
+               note = $8,
+               is_verified = FALSE,
+               verified_at = NULL,
+               verified_by = NULL,
+               updated_at = now()
+           WHERE partner_id = $9::uuid`,
+          [bank_name, bank_code || null, branch_name, branch_code || null,
+           account_type, account_number, account_holder_name, note || null, partnerId]
+        );
+      } else {
+        // 新規登録
+        await dbQuery(
+          `INSERT INTO partner_bank_accounts
+           (partner_id, bank_name, bank_code, branch_name, branch_code,
+            account_type, account_number, account_holder_name, note)
+           VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [partnerId, bank_name, bank_code || null, branch_name, branch_code || null,
+           account_type, account_number, account_holder_name, note || null]
+        );
+      }
+
+      await dbQuery('COMMIT');
+
+      req.session.flash = { type: 'ok', message: '銀行口座情報を保存しました。' };
+      res.redirect(`/admin/partners/${partnerId}`);
+    } catch (e) {
+      await dbQuery('ROLLBACK').catch(() => {});
+      next(e);
+    }
+  }
+);
+
+// 銀行口座を確認済みにマーク（管理者のみ）
+app.post(
+  '/admin/partners/:id/bank-account/verify',
+  requireAuth,
+  csrfProtect,
+  async (req, res, next) => {
+    try {
+      const partnerId = String(req.params.id || '').trim();
+      if (!isUuid(partnerId)) return res.status(400).json({ ok: false, message: 'invalid partner id' });
+
+      // 権限チェック: 管理者のみ
+      if (!isAdmin(req)) {
+        return res.status(403).json({ ok: false, message: 'forbidden' });
+      }
+
+      const userId = req.session.user.id;
+
+      const result = await dbQuery(
+        `UPDATE partner_bank_accounts
+         SET is_verified = TRUE,
+             verified_at = now(),
+             verified_by = $2::uuid,
+             updated_at = now()
+         WHERE partner_id = $1::uuid
+         RETURNING id`,
+        [partnerId, userId]
+      );
+
+      if (!result.length) {
+        return res.status(404).json({ ok: false, message: '銀行口座が登録されていません。' });
+      }
+
+      req.session.flash = { type: 'ok', message: '銀行口座を確認済みにしました。' };
+      res.redirect(`/admin/partners/${partnerId}`);
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+// 銀行口座を削除（管理者のみ）
+app.delete(
+  '/admin/partners/:id/bank-account',
+  requireAuth,
+  csrfProtect,
+  async (req, res, next) => {
+    try {
+      const partnerId = String(req.params.id || '').trim();
+      if (!isUuid(partnerId)) return res.status(400).json({ ok: false, message: 'invalid partner id' });
+
+      // 権限チェック: 管理者のみ
+      if (!isAdmin(req)) {
+        return res.status(403).json({ ok: false, message: 'forbidden' });
+      }
+
+      await dbQuery(
+        `DELETE FROM partner_bank_accounts WHERE partner_id = $1::uuid`,
+        [partnerId]
+      );
+
+      res.json({ ok: true, message: '銀行口座を削除しました。' });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+// ========================
+// 送金管理API
+// ========================
+
+// 送金対象注文のプレビュー（期間指定で集計）
+app.get(
+  '/admin/transfers/preview',
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      // 権限チェック: 管理者のみ
+      if (!isAdmin(req)) {
+        return res.status(403).json({ ok: false, message: 'forbidden' });
+      }
+
+      const periodStart = req.query.period_start; // YYYY-MM-DD
+      const periodEnd = req.query.period_end;     // YYYY-MM-DD
+
+      if (!periodStart || !periodEnd) {
+        return res.status(400).json({ ok: false, message: '期間を指定してください。' });
+      }
+
+      // 送金対象注文の取得
+      // 条件: payment_method='card', payment_status='paid', transfer_status='pending'
+      const orders = await dbQuery(
+        `SELECT
+           o.id, o.order_number, o.seller_id, o.total, o.created_at,
+           u.name AS seller_name, u.partner_id
+         FROM orders o
+         LEFT JOIN users u ON u.id = o.seller_id
+         WHERE o.payment_method = 'card'
+           AND o.payment_status = 'paid'
+           AND o.transfer_status = 'pending'
+           AND o.created_at >= $1::date
+           AND o.created_at < ($2::date + INTERVAL '1 day')
+         ORDER BY u.partner_id, o.created_at`,
+        [periodStart, periodEnd]
+      );
+
+      // 取引先ごとに集計
+      const partnerMap = new Map();
+      for (const order of orders) {
+        const partnerId = order.partner_id;
+
+        if (!partnerId) continue; // partner_idがない場合はスキップ
+
+        if (!partnerMap.has(partnerId)) {
+          partnerMap.set(partnerId, {
+            partner_id: partnerId,
+            partner_name: order.seller_name,
+            order_count: 0,
+            total_amount: 0,
+            orders: []
+          });
+        }
+
+        const partnerData = partnerMap.get(partnerId);
+        partnerData.order_count++;
+        partnerData.total_amount += order.total;
+        partnerData.orders.push(order);
+      }
+
+      // 取引先名を取得し、銀行口座情報を付与
+      const transferData = [];
+      for (const [partnerId, data] of partnerMap) {
+        const partnerInfo = await dbQuery(
+          `SELECT name FROM partners WHERE id = $1::uuid`,
+          [partnerId]
+        );
+
+        const bankAccount = await dbQuery(
+          `SELECT * FROM partner_bank_accounts WHERE partner_id = $1::uuid`,
+          [partnerId]
+        );
+
+        transferData.push({
+          ...data,
+          partner_name: partnerInfo.length ? partnerInfo[0].name : data.partner_name,
+          bank_account: bankAccount[0] || null,
+          platform_fee_rate: 0.00, // 手数料率（設定可能にする）
+          platform_fee_amount: 0,
+          transfer_amount: data.total_amount
+        });
+      }
+
+      res.json({ ok: true, data: transferData });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+// 送金記録を作成（実際の送金は手動で行い、情報のみ記録）
+app.post(
+  '/admin/transfers',
+  requireAuth,
+  csrfProtect,
+  async (req, res, next) => {
+    try {
+      // 権限チェック: 管理者のみ
+      if (!isAdmin(req)) {
+        return res.status(403).json({ ok: false, message: 'forbidden' });
+      }
+
+      const {
+        partner_id,
+        period_start,
+        period_end,
+        scheduled_date,
+        order_ids,
+        total_amount,
+        platform_fee_rate,
+        platform_fee_amount,
+        transfer_amount,
+        order_count
+      } = req.body;
+
+      // バリデーション
+      if (!partner_id || !period_start || !period_end || !scheduled_date || !order_ids || !order_ids.length) {
+        return res.status(400).json({ ok: false, message: '必須項目が不足しています。' });
+      }
+
+      const userId = req.session.user.id;
+
+      // 銀行口座情報を取得
+      const bankAccount = await dbQuery(
+        `SELECT id FROM partner_bank_accounts WHERE partner_id = $1::uuid`,
+        [partner_id]
+      );
+
+      const bankAccountId = bankAccount.length ? bankAccount[0].id : null;
+
+      await dbQuery('BEGIN');
+
+      // 送金記録を作成
+      const transferResult = await dbQuery(
+        `INSERT INTO partner_transfers
+         (partner_id, bank_account_id, transfer_period_start, transfer_period_end,
+          transfer_scheduled_date, total_order_amount, platform_fee_rate,
+          platform_fee_amount, transfer_amount, order_count, order_ids,
+          status, created_at, updated_at)
+         VALUES ($1::uuid, $2::uuid, $3::date, $4::date, $5::date, $6, $7, $8, $9, $10, $11::uuid[], 'pending', now(), now())
+         RETURNING id`,
+        [partner_id, bankAccountId, period_start, period_end, scheduled_date,
+         total_amount, platform_fee_rate || 0.00, platform_fee_amount || 0,
+         transfer_amount, order_count, order_ids]
+      );
+
+      const transferId = transferResult[0].id;
+
+      // 対象注文の transfer_status を更新
+      await dbQuery(
+        `UPDATE orders
+         SET transfer_id = $1::uuid,
+             transfer_status = 'included',
+             updated_at = now()
+         WHERE id = ANY($2::uuid[])`,
+        [transferId, order_ids]
+      );
+
+      await dbQuery('COMMIT');
+
+      res.json({
+        ok: true,
+        message: '送金記録を作成しました。',
+        transfer_id: transferId
+      });
+    } catch (e) {
+      await dbQuery('ROLLBACK').catch(() => {});
+      next(e);
+    }
+  }
+);
+
+// 送金を完了済みにマーク（手動送金実施後）
+app.post(
+  '/admin/transfers/:id/complete',
+  requireAuth,
+  csrfProtect,
+  async (req, res, next) => {
+    try {
+      // 権限チェック: 管理者のみ
+      if (!isAdmin(req)) {
+        return res.status(403).json({ ok: false, message: 'forbidden' });
+      }
+
+      const transferId = String(req.params.id || '').trim();
+      if (!isUuid(transferId)) return res.status(400).json({ ok: false, message: 'invalid id' });
+
+      const { transfer_note } = req.body;
+      const userId = req.session.user.id;
+
+      await dbQuery('BEGIN');
+
+      // 送金記録を更新
+      const result = await dbQuery(
+        `UPDATE partner_transfers
+         SET status = 'completed',
+             transferred_at = now(),
+             transferred_by = $2::uuid,
+             transfer_note = $3,
+             updated_at = now()
+         WHERE id = $1::uuid
+         RETURNING order_ids`,
+        [transferId, userId, transfer_note || null]
+      );
+
+      if (!result.length) {
+        await dbQuery('ROLLBACK');
+        return res.status(404).json({ ok: false, message: '送金記録が見つかりません。' });
+      }
+
+      const orderIds = result[0].order_ids;
+
+      // 対象注文の transfer_status を更新
+      await dbQuery(
+        `UPDATE orders
+         SET transfer_status = 'transferred',
+             updated_at = now()
+         WHERE id = ANY($1::uuid[])`,
+        [orderIds]
+      );
+
+      await dbQuery('COMMIT');
+
+      req.session.flash = { type: 'ok', message: '送金を完了済みにしました。' };
+      res.redirect(`/admin/transfers`);
+    } catch (e) {
+      await dbQuery('ROLLBACK').catch(() => {});
+      next(e);
+    }
+  }
+);
+
+// 送金一覧画面
+app.get(
+  '/admin/transfers',
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      // 権限チェック: 管理者のみ
+      if (!isAdmin(req)) {
+        return res.status(403).render('errors/403', { title: '権限がありません' });
+      }
+
+      const page = parseInt(req.query.page) || 1;
+      const perPage = 20;
+      const offset = (page - 1) * perPage;
+
+      const status = req.query.status || '';
+
+      let whereClauses = [];
+      let params = [];
+      let paramIndex = 1;
+
+      if (status) {
+        whereClauses.push(`t.status = $${paramIndex}`);
+        params.push(status);
+        paramIndex++;
+      }
+
+      const whereSQL = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+      const transfers = await dbQuery(
+        `SELECT
+           t.*,
+           p.name AS partner_name,
+           u.name AS transferred_by_name
+         FROM partner_transfers t
+         LEFT JOIN partners p ON p.id = t.partner_id
+         LEFT JOIN users u ON u.id = t.transferred_by
+         ${whereSQL}
+         ORDER BY t.transfer_scheduled_date DESC, t.created_at DESC
+         LIMIT ${perPage} OFFSET ${offset}`,
+        params
+      );
+
+      const totalResult = await dbQuery(
+        `SELECT COUNT(*)::int AS total FROM partner_transfers t ${whereSQL}`,
+        params
+      );
+      const total = totalResult[0].total;
+      const totalPages = Math.ceil(total / perPage);
+
+      res.render('admin/transfers/index', {
+        title: '送金管理',
+        transfers,
+        page,
+        perPage,
+        total,
+        totalPages,
+        status,
+        csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+// 送金記録作成画面
+app.get(
+  '/admin/transfers/new',
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      // 権限チェック: 管理者のみ
+      if (!isAdmin(req)) {
+        return res.status(403).render('errors/403', { title: '権限がありません' });
+      }
+
+      res.render('admin/transfers/new', {
+        title: '送金記録の作成',
+        csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+// 送金詳細画面
+app.get(
+  '/admin/transfers/:id',
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      // 権限チェック: 管理者のみ
+      if (!isAdmin(req)) {
+        return res.status(403).render('errors/403', { title: '権限がありません' });
+      }
+
+      const transferId = String(req.params.id || '').trim();
+      if (!isUuid(transferId)) {
+        return res.status(404).render('errors/404', { title: '送金記録が見つかりません' });
+      }
+
+      const transferRows = await dbQuery(
+        `SELECT
+           t.*,
+           p.name AS partner_name,
+           u.name AS transferred_by_name
+         FROM partner_transfers t
+         LEFT JOIN partners p ON p.id = t.partner_id
+         LEFT JOIN users u ON u.id = t.transferred_by
+         WHERE t.id = $1::uuid`,
+        [transferId]
+      );
+
+      if (!transferRows.length) {
+        return res.status(404).render('errors/404', { title: '送金記録が見つかりません' });
+      }
+
+      const transfer = transferRows[0];
+
+      // 銀行口座情報を取得
+      const bankAccountRows = await dbQuery(
+        `SELECT * FROM partner_bank_accounts WHERE partner_id = $1::uuid`,
+        [transfer.partner_id]
+      );
+      const bankAccount = bankAccountRows.length ? bankAccountRows[0] : null;
+
+      // 対象注文を取得
+      const orders = await dbQuery(
+        `SELECT * FROM orders WHERE id = ANY($1::uuid[]) ORDER BY created_at DESC`,
+        [transfer.order_ids]
+      );
+
+      res.render('admin/transfers/show', {
+        title: `送金詳細 | ${transfer.partner_name || ''}`,
+        transfer,
+        bankAccount,
+        orders,
+        csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
+      });
+    } catch (e) {
       next(e);
     }
   }

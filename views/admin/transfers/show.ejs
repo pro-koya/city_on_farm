@@ -1,0 +1,261 @@
+<%- include('../../partials/header', { title: title }) %>
+
+<main class="admin-content">
+  <div class="page-header">
+    <h1><%= title %></h1>
+    <a href="/admin/transfers" class="btn btn--secondary">一覧に戻る</a>
+  </div>
+
+  <!-- 送金情報 -->
+  <section class="card">
+    <div class="card__head">
+      <h2 class="card__title">送金情報</h2>
+      <% if (transfer.status === 'pending') { %>
+        <span class="badge badge--warning">送金待ち</span>
+      <% } else if (transfer.status === 'processing') { %>
+        <span class="badge badge--info">処理中</span>
+      <% } else if (transfer.status === 'completed') { %>
+        <span class="badge badge--success">完了</span>
+      <% } else if (transfer.status === 'failed') { %>
+        <span class="badge badge--danger">失敗</span>
+      <% } %>
+    </div>
+
+    <dl class="kv">
+      <div>
+        <dt>取引先</dt>
+        <dd><%= transfer.partner_name || '-' %></dd>
+      </div>
+      <div>
+        <dt>集計期間</dt>
+        <dd>
+          <%= new Date(transfer.transfer_period_start).toLocaleDateString('ja-JP') %> 〜
+          <%= new Date(transfer.transfer_period_end).toLocaleDateString('ja-JP') %>
+        </dd>
+      </div>
+      <div>
+        <dt>送金予定日</dt>
+        <dd><%= new Date(transfer.transfer_scheduled_date).toLocaleDateString('ja-JP') %></dd>
+      </div>
+      <div>
+        <dt>注文件数</dt>
+        <dd><%= transfer.order_count %>件</dd>
+      </div>
+      <div>
+        <dt>注文総額</dt>
+        <dd>¥<%= Number(transfer.total_order_amount).toLocaleString() %></dd>
+      </div>
+      <div>
+        <dt>プラットフォーム手数料</dt>
+        <dd>
+          <%= transfer.platform_fee_rate %>%
+          （¥<%= Number(transfer.platform_fee_amount).toLocaleString()%>）
+        </dd>
+      </div>
+      <div>
+        <dt>送金額</dt>
+        <dd class="amount">¥<%= Number(transfer.transfer_amount).toLocaleString() %></dd>
+      </div>
+      <% if (transfer.transferred_at) { %>
+      <div>
+        <dt>送金実施日時</dt>
+        <dd><%= new Date(transfer.transferred_at).toLocaleString('ja-JP') %></dd>
+      </div>
+      <% } %>
+      <% if (transfer.transferred_by_name) { %>
+      <div>
+        <dt>送金実施者</dt>
+        <dd><%= transfer.transferred_by_name %></dd>
+      </div>
+      <% } %>
+      <% if (transfer.transfer_note) { %>
+      <div>
+        <dt>送金メモ</dt>
+        <dd><%= transfer.transfer_note %></dd>
+      </div>
+      <% } %>
+    </dl>
+
+    <% if (transfer.status === 'pending') { %>
+      <div class="row-right" style="margin-top: 1rem;">
+        <form action="/admin/transfers/<%= transfer.id %>/complete" method="POST" style="display: inline;">
+          <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
+          <div class="field">
+            <label for="transfer_note">送金メモ</label>
+            <textarea id="transfer_note" name="transfer_note" rows="3" placeholder="送金に関するメモ（任意）"></textarea>
+          </div>
+          <button type="submit" class="btn btn--success" onclick="return confirm('送金を完了済みにしますか？')">完了済みにする</button>
+        </form>
+      </div>
+    <% } %>
+  </section>
+
+  <!-- 銀行口座情報 -->
+  <% if (bankAccount) { %>
+  <section class="card">
+    <div class="card__head">
+      <h2 class="card__title">振込先銀行口座</h2>
+    </div>
+
+    <dl class="kv">
+      <div>
+        <dt>銀行名</dt>
+        <dd><%= bankAccount.bank_name %><% if (bankAccount.bank_code) { %>（<%= bankAccount.bank_code %>）<% } %></dd>
+      </div>
+      <div>
+        <dt>支店名</dt>
+        <dd><%= bankAccount.branch_name %><% if (bankAccount.branch_code) { %>（<%= bankAccount.branch_code %>）<% } %></dd>
+      </div>
+      <div>
+        <dt>口座種別</dt>
+        <dd>
+          <% if (bankAccount.account_type === 'ordinary') { %>普通預金
+          <% } else if (bankAccount.account_type === 'current') { %>当座預金
+          <% } else if (bankAccount.account_type === 'savings') { %>貯蓄預金
+          <% } else { %><%= bankAccount.account_type %>
+          <% } %>
+        </dd>
+      </div>
+      <div>
+        <dt>口座番号</dt>
+        <dd><%= bankAccount.account_number %></dd>
+      </div>
+      <div>
+        <dt>口座名義</dt>
+        <dd><%= bankAccount.account_holder_name %></dd>
+      </div>
+    </dl>
+  </section>
+  <% } %>
+
+  <!-- 対象注文一覧 -->
+  <section class="card">
+    <div class="card__head">
+      <h2 class="card__title">対象注文一覧</h2>
+    </div>
+
+    <% if (orders && orders.length) { %>
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>注文番号</th>
+              <th>注文日時</th>
+              <th>金額</th>
+              <th>決済ステータス</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% orders.forEach(order => { %>
+              <tr>
+                <td>
+                  <a href="/admin/orders/<%= order.id %>"><%= order.order_number %></a>
+                </td>
+                <td><%= new Date(order.created_at).toLocaleString('ja-JP') %></td>
+                <td>¥<%= Number(order.total).toLocaleString() %></td>
+                <td>
+                  <% if (order.payment_status === 'paid') { %>
+                    <span class="badge badge--success">支払済み</span>
+                  <% } else if (order.payment_status === 'unpaid') { %>
+                    <span class="badge badge--warning">未払い</span>
+                  <% } else { %>
+                    <%= order.payment_status %>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } else { %>
+      <p class="muted">対象注文がありません。</p>
+    <% } %>
+  </section>
+</main>
+
+<style>
+.admin-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.kv {
+  display: grid;
+  gap: 1rem;
+}
+
+.kv > div {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 1rem;
+}
+
+.kv dt {
+  font-weight: 600;
+}
+
+.kv dd.amount {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #28a745;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tbl th,
+.tbl td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.tbl th {
+  background-color: #f5f5f5;
+  font-weight: 600;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.badge--warning {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.badge--info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.badge--success {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.badge--danger {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+</style>
+
+<%- include('../../partials/footer') %>

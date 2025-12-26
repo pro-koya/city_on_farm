@@ -1,0 +1,100 @@
+<%
+/**
+ * パンくずリストコンポーネント
+ *
+ * @param {Array} items - パンくずリストの項目配列
+ * 例: [
+ *   { label: 'ホーム', url: '/' },
+ *   { label: '管理', url: '/admin' },
+ *   { label: '取引先一覧', url: '/admin/partners' },
+ *   { label: '取引先詳細' } // 最後の項目はurlなし（現在のページ）
+ * ]
+ */
+const breadcrumbItems = typeof items !== 'undefined' ? items : [];
+%>
+
+<% if (breadcrumbItems && breadcrumbItems.length > 0) { %>
+<nav class="breadcrumb" aria-label="パンくずリスト">
+  <ol class="breadcrumb-list">
+    <% breadcrumbItems.forEach((item, index) => { %>
+      <li class="breadcrumb-item <%= index === breadcrumbItems.length - 1 ? 'breadcrumb-item--current' : '' %>">
+        <% if (item.url && index !== breadcrumbItems.length - 1) { %>
+          <a href="<%= item.url %>" class="breadcrumb-link"><%= item.label %></a>
+        <% } else { %>
+          <span class="breadcrumb-current"><%= item.label %></span>
+        <% } %>
+        <% if (index < breadcrumbItems.length - 1) { %>
+          <svg class="breadcrumb-separator" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        <% } %>
+      </li>
+    <% }); %>
+  </ol>
+</nav>
+
+<style>
+.breadcrumb {
+  margin: 0 0 1.5rem;
+  padding: 0.75rem 0;
+}
+
+.breadcrumb-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 0.5rem;
+}
+
+.breadcrumb-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.breadcrumb-link {
+  color: #666;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.breadcrumb-link:hover {
+  color: var(--color-main, #4C6B5C);
+  text-decoration: underline;
+}
+
+.breadcrumb-current {
+  color: #333;
+  font-weight: 600;
+}
+
+.breadcrumb-separator {
+  color: #999;
+  flex-shrink: 0;
+}
+
+.breadcrumb-item--current {
+  color: #333;
+}
+
+@media (max-width: 640px) {
+  .breadcrumb {
+    margin-bottom: 1rem;
+    padding: 0.5rem 0;
+  }
+
+  .breadcrumb-item {
+    font-size: 0.8rem;
+  }
+
+  .breadcrumb-separator {
+    width: 14px;
+    height: 14px;
+  }
+}
+</style>
+<% } %>
