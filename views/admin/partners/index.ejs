@@ -28,9 +28,15 @@
   searchAction: _searchAction,
   q: _q,
 
+  breadcrumbItems: [
+    { label: 'ホーム', url: '/' },
+    { label: '管理', url: '/dashboard/admin' },
+    { label: '取引先一覧' }
+  ],
+
   filtersHTML: include('./_filters', { typeVal, statusVal, sortVal }),
 
-  extraActionsHTML: 
+  extraActionsHTML:
     `<a class="btn btn--ghost" style="display:none;" href="/admin/partners/new">＋ 新規取引先</a>`
   ,
 

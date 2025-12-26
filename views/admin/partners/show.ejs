@@ -5,6 +5,7 @@
 }) %>
 
 <main class="ps">
+
   <header class="ps__head">
     <div class="ps__title-wrap">
       <h1 class="ps__title"><%= partner.name %></h1>
@@ -257,6 +258,43 @@
     </article>
 
     <% if (user.roles.includes('seller') || user.roles.includes('admin')) { %>
+    <!-- 配送方法（取引先全体） -->
+    <article class="card">
+      <div class="card__head">
+        <h2 class="card__title">配送方法（取引先全体）</h2>
+      </div>
+
+      <form id="shipMethodForm" action="/admin/partners/<%= partner.id %>/shipmethods" method="POST" class="form">
+        <% if (csrfToken) { %><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
+
+        <!-- エラーメッセージ表示エリア -->
+        <div id="shipMethodError" class="error" style="display: none; margin-bottom: 1rem; padding: 0.75rem; background: #fee; border: 1px solid #fcc; border-radius: 4px; color: #c33;"></div>
+
+        <div class="chips">
+          <% if (typeof allShipMethods !== 'undefined' && allShipMethods && allShipMethods.length > 0) { %>
+            <% allShipMethods.forEach(m => { %>
+              <label class="chip">
+                <input type="checkbox" name="methods" value="<%= m.value %>"
+                      <%= (typeof shipMethods !== 'undefined' && shipMethods && shipMethods.includes(m.value)) ? 'checked' : '' %> >
+                <span><%= m.label_ja %></span>
+              </label>
+            <% }) %>
+          <% } else { %>
+            <p class="muted small">配送方法の読み込み中...</p>
+          <% } %>
+        </div>
+
+        <p class="muted small">
+          購入者がチェックアウト時に選択できる配送方法を設定します。
+          配送設定との整合性にご注意ください。
+        </p>
+
+        <div class="row-right">
+          <button class="btn btn--toggle" type="submit">保存</button>
+        </div>
+      </form>
+    </article>
+
     <article class="card card--availability">
       <div class="card__head">
         <h2 class="card__title">受け渡し可能日（概要）</h2>
@@ -485,7 +523,7 @@
         <div id="bankAccountEmptyView">
           <p class="muted">銀行口座が登録されていません。クレジットカード決済を有効化するには、口座情報の登録が必要です。</p>
           <div class="row-right" style="margin-top: 1rem;">
-            <button class="btn btn--primary" onclick="toggleBankAccountForm()">銀行口座を登録</button>
+            <button class="btn btn--toggle" onclick="toggleBankAccountForm()">銀行口座を登録</button>
           </div>
         </div>
       <% } else { %>
@@ -514,7 +552,7 @@
             <dd><%= bankAccount.account_number %></dd>
           </div>
           <div>
-            <dt>口座名義（カナ）</dt>
+            <dt>口座名義(カナ)</dt>
             <dd><%= bankAccount.account_holder_name %></dd>
           </div>
           <% if (bankAccount.note) { %>
@@ -607,7 +645,7 @@
 
         <div class="field">
           <label for="account_type">口座種別 <span class="required">*</span></label>
-          <select id="account_type" name="account_type" required>
+          <select id="account_type" name="account_type" class="pulldown" required>
             <option value="">選択してください</option>
             <option value="ordinary" <%= bankAccount && bankAccount.account_type === 'ordinary' ? 'selected' : '' %>>普通預金</option>
             <option value="current" <%= bankAccount && bankAccount.account_type === 'current' ? 'selected' : '' %>>当座預金</option>
@@ -657,7 +695,7 @@
           <% if (bankAccount) { %>
             <button type="button" class="btn btn--secondary" onclick="toggleBankAccountForm()">キャンセル</button>
           <% } %>
-          <button type="submit" class="btn btn--primary">保存</button>
+          <button type="submit" class="btn btn--toggle">保存</button>
         </div>
       </form>
     </article>

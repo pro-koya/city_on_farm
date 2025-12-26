@@ -1,0 +1,225 @@
+<%- include('../../partials/header', { title: title }) %>
+
+<main class="admin-content">
+  <div class="page-header">
+    <h1><%= title %></h1>
+    <a href="/admin/transfers" class="btn btn--secondary">一覧に戻る</a>
+  </div>
+
+  <!-- 期間選択 -->
+  <section class="card">
+    <div class="card__head">
+      <h2 class="card__title">送金対象期間の選択</h2>
+    </div>
+
+    <form id="previewForm" class="form">
+      <div class="field-group">
+        <div class="field">
+          <label for="period_start">集計期間開始日 <span class="required">*</span></label>
+          <input type="date" id="period_start" name="period_start" required>
+        </div>
+        <div class="field">
+          <label for="period_end">集計期間終了日 <span class="required">*</span></label>
+          <input type="date" id="period_end" name="period_end" required>
+        </div>
+        <div class="field">
+          <label for="scheduled_date">送金予定日 <span class="required">*</span></label>
+          <input type="date" id="scheduled_date" name="scheduled_date" required>
+        </div>
+      </div>
+
+      <div class="row-right">
+        <button type="button" class="btn btn--primary" onclick="loadPreview()">プレビュー表示</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- プレビュー結果 -->
+  <div id="previewResult" style="display: none;">
+    <section class="card">
+      <div class="card__head">
+        <h2 class="card__title">送金対象一覧</h2>
+      </div>
+
+      <div id="previewContent">
+        <!-- JavaScriptで動的に表示 -->
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+async function loadPreview() {
+  const periodStart = document.getElementById('period_start').value;
+  const periodEnd = document.getElementById('period_end').value;
+  const scheduledDate = document.getElementById('scheduled_date').value;
+
+  if (!periodStart || !periodEnd || !scheduledDate) {
+    alert('全ての日付を入力してください。');
+    return;
+  }
+
+  try {
+    const response = await fetch(`/admin/transfers/preview?period_start=${periodStart}&period_end=${periodEnd}`);
+    const result = await response.json();
+
+    if (!result.ok) {
+      alert(result.message || 'エラーが発生しました。');
+      return;
+    }
+
+    displayPreview(result.data, periodStart, periodEnd, scheduledDate);
+  } catch (error) {
+    console.error('Preview error:', error);
+    alert('プレビューの取得に失敗しました。');
+  }
+}
+
+function displayPreview(data, periodStart, periodEnd, scheduledDate) {
+  const previewResult = document.getElementById('previewResult');
+  const previewContent = document.getElementById('previewContent');
+
+  if (!data || data.length === 0) {
+    previewContent.innerHTML = '<p class="muted">指定期間に送金対象の注文がありません。</p>';
+    previewResult.style.display = 'block';
+    return;
+  }
+
+  let html = '<div class="table-wrap"><table class="tbl"><thead><tr>';
+  html += '<th>取引先</th>';
+  html += '<th>注文件数</th>';
+  html += '<th>合計金額</th>';
+  html += '<th>銀行口座</th>';
+  html += '<th>操作</th>';
+  html += '</tr></thead><tbody>';
+
+  data.forEach(transfer => {
+    html += '<tr>';
+    html += `<td>${transfer.partner_name || '-'}</td>`;
+    html += `<td>${transfer.order_count}件</td>`;
+    html += `<td>¥${Number(transfer.total_amount).toLocaleString()}</td>`;
+
+    if (transfer.bank_account) {
+      html += `<td>${transfer.bank_account.bank_name} ${transfer.bank_account.branch_name}<br>`;
+      html += `${transfer.bank_account.account_number} (${transfer.bank_account.account_holder_name})</td>`;
+    } else {
+      html += '<td><span class="badge badge--danger">未登録</span></td>';
+    }
+
+    if (transfer.bank_account) {
+      html += `<td><button class="btn btn--primary btn--small" onclick='createTransfer(${JSON.stringify(transfer)}, "${periodStart}", "${periodEnd}", "${scheduledDate}")'>送金記録を作成</button></td>`;
+    } else {
+      html += '<td><span class="muted small">銀行口座が未登録です</span></td>';
+    }
+
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  previewContent.innerHTML = html;
+  previewResult.style.display = 'block';
+}
+
+async function createTransfer(transferData, periodStart, periodEnd, scheduledDate) {
+  if (!confirm(`${transferData.partner_name}への送金記録を作成しますか？`)) {
+    return;
+  }
+
+  const csrfToken = '<%= csrfToken %>';
+  const orderIds = transferData.orders.map(o => o.id);
+
+  try {
+    const response = await fetch('/admin/transfers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'CSRF-Token': csrfToken
+      },
+      body: JSON.stringify({
+        partner_id: transferData.partner_id,
+        period_start: periodStart,
+        period_end: periodEnd,
+        scheduled_date: scheduledDate,
+        order_ids: orderIds,
+        total_amount: transferData.total_amount,
+        platform_fee_rate: transferData.platform_fee_rate,
+        platform_fee_amount: transferData.platform_fee_amount,
+        transfer_amount: transferData.transfer_amount,
+        order_count: transferData.order_count
+      })
+    });
+
+    const result = await response.json();
+
+    if (result.ok) {
+      alert('送金記録を作成しました。');
+      window.location.href = '/admin/transfers';
+    } else {
+      alert(result.message || '送金記録の作成に失敗しました。');
+    }
+  } catch (error) {
+    console.error('Create transfer error:', error);
+    alert('送金記録の作成に失敗しました。');
+  }
+}
+</script>
+
+<style>
+.admin-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.field-group {
+  display: flex;
+  gap: 1rem;
+}
+
+.field-group .field {
+  flex: 1;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tbl th,
+.tbl td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.tbl th {
+  background-color: #f5f5f5;
+  font-weight: 600;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.badge--danger {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+</style>
+
+<%- include('../../partials/footer') %>

@@ -135,26 +135,218 @@
       </section>
 
       <!-- お支払い方法 -->
-      <section class="card">
+      <section class="card" id="paymentMethodCard">
         <div class="card__head"><h2>お支払い方法</h2></div>
 
         <% if (!allowedPayments || !allowedPayments.length) { %>
           <p class="muted">利用可能な決済方法がありません。出品者へお問い合わせください。</p>
         <% } else { %>
-          <div class="field">
+          <div class="payment-methods-grid">
             <% allowedPayments.forEach(pm => { %>
-              <label class="radio">
+              <label class="payment-method-card">
                 <input
                   type="radio"
                   name="paymentMethod"
                   value="<%= pm.code %>"
                   <%= form.paymentMethod === pm.code ? 'checked' : '' %>
+                  class="payment-method-radio"
                 >
-                <%= pm.label_ja || pm.code %>
+                <div class="payment-method-content">
+                  <div class="payment-method-header">
+                    <span class="payment-method-icon">
+                      <% if (pm.code === 'card') { %>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                      <% } else if (pm.code === 'cod') { %>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                      <% } else { %>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path><path d="M12 18V6"></path></svg>
+                      <% } %>
+                    </span>
+                    <span class="payment-method-checkmark">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </span>
+                  </div>
+                  <h3 class="payment-method-title"><%= pm.label_ja || pm.code %></h3>
+                  <p class="payment-method-description">
+                    <% if (pm.code === 'card') { %>
+                      クレジットカード決済（Stripe）でお支払いいただけます
+                    <% } else if (pm.code === 'cod') { %>
+                      商品到着時に配送員へ現金でお支払いください
+                    <% } else { %>
+                      お支払い方法の詳細
+                    <% } %>
+                  </p>
+                </div>
               </label>
             <% }) %>
           </div>
+
+          <style>
+          .payment-methods-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+          }
+
+          .payment-method-card {
+            position: relative;
+            display: block;
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+
+          .payment-method-radio {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+          }
+
+          .payment-method-content {
+            padding: 1rem;
+            border: 2px solid var(--border-color, #e0e0e0);
+            border-radius: 12px;
+            background: var(--bg-secondary, #fafafa);
+            transition: all 0.2s ease;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+          }
+
+          .payment-method-card:hover .payment-method-content {
+            border-color: var(--accent-light, #a8d5a8);
+            background: var(--bg-primary, #fff);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+          }
+
+          .payment-method-radio:checked + .payment-method-content {
+            border-color: var(--accent, #4caf50);
+            background: var(--bg-primary, #fff);
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+          }
+
+          .payment-method-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+          }
+
+          .payment-method-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--accent-light, #e8f5e9);
+            border-radius: 8px;
+            color: var(--accent, #4caf50);
+          }
+
+          .payment-method-checkmark {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: transparent;
+            color: transparent;
+            transition: all 0.2s ease;
+          }
+
+          .payment-method-radio:checked ~ .payment-method-content .payment-method-checkmark {
+            background: var(--accent, #4caf50);
+            color: white;
+          }
+
+          .payment-method-title {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary, #333);
+          }
+
+          .payment-method-description {
+            margin: 0;
+            font-size: 0.875rem;
+            color: var(--text-secondary, #666);
+            line-height: 1.4;
+          }
+
+          @media (max-width: 640px) {
+            .payment-methods-grid {
+              grid-template-columns: 1fr;
+            }
+          }
+          </style>
         <% } %>
+
+        <script>
+        function togglePaymentMethodEdit() {
+          const viewMode = document.getElementById('paymentMethodView');
+          const editMode = document.getElementById('paymentMethodEdit');
+
+          // 要素が存在しない場合は何もしない
+          if (!viewMode || !editMode) return;
+
+          if (viewMode.style.display === 'none') {
+            // 編集モードから参照モードに戻る場合、表示を更新
+            updatePaymentMethodView();
+            viewMode.style.display = 'block';
+            editMode.style.display = 'none';
+          } else {
+            // 参照モードから編集モードへ
+            viewMode.style.display = 'none';
+            editMode.style.display = 'block';
+          }
+        }
+
+        function updatePaymentMethodView() {
+          const selectedRadio = document.querySelector('input[name="paymentMethod"]:checked');
+          if (!selectedRadio) return;
+
+          const paymentCode = selectedRadio.value;
+          <% if (allowedPayments && allowedPayments.length) { %>
+          const paymentMethods = <%- JSON.stringify(allowedPayments) %>;
+          const selectedMethod = paymentMethods.find(pm => pm.code === paymentCode) || paymentMethods[0];
+
+          // アイコンを更新
+          let icon = '💰';
+          let note = '';
+          if (paymentCode === 'card') {
+            icon = '💳';
+            note = 'クレジットカード決済（Stripe）でお支払いいただけます。';
+          } else if (paymentCode === 'cod') {
+            icon = '💴';
+            note = '商品到着時に配送員へ現金でお支払いください。';
+          }
+
+          // 参照モードの表示を更新
+          const paymentBadge = document.querySelector('#paymentMethodView .payment-badge');
+          const paymentNote = document.querySelector('#paymentMethodView .payment-note');
+
+          if (paymentBadge) {
+            paymentBadge.innerHTML = `
+              <span class="payment-icon">${icon}</span>
+              <span class="payment-label">${selectedMethod.label_ja || selectedMethod.code}</span>
+            `;
+          }
+
+          if (paymentNote) {
+            if (note) {
+              paymentNote.innerHTML = note;
+              paymentNote.style.display = 'block';
+            } else {
+              paymentNote.style.display = 'none';
+            }
+          }
+          <% } %>
+        }
+        </script>
       </section>
 
       <!-- クーポン・規約 -->
@@ -214,8 +406,8 @@
         </div>
 
         <button class="btn btn--primary btn--lg" type="submit" id="toConfirm">確認へ進む</button>
-        <% if (req.session.flash) { %>
-          <p class="error"><%= req.session.flash.message || '' %></p>
+        <% if (flash && flash.type === 'error') { %>
+          <p class="error"><%= flash.message || '' %></p>
         <% } %>
         <p class="muted small">お支払いは安全に処理されます</p>
       </section>

@@ -353,20 +353,27 @@ document.addEventListener('DOMContentLoaded', () => {
   if (paymentMethodForm) {
     paymentMethodForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
+
       // エラーメッセージを非表示
       if (paymentMethodError) {
         paymentMethodError.style.display = 'none';
         paymentMethodError.textContent = '';
       }
-      
+
       // フォームデータを取得
       const formData = new FormData(paymentMethodForm);
       const csrfToken = formData.get('_csrf');
-      
+
       // 選択された決済方法を取得
       const selectedMethods = Array.from(formData.getAll('methods'));
-      
+
+      // URLSearchParamsに変換（application/x-www-form-urlencodedで送信するため）
+      const params = new URLSearchParams();
+      params.append('_csrf', csrfToken);
+      selectedMethods.forEach(method => {
+        params.append('methods', method);
+      });
+
       // ボタンを無効化
       const submitBtn = paymentMethodForm.querySelector('button[type="submit"]');
       const originalBtnText = submitBtn ? submitBtn.textContent : '';
@@ -374,17 +381,18 @@ document.addEventListener('DOMContentLoaded', () => {
         submitBtn.disabled = true;
         submitBtn.textContent = '保存中…';
       }
-      
+
       try {
         const response = await fetch(paymentMethodForm.action, {
           method: 'POST',
           headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json',
             'X-CSRF-Token': csrfToken,
             'CSRF-Token': csrfToken
           },
-          body: formData,
+          body: params.toString(),
           credentials: 'same-origin'
         });
         
@@ -435,8 +443,9 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
         
-        // 成功時はリロード（フラッシュメッセージを表示するため）
-        window.location.reload();
+        // 成功時はリダイレクト（フラッシュメッセージを確実に表示するため）
+        // reload()ではなくhrefでリダイレクトすることで、フラッシュメッセージが確実に表示される
+        window.location.href = paymentMethodForm.action.replace('/payments', '');
       } catch (err) {
         console.error('決済方法保存エラー:', err);
         if (paymentMethodError) {
@@ -447,6 +456,125 @@ document.addEventListener('DOMContentLoaded', () => {
           alert('通信に失敗しました。もう一度お試しください。');
         }
         
+        // ボタンを再有効化
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalBtnText;
+        }
+      }
+    });
+  }
+
+  // ===== 配送方法フォームの送信処理 =====
+  const shipMethodForm = document.getElementById('shipMethodForm');
+  const shipMethodError = document.getElementById('shipMethodError');
+
+  if (shipMethodForm) {
+    shipMethodForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // エラーメッセージを非表示
+      if (shipMethodError) {
+        shipMethodError.style.display = 'none';
+        shipMethodError.textContent = '';
+      }
+
+      // フォームデータを取得
+      const formData = new FormData(shipMethodForm);
+      const csrfToken = formData.get('_csrf');
+
+      // 選択された配送方法を取得
+      const selectedMethods = Array.from(formData.getAll('methods'));
+
+      // URLSearchParamsに変換（application/x-www-form-urlencodedで送信するため）
+      const params = new URLSearchParams();
+      params.append('_csrf', csrfToken);
+      selectedMethods.forEach(method => {
+        params.append('methods', method);
+      });
+
+      // ボタンを無効化
+      const submitBtn = shipMethodForm.querySelector('button[type="submit"]');
+      const originalBtnText = submitBtn ? submitBtn.textContent : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '保存中…';
+      }
+
+      try {
+        const response = await fetch(shipMethodForm.action, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'X-CSRF-Token': csrfToken,
+            'CSRF-Token': csrfToken
+          },
+          body: params.toString(),
+          credentials: 'same-origin'
+        });
+
+        // レスポンスのContent-Typeを確認
+        const contentType = response.headers.get('content-type');
+        let data;
+
+        if (contentType && contentType.includes('application/json')) {
+          // JSON形式のレスポンス
+          data = await response.json().catch((err) => {
+            console.error('JSON解析エラー:', err);
+            return { ok: false, message: 'サーバーからの応答を解析できませんでした。' };
+          });
+        } else {
+          // JSON形式でない場合（テキストやHTMLなど）
+          const text = await response.text().catch(() => '');
+          console.error('非JSONレスポンス:', { status: response.status, statusText: response.statusText, body: text });
+
+          let errorMessage = '配送方法の保存に失敗しました。';
+          if (response.status === 400) {
+            errorMessage = 'リクエストが不正です。';
+          } else if (response.status === 403) {
+            errorMessage = '権限がありません。';
+          } else if (response.status === 500) {
+            errorMessage = 'サーバーエラーが発生しました。';
+          }
+
+          data = { ok: false, message: errorMessage };
+        }
+
+        if (!response.ok || !data.ok) {
+          // エラーメッセージを表示
+          if (shipMethodError) {
+            shipMethodError.textContent = data.message || '配送方法の保存に失敗しました。';
+            shipMethodError.style.display = 'block';
+
+            // エラーメッセージまでスクロール
+            shipMethodError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } else {
+            alert(data.message || '配送方法の保存に失敗しました。');
+          }
+
+          // ボタンを再有効化
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalBtnText;
+          }
+          return;
+        }
+
+        // 成功時はリダイレクト（フラッシュメッセージを確実に表示するため）
+        // reload()ではなくhrefでリダイレクトすることで、フラッシュメッセージが確実に表示される
+        window.location.href = shipMethodForm.action.replace('/shipmethods', '');
+      } catch (err) {
+        console.error('配送方法保存エラー:', err);
+        if (shipMethodError) {
+          shipMethodError.textContent = '通信に失敗しました。もう一度お試しください。';
+          shipMethodError.style.display = 'block';
+          shipMethodError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          alert('通信に失敗しました。もう一度お試しください。');
+        }
+
         // ボタンを再有効化
         if (submitBtn) {
           submitBtn.disabled = false;

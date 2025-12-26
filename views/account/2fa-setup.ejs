@@ -110,54 +110,119 @@
 </main>
 
 <!-- バックアップコード表示モーダル -->
-<div id="backupCodesModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; overflow-y:auto; padding:20px;">
-  <div style="max-width:560px; margin:40px auto; background:#fff; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,0.3); padding:32px 28px;">
-    <h2 style="margin:0 0 16px; font-size:1.4rem; text-align:center; color:#16a34a;">
-      ✓ 二要素認証が有効になりました
-    </h2>
+<div id="backupCodesModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); z-index:9999; overflow-y:auto; padding:18px; animation:fadeIn 0.3s ease-out;">
+  <div style="max-width:600px; margin:60px auto; background:#fff; border-radius:20px; box-shadow:0 24px 80px rgba(0,0,0,0.25); padding:32px 12px; animation:slideUp 0.4s ease-out;">
 
-    <div style="background:#fffbf0; border:2px solid #ffd700; border-radius:12px; padding:20px; margin-bottom:24px;">
-      <p style="margin:0 0 12px; font-weight:700; font-size:1rem; color:#996600;">
-        ⚠️ バックアップコードを保存してください
-      </p>
-      <p style="margin:0; font-size:0.85rem; color:#666; line-height:1.6;">
-        認証アプリを利用できない場合、これらのコードでログインできます。<br>
-        <strong>各コードは1回のみ使用可能です。</strong>安全な場所に保存してください。
-      </p>
+    <!-- 成功アイコン -->
+    <div style="text-align:center; margin-bottom:24px;">
+      <div style="display:inline-flex; align-items:center; justify-content:center; width:58px; height:58px; background:linear-gradient(135deg, #4caf50 0%, #16a34a 100%); border-radius:50%; box-shadow:0 8px 24px rgba(76,175,80,0.3); margin-bottom:16px;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <h2 style="margin:0; font-size:1.2rem; font-weight:700; color:#1a1a1a;">
+        二要素認証が有効になりました
+      </h2>
+      <p style="margin:8px 0 0; color:#666; font-size:0.75rem;">アカウントのセキュリティが強化されました</p>
     </div>
 
+    <!-- 警告カード -->
+    <div style="background:linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%); border:2px solid #ffc107; border-radius:16px; padding:12px; margin-bottom:28px; box-shadow:0 4px 12px rgba(255,193,7,0.1);">
+      <div style="display:flex; align-items:start; gap:12px;">
+        <div style="flex-shrink:0; width:32px; height:32px; background:#ffc107; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#856404" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <div style="flex:1;">
+          <p style="margin:0 0 8px; font-weight:700; font-size:0.8rem; color:#856404;">
+            バックアップコードを必ず保存してください
+          </p>
+          <p style="margin:0; font-size:0.75rem; color:#856404; line-height:1.6;">
+            認証アプリを利用できない場合、これらのコードでログインできます。<br>
+            <strong>各コードは1回のみ使用可能</strong>で、再表示できません。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- バックアップコードリスト -->
     <div style="margin-bottom:24px;">
-      <div id="backupCodesList" style="background:#f8f9fa; border:1px solid #ddd; border-radius:8px; padding:16px; font-family:monospace; font-size:1rem; line-height:1.8;">
+      <label style="display:block; margin-bottom:8px; font-weight:600; font-size:0.8rem; color:#333;">
+        バックアップコード（10個）
+      </label>
+      <div id="backupCodesList" style="background:#f8f9fa; border:2px solid #e0e0e0; border-radius:12px; padding:12px; font-family:'SF Mono', 'Monaco', 'Menlo', monospace; font-size:8rem; line-height:2; color:#333; box-shadow:inset 0 2px 8px rgba(0,0,0,0.05);">
         <!-- JavaScriptで埋め込まれます -->
       </div>
     </div>
 
-    <div style="display:flex; gap:12px; margin-bottom:16px;">
+    <!-- アクションボタン -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
       <button
         type="button"
         onclick="copyBackupCodes()"
-        style="flex:1; padding:12px; background:#4C6B5C; color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:0.9rem;"
+        style="padding:14px 20px; background:#4C6B5C; color:#fff; border:none; border-radius:12px; cursor:pointer; font-size:0.8rem; font-weight:600; transition:all 0.2s ease; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 12px rgba(76,107,92,0.2);"
+        onmouseover="this.style.background='#3d5749'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(76,107,92,0.3)'"
+        onmouseout="this.style.background='#4C6B5C'; this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(76,107,92,0.2)'"
       >
-        📋 すべてコピー
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+        すべてコピー
       </button>
       <button
         type="button"
         onclick="downloadBackupCodes()"
-        style="flex:1; padding:12px; background:#2563eb; color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:0.9rem;"
+        style="padding:14px 20px; background:#2563eb; color:#fff; border:none; border-radius:12px; cursor:pointer; font-size:0.8rem; font-weight:600; transition:all 0.2s ease; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 12px rgba(37,99,235,0.2);"
+        onmouseover="this.style.background='#1d4ed8'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(37,99,235,0.3)'"
+        onmouseout="this.style.background='#2563eb'; this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(37,99,235,0.2)'"
       >
-        💾 ダウンロード
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        ダウンロード
       </button>
     </div>
 
+    <!-- 完了ボタン -->
     <button
       type="button"
       onclick="closeBackupCodesModal()"
-      style="width:100%; padding:14px; background:#666; color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:1rem;"
+      style="width:100%; padding:16px; background:#1a1a1a; color:#fff; border:none; border-radius:12px; cursor:pointer; font-size:0.8rem; font-weight:600; transition:all 0.2s ease; box-shadow:0 4px 12px rgba(0,0,0,0.15);"
+      onmouseover="this.style.background='#333'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.2)'"
+      onmouseout="this.style.background='#1a1a1a'; this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'"
     >
       保存しました - 完了
     </button>
+
+    <p style="margin:16px 0 0; text-align:center; font-size:0.8rem; color:#999;">
+      このコードは後から確認できません
+    </p>
   </div>
 </div>
+
+<style>
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
 
 <script>
 let backupCodesData = [];
