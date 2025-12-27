@@ -115,6 +115,20 @@ public,gmail_tokens,gmail_tokens_id_not_null,CHECK
 public,gmail_tokens,gmail_tokens_pkey,PRIMARY KEY
 public,gmail_tokens,gmail_tokens_token_json_not_null,CHECK
 public,gmail_tokens,gmail_tokens_updated_at_not_null,CHECK
+public,ledger,ledger_amount_cents_not_null,CHECK
+public,ledger,ledger_amount_check,CHECK
+public,ledger,ledger_currency_not_null,CHECK
+public,ledger,ledger_id_not_null,CHECK
+public,ledger,ledger_idempotency_key_key,UNIQUE
+public,ledger,ledger_idempotency_key_not_null,CHECK
+public,ledger,ledger_order_id_fkey,FOREIGN KEY
+public,ledger,ledger_partner_id_fkey,FOREIGN KEY
+public,ledger,ledger_partner_id_not_null,CHECK
+public,ledger,ledger_pkey,PRIMARY KEY
+public,ledger,ledger_status_check,CHECK
+public,ledger,ledger_status_not_null,CHECK
+public,ledger,ledger_type_check,CHECK
+public,ledger,ledger_type_not_null,CHECK
 public,login_history,login_history_email_not_null,CHECK
 public,login_history,login_history_id_not_null,CHECK
 public,login_history,login_history_pkey,PRIMARY KEY
@@ -280,6 +294,7 @@ public,partners,partners_payment_methods_not_null,CHECK
 public,partners,partners_pkey,PRIMARY KEY
 public,partners,partners_shipping_policy_not_null,CHECK
 public,partners,partners_status_not_null,CHECK
+public,partners,partners_stripe_account_id_key,UNIQUE
 public,partners,partners_type_not_null,CHECK
 public,partners,partners_updated_at_not_null,CHECK
 public,partners,ux_partners_partner_key,UNIQUE
@@ -302,6 +317,14 @@ public,payments,payments_pkey,PRIMARY KEY
 public,payments,payments_status_not_null,CHECK
 public,payments,payments_transaction_id_key,UNIQUE
 public,payments,payments_updated_at_not_null,CHECK
+public,payout_runs,payout_runs_iso_week_not_null,CHECK
+public,payout_runs,payout_runs_iso_year_not_null,CHECK
+public,payout_runs,payout_runs_pkey,PRIMARY KEY
+public,payout_runs,payout_runs_run_date_key,UNIQUE
+public,payout_runs,payout_runs_run_date_not_null,CHECK
+public,payout_runs,payout_runs_run_id_not_null,CHECK
+public,payout_runs,payout_runs_status_check,CHECK
+public,payout_runs,payout_runs_status_not_null,CHECK
 public,product_images,product_images_created_at_not_null,CHECK
 public,product_images,product_images_id_not_null,CHECK
 public,product_images,product_images_pkey,PRIMARY KEY

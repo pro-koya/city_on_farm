@@ -108,6 +108,24 @@ public,global_allowed_payment_methods,1,method,USER-DEFINED,payment_method,,,,NO
 public,gmail_tokens,1,id,smallint,int2,,16,0,NO,1,
 public,gmail_tokens,2,token_json,jsonb,jsonb,,,,NO,,
 public,gmail_tokens,3,updated_at,timestamp with time zone,timestamptz,,,,NO,now(),
+public,ledger,1,id,uuid,uuid,,,,NO,gen_random_uuid(),
+public,ledger,2,partner_id,uuid,uuid,,,,NO,,
+public,ledger,3,order_id,uuid,uuid,,,,YES,,
+public,ledger,4,type,text,text,,,,NO,,"sale:売上, platform_fee:手数料, refund:返金, payout:送金実行, adjustment:調整, carry_over:繰越"
+public,ledger,5,amount_cents,integer,int4,,32,0,NO,,金額（円単位）: プラス=収入、マイナス=控除
+public,ledger,6,currency,text,text,,,,NO,'jpy'::text,
+public,ledger,7,status,text,text,,,,NO,'pending'::text,"pending:猶予中, available:送金可能, paid:送金済み, void:無効"
+public,ledger,8,available_at,timestamp without time zone,timestamp,,,,YES,,送金可能日時（配送完了+7日後に設定される）
+public,ledger,9,stripe_payment_intent_id,text,text,,,,YES,,
+public,ledger,10,stripe_charge_id,text,text,,,,YES,,
+public,ledger,11,stripe_refund_id,text,text,,,,YES,,
+public,ledger,12,stripe_transfer_id,text,text,,,,YES,,
+public,ledger,13,stripe_payout_id,text,text,,,,YES,,
+public,ledger,14,idempotency_key,text,text,,,,NO,,二重計上防止用のユニークキー。webhook再実行時も安全
+public,ledger,15,metadata,jsonb,jsonb,,,,YES,'{}'::jsonb,
+public,ledger,16,note,text,text,,,,YES,,
+public,ledger,17,created_at,timestamp without time zone,timestamp,,,,YES,now(),
+public,ledger,18,updated_at,timestamp without time zone,timestamp,,,,YES,now(),
 public,login_history,1,id,uuid,uuid,,,,NO,gen_random_uuid(),
 public,login_history,2,user_id,uuid,uuid,,,,YES,,
 public,login_history,3,email,character varying,varchar,255,,,NO,,
@@ -208,6 +226,11 @@ public,orders,32,ship_time_code,text,text,,,,YES,,
 public,orders,33,receipt_name,text,text,,,,YES,,領収書の宛名（1〜40文字）
 public,orders,34,transfer_id,uuid,uuid,,,,YES,,紐付けられた送金記録のID
 public,orders,35,transfer_status,character varying,varchar,20,,,YES,'pending'::character varying,"pending: 未送金, included: 送金記録に含まれた, transferred: 送金完了"
+public,orders,36,stripe_payment_intent_id,text,text,,,,YES,,Stripe PaymentIntent ID（決済識別用）
+public,orders,37,stripe_charge_id,text,text,,,,YES,,Stripe Charge ID（返金時に使用）
+public,orders,38,delivery_completed_at,timestamp without time zone,timestamp,,,,YES,,配送/受取完了日時（delivery_status=deliveredになった日時）
+public,orders,39,ledger_sale_id,uuid,uuid,,,,YES,,売上台帳エントリのID（ledger.idを参照）
+public,orders,40,ledger_fee_id,uuid,uuid,,,,YES,,手数料台帳エントリのID（ledger.idを参照）
 public,orders_with_legacy_address,1,id,uuid,uuid,,,,YES,,
 public,orders_with_legacy_address,2,buyer_id,uuid,uuid,,,,YES,,
 public,orders_with_legacy_address,3,status,USER-DEFINED,order_status,,,,YES,,
@@ -336,6 +359,15 @@ public,partners,27,seller_intro_summary,text,text,,,,YES,,
 public,partners,28,icon_url,text,text,,,,YES,,
 public,partners,29,icon_r2_key,text,text,,,,YES,,
 public,partners,30,pickup_address_id,uuid,uuid,,,,YES,,畑受け取りで使用する住所ID（addresses.idを参照）
+public,partners,31,stripe_account_id,text,text,,,,YES,,Stripe ConnectアカウントID（Express）
+public,partners,32,payouts_enabled,boolean,bool,,,,YES,false,自動送金有効フラグ（trueの場合、隔週月曜に自動送金）
+public,partners,33,debt_cents,integer,int4,,32,0,YES,0,負債額（円単位）。返金等で残高不足の場合に計上
+public,partners,34,stop_reason,text,text,,,,YES,,送金停止理由（debt_over_10000 等）
+public,partners,35,stripe_onboarding_completed,boolean,bool,,,,YES,false,
+public,partners,36,stripe_details_submitted,boolean,bool,,,,YES,false,
+public,partners,37,stripe_payouts_enabled,boolean,bool,,,,YES,false,
+public,partners,38,stripe_charges_enabled,boolean,bool,,,,YES,false,
+public,partners,39,stripe_account_updated_at,timestamp without time zone,timestamp,,,,YES,,
 public,password_reset_tokens,1,id,uuid,uuid,,,,NO,gen_random_uuid(),
 public,password_reset_tokens,2,user_id,uuid,uuid,,,,NO,,
 public,password_reset_tokens,3,token_hash,text,text,,,,NO,,
@@ -350,6 +382,21 @@ public,payments,5,status,USER-DEFINED,payment_status,,,,NO,'pending'::payment_st
 public,payments,6,transaction_id,text,text,,,,YES,,
 public,payments,7,created_at,timestamp with time zone,timestamptz,,,,NO,now(),
 public,payments,8,updated_at,timestamp with time zone,timestamptz,,,,NO,now(),
+public,payout_runs,1,run_id,uuid,uuid,,,,NO,gen_random_uuid(),
+public,payout_runs,2,run_date,date,date,,,,NO,,実行日。UNIQUE制約により同日の重複実行を防止
+public,payout_runs,3,iso_week,integer,int4,,32,0,NO,,"ISO週番号。偶数週のみ実行される（2, 4, 6, ...）"
+public,payout_runs,4,iso_year,integer,int4,,32,0,NO,,
+public,payout_runs,5,status,text,text,,,,NO,'pending'::text,
+public,payout_runs,6,partners_processed,integer,int4,,32,0,YES,0,
+public,payout_runs,7,partners_succeeded,integer,int4,,32,0,YES,0,
+public,payout_runs,8,partners_failed,integer,int4,,32,0,YES,0,
+public,payout_runs,9,total_payout_amount_cents,integer,int4,,32,0,YES,0,
+public,payout_runs,10,started_at,timestamp without time zone,timestamp,,,,YES,,
+public,payout_runs,11,completed_at,timestamp without time zone,timestamp,,,,YES,,
+public,payout_runs,12,log,jsonb,jsonb,,,,YES,'[]'::jsonb,各出品者の処理結果を記録したJSON配列
+public,payout_runs,13,error_message,text,text,,,,YES,,
+public,payout_runs,14,created_at,timestamp without time zone,timestamp,,,,YES,now(),
+public,payout_runs,15,updated_at,timestamp without time zone,timestamp,,,,YES,now(),
 public,product_images,1,id,uuid,uuid,,,,NO,uuid_generate_v4(),
 public,product_images,2,product_id,uuid,uuid,,,,NO,,
 public,product_images,3,url,text,text,,,,NO,,

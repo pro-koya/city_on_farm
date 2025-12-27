@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-12-26T18:30:43.161Z
+> Generated at: 2025-12-27T18:29:07.219Z
 
 ---
 
@@ -556,6 +556,85 @@
 
 ---
 
+### `public.ledger`
+
+出品者売上台帳テーブル。金額の完全なトレーサビリティを確保するため、全ての金額変動を記録
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `partner_id` | `uuid` | NO |  |  |
+| 3 | `order_id` | `uuid` | YES |  |  |
+| 4 | `type` | `text` | NO |  | sale:売上, platform_fee:手数料, refund:返金, payout:送金実行, adjustment:調整, carry_over:繰越 |
+| 5 | `amount_cents` | `integer` | NO |  | 金額（円単位）: プラス=収入、マイナス=控除 |
+| 6 | `currency` | `text` | NO | 'jpy'::text |  |
+| 7 | `status` | `text` | NO | 'pending'::text | pending:猶予中, available:送金可能, paid:送金済み, void:無効 |
+| 8 | `available_at` | `timestamp without time zone` | YES |  | 送金可能日時（配送完了+7日後に設定される） |
+| 9 | `stripe_payment_intent_id` | `text` | YES |  |  |
+| 10 | `stripe_charge_id` | `text` | YES |  |  |
+| 11 | `stripe_refund_id` | `text` | YES |  |  |
+| 12 | `stripe_transfer_id` | `text` | YES |  |  |
+| 13 | `stripe_payout_id` | `text` | YES |  |  |
+| 14 | `idempotency_key` | `text` | NO |  | 二重計上防止用のユニークキー。webhook再実行時も安全 |
+| 15 | `metadata` | `jsonb` | YES | '{}'::jsonb |  |
+| 16 | `note` | `text` | YES |  |  |
+| 17 | `created_at` | `timestamp without time zone` | YES | now() |  |
+| 18 | `updated_at` | `timestamp without time zone` | YES | now() |  |
+
+**Constraints**
+
+- **CHECK**: `ledger_amount_cents_not_null`, `ledger_amount_check`, `ledger_currency_not_null`, `ledger_id_not_null`, `ledger_idempotency_key_not_null`, `ledger_partner_id_not_null`, `ledger_status_check`, `ledger_status_not_null`, `ledger_type_check`, `ledger_type_not_null`
+- **FOREIGN KEY**: `ledger_order_id_fkey`, `ledger_partner_id_fkey`
+- **PRIMARY KEY**: `ledger_pkey`
+- **UNIQUE**: `ledger_idempotency_key_key`
+
+**Indexes**
+
+- `idx_ledger_created_at`
+  
+  ```sql
+  CREATE INDEX idx_ledger_created_at ON public.ledger USING btree (created_at DESC)
+  ```
+- `idx_ledger_idempotency`
+  
+  ```sql
+  CREATE INDEX idx_ledger_idempotency ON public.ledger USING btree (idempotency_key)
+  ```
+- `idx_ledger_order`
+  
+  ```sql
+  CREATE INDEX idx_ledger_order ON public.ledger USING btree (order_id)
+  ```
+- `idx_ledger_partner_status`
+  
+  ```sql
+  CREATE INDEX idx_ledger_partner_status ON public.ledger USING btree (partner_id, status, available_at)
+  ```
+- `idx_ledger_stripe_payment_intent`
+  
+  ```sql
+  CREATE INDEX idx_ledger_stripe_payment_intent ON public.ledger USING btree (stripe_payment_intent_id)
+  ```
+- `idx_ledger_type`
+  
+  ```sql
+  CREATE INDEX idx_ledger_type ON public.ledger USING btree (type)
+  ```
+- `ledger_idempotency_key_key`
+  
+  ```sql
+  CREATE UNIQUE INDEX ledger_idempotency_key_key ON public.ledger USING btree (idempotency_key)
+  ```
+- `ledger_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX ledger_pkey ON public.ledger USING btree (id)
+  ```
+
+---
+
 ### `public.login_history`
 
 **Columns**
@@ -986,6 +1065,11 @@
 | 33 | `receipt_name` | `text` | YES |  | 領収書の宛名（1〜40文字） |
 | 34 | `transfer_id` | `uuid` | YES |  | 紐付けられた送金記録のID |
 | 35 | `transfer_status` | `varchar(20)` | YES | 'pending'::character varying | pending: 未送金, included: 送金記録に含まれた, transferred: 送金完了 |
+| 36 | `stripe_payment_intent_id` | `text` | YES |  | Stripe PaymentIntent ID（決済識別用） |
+| 37 | `stripe_charge_id` | `text` | YES |  | Stripe Charge ID（返金時に使用） |
+| 38 | `delivery_completed_at` | `timestamp without time zone` | YES |  | 配送/受取完了日時（delivery_status=deliveredになった日時） |
+| 39 | `ledger_sale_id` | `uuid` | YES |  | 売上台帳エントリのID（ledger.idを参照） |
+| 40 | `ledger_fee_id` | `uuid` | YES |  | 手数料台帳エントリのID（ledger.idを参照） |
 
 > **Enum `order_status` values**: `pending`, `paid`, `shipped`, `cancelled`, `confirmed`, `processing`, `delivered`, `canceled`, `refunded`, `fulfilled`
 > **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`
@@ -1017,10 +1101,20 @@
   ```sql
   CREATE INDEX idx_orders_created ON public.orders USING btree (created_at DESC)
   ```
+- `idx_orders_delivery_completed`
+  
+  ```sql
+  CREATE INDEX idx_orders_delivery_completed ON public.orders USING btree (delivery_completed_at)
+  ```
 - `idx_orders_group`
   
   ```sql
   CREATE INDEX idx_orders_group ON public.orders USING btree (group_id)
+  ```
+- `idx_orders_ledger_sale`
+  
+  ```sql
+  CREATE INDEX idx_orders_ledger_sale ON public.orders USING btree (ledger_sale_id)
   ```
 - `idx_orders_order_number`
   
@@ -1051,6 +1145,16 @@
   
   ```sql
   CREATE INDEX idx_orders_status_updated_at ON public.orders USING btree (status, updated_at DESC)
+  ```
+- `idx_orders_stripe_charge`
+  
+  ```sql
+  CREATE INDEX idx_orders_stripe_charge ON public.orders USING btree (stripe_charge_id)
+  ```
+- `idx_orders_stripe_payment_intent`
+  
+  ```sql
+  CREATE INDEX idx_orders_stripe_payment_intent ON public.orders USING btree (stripe_payment_intent_id)
   ```
 - `idx_orders_transfer_id`
   
@@ -1475,6 +1579,15 @@ _No indexes_
 | 28 | `icon_url` | `text` | YES |  |  |
 | 29 | `icon_r2_key` | `text` | YES |  |  |
 | 30 | `pickup_address_id` | `uuid` | YES |  | 畑受け取りで使用する住所ID（addresses.idを参照） |
+| 31 | `stripe_account_id` | `text` | YES |  | Stripe ConnectアカウントID（Express） |
+| 32 | `payouts_enabled` | `boolean` | YES | false | 自動送金有効フラグ（trueの場合、隔週月曜に自動送金） |
+| 33 | `debt_cents` | `integer` | YES | 0 | 負債額（円単位）。返金等で残高不足の場合に計上 |
+| 34 | `stop_reason` | `text` | YES |  | 送金停止理由（debt_over_10000 等） |
+| 35 | `stripe_onboarding_completed` | `boolean` | YES | false |  |
+| 36 | `stripe_details_submitted` | `boolean` | YES | false |  |
+| 37 | `stripe_payouts_enabled` | `boolean` | YES | false |  |
+| 38 | `stripe_charges_enabled` | `boolean` | YES | false |  |
+| 39 | `stripe_account_updated_at` | `timestamp without time zone` | YES |  |  |
 
 > **Enum `partner_type` values**: `restaurant`, `retailer`, `wholesale`, `corporate`, `individual`, `other`
 > **Enum `partner_status` values**: `active`, `inactive`, `prospect`, `suspended`
@@ -1483,7 +1596,7 @@ _No indexes_
 
 - **CHECK**: `partners_created_at_not_null`, `partners_id_not_null`, `partners_min_order_amount_not_null`, `partners_name_not_null`, `partners_payment_methods_not_null`, `partners_shipping_policy_not_null`, `partners_status_not_null`, `partners_type_not_null`, `partners_updated_at_not_null`
 - **PRIMARY KEY**: `partners_pkey`
-- **UNIQUE**: `ux_partners_partner_key`
+- **UNIQUE**: `partners_stripe_account_id_key`, `ux_partners_partner_key`
 
 **Indexes**
 
@@ -1492,10 +1605,20 @@ _No indexes_
   ```sql
   CREATE INDEX idx_partners_city_trgm ON public.partners USING gin (city gin_trgm_ops)
   ```
+- `idx_partners_debt`
+  
+  ```sql
+  CREATE INDEX idx_partners_debt ON public.partners USING btree (debt_cents)
+  ```
 - `idx_partners_name`
   
   ```sql
   CREATE INDEX idx_partners_name ON public.partners USING btree (name)
+  ```
+- `idx_partners_payouts_enabled`
+  
+  ```sql
+  CREATE INDEX idx_partners_payouts_enabled ON public.partners USING btree (payouts_enabled)
   ```
 - `idx_partners_postal_norm`
   
@@ -1517,6 +1640,11 @@ _No indexes_
   ```sql
   CREATE INDEX idx_partners_status_type ON public.partners USING btree (status, type)
   ```
+- `idx_partners_stripe_account`
+  
+  ```sql
+  CREATE INDEX idx_partners_stripe_account ON public.partners USING btree (stripe_account_id)
+  ```
 - `idx_partners_type`
   
   ```sql
@@ -1526,6 +1654,11 @@ _No indexes_
   
   ```sql
   CREATE UNIQUE INDEX partners_pkey ON public.partners USING btree (id)
+  ```
+- `partners_stripe_account_id_key`
+  
+  ```sql
+  CREATE UNIQUE INDEX partners_stripe_account_id_key ON public.partners USING btree (stripe_account_id)
   ```
 - `ux_partners_partner_key`
   
@@ -1635,6 +1768,66 @@ _No indexes_
   
   ```sql
   CREATE UNIQUE INDEX payments_transaction_id_key ON public.payments USING btree (transaction_id)
+  ```
+
+---
+
+### `public.payout_runs`
+
+送金バッチ実行履歴テーブル。冪等性と監査のため、全実行を記録
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `run_id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `run_date` | `date` | NO |  | 実行日。UNIQUE制約により同日の重複実行を防止 |
+| 3 | `iso_week` | `integer` | NO |  | ISO週番号。偶数週のみ実行される（2, 4, 6, ...） |
+| 4 | `iso_year` | `integer` | NO |  |  |
+| 5 | `status` | `text` | NO | 'pending'::text |  |
+| 6 | `partners_processed` | `integer` | YES | 0 |  |
+| 7 | `partners_succeeded` | `integer` | YES | 0 |  |
+| 8 | `partners_failed` | `integer` | YES | 0 |  |
+| 9 | `total_payout_amount_cents` | `integer` | YES | 0 |  |
+| 10 | `started_at` | `timestamp without time zone` | YES |  |  |
+| 11 | `completed_at` | `timestamp without time zone` | YES |  |  |
+| 12 | `log` | `jsonb` | YES | '[]'::jsonb | 各出品者の処理結果を記録したJSON配列 |
+| 13 | `error_message` | `text` | YES |  |  |
+| 14 | `created_at` | `timestamp without time zone` | YES | now() |  |
+| 15 | `updated_at` | `timestamp without time zone` | YES | now() |  |
+
+**Constraints**
+
+- **CHECK**: `payout_runs_iso_week_not_null`, `payout_runs_iso_year_not_null`, `payout_runs_run_date_not_null`, `payout_runs_run_id_not_null`, `payout_runs_status_check`, `payout_runs_status_not_null`
+- **PRIMARY KEY**: `payout_runs_pkey`
+- **UNIQUE**: `payout_runs_run_date_key`
+
+**Indexes**
+
+- `idx_payout_runs_date`
+  
+  ```sql
+  CREATE INDEX idx_payout_runs_date ON public.payout_runs USING btree (run_date DESC)
+  ```
+- `idx_payout_runs_status`
+  
+  ```sql
+  CREATE INDEX idx_payout_runs_status ON public.payout_runs USING btree (status)
+  ```
+- `idx_payout_runs_week`
+  
+  ```sql
+  CREATE INDEX idx_payout_runs_week ON public.payout_runs USING btree (iso_year, iso_week)
+  ```
+- `payout_runs_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX payout_runs_pkey ON public.payout_runs USING btree (run_id)
+  ```
+- `payout_runs_run_date_key`
+  
+  ```sql
+  CREATE UNIQUE INDEX payout_runs_run_date_key ON public.payout_runs USING btree (run_date)
   ```
 
 ---
