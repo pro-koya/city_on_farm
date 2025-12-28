@@ -330,12 +330,19 @@
       data.force = true;
     }
 
+    // CSRFトークンを取得
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+      $('#partnerErr').textContent = 'セキュリティトークンが見つかりません。ページを再読み込みしてください。';
+      return;
+    }
+
     const resp = await fetch(`/admin/users/${encodeURIComponent(userId)}/partner/create`, {
       method:'POST',
       headers:{
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
-        'CSRF-Token': csrf
+        'CSRF-Token': csrfToken
       },
       body: JSON.stringify(data),
       credentials: 'same-origin'
@@ -381,13 +388,20 @@
 
     const pid = selected.value;
 
+    // CSRFトークンを取得
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+      err.textContent = 'セキュリティトークンが見つかりません。ページを再読み込みしてください。';
+      return;
+    }
+
     try {
       const resp = await fetch(`/admin/users/${encodeURIComponent(userId)}/partner`, {
         method:'POST',
         headers:{
           'Content-Type':'application/json',
           'X-Requested-With':'XMLHttpRequest',
-          'CSRF-Token': csrf
+          'CSRF-Token': csrfToken
         },
         body: JSON.stringify({ partner_id: pid }),
         credentials:'same-origin'
