@@ -730,6 +730,325 @@
     <% } %>
     <% } %>
 
+    <!-- Stripe Connect 送金設定 -->
+    <% if (user.roles.includes('admin')) { %>
+    <article class="card">
+      <div class="card__head">
+        <h2 class="card__title">Stripe Connect 送金設定</h2>
+        <% if (partner.stripe_account_id && partner.payouts_enabled) { %>
+          <span class="badge badge--success">送金有効</span>
+        <% } else if (partner.stripe_account_id) { %>
+          <span class="badge badge--warning">送金停止中</span>
+        <% } %>
+      </div>
+
+      <% if (!partner.stripe_account_id) { %>
+        <!-- Stripe アカウント未接続 -->
+        <div id="stripeConnectEmptyView">
+          <p class="muted">
+            Stripe Connectアカウントが接続されていません。<br>
+            クレジットカード決済の売上を自動送金するには、Stripe Connect Express アカウントとの連携が必要です。
+          </p>
+          <div class="row-right" style="margin-top: 1rem;">
+            <button class="btn btn--toggle" id="stripeOnboardingBtn">
+              Stripe アカウントを接続
+            </button>
+          </div>
+        </div>
+      <% } else { %>
+        <!-- Stripe アカウント接続済み -->
+        <div id="stripeConnectInfoView">
+          <dl class="kv">
+            <div>
+              <dt>Stripe アカウントID</dt>
+              <dd><code style="font-size: 0.875rem; background: #f5f5f5; padding: 2px 6px; border-radius: 3px;"><%= partner.stripe_account_id %></code></dd>
+            </div>
+            <div>
+              <dt>アカウント種別</dt>
+              <dd><%= partner.stripe_account_type || 'express' %></dd>
+            </div>
+            <div>
+              <dt>本人確認</dt>
+              <dd>
+                <% if (partner.stripe_details_submitted) { %>
+                  <span class="badge badge--success">完了</span>
+                <% } else { %>
+                  <span class="badge badge--warning">未完了</span>
+                <% } %>
+              </dd>
+            </div>
+            <div>
+              <dt>決済受付</dt>
+              <dd>
+                <% if (partner.charges_enabled) { %>
+                  <span class="badge badge--success">有効</span>
+                <% } else { %>
+                  <span class="badge badge--secondary">無効</span>
+                <% } %>
+              </dd>
+            </div>
+            <div>
+              <dt>送金機能</dt>
+              <dd>
+                <% if (partner.payouts_enabled) { %>
+                  <span class="badge badge--success">有効</span>
+                <% } else { %>
+                  <span class="badge badge--secondary">無効</span>
+                  <% if (partner.stop_reason === 'debt_over_10000') { %>
+                    <span class="muted small" style="margin-left: 8px;">（負債超過）</span>
+                  <% } %>
+                <% } %>
+              </dd>
+            </div>
+            <% if (partner.debt_cents && partner.debt_cents > 0) { %>
+            <div>
+              <dt>負債額</dt>
+              <dd>
+                <span style="color: #c33; font-weight: bold;">¥<%= partner.debt_cents.toLocaleString() %></span>
+                <% if (partner.debt_cents > 10000) { %>
+                  <span class="badge badge--danger" style="margin-left: 8px;">送金停止中</span>
+                <% } %>
+              </dd>
+            </div>
+            <% } %>
+            <% if (partner.requirements_due_by) { %>
+            <div>
+              <dt>要件期限</dt>
+              <dd style="color: #c33;">
+                <%= new Date(partner.requirements_due_by).toLocaleDateString('ja-JP') %>
+                <span class="muted small">までに対応が必要です</span>
+              </dd>
+            </div>
+            <% } %>
+          </dl>
+
+          <div class="row-right" style="margin-top: 1rem; display: flex; gap: 8px; justify-content: flex-end;">
+            <% if (!partner.stripe_details_submitted) { %>
+              <button class="btn btn--warning" id="stripeContinueBtn">
+                本人確認を続ける
+              </button>
+            <% } else { %>
+              <button class="btn btn--secondary" id="stripeDashboardBtn">
+                Stripe ダッシュボードを開く
+              </button>
+            <% } %>
+            <button class="btn btn--ghost" id="stripeSyncBtn">
+              情報を同期
+            </button>
+            <a class="btn btn--ghost" href="/admin/partners/<%= partner.id %>/balance" target="_blank">
+              残高・台帳を確認
+            </a>
+          </div>
+        </div>
+      <% } %>
+    </article>
+
+    <script>
+    // オンボーディング完了後のリロード処理
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('onboarding') === 'success') {
+      // クエリパラメータを削除してページをリロード
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // 少し待ってからリロード（DBの同期を待つ）
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    }
+
+    // Stripe Connect オンボーディング開始
+    const stripeOnboardingBtn = document.getElementById('stripeOnboardingBtn');
+    console.log('[DEBUG] stripeOnboardingBtn element:', stripeOnboardingBtn);
+
+    stripeOnboardingBtn?.addEventListener('click', async (event) => {
+      console.log('[DEBUG] stripeOnboardingBtn clicked!');
+      const btn = event.target;
+      btn.disabled = true;
+      btn.textContent = '接続中...';
+
+      try {
+        const headers = {
+          'Content-Type': 'application/json'
+        };
+        <% if (csrfToken) { %>
+        headers['X-CSRF-Token'] = '<%= csrfToken %>';
+        console.log('[DEBUG] CSRF token added to headers');
+        <% } else { %>
+        console.log('[DEBUG] No CSRF token available');
+        <% } %>
+
+        const url = '/admin/partners/<%= partner.id %>/stripe-onboarding';
+        console.log('[DEBUG] Fetching:', url);
+        console.log('[DEBUG] Headers:', headers);
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({
+            returnUrl: window.location.origin + '/admin/partners/<%= partner.id %>/stripe-return',
+            refreshUrl: window.location.origin + '/admin/partners/<%= partner.id %>/stripe-refresh'
+          })
+        });
+
+        console.log('[DEBUG] Response status:', response.status);
+        console.log('[DEBUG] Response:', response);
+
+        const data = await response.json();
+        console.log('[DEBUG] Response data:', data);
+
+        if (data.success && data.onboardingUrl) {
+          console.log('[DEBUG] Redirecting to:', data.onboardingUrl);
+          window.location.href = data.onboardingUrl;
+        } else {
+          console.error('[DEBUG] Error in response:', data.error);
+          alert('エラー: ' + (data.error || '不明なエラーが発生しました'));
+          btn.disabled = false;
+          btn.textContent = 'Stripe アカウントを接続';
+        }
+      } catch (error) {
+        console.error('[DEBUG] Fetch error:', error);
+        alert('エラー: ' + error.message);
+        btn.disabled = false;
+        btn.textContent = 'Stripe アカウントを接続';
+      }
+    });
+
+    // 本人確認を続ける
+    const stripeContinueBtn = document.getElementById('stripeContinueBtn');
+    console.log('[DEBUG] stripeContinueBtn element:', stripeContinueBtn);
+
+    stripeContinueBtn?.addEventListener('click', async (event) => {
+      console.log('[DEBUG] stripeContinueBtn clicked!');
+      const btn = event.target;
+      btn.disabled = true;
+      btn.textContent = '処理中...';
+
+      try {
+        const headers = {
+          'Content-Type': 'application/json'
+        };
+        <% if (csrfToken) { %>
+        headers['X-CSRF-Token'] = '<%= csrfToken %>';
+        console.log('[DEBUG] CSRF token added to headers');
+        <% } else { %>
+        console.log('[DEBUG] No CSRF token available');
+        <% } %>
+
+        const url = '/admin/partners/<%= partner.id %>/stripe-onboarding';
+        console.log('[DEBUG] Fetching:', url);
+        console.log('[DEBUG] Headers:', headers);
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({
+            returnUrl: window.location.origin + '/admin/partners/<%= partner.id %>/stripe-return',
+            refreshUrl: window.location.origin + '/admin/partners/<%= partner.id %>/stripe-refresh'
+          })
+        });
+
+        console.log('[DEBUG] Response status:', response.status);
+        console.log('[DEBUG] Response:', response);
+
+        const data = await response.json();
+        console.log('[DEBUG] Response data:', data);
+
+        if (data.success && data.onboardingUrl) {
+          console.log('[DEBUG] Redirecting to:', data.onboardingUrl);
+          window.location.href = data.onboardingUrl;
+        } else {
+          console.error('[DEBUG] Error in response:', data.error);
+          alert('エラー: ' + (data.error || '不明なエラーが発生しました'));
+          btn.disabled = false;
+          btn.textContent = '本人確認を続ける';
+        }
+      } catch (error) {
+        console.error('[DEBUG] Fetch error:', error);
+        alert('エラー: ' + error.message);
+        btn.disabled = false;
+        btn.textContent = '本人確認を続ける';
+      }
+    });
+
+    // Stripe ダッシュボードを開く
+    document.getElementById('stripeDashboardBtn')?.addEventListener('click', async (event) => {
+      const btn = event.target;
+      btn.disabled = true;
+      btn.textContent = '処理中...';
+
+      try {
+        const headers = {
+          'Content-Type': 'application/json'
+        };
+        <% if (csrfToken) { %>
+        headers['X-CSRF-Token'] = '<%= csrfToken %>';
+        <% } %>
+
+        const response = await fetch('/admin/partners/<%= partner.id %>/stripe-dashboard-link', {
+          method: 'POST',
+          headers: headers
+        });
+
+        const data = await response.json();
+        console.log('[DEBUG] Response data:', data);
+        if (data.success && data.dashboardUrl) {
+          window.open(data.dashboardUrl, '_blank');
+          btn.disabled = false;
+          btn.textContent = 'Stripe ダッシュボードを開く';
+        } else {
+          const errorMsg = data.error || '不明なエラーが発生しました';
+          if (errorMsg.includes('not completed onboarding')) {
+            alert('エラー: 本人確認が完了していません。先に「本人確認を続ける」ボタンからオンボーディングを完了してください。');
+          } else {
+            alert('エラー: ' + errorMsg);
+          }
+          btn.disabled = false;
+          btn.textContent = 'Stripe ダッシュボードを開く';
+        }
+      } catch (error) {
+        alert('エラー: ' + error.message);
+        btn.disabled = false;
+        btn.textContent = 'Stripe ダッシュボードを開く';
+      }
+    });
+
+    // 情報を同期
+    document.getElementById('stripeSyncBtn')?.addEventListener('click', async (event) => {
+      const btn = event.target;
+      btn.disabled = true;
+      btn.textContent = '同期中...';
+
+      try {
+        const headers = {
+          'Content-Type': 'application/json'
+        };
+        <% if (csrfToken) { %>
+        headers['X-CSRF-Token'] = '<%= csrfToken %>';
+        <% } %>
+
+        const response = await fetch('/admin/partners/<%= partner.id %>/stripe-sync', {
+          method: 'POST',
+          headers: headers
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert('同期が完了しました');
+          window.location.reload();
+        } else {
+          alert('エラー: ' + (data.error || '不明なエラーが発生しました'));
+          btn.disabled = false;
+          btn.textContent = '情報を同期';
+        }
+      } catch (error) {
+        alert('エラー: ' + error.message);
+        btn.disabled = false;
+        btn.textContent = '情報を同期';
+      }
+    });
+    </script>
+    <% } %>
+
     <!-- ユーザー一覧 -->
     <article class="card">
       <div class="card__head">

@@ -236,6 +236,37 @@ app.post(
             orderId: order.id,
             orderNumber: order.order_number
           });
+
+          // ★★★ 台帳計上処理を追加 ★★★
+          try {
+            const { recordSaleAndFee } = require('./services/ledger');
+
+            // 注文の詳細情報を取得（seller_id, total が必要）
+            const orderDetails = await dbQuery(
+              `SELECT id, seller_id, total FROM orders WHERE id = $1`,
+              [order.id]
+            );
+
+            if (orderDetails.length) {
+              const chargeId = session.charges?.data?.[0]?.id || null;
+              await recordSaleAndFee(
+                orderDetails[0],
+                session.payment_intent,
+                chargeId
+              );
+              logger.info('Ledger entries created for order', {
+                orderId: order.id
+              });
+            }
+          } catch (ledgerError) {
+            logger.error('Failed to record ledger for order', {
+              orderId: order.id,
+              error: ledgerError.message,
+              stack: ledgerError.stack
+            });
+            // 台帳計上失敗してもStripeには成功を返す（後で手動修正可能）
+          }
+
           break;
         }
 
@@ -357,6 +388,136 @@ app.post(
             orderId: order.id,
             orderNumber: order.order_number
           });
+
+          // ★★★ 台帳計上処理を追加（冪等性あり） ★★★
+          try {
+            // 返金情報を取得
+            const refunds = charge.refunds?.data || [];
+
+            for (const refund of refunds) {
+              const idempotencyKey = `refund-${refund.id}`;
+
+              // 既に台帳エントリが存在するかチェック
+              const existingEntries = await dbQuery(
+                'SELECT id FROM ledger WHERE idempotency_key = $1',
+                [idempotencyKey]
+              );
+
+              if (existingEntries.length > 0) {
+                logger.info('Refund ledger entry already exists', {
+                  refundId: refund.id,
+                  orderId: order.id
+                });
+                continue;
+              }
+
+              // 出品者を取得
+              const orderDetails = await dbQuery(
+                `SELECT o.id, o.seller_id, u.partner_id
+                 FROM orders o
+                 JOIN users u ON u.id = o.seller_id
+                 WHERE o.id = $1`,
+                [order.id]
+              );
+
+              if (orderDetails.length && orderDetails[0].partner_id) {
+                const partnerId = orderDetails[0].partner_id;
+
+                // 台帳に返金エントリ作成
+                await dbQuery(
+                  `INSERT INTO ledger (
+                     partner_id, order_id, type, amount_cents, currency,
+                     status, available_at, stripe_refund_id, idempotency_key, note
+                   ) VALUES ($1, $2, 'refund', $3, 'jpy', 'available', now(), $4, $5, $6)
+                   ON CONFLICT (idempotency_key) DO NOTHING`,
+                  [
+                    partnerId,
+                    order.id,
+                    -refund.amount, // マイナス値
+                    refund.id,
+                    idempotencyKey,
+                    `Webhook経由の返金計上 (Charge: ${charge.id})`
+                  ]
+                );
+
+                logger.info('Refund ledger entry created via webhook', {
+                  refundId: refund.id,
+                  orderId: order.id,
+                  amount: refund.amount
+                });
+
+                // 残高確認と負債処理
+                const balanceRows = await dbQuery(
+                  `SELECT COALESCE(SUM(amount_cents), 0)::int AS balance
+                   FROM ledger
+                   WHERE partner_id = $1 AND status IN ('available', 'pending')`,
+                  [partnerId]
+                );
+
+                const balance = balanceRows[0].balance;
+
+                if (balance < 0) {
+                  const debtAmount = Math.abs(balance);
+
+                  await dbQuery(
+                    `UPDATE partners SET debt_cents = $1, updated_at = now()
+                     WHERE id = $2`,
+                    [debtAmount, partnerId]
+                  );
+
+                  if (debtAmount > 10000) {
+                    await dbQuery(
+                      `UPDATE partners SET
+                         payouts_enabled = false,
+                         stop_reason = 'debt_over_10000',
+                         updated_at = now()
+                       WHERE id = $1`,
+                      [partnerId]
+                    );
+
+                    logger.warn('Partner payouts disabled via webhook (debt over 10,000)', {
+                      partnerId,
+                      debtAmount
+                    });
+                  }
+                }
+              }
+            }
+          } catch (ledgerError) {
+            logger.error('Failed to process refund ledger via webhook', {
+              chargeId: charge.id,
+              orderId: order.id,
+              error: ledgerError.message,
+              stack: ledgerError.stack
+            });
+            // エラーでもStripeには成功を返す
+          }
+
+          break;
+        }
+
+        case 'account.updated': {
+          const account = event.data.object;
+          logger.info('Stripe Connect account updated', {
+            accountId: account.id,
+            detailsSubmitted: account.details_submitted,
+            chargesEnabled: account.charges_enabled,
+            payoutsEnabled: account.payouts_enabled
+          });
+
+          try {
+            const { syncConnectAccount } = require('./services/stripe-connect');
+            await syncConnectAccount(account.id);
+            logger.info('Stripe Connect account synced via webhook', {
+              accountId: account.id
+            });
+          } catch (syncError) {
+            logger.error('Failed to sync account via webhook', {
+              accountId: account.id,
+              error: syncError.message,
+              stack: syncError.stack
+            });
+          }
           break;
         }
 
@@ -2335,6 +2496,48 @@ app.get('/about', async (req, res, next) => {
       extraJS: '/js/about.js'
     });
   } catch (e) { next(e); }
+});
+
+/* =========================================================
+ * 特定商取引法に基づく表記
+ * GET /tokusho
+ * =======================================================*/
+app.get('/tokusho', (req, res) => {
+  res.render('pages/tokusho', {
+    title: '特定商取引法に基づく表記',
+    description: 'セッツマルシェの特定商取引法に基づく表記ページです。販売事業者情報、返品・返金に関する条件、支払い方法などをご確認いただけます。',
+    canonicalUrl: '/tokusho',
+    extraCSS2: '',
+    extraCSS: '/styles/tokusho.css'
+  });
+});
+
+/* =========================================================
+ * プライバシーポリシー
+ * GET /privacy
+ * =======================================================*/
+app.get('/privacy', (req, res) => {
+  res.render('pages/privacy', {
+    title: 'プライバシーポリシー',
+    description: 'セッツマルシェのプライバシーポリシーです。お客様の個人情報の取り扱いについて、取得する情報、利用目的、第三者提供、安全管理措置などを詳しくご説明しています。',
+    canonicalUrl: '/privacy',
+    extraCSS2: '',
+    extraCSS: '/styles/privacy.css'
+  });
+});
+
+/* =========================================================
+ * 利用規約
+ * GET /terms
+ * =======================================================*/
+app.get('/terms', (req, res) => {
+  res.render('pages/terms', {
+    title: '利用規約',
+    description: 'セッツマルシェの利用規約です。本サービスのご利用に関する条件、購入者と出品者の権利・義務、返金・キャンセルに関する条件などを詳しくご説明しています。',
+    canonicalUrl: '/terms',
+    extraCSS2: '',
+    extraCSS: '/styles/terms.css'
+  });
 });
 
 async function attachContactsToUserAfterLogin(user) {
@@ -5261,16 +5464,18 @@ app.get('/dashboard/seller', requireAuth, requireRole(['seller']), async (req, r
           o.status AS order_status, o.ship_method, o.eta_at, o.ship_time_code,
           o.created_at,
           o.buyer_id,
+          o.seller_id,
           SUM(oi.price * oi.quantity)::int AS amount,
           bu.name AS buyer_name
         FROM orders o
         JOIN order_items oi ON oi.order_id = o.id
         LEFT JOIN users bu ON bu.id = o.buyer_id
        WHERE oi.seller_id = $1
+        OR o.seller_id = $2
        GROUP BY o.id, bu.name
        ORDER BY o.created_at DESC
        LIMIT 6
-      `, [uid]),
+      `, [uid, partner_id]),
 
       // 総件数
       dbQuery(`
@@ -5278,19 +5483,21 @@ app.get('/dashboard/seller', requireAuth, requireRole(['seller']), async (req, r
           FROM orders o
           JOIN order_items oi ON oi.order_id = o.id
          WHERE oi.seller_id = $1
-      `, [uid]),
+          OR o.seller_id = $2
+      `, [uid, partner_id]),
 
       // 売上合計（入金確定ベース）
       dbQuery(`
         SELECT COALESCE(SUM(oi.price * oi.quantity),0)::int AS total
           FROM order_items oi
           JOIN orders o ON o.id = oi.order_id
-         WHERE oi.seller_id = $1
+         WHERE (oi.seller_id = $1
+          OR o.seller_id = $2)
            AND o.payment_status IN ('paid','refunded')
-      `, [uid]),
+      `, [uid, partner_id]),
 
       // カード用：今月/今週/全期間のバケット
-      getRevenueCardData(dbQuery, uid),
+      getRevenueCardData(dbQuery, uid, partner_id),
       dbQuery(
         `
         WITH candidates AS (
@@ -5800,6 +6007,25 @@ app.post(
       }
 
       const updated = rows[0];
+
+      // ★ delivery_status が 'delivered' になったら台帳を送金可能にする
+      if (updated.delivery_status === 'delivered') {
+        try {
+          const { recordDeliveryCompletedAndMarkAvailable } = require('./services/ledger');
+          await recordDeliveryCompletedAndMarkAvailable(updated.id);
+          logger.info('Ledger marked as available after delivery completed', {
+            orderId: updated.id,
+            deliveryStatus: updated.delivery_status
+          });
+        } catch (ledgerError) {
+          logger.error('Failed to mark ledger available after delivery', {
+            orderId: updated.id,
+            error: ledgerError.message,
+            stack: ledgerError.stack
+          });
+          // エラーでもレスポンスは成功を返す（後で手動修正可能）
+        }
+      }
 
       return res.json({
         ok: true,
@@ -8190,23 +8416,48 @@ app.post('/checkout/confirm', async (req, res, next) => {
     const orderNo = genOrderNo();
     const etaAt = draft.shipDate ? new Date(draft.shipDate) : null;
 
+    // ★ 出品者のpartner_idを取得（最初の商品から）
+    // ordersテーブルのseller_idにはpartner_id（パートナー組織のID）を設定する
+    const firstProduct = byId.get(targetPairs[0].productId);
+    if (!firstProduct?.seller_id) {
+      req.session.flash = { type:'error', message:'商品の出品者情報が見つかりません。' };
+      return res.redirect('/cart');
+    }
+
+    // 出品者ユーザーからpartner_idを取得
+    const sellerUsers = await dbQuery(
+      'SELECT id, partner_id FROM users WHERE id = $1',
+      [firstProduct.seller_id]
+    );
+
+    if (!sellerUsers.length || !sellerUsers[0].partner_id) {
+      req.session.flash = {
+        type:'error',
+        message:'出品者のパートナー情報が見つかりません。出品者がパートナーに所属していることを確認してください。'
+      };
+      return res.redirect('/cart');
+    }
+
+    const orderSellerId = sellerUsers[0].partner_id; // これがpartner_id
+    console.log('[POST /checkout/confirm] Order seller_id (partner_id):', orderSellerId);
+
     await client.query('BEGIN');
 
     // orders
     const oins = await client.query(
       `INSERT INTO orders
-         (order_number, buyer_id, status,
+         (order_number, buyer_id, seller_id, status,
           subtotal, discount, shipping_fee, total,
           payment_method, note, eta_at, coupon_code, ship_method, ship_time_code,
           payment_status, delivery_status)
        VALUES
-         ($1, $2, 'pending',
-          $3, $4, $5, $6,
-          $7, $8, $9, $10, $11, $12,
+         ($1, $2, $3, 'pending',
+          $4, $5, $6, $7,
+          $8, $9, $10, $11, $12, $13,
           'unpaid', 'preparing')
        RETURNING id`,
       [
-        orderNo, uid,
+        orderNo, uid, orderSellerId,
         subtotal, discount, shipping_fee, total,
         safePaymentMethod, (draft.orderNote || '').slice(0,1000), etaAt,
         coupon?.code || null, draft.shipMethod, rawShipTimeCode
@@ -10222,7 +10473,10 @@ app.get(
            id, name, kana, type, status, email, phone, website,
            billing_email, billing_terms, tax_id,
            postal_code, prefecture, city, address1, address2,
-           note, icon_url, icon_r2_key, pickup_address_id, created_at, updated_at
+           note, icon_url, icon_r2_key, pickup_address_id, created_at, updated_at,
+           stripe_account_id, stripe_account_type, stripe_charges_enabled, stripe_payouts_enabled,
+           stripe_details_submitted, charges_enabled, payouts_enabled, debt_cents, stop_reason,
+           requirements_due_by
          FROM partners
          WHERE id = $1::uuid
          LIMIT 1`,
@@ -10355,6 +10609,43 @@ app.get(
         pickupAddress,
         bankAccount,
         csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+// 取引先の残高・台帳ページ
+app.get(
+  '/admin/partners/:id/balance',
+  requireAuth,
+  requireRole(['admin']),
+  async (req, res, next) => {
+    try {
+      const id = String(req.params.id || '').trim();
+      if (!isUuid(id)) {
+        return res.status(400).render('errors/404', { title: '不正なID' });
+      }
+
+      const partners = await dbQuery(
+        `SELECT
+           id, name, stripe_account_id, debt_cents
+         FROM partners
+         WHERE id = $1::uuid
+         LIMIT 1`,
+        [id]
+      );
+
+      if (!partners.length) {
+        return res.status(404).render('errors/404', { title: '取引先が見つかりません' });
+      }
+
+      res.render('admin/partners/balance', {
+        title: partners[0].name + ' - 残高・台帳',
+        partner: partners[0],
+        user: req.session.user,
+        csrfToken: req.csrfToken ? req.csrfToken() : null
       });
     } catch (e) {
       next(e);
@@ -13967,6 +14258,30 @@ app.use((err, req, res, next) => {
 /* =========================================================
  *  404 / Error
  * =======================================================*/
+// ============================================================
+// Stripe Connect ルート登録
+// ============================================================
+const { registerStripeConnectRoutes } = require('./routes-stripe-connect');
+registerStripeConnectRoutes(app, requireAuth, requireRole);
+
+// ============================================================
+// 配送ステータス更新ルート登録
+// ============================================================
+const { registerDeliveryStatusRoutes } = require('./routes-delivery-status');
+registerDeliveryStatusRoutes(app, requireAuth, requireRole);
+
+// ============================================================
+// 返金処理ルート登録
+// ============================================================
+const { registerRefundRoutes } = require('./routes-refund');
+registerRefundRoutes(app, requireAuth, requireRole, csrfProtect);
+
+// ============================================================
+// Phase 6: 管理者用財務管理API
+// ============================================================
+const { registerAdminFinanceRoutes } = require('./routes-admin-finance');
+registerAdminFinanceRoutes(app, requireAuth, requireRole);
+
 app.use((req, res) => {
   res.status(404).render('errors/404', { title: 'ページが見つかりません' });
 });

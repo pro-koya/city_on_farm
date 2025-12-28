@@ -1,0 +1,222 @@
+<%- include('../partials/header', { 
+  title: 'プライバシーポリシー',
+  description: 'セッツマルシェのプライバシーポリシーです。お客様の個人情報の取り扱いについて、取得する情報、利用目的、第三者提供、安全管理措置などを詳しくご説明しています。',
+  canonicalUrl: '/privacy',
+  extraCSS2: '',
+  extraCSS: '/styles/privacy.css'
+}) %>
+
+<main class="privacy">
+  <div class="wrap">
+    <!-- ページヘッダー -->
+    <header class="privacy-header">
+      <h1 class="privacy-title">プライバシーポリシー</h1>
+      <p class="privacy-lead">セッツマルシェでは、お客様の個人情報を適切に保護し、安心してご利用いただけるよう努めております。</p>
+      <p class="privacy-updated">最終更新日：2025年1月</p>
+    </header>
+
+    <!-- 基本方針 -->
+    <section class="privacy-section" aria-labelledby="basic-policy">
+      <h2 id="basic-policy" class="privacy-section-title">基本方針</h2>
+      <div class="privacy-content">
+        <p>セッツマルシェ（以下「当サービス」といいます）は、お客様の個人情報の保護を重要な責務と認識し、個人情報の保護に関する法律（個人情報保護法）その他の関連法令を遵守し、適切に取り扱うよう努めます。</p>
+        <p>本プライバシーポリシーは、当サービスが取得する個人情報の取り扱いについて、その目的、利用方法、管理方法等を明らかにするものです。</p>
+      </div>
+    </section>
+
+    <!-- 運営者情報 -->
+    <section class="privacy-section" aria-labelledby="operator-info">
+      <h2 id="operator-info" class="privacy-section-title">運営者情報</h2>
+      <dl class="privacy-definition-list">
+        <div class="privacy-definition-item">
+          <dt>事業者名</dt>
+          <dd>セッツマルシェ</dd>
+        </div>
+        <div class="privacy-definition-item">
+          <dt>運営責任者</dt>
+          <dd>渡邊 勝彦</dd>
+        </div>
+        <div class="privacy-definition-item">
+          <dt>所在地</dt>
+          <dd>
+            ご請求があった場合に遅滞なく開示いたします。<br>
+            <a href="/contact" class="privacy-link">お問い合わせフォーム</a>よりご連絡ください。
+          </dd>
+        </div>
+        <div class="privacy-definition-item">
+          <dt>連絡先</dt>
+          <dd>
+            <a href="/contact" class="privacy-link">お問い合わせフォーム</a>よりご連絡ください。
+          </dd>
+        </div>
+        <div class="privacy-definition-item">
+          <dt>電話番号</dt>
+          <dd>
+            ご請求があった場合に遅滞なく開示いたします。<br>
+            <a href="/contact" class="privacy-link">お問い合わせフォーム</a>よりご連絡ください。
+          </dd>
+        </div>
+      </dl>
+    </section>
+
+    <!-- 取得する個人情報 -->
+    <section class="privacy-section" aria-labelledby="collected-info">
+      <h2 id="collected-info" class="privacy-section-title">取得する個人情報</h2>
+      <div class="privacy-content">
+        <p>当サービスでは、以下の個人情報を取得いたします。</p>
+        
+        <h3 class="privacy-subtitle">1. アカウント登録時に取得する情報</h3>
+        <ul class="privacy-list">
+          <li><strong>氏名</strong>：お客様の氏名</li>
+          <li><strong>メールアドレス</strong>：ログイン認証およびお問い合わせ対応のため</li>
+          <li><strong>電話番号</strong>：配送時の連絡のため（任意の場合あり）</li>
+        </ul>
+
+        <h3 class="privacy-subtitle">2. 商品購入時に取得する情報</h3>
+        <ul class="privacy-list">
+          <li><strong>配送先住所</strong>：商品の配送のため</li>
+          <li><strong>氏名</strong>：配送先の受取人名</li>
+          <li><strong>電話番号</strong>：配送時の連絡のため</li>
+        </ul>
+
+        <h3 class="privacy-subtitle">3. 決済に関する情報</h3>
+        <ul class="privacy-list">
+          <li><strong>決済方法</strong>：クレジットカード決済または代金引換の選択情報</li>
+          <li><strong>決済代行業者を通じた決済情報</strong>：Stripe等の決済代行業者が処理する決済情報</li>
+        </ul>
+        <p class="privacy-note">※ クレジットカード番号等の機微な情報は、当サービスでは保持いたしません。決済処理は、Stripe社が提供する安全な決済システムを通じて行われます。</p>
+
+        <h3 class="privacy-subtitle">4. 自動的に取得する情報</h3>
+        <ul class="privacy-list">
+          <li><strong>IPアドレス</strong>：不正アクセス防止およびセキュリティ向上のため</li>
+          <li><strong>ブラウザ情報</strong>：サービス改善のため</li>
+          <li><strong>アクセスログ</strong>：サービス運営およびセキュリティ管理のため</li>
+          <li><strong>Cookie情報</strong>：セッション管理およびサービス改善のため</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 利用目的 -->
+    <section class="privacy-section" aria-labelledby="usage-purpose">
+      <h2 id="usage-purpose" class="privacy-section-title">個人情報の利用目的</h2>
+      <div class="privacy-content">
+        <p>当サービスでは、取得した個人情報を以下の目的で利用いたします。</p>
+        <ul class="privacy-list">
+          <li><strong>商品の配送</strong>：ご注文いただいた商品を正確にお届けするため</li>
+          <li><strong>決済処理</strong>：商品代金の決済処理を適切に実施するため</li>
+          <li><strong>本人確認</strong>：お客様の本人確認および不正利用の防止のため</li>
+          <li><strong>お問い合わせ対応</strong>：お客様からのお問い合わせに適切に対応するため</li>
+          <li><strong>不正防止</strong>：不正アクセス、不正利用、詐欺行為等の防止のため</li>
+          <li><strong>サービス改善</strong>：当サービスの品質向上、機能改善、新サービスの開発のため</li>
+          <li><strong>重要なお知らせ</strong>：サービスに関する重要な変更やお知らせをお伝えするため</li>
+          <li><strong>統計情報の作成</strong>：個人を特定できない形での統計情報の作成のため</li>
+        </ul>
+        <p class="privacy-note">※ 法令に基づく場合を除き、利用目的の範囲を超えて個人情報を利用することはありません。</p>
+      </div>
+    </section>
+
+    <!-- 第三者提供・外部委託 -->
+    <section class="privacy-section" aria-labelledby="third-party">
+      <h2 id="third-party" class="privacy-section-title">第三者提供および外部委託</h2>
+      <div class="privacy-content">
+        <h3 class="privacy-subtitle">第三者提供</h3>
+        <p>当サービスは、以下の場合を除き、お客様の個人情報を第三者に提供することはありません。</p>
+        <ul class="privacy-list">
+          <li>お客様の同意がある場合</li>
+          <li>法令に基づく場合（裁判所、警察等の公的機関からの要請等）</li>
+          <li>人の生命、身体または財産の保護のために必要な場合</li>
+        </ul>
+
+        <h3 class="privacy-subtitle">外部委託</h3>
+        <p>当サービスでは、以下の業務を外部の事業者に委託する場合があり、その際に必要な範囲で個人情報を提供することがあります。</p>
+        <ul class="privacy-list">
+          <li><strong>決済代行業者</strong>：Stripe社等の決済代行業者への決済処理の委託</li>
+          <li><strong>配送業者</strong>：商品の配送業務を委託する配送業者への配送情報の提供</li>
+          <li><strong>クラウドサービス提供者</strong>：データの保存・管理を委託するクラウドサービス提供者</li>
+        </ul>
+        <p class="privacy-note">※ 外部委託先に対しては、個人情報の適切な管理を求め、必要に応じて契約により義務づけています。</p>
+      </div>
+    </section>
+
+    <!-- Cookie・アクセス解析 -->
+    <section class="privacy-section" aria-labelledby="cookie-analytics">
+      <h2 id="cookie-analytics" class="privacy-section-title">Cookie（クッキー）およびアクセス解析</h2>
+      <div class="privacy-content">
+        <h3 class="privacy-subtitle">Cookieの使用</h3>
+        <p>当サービスでは、以下の目的でCookieを使用することがあります。</p>
+        <ul class="privacy-list">
+          <li><strong>セッション管理</strong>：ログイン状態の維持、カート情報の保持のため</li>
+          <li><strong>セキュリティ</strong>：不正アクセス防止、セキュリティ向上のため</li>
+          <li><strong>サービス改善</strong>：アクセス解析、サービス改善のため</li>
+        </ul>
+        <p>Cookieの使用を希望されない場合は、ブラウザの設定によりCookieを無効にすることができます。ただし、Cookieを無効にした場合、当サービスの一部機能が正常に動作しない可能性があります。</p>
+
+        <h3 class="privacy-subtitle">アクセス解析</h3>
+        <p>当サービスでは、サービス改善のため、アクセスログを分析することがあります。この際、個人を特定できる情報は使用せず、統計的な情報としてのみ利用いたします。</p>
+      </div>
+    </section>
+
+    <!-- 個人情報の管理 -->
+    <section class="privacy-section" aria-labelledby="security">
+      <h2 id="security" class="privacy-section-title">個人情報の安全管理措置</h2>
+      <div class="privacy-content">
+        <p>当サービスでは、お客様の個人情報を適切に保護するため、以下の安全管理措置を講じています。</p>
+        <ul class="privacy-list">
+          <li><strong>アクセス制限</strong>：個人情報にアクセスできる者を必要最小限に限定し、適切なアクセス制御を実施</li>
+          <li><strong>暗号化</strong>：通信の暗号化（HTTPS）により、データの送受信を保護</li>
+          <li><strong>不正アクセス防止</strong>：ファイアウォール、侵入検知システム等による不正アクセスの防止</li>
+          <li><strong>定期的なセキュリティ監査</strong>：システムの脆弱性を定期的に確認し、必要に応じて改善</li>
+          <li><strong>従業者教育</strong>：個人情報を取り扱う従業者に対する適切な教育・研修の実施</li>
+        </ul>
+        <p class="privacy-note">※ セキュリティ対策は継続的に見直し、改善を図ってまいります。ただし、インターネット上での情報の完全な安全性を保証するものではありません。</p>
+      </div>
+    </section>
+
+    <!-- 開示・訂正・削除 -->
+    <section class="privacy-section" aria-labelledby="rights">
+      <h2 id="rights" class="privacy-section-title">個人情報の開示・訂正・削除等</h2>
+      <div class="privacy-content">
+        <p>お客様は、ご自身の個人情報について、以下の権利を有しています。</p>
+        <ul class="privacy-list">
+          <li><strong>開示請求</strong>：ご自身の個人情報の開示を請求することができます</li>
+          <li><strong>訂正請求</strong>：ご自身の個人情報に誤りがある場合、訂正を請求することができます</li>
+          <li><strong>削除請求</strong>：ご自身の個人情報の削除を請求することができます</li>
+          <li><strong>利用停止請求</strong>：ご自身の個人情報の利用停止を請求することができます</li>
+        </ul>
+        <p>上記の請求をご希望の場合は、<a href="/contact" class="privacy-link">お問い合わせフォーム</a>よりご連絡ください。お客様ご本人であることを確認させていただいた上で、合理的な期間内に対応いたします。</p>
+        <p class="privacy-note">※ 法令により保存が義務づけられている情報については、開示・削除等の請求に応じられない場合があります。</p>
+      </div>
+    </section>
+
+    <!-- 未成年者の個人情報 -->
+    <section class="privacy-section" aria-labelledby="minors">
+      <h2 id="minors" class="privacy-section-title">未成年者の個人情報</h2>
+      <div class="privacy-content">
+        <p>未成年者の方が当サービスを利用される場合、保護者の同意を得た上でご利用ください。保護者の同意なく個人情報を提供された場合、当該情報の削除等の対応を行う場合があります。</p>
+      </div>
+    </section>
+
+    <!-- ポリシーの変更 -->
+    <section class="privacy-section" aria-labelledby="policy-changes">
+      <h2 id="policy-changes" class="privacy-section-title">プライバシーポリシーの変更</h2>
+      <div class="privacy-content">
+        <p>当サービスは、法令の変更やサービスの改善等に伴い、本プライバシーポリシーの内容を変更することがあります。変更を行う場合は、当サービス上に掲載し、またはお客様に通知いたします。</p>
+        <p>変更後のプライバシーポリシーは、当サービス上に掲載した時点から効力を生じるものとします。</p>
+      </div>
+    </section>
+
+    <!-- お問い合わせ -->
+    <section class="privacy-section privacy-section--highlight" aria-labelledby="contact-info">
+      <h2 id="contact-info" class="privacy-section-title">お問い合わせ</h2>
+      <div class="privacy-content">
+        <p>本プライバシーポリシーに関するご質問や、個人情報の開示・訂正・削除等のご請求は、以下よりお問い合わせください。</p>
+        <div class="privacy-cta">
+          <a href="/contact" class="privacy-btn">お問い合わせフォームへ</a>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<%- include('../partials/footer') %>
+

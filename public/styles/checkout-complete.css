@@ -220,6 +220,9 @@ a:hover {
 }
 .btn-primary:hover {
     opacity: .93;
+    background: var(--color-main);
+    color: var(--color-white);
+    border-color: transparent;
 }
 
 /* =========================
