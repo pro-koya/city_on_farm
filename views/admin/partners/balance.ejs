@@ -1,0 +1,311 @@
+<%- include('../../partials/header', {
+  title: partner.name + ' - 残高・台帳',
+  extraCSS2: '',
+  extraCSS: '/styles/partner-show.css'
+}) %>
+
+<main class="ps">
+  <header class="ps__head">
+    <div class="ps__title-wrap">
+      <h1 class="ps__title"><%= partner.name %> - 残高・台帳</h1>
+    </div>
+    <div class="ps__actions">
+      <a class="btn btn--ghost" href="/admin/partners/<%= partner.id %>">出品者詳細に戻る</a>
+    </div>
+  </header>
+
+  <section class="ps__grid">
+    <!-- 残高サマリ -->
+    <article class="card">
+      <div class="card__head">
+        <h2 class="card__title">残高サマリ</h2>
+        <button class="btn btn--ghost btn--sm" onclick="window.location.reload()">更新</button>
+      </div>
+
+      <dl class="kv">
+        <div>
+          <dt>送金可能額</dt>
+          <dd style="font-size: 1.5rem; font-weight: bold; color: var(--success);">
+            ¥<span id="availableBalance">読み込み中...</span>
+          </dd>
+        </div>
+        <div>
+          <dt>保留中</dt>
+          <dd>¥<span id="pendingBalance">—</span></dd>
+        </div>
+        <div>
+          <dt>送金済み</dt>
+          <dd>¥<span id="paidBalance">—</span></dd>
+        </div>
+        <div>
+          <dt>総残高</dt>
+          <dd>¥<span id="totalBalance">—</span></dd>
+        </div>
+        <% if (partner.debt_cents && partner.debt_cents > 0) { %>
+        <div>
+          <dt>負債額</dt>
+          <dd style="color: #c33; font-weight: bold;">
+            ¥<%= partner.debt_cents.toLocaleString() %>
+            <% if (partner.debt_cents > 10000) { %>
+              <span class="badge badge--danger" style="margin-left: 8px;">送金停止</span>
+            <% } %>
+          </dd>
+        </div>
+        <div>
+          <dt>実質残高</dt>
+          <dd style="font-weight: bold;">
+            ¥<span id="netBalance">—</span>
+          </dd>
+        </div>
+        <% } %>
+      </dl>
+
+      <% if (partner.debt_cents && partner.debt_cents > 10000) { %>
+      <div style="margin-top: 1rem; padding: 1rem; background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;">
+        <p style="margin: 0; color: #856404;">
+          ⚠️ 負債額が10,000円を超えているため、送金が停止されています。
+        </p>
+      </div>
+      <% } %>
+    </article>
+
+    <!-- 台帳エントリ一覧 -->
+    <article class="card" style="grid-column: 1 / -1;">
+      <div class="card__head">
+        <h2 class="card__title">台帳エントリ</h2>
+        <div style="display: flex; gap: 8px;">
+          <select id="statusFilter" class="pulldown" style="width: auto;">
+            <option value="">全てのステータス</option>
+            <option value="available">送金可能</option>
+            <option value="pending">保留中</option>
+            <option value="paid">送金済み</option>
+            <option value="void">無効</option>
+          </select>
+          <select id="typeFilter" class="pulldown" style="width: auto;">
+            <option value="">全てのタイプ</option>
+            <option value="sale">売上</option>
+            <option value="platform_fee">手数料</option>
+            <option value="refund">返金</option>
+            <option value="payout">送金</option>
+            <option value="adjustment">調整</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="tbl" id="ledgerTable">
+          <thead>
+            <tr>
+              <th>日時</th>
+              <th>タイプ</th>
+              <th>金額</th>
+              <th>ステータス</th>
+              <th>送金可能日</th>
+              <th>注文番号</th>
+              <th>備考</th>
+            </tr>
+          </thead>
+          <tbody id="ledgerTableBody">
+            <tr>
+              <td colspan="7" style="text-align: center; padding: 2rem;">
+                読み込み中...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="pagination" style="margin-top: 1rem; text-align: center; display: none;">
+        <button class="btn btn--ghost" id="prevBtn" disabled>前へ</button>
+        <span id="pageInfo" style="margin: 0 1rem;">—</span>
+        <button class="btn btn--ghost" id="nextBtn">次へ</button>
+      </div>
+    </article>
+  </section>
+</main>
+
+<script>
+let currentPage = 0;
+const limit = 50;
+let currentStatus = '';
+let currentType = '';
+
+// 残高を取得
+async function fetchBalance() {
+  try {
+    const response = await fetch('/admin/partners/<%= partner.id %>/balance/api');
+    const data = await response.json();
+    console.log('Balance API response:', data);
+    if (data.success) {
+      document.getElementById('availableBalance').textContent = data.balance.availableBalance.toLocaleString();
+      document.getElementById('pendingBalance').textContent = data.balance.pendingBalance.toLocaleString();
+      document.getElementById('paidBalance').textContent = data.balance.paidBalance.toLocaleString();
+      document.getElementById('totalBalance').textContent = data.balance.totalBalance.toLocaleString();
+
+      if (document.getElementById('netBalance')) {
+        document.getElementById('netBalance').textContent = data.balance.netBalance.toLocaleString();
+      }
+    } else {
+      console.error('Failed to fetch balance:', data.error);
+    }
+  } catch (error) {
+    console.error('Error fetching balance:', error);
+    document.getElementById('availableBalance').textContent = 'エラー';
+  }
+}
+
+// 台帳エントリを取得
+async function fetchLedger() {
+  try {
+    const offset = currentPage * limit;
+    let url = `/admin/partners/<%= partner.id %>/ledger/api?limit=${limit}&offset=${offset}`;
+
+    if (currentStatus) {
+      url += `&status=${currentStatus}`;
+    }
+
+    const response = await fetch(url);
+    const data = await response.json();
+    console.log('Ledger API response:', data);
+    if (data.success) {
+      renderLedgerTable(data.entries);
+      updatePagination(data.pagination);
+    } else {
+      console.error('Failed to fetch ledger:', data.error);
+    }
+  } catch (error) {
+    console.error('Error fetching ledger:', error);
+    document.getElementById('ledgerTableBody').innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; padding: 2rem; color: #c33;">
+          エラーが発生しました
+        </td>
+      </tr>
+    `;
+  }
+}
+
+// 台帳テーブルをレンダリング
+function renderLedgerTable(entries) {
+  const tbody = document.getElementById('ledgerTableBody');
+
+  if (!entries || entries.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; padding: 2rem; color: #999;">
+          エントリがありません
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  // タイプフィルタを適用
+  let filteredEntries = entries;
+  if (currentType) {
+    filteredEntries = entries.filter(e => e.type === currentType);
+  }
+
+  tbody.innerHTML = filteredEntries.map(entry => {
+    const date = new Date(entry.created_at).toLocaleString('ja-JP');
+    const availableDate = entry.available_at ? new Date(entry.available_at).toLocaleDateString('ja-JP') : '—';
+
+    const typeLabels = {
+      'sale': '売上',
+      'platform_fee': '手数料',
+      'refund': '返金',
+      'payout': '送金',
+      'adjustment': '調整',
+      'carry_over': '繰越'
+    };
+
+    const statusLabels = {
+      'available': '送金可能',
+      'pending': '保留中',
+      'paid': '送金済み',
+      'void': '無効'
+    };
+
+    const statusColors = {
+      'available': 'color: var(--success);',
+      'pending': 'color: #ff9800;',
+      'paid': 'color: #999;',
+      'void': 'color: #c33;'
+    };
+
+    const amountColor = entry.amount_cents >= 0 ? 'color: var(--success);' : 'color: #c33;';
+
+    return `
+      <tr>
+        <td style="font-size: 0.875rem;">${date}</td>
+        <td><span class="badge">${typeLabels[entry.type] || entry.type}</span></td>
+        <td style="font-weight: bold; ${amountColor}">
+          ${entry.amount_cents >= 0 ? '+' : ''}¥${entry.amount_cents.toLocaleString()}
+        </td>
+        <td style="${statusColors[entry.status] || ''}">${statusLabels[entry.status] || entry.status}</td>
+        <td style="font-size: 0.875rem;">${availableDate}</td>
+        <td>
+          ${entry.order_number ? `<a href="/seller/trades/${entry.order_id}" target="_blank">${entry.order_number}</a>` : '—'}
+        </td>
+        <td style="font-size: 0.875rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis;" title="${entry.note || ''}">
+          ${entry.note || '—'}
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ページネーション更新
+function updatePagination(pagination) {
+  const paginationDiv = document.getElementById('pagination');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const pageInfo = document.getElementById('pageInfo');
+
+  if (pagination.total === 0) {
+    paginationDiv.style.display = 'none';
+    return;
+  }
+
+  paginationDiv.style.display = 'block';
+
+  const startEntry = pagination.offset + 1;
+  const endEntry = Math.min(pagination.offset + pagination.limit, pagination.total);
+  pageInfo.textContent = `${startEntry}-${endEntry} / ${pagination.total}`;
+
+  prevBtn.disabled = pagination.offset === 0;
+  nextBtn.disabled = !pagination.hasMore;
+}
+
+// フィルタ変更
+document.getElementById('statusFilter').addEventListener('change', (e) => {
+  currentStatus = e.target.value;
+  currentPage = 0;
+  fetchLedger();
+});
+
+document.getElementById('typeFilter').addEventListener('change', (e) => {
+  currentType = e.target.value;
+  currentPage = 0;
+  fetchLedger();
+});
+
+// ページネーション
+document.getElementById('prevBtn').addEventListener('click', () => {
+  if (currentPage > 0) {
+    currentPage--;
+    fetchLedger();
+  }
+});
+
+document.getElementById('nextBtn').addEventListener('click', () => {
+  currentPage++;
+  fetchLedger();
+});
+
+// 初期ロード
+fetchBalance();
+fetchLedger();
+</script>
+
+<%- include('../../partials/footer') %>

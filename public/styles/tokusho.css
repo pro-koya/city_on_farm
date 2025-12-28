@@ -1,0 +1,274 @@
+:root {
+  --tokusho-bg: #fafafa;
+  --tokusho-txt: #1f2937;
+  --tokusho-muted: #6b7280;
+  --tokusho-main: #355D4A;
+  --tokusho-accent: #A3C9A8;
+  --tokusho-soft: #F2F7F4;
+  --tokusho-white: #fff;
+  --tokusho-border: #e5e7eb;
+  --tokusho-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --tokusho-radius: 12px;
+}
+
+.tokusho {
+  padding-top: 60px;
+  background: var(--tokusho-bg);
+  min-height: calc(100vh - 60px);
+}
+
+.wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* ページヘッダー */
+.tokusho-header {
+  text-align: center;
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 2px solid var(--tokusho-border);
+}
+
+.tokusho-title {
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  font-weight: 800;
+  color: var(--tokusho-main);
+  margin: 0 0 1rem;
+  line-height: 1.3;
+}
+
+.tokusho-lead {
+  font-size: clamp(1rem, 2vw, 1.1rem);
+  color: var(--tokusho-muted);
+  margin: 0 0 0.5rem;
+  line-height: 1.7;
+}
+
+.tokusho-updated {
+  font-size: 0.9rem;
+  color: var(--tokusho-muted);
+  margin: 0;
+}
+
+/* セクション */
+.tokusho-section {
+  background: var(--tokusho-white);
+  border: 1px solid var(--tokusho-border);
+  border-radius: var(--tokusho-radius);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--tokusho-shadow);
+  transition: box-shadow 0.2s ease;
+}
+
+.tokusho-section:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.tokusho-section--highlight {
+  background: linear-gradient(135deg, var(--tokusho-soft) 0%, var(--tokusho-white) 100%);
+  border-color: var(--tokusho-accent);
+}
+
+.tokusho-section-title {
+  font-size: clamp(1.4rem, 3vw, 1.8rem);
+  font-weight: 700;
+  color: var(--tokusho-main);
+  margin: 0 0 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--tokusho-accent);
+  line-height: 1.4;
+}
+
+.tokusho-content {
+  line-height: 1.8;
+  color: var(--tokusho-txt);
+}
+
+.tokusho-content p {
+  margin: 0 0 1rem;
+}
+
+.tokusho-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* 定義リスト */
+.tokusho-definition-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tokusho-definition-item {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--tokusho-border);
+}
+
+.tokusho-definition-item:last-child {
+  border-bottom: none;
+}
+
+.tokusho-definition-item dt {
+  font-weight: 600;
+  color: var(--tokusho-main);
+  font-size: 0.95rem;
+}
+
+.tokusho-definition-item dd {
+  margin: 0;
+  color: var(--tokusho-txt);
+  line-height: 1.7;
+}
+
+/* リスト */
+.tokusho-list {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+  line-height: 1.8;
+}
+
+.tokusho-list li {
+  margin-bottom: 0.75rem;
+  color: var(--tokusho-txt);
+}
+
+.tokusho-list li:last-child {
+  margin-bottom: 0;
+}
+
+.tokusho-list strong {
+  color: var(--tokusho-main);
+  font-weight: 600;
+}
+
+/* サブタイトル */
+.tokusho-subtitle {
+  font-size: clamp(1.1rem, 2.5vw, 1.3rem);
+  font-weight: 600;
+  color: var(--tokusho-main);
+  margin: 2rem 0 1rem;
+  padding-left: 0.5rem;
+  border-left: 4px solid var(--tokusho-accent);
+}
+
+.tokusho-subtitle:first-child {
+  margin-top: 0;
+}
+
+/* 注意書き */
+.tokusho-note {
+  background: var(--tokusho-soft);
+  border-left: 4px solid var(--tokusho-accent);
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  color: var(--tokusho-muted);
+  line-height: 1.7;
+}
+
+/* リンク */
+.tokusho-link {
+  color: var(--tokusho-main);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.2s ease;
+}
+
+.tokusho-link:hover {
+  color: var(--tokusho-accent);
+  text-decoration: none;
+}
+
+/* CTA */
+.tokusho-cta {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.tokusho-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tokusho-main);
+  color: var(--tokusho-white);
+  padding: 0.875rem 2rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(53, 93, 74, 0.2);
+}
+
+.tokusho-btn:hover {
+  background: var(--tokusho-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(53, 93, 74, 0.3);
+  text-decoration: none;
+  color: var(--tokusho-white);
+}
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+  .wrap {
+    padding: 1.5rem 1rem;
+  }
+
+  .tokusho-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .tokusho-section {
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .tokusho-definition-item {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    padding: 0.75rem 0;
+  }
+
+  .tokusho-definition-item dt {
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .tokusho-definition-item dd {
+    font-size: 0.95rem;
+  }
+
+  .tokusho-list {
+    padding-left: 1.25rem;
+  }
+
+  .tokusho-btn {
+    width: 100%;
+    padding: 1rem 2rem;
+  }
+}
+
+/* 印刷対応 */
+@media print {
+  .tokusho {
+    padding-top: 0;
+  }
+
+  .tokusho-section {
+    page-break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+
+  .tokusho-btn {
+    display: none;
+  }
+}
+
