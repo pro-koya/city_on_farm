@@ -1,0 +1,274 @@
+:root {
+  --privacy-bg: #fafafa;
+  --privacy-txt: #1f2937;
+  --privacy-muted: #6b7280;
+  --privacy-main: #355D4A;
+  --privacy-accent: #A3C9A8;
+  --privacy-soft: #F2F7F4;
+  --privacy-white: #fff;
+  --privacy-border: #e5e7eb;
+  --privacy-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --privacy-radius: 12px;
+}
+
+.privacy {
+  padding-top: 60px;
+  background: var(--privacy-bg);
+  min-height: calc(100vh - 60px);
+}
+
+.wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* ページヘッダー */
+.privacy-header {
+  text-align: center;
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 2px solid var(--privacy-border);
+}
+
+.privacy-title {
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  font-weight: 800;
+  color: var(--privacy-main);
+  margin: 0 0 1rem;
+  line-height: 1.3;
+}
+
+.privacy-lead {
+  font-size: clamp(1rem, 2vw, 1.1rem);
+  color: var(--privacy-muted);
+  margin: 0 0 0.5rem;
+  line-height: 1.7;
+}
+
+.privacy-updated {
+  font-size: 0.9rem;
+  color: var(--privacy-muted);
+  margin: 0;
+}
+
+/* セクション */
+.privacy-section {
+  background: var(--privacy-white);
+  border: 1px solid var(--privacy-border);
+  border-radius: var(--privacy-radius);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--privacy-shadow);
+  transition: box-shadow 0.2s ease;
+}
+
+.privacy-section:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.privacy-section--highlight {
+  background: linear-gradient(135deg, var(--privacy-soft) 0%, var(--privacy-white) 100%);
+  border-color: var(--privacy-accent);
+}
+
+.privacy-section-title {
+  font-size: clamp(1.4rem, 3vw, 1.8rem);
+  font-weight: 700;
+  color: var(--privacy-main);
+  margin: 0 0 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--privacy-accent);
+  line-height: 1.4;
+}
+
+.privacy-content {
+  line-height: 1.8;
+  color: var(--privacy-txt);
+}
+
+.privacy-content p {
+  margin: 0 0 1rem;
+}
+
+.privacy-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* 定義リスト */
+.privacy-definition-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.privacy-definition-item {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--privacy-border);
+}
+
+.privacy-definition-item:last-child {
+  border-bottom: none;
+}
+
+.privacy-definition-item dt {
+  font-weight: 600;
+  color: var(--privacy-main);
+  font-size: 0.95rem;
+}
+
+.privacy-definition-item dd {
+  margin: 0;
+  color: var(--privacy-txt);
+  line-height: 1.7;
+}
+
+/* リスト */
+.privacy-list {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+  line-height: 1.8;
+}
+
+.privacy-list li {
+  margin-bottom: 0.75rem;
+  color: var(--privacy-txt);
+}
+
+.privacy-list li:last-child {
+  margin-bottom: 0;
+}
+
+.privacy-list strong {
+  color: var(--privacy-main);
+  font-weight: 600;
+}
+
+/* サブタイトル */
+.privacy-subtitle {
+  font-size: clamp(1.1rem, 2.5vw, 1.3rem);
+  font-weight: 600;
+  color: var(--privacy-main);
+  margin: 2rem 0 1rem;
+  padding-left: 0.5rem;
+  border-left: 4px solid var(--privacy-accent);
+}
+
+.privacy-subtitle:first-child {
+  margin-top: 0;
+}
+
+/* 注意書き */
+.privacy-note {
+  background: var(--privacy-soft);
+  border-left: 4px solid var(--privacy-accent);
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  color: var(--privacy-muted);
+  line-height: 1.7;
+}
+
+/* リンク */
+.privacy-link {
+  color: var(--privacy-main);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.2s ease;
+}
+
+.privacy-link:hover {
+  color: var(--privacy-accent);
+  text-decoration: none;
+}
+
+/* CTA */
+.privacy-cta {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.privacy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--privacy-main);
+  color: var(--privacy-white);
+  padding: 0.875rem 2rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(53, 93, 74, 0.2);
+}
+
+.privacy-btn:hover {
+  background: var(--privacy-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(53, 93, 74, 0.3);
+  text-decoration: none;
+  color: var(--privacy-white);
+}
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+  .wrap {
+    padding: 1.5rem 1rem;
+  }
+
+  .privacy-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .privacy-section {
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .privacy-definition-item {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    padding: 0.75rem 0;
+  }
+
+  .privacy-definition-item dt {
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .privacy-definition-item dd {
+    font-size: 0.95rem;
+  }
+
+  .privacy-list {
+    padding-left: 1.25rem;
+  }
+
+  .privacy-btn {
+    width: 100%;
+    padding: 1rem 2rem;
+  }
+}
+
+/* 印刷対応 */
+@media print {
+  .privacy {
+    padding-top: 0;
+  }
+
+  .privacy-section {
+    page-break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+
+  .privacy-btn {
+    display: none;
+  }
+}
+

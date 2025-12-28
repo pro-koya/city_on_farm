@@ -23,6 +23,6 @@
     setTimeout(() => {
       place.disabled = false;
       place.textContent = 'この内容で注文する';
-    }, 3500);
+    }, 7000);
   });
 })();

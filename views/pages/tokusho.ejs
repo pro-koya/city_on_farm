@@ -1,0 +1,187 @@
+<%- include('../partials/header', { 
+  title: '特定商取引法に基づく表記',
+  description: 'セッツマルシェの特定商取引法に基づく表記ページです。販売事業者情報、返品・返金に関する条件、支払い方法などをご確認いただけます。',
+  canonicalUrl: '/tokusho',
+  extraCSS2: '',
+  extraCSS: '/styles/tokusho.css'
+}) %>
+
+<main class="tokusho">
+  <div class="wrap">
+    <!-- ページヘッダー -->
+    <header class="tokusho-header">
+      <h1 class="tokusho-title">特定商取引法に基づく表記</h1>
+      <p class="tokusho-lead">セッツマルシェでのお取引に関する重要な情報をご確認ください。</p>
+      <p class="tokusho-updated">最終更新日：2025年1月</p>
+    </header>
+
+    <!-- 販売事業者情報 -->
+    <section class="tokusho-section" aria-labelledby="seller-info">
+      <h2 id="seller-info" class="tokusho-section-title">販売事業者</h2>
+      <dl class="tokusho-definition-list">
+        <div class="tokusho-definition-item">
+          <dt>販売事業者名</dt>
+          <dd>セッツマルシェ</dd>
+        </div>
+        <div class="tokusho-definition-item">
+          <dt>運営責任者</dt>
+          <dd>渡邊 勝彦</dd>
+        </div>
+        <div class="tokusho-definition-item">
+          <dt>所在地</dt>
+          <dd>
+            ご請求があった場合に遅滞なく開示いたします。<br>
+            お問い合わせフォームよりご連絡ください。
+          </dd>
+        </div>
+        <div class="tokusho-definition-item">
+          <dt>連絡先（メールアドレス）</dt>
+          <dd>
+            <a href="/contact" class="tokusho-link">お問い合わせフォーム</a>よりご連絡ください。
+          </dd>
+        </div>
+        <div class="tokusho-definition-item">
+          <dt>電話番号</dt>
+          <dd>
+            ご請求があった場合に遅滞なく開示いたします。<br>
+            お問い合わせフォームよりご連絡ください。
+          </dd>
+        </div>
+      </dl>
+    </section>
+
+    <!-- 販売価格・商品代金 -->
+    <section class="tokusho-section" aria-labelledby="pricing-info">
+      <h2 id="pricing-info" class="tokusho-section-title">販売価格</h2>
+      <div class="tokusho-content">
+        <p>商品ページに表示されている価格は、すべて税込価格です。消費税を含んだ金額を表示しております。</p>
+      </div>
+    </section>
+
+    <!-- 商品代金以外の必要料金 -->
+    <section class="tokusho-section" aria-labelledby="additional-fees">
+      <h2 id="additional-fees" class="tokusho-section-title">商品代金以外の必要料金</h2>
+      <div class="tokusho-content">
+        <p>商品代金のほかに、以下の料金が発生する場合があります。</p>
+        <ul class="tokusho-list">
+          <li><strong>送料</strong>：商品ごとに異なります。商品ページおよび注文確認画面に表示されます。</li>
+          <li><strong>代金引換手数料</strong>：代金引換をご選択いただいた場合、別途手数料が発生します。詳細は注文確認画面に表示されます。</li>
+        </ul>
+        <p class="tokusho-note">※ 送料無料キャンペーン等が適用される場合があります。詳細は各商品ページをご確認ください。</p>
+      </div>
+    </section>
+
+    <!-- 支払い方法 -->
+    <section class="tokusho-section" aria-labelledby="payment-methods">
+      <h2 id="payment-methods" class="tokusho-section-title">お支払い方法</h2>
+      <div class="tokusho-content">
+        <p>以下のいずれかの方法でお支払いいただけます。</p>
+        <ul class="tokusho-list">
+          <li><strong>クレジットカード決済（Stripe）</strong>：Visa、Mastercard、American Express、JCB等の主要なクレジットカードをご利用いただけます。決済はStripe社が提供する安全な決済システムを通じて行われます。</li>
+          <li><strong>代金引換</strong>：商品到着時に配送員へ現金でお支払いください。代金引換手数料が別途発生します。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 支払い時期 -->
+    <section class="tokusho-section" aria-labelledby="payment-timing">
+      <h2 id="payment-timing" class="tokusho-section-title">お支払い時期</h2>
+      <div class="tokusho-content">
+        <ul class="tokusho-list">
+          <li><strong>クレジットカード決済</strong>：ご注文確定時にお支払いが完了します。</li>
+          <li><strong>代金引換</strong>：商品お届け時にお支払いください。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 商品の引き渡し時期 -->
+    <section class="tokusho-section" aria-labelledby="delivery-timing">
+      <h2 id="delivery-timing" class="tokusho-section-title">商品の引き渡し時期</h2>
+      <div class="tokusho-content">
+        <p>商品は、ご注文確定後、出品者より直接お届けいたします。引き渡し時期は以下のとおりです。</p>
+        <ul class="tokusho-list">
+          <li>各商品ページに記載されている「お届け予定日」または「お届け可能期間」をご確認ください。</li>
+          <li>農作物の性質上、天候や収穫状況により、お届け時期が前後する場合があります。</li>
+          <li>お届け時期の変更が生じる場合は、出品者より事前にご連絡いたします。</li>
+        </ul>
+        <p class="tokusho-note">※ 商品の性質上、在庫状況や収穫状況により、ご注文をお受けできない場合があります。あらかじめご了承ください。</p>
+      </div>
+    </section>
+
+    <!-- 返品・返金に関する条件 -->
+    <section class="tokusho-section" aria-labelledby="return-refund">
+      <h2 id="return-refund" class="tokusho-section-title">返品・返金に関する条件</h2>
+      <div class="tokusho-content">
+        <h3 class="tokusho-subtitle">不良品・配送事故の場合</h3>
+        <p>商品に不良があった場合、または配送中の事故により商品が破損・汚損した場合は、出品者負担で返品・返金に対応いたします。以下の場合に該当する場合は、お問い合わせフォームよりご連絡ください。</p>
+        <ul class="tokusho-list">
+          <li>商品が注文内容と異なる場合</li>
+          <li>商品に明らかな不良・欠陥がある場合</li>
+          <li>配送中の事故により商品が破損・汚損した場合</li>
+          <li>商品が未到着の場合（配送トラブル）</li>
+        </ul>
+        <p class="tokusho-note">※ 返金の際は、商品代金および送料を返金いたします。ただし、Stripe決済手数料は返金対象外となります。</p>
+
+        <h3 class="tokusho-subtitle">購入者都合による返品・返金</h3>
+        <p>農作物の性質上、購入者都合による返品・返金は原則としてお受けできません。ただし、商品到着前にキャンセルをご希望の場合は、お問い合わせフォームよりご連絡ください。出品者と協議の上、対応可能な場合は対応いたします。</p>
+        <p class="tokusho-note">※ キャンセルが可能な場合でも、既に発生している配送手数料等は返金対象外となる場合があります。</p>
+      </div>
+    </section>
+
+    <!-- 販売数量の制限 -->
+    <section class="tokusho-section" aria-labelledby="quantity-limits">
+      <h2 id="quantity-limits" class="tokusho-section-title">販売数量の制限</h2>
+      <div class="tokusho-content">
+        <p>商品の性質上、以下の制限を設けている場合があります。</p>
+        <ul class="tokusho-list">
+          <li>各商品ページに記載されている「在庫数」または「販売可能数量」を上限とします。</li>
+          <li>1回のご注文における数量制限が設けられている場合があります。詳細は各商品ページをご確認ください。</li>
+          <li>在庫がなくなり次第、販売を終了いたします。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- その他注意事項 -->
+    <section class="tokusho-section" aria-labelledby="other-notes">
+      <h2 id="other-notes" class="tokusho-section-title">その他注意事項</h2>
+      <div class="tokusho-content">
+        <h3 class="tokusho-subtitle">天候・収穫状況について</h3>
+        <p>農作物は自然の恵みにより育つため、天候や収穫状況により、以下の影響が生じる場合があります。</p>
+        <ul class="tokusho-list">
+          <li>予定していた数量が確保できない場合</li>
+          <li>お届け時期が前後する場合</li>
+          <li>商品のサイズや形状が予定と異なる場合</li>
+          <li>やむを得ず販売を中止する場合</li>
+        </ul>
+        <p>上記の場合は、出品者より事前にご連絡いたします。ご理解とご協力をお願いいたします。</p>
+
+        <h3 class="tokusho-subtitle">商品の品質について</h3>
+        <p>当サイトで販売される商品は、出品者が責任を持って管理・出荷しております。ただし、農作物の性質上、以下の点をご理解いただいた上でご注文ください。</p>
+        <ul class="tokusho-list">
+          <li>有機栽培や無農薬栽培の商品は、一般的な商品と比較して、外観やサイズにばらつきがある場合があります。</li>
+          <li>収穫直後の新鮮な状態でお届けするため、配送中に多少の傷みが生じる場合があります。</li>
+          <li>商品到着後は、できるだけ早く冷蔵庫等で適切に保管してください。</li>
+        </ul>
+
+        <h3 class="tokusho-subtitle">個人情報の取り扱い</h3>
+        <p>お客様の個人情報は、<a href="/privacy" class="tokusho-link">プライバシーポリシー</a>に基づき適切に管理いたします。</p>
+
+        <h3 class="tokusho-subtitle">サービス利用規約</h3>
+        <p>本サービスのご利用については、<a href="/terms" class="tokusho-link">利用規約</a>をご確認ください。</p>
+      </div>
+    </section>
+
+    <!-- お問い合わせ -->
+    <section class="tokusho-section tokusho-section--highlight" aria-labelledby="contact-info">
+      <h2 id="contact-info" class="tokusho-section-title">お問い合わせ</h2>
+      <div class="tokusho-content">
+        <p>ご不明な点やご質問がございましたら、お気軽にお問い合わせください。</p>
+        <div class="tokusho-cta">
+          <a href="/contact" class="tokusho-btn">お問い合わせフォームへ</a>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<%- include('../partials/footer') %>
