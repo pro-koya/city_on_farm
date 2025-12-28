@@ -10560,13 +10560,6 @@ app.get(
 
       const shippingSummary = await loadShippingSummaryForPartner(id);
 
-      // ★ 追加: 銀行口座情報を取得
-      const bankAccountRows = await dbQuery(
-        `SELECT * FROM partner_bank_accounts WHERE partner_id = $1::uuid`,
-        [id]
-      );
-      const bankAccount = bankAccountRows.length ? bankAccountRows[0] : null;
-
       // 配送方法の取得
       let allShipMethod = [];
       let partnerShipMethods = [];
@@ -10607,7 +10600,6 @@ app.get(
         shippingSummary,
         availableAddresses,
         pickupAddress,
-        bankAccount,
         csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
       });
     } catch (e) {
@@ -10854,13 +10846,6 @@ app.post(
 
       const shippingSummary = await loadShippingSummaryForPartner(id);
 
-      // 銀行口座情報を取得
-      const bankAccountRows = await dbQuery(
-        `SELECT * FROM partner_bank_accounts WHERE partner_id = $1::uuid`,
-        [id]
-      );
-      const bankAccount = bankAccountRows.length ? bankAccountRows[0] : null;
-
       res.render('admin/partners/show', {
         title: `取引先詳細 | ${partner.name}`,
         partner,
@@ -10873,7 +10858,6 @@ app.post(
         shippingSummary,
         availableAddresses,
         pickupAddress,
-        bankAccount,
         csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
       });
     } catch (e) {
@@ -10890,10 +10874,7 @@ app.post(
     try {
       const partnerId = String(req.params.id || '').trim();
       const isAjax = req.xhr || req.get('X-Requested-With') === 'XMLHttpRequest' || req.get('Accept')?.includes('application/json');
-      
-      // エラーメッセージ（重複を避けるため定数化）
-      const BANK_ACCOUNT_REQUIRED_MSG = 'クレジットカード決済を有効化するには、銀行口座を事前に登録してください。';
-      
+
       if (!isUuid(partnerId)) {
         if (isAjax) {
           return res.status(400).json({ ok: false, message: '無効な取引先IDです。' });
@@ -10926,30 +10907,6 @@ app.post(
         .concat(req.body?.methods || [])
         .map(String).map(s=>s.trim())
         .filter(m => allCodes.includes(m));
-
-      // ★ 追加: クレジットカード決済を有効化する場合、銀行口座が登録されているかチェック
-      if (methods.includes('card')) {
-        const bankAccount = await dbQuery(
-          `SELECT id FROM partner_bank_accounts WHERE partner_id = $1::uuid`,
-          [partnerId]
-        );
-
-        if (!bankAccount.length) {
-          // AJAXリクエストの場合はJSONで返す
-          if (isAjax) {
-            return res.status(400).json({
-              ok: false,
-              message: BANK_ACCOUNT_REQUIRED_MSG
-            });
-          }
-          // 通常のフォーム送信の場合はフラッシュメッセージとリダイレクト
-          req.session.flash = {
-            type: 'error',
-            message: BANK_ACCOUNT_REQUIRED_MSG
-          };
-          return res.redirect(`/admin/partners/${partnerId}`);
-        }
-      }
 
       // トランザクション
       await dbQuery('BEGIN');
@@ -11116,185 +11073,6 @@ app.post(
 );
 
 // ========================
-// 銀行口座管理API
-// ========================
-
-// 取引先の銀行口座情報を登録・更新（管理者のみ）
-app.post(
-  '/admin/partners/:id/bank-account',
-  requireAuth,
-  csrfProtect,
-  async (req, res, next) => {
-    try {
-      const partnerId = String(req.params.id || '').trim();
-      if (!isUuid(partnerId)) return res.status(400).send('invalid partner id');
-
-      // 権限チェック: 管理者のみ
-      if (!isAdmin(req)) {
-        return res.status(403).send('forbidden');
-      }
-
-      // バリデーション
-      const {
-        bank_name,
-        bank_code,
-        branch_name,
-        branch_code,
-        account_type,
-        account_number,
-        account_holder_name,
-        note
-      } = req.body;
-
-      // 必須項目チェック
-      if (!bank_name || !branch_name || !account_type || !account_number || !account_holder_name) {
-        req.session.flash = { type: 'error', message: '必須項目を入力してください。' };
-        return res.redirect(`/admin/partners/${partnerId}`);
-      }
-
-      // 口座種別の検証
-      if (!['ordinary', 'current', 'savings'].includes(account_type)) {
-        req.session.flash = { type: 'error', message: '無効な口座種別です。' };
-        return res.redirect(`/admin/partners/${partnerId}`);
-      }
-
-      // 口座番号の検証（7桁の数字）
-      if (!/^\d{7}$/.test(account_number)) {
-        req.session.flash = { type: 'error', message: '口座番号は7桁の数字で入力してください。' };
-        return res.redirect(`/admin/partners/${partnerId}`);
-      }
-
-      // 銀行コードの検証（4桁の数字、任意）
-      if (bank_code && !/^\d{4}$/.test(bank_code)) {
-        req.session.flash = { type: 'error', message: '銀行コードは4桁の数字で入力してください。' };
-        return res.redirect(`/admin/partners/${partnerId}`);
-      }
-
-      // 支店コードの検証（3桁の数字、任意）
-      if (branch_code && !/^\d{3}$/.test(branch_code)) {
-        req.session.flash = { type: 'error', message: '支店コードは3桁の数字で入力してください。' };
-        return res.redirect(`/admin/partners/${partnerId}`);
-      }
-
-      await dbQuery('BEGIN');
-
-      // 既存の口座情報を確認（UPSERT）
-      const existing = await dbQuery(
-        `SELECT id FROM partner_bank_accounts WHERE partner_id = $1::uuid`,
-        [partnerId]
-      );
-
-      if (existing.length > 0) {
-        // 更新
-        await dbQuery(
-          `UPDATE partner_bank_accounts
-           SET bank_name = $1,
-               bank_code = $2,
-               branch_name = $3,
-               branch_code = $4,
-               account_type = $5,
-               account_number = $6,
-               account_holder_name = $7,
-               note = $8,
-               is_verified = FALSE,
-               verified_at = NULL,
-               verified_by = NULL,
-               updated_at = now()
-           WHERE partner_id = $9::uuid`,
-          [bank_name, bank_code || null, branch_name, branch_code || null,
-           account_type, account_number, account_holder_name, note || null, partnerId]
-        );
-      } else {
-        // 新規登録
-        await dbQuery(
-          `INSERT INTO partner_bank_accounts
-           (partner_id, bank_name, bank_code, branch_name, branch_code,
-            account_type, account_number, account_holder_name, note)
-           VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9)`,
-          [partnerId, bank_name, bank_code || null, branch_name, branch_code || null,
-           account_type, account_number, account_holder_name, note || null]
-        );
-      }
-
-      await dbQuery('COMMIT');
-
-      req.session.flash = { type: 'ok', message: '銀行口座情報を保存しました。' };
-      res.redirect(`/admin/partners/${partnerId}`);
-    } catch (e) {
-      await dbQuery('ROLLBACK').catch(() => {});
-      next(e);
-    }
-  }
-);
-
-// 銀行口座を確認済みにマーク（管理者のみ）
-app.post(
-  '/admin/partners/:id/bank-account/verify',
-  requireAuth,
-  csrfProtect,
-  async (req, res, next) => {
-    try {
-      const partnerId = String(req.params.id || '').trim();
-      if (!isUuid(partnerId)) return res.status(400).json({ ok: false, message: 'invalid partner id' });
-
-      // 権限チェック: 管理者のみ
-      if (!isAdmin(req)) {
-        return res.status(403).json({ ok: false, message: 'forbidden' });
-      }
-
-      const userId = req.session.user.id;
-
-      const result = await dbQuery(
-        `UPDATE partner_bank_accounts
-         SET is_verified = TRUE,
-             verified_at = now(),
-             verified_by = $2::uuid,
-             updated_at = now()
-         WHERE partner_id = $1::uuid
-         RETURNING id`,
-        [partnerId, userId]
-      );
-
-      if (!result.length) {
-        return res.status(404).json({ ok: false, message: '銀行口座が登録されていません。' });
-      }
-
-      req.session.flash = { type: 'ok', message: '銀行口座を確認済みにしました。' };
-      res.redirect(`/admin/partners/${partnerId}`);
-    } catch (e) {
-      next(e);
-    }
-  }
-);
-
-// 銀行口座を削除（管理者のみ）
-app.delete(
-  '/admin/partners/:id/bank-account',
-  requireAuth,
-  csrfProtect,
-  async (req, res, next) => {
-    try {
-      const partnerId = String(req.params.id || '').trim();
-      if (!isUuid(partnerId)) return res.status(400).json({ ok: false, message: 'invalid partner id' });
-
-      // 権限チェック: 管理者のみ
-      if (!isAdmin(req)) {
-        return res.status(403).json({ ok: false, message: 'forbidden' });
-      }
-
-      await dbQuery(
-        `DELETE FROM partner_bank_accounts WHERE partner_id = $1::uuid`,
-        [partnerId]
-      );
-
-      res.json({ ok: true, message: '銀行口座を削除しました。' });
-    } catch (e) {
-      next(e);
-    }
-  }
-);
-
-// ========================
 // 送金管理API
 // ========================
 
@@ -11356,7 +11134,7 @@ app.get(
         partnerData.orders.push(order);
       }
 
-      // 取引先名を取得し、銀行口座情報を付与
+      // 取引先名を取得
       const transferData = [];
       for (const [partnerId, data] of partnerMap) {
         const partnerInfo = await dbQuery(
@@ -11364,15 +11142,9 @@ app.get(
           [partnerId]
         );
 
-        const bankAccount = await dbQuery(
-          `SELECT * FROM partner_bank_accounts WHERE partner_id = $1::uuid`,
-          [partnerId]
-        );
-
         transferData.push({
           ...data,
           partner_name: partnerInfo.length ? partnerInfo[0].name : data.partner_name,
-          bank_account: bankAccount[0] || null,
           platform_fee_rate: 0.00, // 手数料率（設定可能にする）
           platform_fee_amount: 0,
           transfer_amount: data.total_amount
@@ -11649,13 +11421,6 @@ app.get(
 
       const transfer = transferRows[0];
 
-      // 銀行口座情報を取得
-      const bankAccountRows = await dbQuery(
-        `SELECT * FROM partner_bank_accounts WHERE partner_id = $1::uuid`,
-        [transfer.partner_id]
-      );
-      const bankAccount = bankAccountRows.length ? bankAccountRows[0] : null;
-
       // 対象注文を取得
       const orders = await dbQuery(
         `SELECT * FROM orders WHERE id = ANY($1::uuid[]) ORDER BY created_at DESC`,
@@ -11665,7 +11430,6 @@ app.get(
       res.render('admin/transfers/show', {
         title: `送金詳細 | ${transfer.partner_name || ''}`,
         transfer,
-        bankAccount,
         orders,
         csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
       });
