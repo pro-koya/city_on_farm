@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-12-27T18:29:07.219Z
+> Generated at: 2025-12-28T18:30:00.370Z
 
 ---
 
@@ -592,6 +592,11 @@
 
 **Indexes**
 
+- `idx_ledger_available_at`
+  
+  ```sql
+  CREATE INDEX idx_ledger_available_at ON public.ledger USING btree (available_at)
+  ```
 - `idx_ledger_created_at`
   
   ```sql
@@ -607,15 +612,40 @@
   ```sql
   CREATE INDEX idx_ledger_order ON public.ledger USING btree (order_id)
   ```
+- `idx_ledger_order_id`
+  
+  ```sql
+  CREATE INDEX idx_ledger_order_id ON public.ledger USING btree (order_id)
+  ```
+- `idx_ledger_partner_id`
+  
+  ```sql
+  CREATE INDEX idx_ledger_partner_id ON public.ledger USING btree (partner_id)
+  ```
 - `idx_ledger_partner_status`
   
   ```sql
   CREATE INDEX idx_ledger_partner_status ON public.ledger USING btree (partner_id, status, available_at)
   ```
+- `idx_ledger_status`
+  
+  ```sql
+  CREATE INDEX idx_ledger_status ON public.ledger USING btree (status)
+  ```
 - `idx_ledger_stripe_payment_intent`
   
   ```sql
   CREATE INDEX idx_ledger_stripe_payment_intent ON public.ledger USING btree (stripe_payment_intent_id)
+  ```
+- `idx_ledger_stripe_payment_intent_id`
+  
+  ```sql
+  CREATE INDEX idx_ledger_stripe_payment_intent_id ON public.ledger USING btree (stripe_payment_intent_id)
+  ```
+- `idx_ledger_stripe_payout_id`
+  
+  ```sql
+  CREATE INDEX idx_ledger_stripe_payout_id ON public.ledger USING btree (stripe_payout_id)
   ```
 - `idx_ledger_type`
   
@@ -1070,6 +1100,7 @@
 | 38 | `delivery_completed_at` | `timestamp without time zone` | YES |  | 配送/受取完了日時（delivery_status=deliveredになった日時） |
 | 39 | `ledger_sale_id` | `uuid` | YES |  | 売上台帳エントリのID（ledger.idを参照） |
 | 40 | `ledger_fee_id` | `uuid` | YES |  | 手数料台帳エントリのID（ledger.idを参照） |
+| 41 | `stripe_refund_id` | `text` | YES |  |  |
 
 > **Enum `order_status` values**: `pending`, `paid`, `shipped`, `cancelled`, `confirmed`, `processing`, `delivered`, `canceled`, `refunded`, `fulfilled`
 > **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`
@@ -1588,6 +1619,11 @@ _No indexes_
 | 37 | `stripe_payouts_enabled` | `boolean` | YES | false |  |
 | 38 | `stripe_charges_enabled` | `boolean` | YES | false |  |
 | 39 | `stripe_account_updated_at` | `timestamp without time zone` | YES |  |  |
+| 40 | `stripe_account_type` | `text` | YES | 'express'::text |  |
+| 41 | `stripe_payouts_enabled_at` | `timestamp without time zone` | YES |  |  |
+| 42 | `details_submitted` | `boolean` | YES | false |  |
+| 43 | `charges_enabled` | `boolean` | YES | false |  |
+| 44 | `requirements_due_by` | `timestamp without time zone` | YES |  |  |
 
 > **Enum `partner_type` values**: `restaurant`, `retailer`, `wholesale`, `corporate`, `individual`, `other`
 > **Enum `partner_status` values**: `active`, `inactive`, `prospect`, `suspended`
@@ -1804,10 +1840,20 @@ _No indexes_
 
 **Indexes**
 
+- `idx_payout_runs_created_at`
+  
+  ```sql
+  CREATE INDEX idx_payout_runs_created_at ON public.payout_runs USING btree (created_at DESC)
+  ```
 - `idx_payout_runs_date`
   
   ```sql
   CREATE INDEX idx_payout_runs_date ON public.payout_runs USING btree (run_date DESC)
+  ```
+- `idx_payout_runs_iso_week`
+  
+  ```sql
+  CREATE INDEX idx_payout_runs_iso_week ON public.payout_runs USING btree (iso_week)
   ```
 - `idx_payout_runs_status`
   

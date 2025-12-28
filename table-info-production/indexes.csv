@@ -43,11 +43,17 @@ public,favorites,ix_favorites_user,"CREATE INDEX ix_favorites_user ON public.fav
 public,favorites,ux_favorites_user_product,"CREATE UNIQUE INDEX ux_favorites_user_product ON public.favorites USING btree (user_id, product_id)",t,f
 public,global_allowed_payment_methods,global_allowed_payment_methods_pkey,CREATE UNIQUE INDEX global_allowed_payment_methods_pkey ON public.global_allowed_payment_methods USING btree (method),t,t
 public,gmail_tokens,gmail_tokens_pkey,CREATE UNIQUE INDEX gmail_tokens_pkey ON public.gmail_tokens USING btree (id),t,t
+public,ledger,idx_ledger_available_at,CREATE INDEX idx_ledger_available_at ON public.ledger USING btree (available_at),f,f
 public,ledger,idx_ledger_created_at,CREATE INDEX idx_ledger_created_at ON public.ledger USING btree (created_at DESC),f,f
 public,ledger,idx_ledger_idempotency,CREATE INDEX idx_ledger_idempotency ON public.ledger USING btree (idempotency_key),f,f
 public,ledger,idx_ledger_order,CREATE INDEX idx_ledger_order ON public.ledger USING btree (order_id),f,f
+public,ledger,idx_ledger_order_id,CREATE INDEX idx_ledger_order_id ON public.ledger USING btree (order_id),f,f
+public,ledger,idx_ledger_partner_id,CREATE INDEX idx_ledger_partner_id ON public.ledger USING btree (partner_id),f,f
 public,ledger,idx_ledger_partner_status,"CREATE INDEX idx_ledger_partner_status ON public.ledger USING btree (partner_id, status, available_at)",f,f
+public,ledger,idx_ledger_status,CREATE INDEX idx_ledger_status ON public.ledger USING btree (status),f,f
 public,ledger,idx_ledger_stripe_payment_intent,CREATE INDEX idx_ledger_stripe_payment_intent ON public.ledger USING btree (stripe_payment_intent_id),f,f
+public,ledger,idx_ledger_stripe_payment_intent_id,CREATE INDEX idx_ledger_stripe_payment_intent_id ON public.ledger USING btree (stripe_payment_intent_id),f,f
+public,ledger,idx_ledger_stripe_payout_id,CREATE INDEX idx_ledger_stripe_payout_id ON public.ledger USING btree (stripe_payout_id),f,f
 public,ledger,idx_ledger_type,CREATE INDEX idx_ledger_type ON public.ledger USING btree (type),f,f
 public,ledger,ledger_idempotency_key_key,CREATE UNIQUE INDEX ledger_idempotency_key_key ON public.ledger USING btree (idempotency_key),t,f
 public,ledger,ledger_pkey,CREATE UNIQUE INDEX ledger_pkey ON public.ledger USING btree (id),t,t
@@ -150,7 +156,9 @@ public,payments,idx_payments_order_updated,"CREATE INDEX idx_payments_order_upda
 public,payments,idx_payments_status,CREATE INDEX idx_payments_status ON public.payments USING btree (status),f,f
 public,payments,payments_pkey,CREATE UNIQUE INDEX payments_pkey ON public.payments USING btree (id),t,t
 public,payments,payments_transaction_id_key,CREATE UNIQUE INDEX payments_transaction_id_key ON public.payments USING btree (transaction_id),t,f
+public,payout_runs,idx_payout_runs_created_at,CREATE INDEX idx_payout_runs_created_at ON public.payout_runs USING btree (created_at DESC),f,f
 public,payout_runs,idx_payout_runs_date,CREATE INDEX idx_payout_runs_date ON public.payout_runs USING btree (run_date DESC),f,f
+public,payout_runs,idx_payout_runs_iso_week,CREATE INDEX idx_payout_runs_iso_week ON public.payout_runs USING btree (iso_week),f,f
 public,payout_runs,idx_payout_runs_status,CREATE INDEX idx_payout_runs_status ON public.payout_runs USING btree (status),f,f
 public,payout_runs,idx_payout_runs_week,"CREATE INDEX idx_payout_runs_week ON public.payout_runs USING btree (iso_year, iso_week)",f,f
 public,payout_runs,payout_runs_pkey,CREATE UNIQUE INDEX payout_runs_pkey ON public.payout_runs USING btree (run_id),t,t

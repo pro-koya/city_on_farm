@@ -20,14 +20,14 @@ public,option_labels,,8
 public,order_addresses,,14
 public,order_groups,,6
 public,order_items,,8
-public,orders,,40
+public,orders,,41
 public,partner_allowed_payment_methods,,4
 public,partner_allowed_ship_methods,パートナーごとの許可された配送方法（配送 or 畑受け取り）,4
 public,partner_bank_accounts,取引先の銀行口座情報（売上送金先）,15
 public,partner_date_availabilities,,8
 public,partner_transfers,取引先への送金履歴（手動送金の記録）,19
 public,partner_weekday_availabilities,,8
-public,partners,取引先（主に飲食店などの法人・団体・個人事業主）,39
+public,partners,取引先（主に飲食店などの法人・団体・個人事業主）,44
 public,password_reset_tokens,,6
 public,payments,,8
 public,payout_runs,送金バッチ実行履歴テーブル。冪等性と監査のため、全実行を記録,15

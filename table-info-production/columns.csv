@@ -231,6 +231,7 @@ public,orders,37,stripe_charge_id,text,text,,,,YES,,Stripe Charge ID（返金時
 public,orders,38,delivery_completed_at,timestamp without time zone,timestamp,,,,YES,,配送/受取完了日時（delivery_status=deliveredになった日時）
 public,orders,39,ledger_sale_id,uuid,uuid,,,,YES,,売上台帳エントリのID（ledger.idを参照）
 public,orders,40,ledger_fee_id,uuid,uuid,,,,YES,,手数料台帳エントリのID（ledger.idを参照）
+public,orders,41,stripe_refund_id,text,text,,,,YES,,
 public,orders_with_legacy_address,1,id,uuid,uuid,,,,YES,,
 public,orders_with_legacy_address,2,buyer_id,uuid,uuid,,,,YES,,
 public,orders_with_legacy_address,3,status,USER-DEFINED,order_status,,,,YES,,
@@ -368,6 +369,11 @@ public,partners,36,stripe_details_submitted,boolean,bool,,,,YES,false,
 public,partners,37,stripe_payouts_enabled,boolean,bool,,,,YES,false,
 public,partners,38,stripe_charges_enabled,boolean,bool,,,,YES,false,
 public,partners,39,stripe_account_updated_at,timestamp without time zone,timestamp,,,,YES,,
+public,partners,40,stripe_account_type,text,text,,,,YES,'express'::text,
+public,partners,41,stripe_payouts_enabled_at,timestamp without time zone,timestamp,,,,YES,,
+public,partners,42,details_submitted,boolean,bool,,,,YES,false,
+public,partners,43,charges_enabled,boolean,bool,,,,YES,false,
+public,partners,44,requirements_due_by,timestamp without time zone,timestamp,,,,YES,,
 public,password_reset_tokens,1,id,uuid,uuid,,,,NO,gen_random_uuid(),
 public,password_reset_tokens,2,user_id,uuid,uuid,,,,NO,,
 public,password_reset_tokens,3,token_hash,text,text,,,,NO,,
