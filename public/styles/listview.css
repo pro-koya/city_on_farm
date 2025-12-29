@@ -10,7 +10,7 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    margin-bottom: 12px;
+    margin: 50px 8px 12px 8px;
 }
 
 .lv__title {
@@ -20,7 +20,7 @@
 
 .lv__toolbar {
     display: block;
-    margin: 45px .3rem 0 .3rem;
+    margin: 8px .3rem 0 .3rem;
 }
 
 .lv__toolbar-row {
