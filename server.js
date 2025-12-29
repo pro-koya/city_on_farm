@@ -583,7 +583,10 @@ app.use(helmet({
       connectSrc: [
         "'self'",
         "https://accounts.google.com",  // Google OAuth
-        "https://checkout.stripe.com"  // Stripe Checkout
+        "https://checkout.stripe.com",  // Stripe Checkout
+        "https://19671250ed2c97b13f42b5fa1ad2937f.r2.cloudflarestorage.com",  // R2 Storage endpoint
+        "https://pub-9040eb2ad9a74fd79cd99e09fb479b95.r2.dev",  // R2 Public URL
+        "https://cityonfirm.19671250ed2c97b13f42b5fa1ad2937f.r2.cloudflarestorage.com"
       ],
       frameSrc: [
         "'self'",
@@ -10907,6 +10910,41 @@ app.post(
         .concat(req.body?.methods || [])
         .map(String).map(s=>s.trim())
         .filter(m => allCodes.includes(m));
+
+      // ★ クレジットカード決済を有効化する場合、Stripe Connectアカウントの接続を確認
+      if (methods.includes('card')) {
+        const partnerRows = await dbQuery(
+          `SELECT stripe_account_id, stripe_charges_enabled FROM partners WHERE id = $1::uuid`,
+          [partnerId]
+        );
+
+        if (!partnerRows.length) {
+          if (isAjax) {
+            return res.status(404).json({ ok: false, message: '取引先が見つかりません。' });
+          }
+          return res.status(404).send('Partner not found');
+        }
+
+        const partner = partnerRows[0];
+        const isStripeConnected = partner.stripe_account_id && partner.stripe_charges_enabled;
+
+        if (!isStripeConnected) {
+          const errorMessage = 'クレジットカード決済を有効化するには、Stripe Connectアカウントの接続が必要です。出品者詳細ページからStripeでの本人確認を行なって下さい。';
+
+          if (isAjax) {
+            return res.status(400).json({
+              ok: false,
+              message: errorMessage
+            });
+          }
+
+          req.session.flash = {
+            type: 'error',
+            message: errorMessage
+          };
+          return res.redirect(`/admin/partners/${partnerId}`);
+        }
+      }
 
       // トランザクション
       await dbQuery('BEGIN');

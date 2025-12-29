@@ -92,6 +92,7 @@
         </div>
       </div>
 
+      <!-- PC用：テーブル表示 -->
       <div class="table-wrap">
         <table class="tbl" id="ledgerTable">
           <thead>
@@ -113,6 +114,13 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- スマホ用：カード表示 -->
+      <div class="table-grid" id="ledgerCards">
+        <div style="text-align: center; padding: 2rem; color: #999;">
+          読み込み中...
+        </div>
       </div>
 
       <div id="pagination" style="margin-top: 1rem; text-align: center; display: none;">
@@ -188,6 +196,7 @@ async function fetchLedger() {
 // 台帳テーブルをレンダリング
 function renderLedgerTable(entries) {
   const tbody = document.getElementById('ledgerTableBody');
+  const cardsContainer = document.getElementById('ledgerCards');
 
   if (!entries || entries.length === 0) {
     tbody.innerHTML = `
@@ -196,6 +205,11 @@ function renderLedgerTable(entries) {
           エントリがありません
         </td>
       </tr>
+    `;
+    cardsContainer.innerHTML = `
+      <div style="text-align: center; padding: 2rem; color: #999;">
+        エントリがありません
+      </div>
     `;
     return;
   }
@@ -206,33 +220,33 @@ function renderLedgerTable(entries) {
     filteredEntries = entries.filter(e => e.type === currentType);
   }
 
+  const typeLabels = {
+    'sale': '売上',
+    'platform_fee': '手数料',
+    'refund': '返金',
+    'payout': '送金',
+    'adjustment': '調整',
+    'carry_over': '繰越'
+  };
+
+  const statusLabels = {
+    'available': '送金可能',
+    'pending': '保留中',
+    'paid': '送金済み',
+    'void': '無効'
+  };
+
+  const statusColors = {
+    'available': 'color: var(--success);',
+    'pending': 'color: #ff9800;',
+    'paid': 'color: #999;',
+    'void': 'color: #c33;'
+  };
+
+  // PC用テーブルレンダリング
   tbody.innerHTML = filteredEntries.map(entry => {
     const date = new Date(entry.created_at).toLocaleString('ja-JP');
     const availableDate = entry.available_at ? new Date(entry.available_at).toLocaleDateString('ja-JP') : '—';
-
-    const typeLabels = {
-      'sale': '売上',
-      'platform_fee': '手数料',
-      'refund': '返金',
-      'payout': '送金',
-      'adjustment': '調整',
-      'carry_over': '繰越'
-    };
-
-    const statusLabels = {
-      'available': '送金可能',
-      'pending': '保留中',
-      'paid': '送金済み',
-      'void': '無効'
-    };
-
-    const statusColors = {
-      'available': 'color: var(--success);',
-      'pending': 'color: #ff9800;',
-      'paid': 'color: #999;',
-      'void': 'color: #c33;'
-    };
-
     const amountColor = entry.amount_cents >= 0 ? 'color: var(--success);' : 'color: #c33;';
 
     return `
@@ -251,6 +265,45 @@ function renderLedgerTable(entries) {
           ${entry.note || '—'}
         </td>
       </tr>
+    `;
+  }).join('');
+
+  // スマホ用カードレンダリング
+  cardsContainer.innerHTML = filteredEntries.map(entry => {
+    const date = new Date(entry.created_at).toLocaleString('ja-JP');
+    const availableDate = entry.available_at ? new Date(entry.available_at).toLocaleDateString('ja-JP') : '—';
+    const amountColor = entry.amount_cents >= 0 ? 'var(--success)' : '#c33';
+    const statusColor = statusColors[entry.status] ? statusColors[entry.status].split(': ')[1].replace(';', '') : '#999';
+
+    return `
+      <div class="table-row" style="padding: 16px; border-bottom: 1px solid var(--border);">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span class="badge">${typeLabels[entry.type] || entry.type}</span>
+            <span style="font-size: 0.75rem; color: var(--muted);">${date}</span>
+          </div>
+          <div style="font-size: 1.25rem; font-weight: bold; color: ${amountColor};">
+            ${entry.amount_cents >= 0 ? '+' : ''}¥${entry.amount_cents.toLocaleString()}
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 100px 1fr; gap: 8px 12px; font-size: 0.9rem;">
+          <div style="color: var(--muted);">ステータス</div>
+          <div style="font-weight: 600; color: ${statusColor};">${statusLabels[entry.status] || entry.status}</div>
+
+          <div style="color: var(--muted);">送金可能日</div>
+          <div>${availableDate}</div>
+
+          ${entry.order_number ? `
+            <div style="color: var(--muted);">注文番号</div>
+            <div><a href="/seller/trades/${entry.order_id}" target="_blank" style="color: #2563eb; text-decoration: none;">${entry.order_number}</a></div>
+          ` : ''}
+
+          ${entry.note ? `
+            <div style="color: var(--muted);">備考</div>
+            <div style="word-break: break-word;">${entry.note}</div>
+          ` : ''}
+        </div>
+      </div>
     `;
   }).join('');
 }
