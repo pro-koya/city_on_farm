@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2025-12-29T18:31:32.067Z
+> Generated at: 2025-12-30T18:32:13.602Z
 
 ---
 
@@ -2290,6 +2290,11 @@ _No indexes_
 
 **Indexes**
 
+- `idx_seller_profiles_last_updated_by_user`
+  
+  ```sql
+  CREATE INDEX idx_seller_profiles_last_updated_by_user ON public.seller_profiles USING btree (last_updated_by_user_id)
+  ```
 - `idx_seller_profiles_partner_id`
   
   ```sql
@@ -2299,11 +2304,6 @@ _No indexes_
   
   ```sql
   CREATE UNIQUE INDEX seller_profiles_pkey ON public.seller_profiles USING btree (id)
-  ```
-- `seller_profiles_user_id_idx`
-  
-  ```sql
-  CREATE UNIQUE INDEX seller_profiles_user_id_idx ON public.seller_profiles USING btree (last_updated_by_user_id)
   ```
 - `ux_seller_profiles_partner`
   
