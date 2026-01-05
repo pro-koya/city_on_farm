@@ -562,7 +562,8 @@ app.use(helmet({
         "https://accounts.google.com",  // Google OAuth
         "https://www.google.com",  // Google reCAPTCHA (使用している場合)
         "https://checkout.stripe.com",  // Stripe Checkout
-        "https://cdn.quilljs.com"
+        "https://cdn.quilljs.com",
+        "https://unpkg.com"  // WebAuthn ライブラリ（@simplewebauthn/browser）
       ],
       styleSrc: [
         "'self'",
@@ -3046,6 +3047,17 @@ app.post('/account/2fa/regenerate', requireAuth, csrfProtect, async (req, res, n
     res.json({
       ok: true,
       backupCodes
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /account/webauthn/setup - WebAuthn（生体認証）設定画面
+app.get('/account/webauthn/setup', requireAuth, async (req, res, next) => {
+  try {
+    res.render('account/webauthn-setup', {
+      title: '生体認証・パスキー設定'
     });
   } catch (err) {
     next(err);
@@ -14083,6 +14095,12 @@ registerRefundRoutes(app, requireAuth, requireRole, csrfProtect);
 // ============================================================
 const { registerAdminFinanceRoutes } = require('./routes-admin-finance');
 registerAdminFinanceRoutes(app, requireAuth, requireRole);
+
+// ============================================================
+// WebAuthn（生体認証・パスキー）ルート登録
+// ============================================================
+const { registerWebAuthnRoutes } = require('./routes-webauthn');
+registerWebAuthnRoutes(app, requireAuth);
 
 app.use((req, res) => {
   res.status(404).render('errors/404', { title: 'ページが見つかりません' });

@@ -1,0 +1,708 @@
+<%- include('../partials/header', { title: '生体認証・パスキー設定', extraCSS: '', extraCSS2: '' }) %>
+
+<style>
+.webauthn-container {
+  max-width: 800px;
+  margin: 120px auto 64px;
+  padding: 0 16px;
+}
+
+.webauthn-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.08);
+  padding: 32px 28px;
+  margin-bottom: 24px;
+}
+
+.webauthn-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.webauthn-header h1 {
+  margin: 0 0 8px;
+  font-size: 1.8rem;
+  color: #2B2B2B;
+}
+
+.webauthn-header p {
+  color: #666;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.feature-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.feature-item {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.feature-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.feature-content h3 {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  color: #2B2B2B;
+}
+
+.feature-content p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #666;
+  line-height: 1.4;
+}
+
+.device-list {
+  margin: 24px 0;
+}
+
+.device-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+}
+
+.device-item:hover {
+  background: #f3f4f6;
+  box-shadow: 0 2px 8px rgba(0,0,0,.05);
+}
+
+.device-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.device-icon {
+  font-size: 32px;
+  color: #4C6B5C;
+}
+
+.device-details h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  color: #2B2B2B;
+}
+
+.device-details p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.device-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  font-size: 0.9rem;
+}
+
+.btn-primary {
+  background: #4C6B5C;
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #3d5749;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(76, 107, 92, 0.3);
+}
+
+.btn-ghost {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  color: #666;
+}
+
+.btn-ghost:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.btn-danger {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.btn-danger:hover {
+  background: #fecaca;
+}
+
+.btn-large {
+  padding: 16px 32px;
+  font-size: 1rem;
+  width: 100%;
+}
+
+.info-box {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 24px 0;
+}
+
+.info-box-icon {
+  font-size: 20px;
+  margin-right: 8px;
+}
+
+.info-box p {
+  margin: 0;
+  color: #1e40af;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: #666;
+}
+
+.empty-state-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+.empty-state h3 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  color: #2B2B2B;
+}
+
+.empty-state p {
+  margin: 0 0 24px;
+  font-size: 0.9rem;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.active {
+  display: flex;
+}
+
+.modal-content {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  margin-bottom: 24px;
+}
+
+.modal-header h2 {
+  margin: 0 0 8px;
+  font-size: 1.4rem;
+}
+
+.modal-header p {
+  margin: 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #2B2B2B;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #4C6B5C;
+  box-shadow: 0 0 0 3px rgba(76, 107, 92, 0.1);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.modal-actions .btn {
+  flex: 1;
+}
+
+.loading {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-left: 8px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .feature-list {
+    grid-template-columns: 1fr;
+  }
+
+  .device-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .device-actions {
+    width: 100%;
+  }
+
+  .device-actions .btn {
+    flex: 1;
+  }
+}
+</style>
+
+<main class="webauthn-container">
+  <!-- ヘッダー -->
+  <div class="webauthn-card">
+    <div class="webauthn-header">
+      <h1>🔐 生体認証・パスキー</h1>
+      <p>FaceID、指紋認証、セキュリティキーでワンタッチログイン</p>
+    </div>
+
+    <!-- 特徴紹介 -->
+    <div class="feature-list">
+      <div class="feature-item">
+        <div class="feature-icon">⚡</div>
+        <div class="feature-content">
+          <h3>高速認証</h3>
+          <p>ワンタッチで数秒で完了</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">🛡️</div>
+        <div class="feature-content">
+          <h3>高セキュリティ</h3>
+          <p>フィッシング耐性あり</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">📱</div>
+        <div class="feature-content">
+          <h3>デバイス対応</h3>
+          <p>iPhone/Android/PC対応</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 情報ボックス -->
+    <div class="info-box">
+      <p>
+        <span class="info-box-icon">💡</span>
+        <strong>ヒント:</strong> 複数のデバイスを登録しておくことで、デバイスを紛失した際も安心です。
+      </p>
+    </div>
+  </div>
+
+  <!-- デバイス一覧 -->
+  <div class="webauthn-card">
+    <h2 style="margin: 0 0 20px; font-size: 1.2rem;">登録済みデバイス</h2>
+
+    <div id="deviceList" class="device-list">
+      <!-- ローディング表示 -->
+      <div id="deviceLoading" style="text-align: center; padding: 32px; color: #666;">
+        <div class="loading" style="width: 32px; height: 32px; border-width: 3px; margin: 0 auto 16px;"></div>
+        <p>デバイスを読み込み中...</p>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-large" id="addDeviceButton">
+      ＋ 新しいデバイスを追加
+    </button>
+  </div>
+
+  <!-- 戻るリンク -->
+  <div style="text-align: center; margin-top: 32px;">
+    <a href="/account/2fa/setup" style="color: #4C6B5C; text-decoration: none; font-weight: 600;">
+      ← アカウント設定に戻る
+    </a>
+  </div>
+</main>
+
+<!-- デバイス追加モーダル -->
+<div id="addDeviceModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>新しいデバイスを追加</h2>
+      <p>このデバイスに名前を付けてください</p>
+    </div>
+
+    <form id="addDeviceForm">
+      <div class="form-group">
+        <label for="deviceName">デバイス名</label>
+        <input
+          type="text"
+          id="deviceName"
+          name="deviceName"
+          placeholder="例: iPhone 14, MacBook Pro"
+          required
+          maxlength="50"
+        >
+        <p style="color: #666; font-size: 0.8rem; margin: 6px 0 0;">
+          識別しやすい名前を付けてください
+        </p>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="cancelDeviceBtn">
+          キャンセル
+        </button>
+        <button type="submit" class="btn btn-primary" id="addDeviceBtn">
+          生体認証で登録
+        </button>
+      </div>
+    </form>
+
+    <div id="addDeviceError" style="display: none; background: #fee; border: 1px solid #fcc; border-radius: 8px; padding: 12px; margin-top: 16px;">
+      <p style="color: #c33; margin: 0; font-size: 0.9rem;" id="addDeviceErrorText"></p>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { startRegistration } from 'https://unpkg.com/@simplewebauthn/browser@9.0.1/dist/bundle/index.js';
+
+let credentials = [];
+const csrfToken = '<%= csrfToken %>';
+
+// ページ読み込み時にデバイス一覧を取得
+async function loadDevices() {
+  try {
+    const response = await fetch('/api/webauthn/credentials', {
+      credentials: 'same-origin'
+    });
+    const data = await response.json();
+
+    if (data.success) {
+      credentials = data.credentials;
+      renderDeviceList();
+    } else {
+      throw new Error(data.error);
+    }
+  } catch (error) {
+    console.error('Failed to load devices:', error);
+    document.getElementById('deviceLoading').innerHTML = `
+      <p style="color: #c33;">デバイスの読み込みに失敗しました</p>
+    `;
+  }
+}
+
+// デバイス一覧をレンダリング
+function renderDeviceList() {
+  const container = document.getElementById('deviceList');
+
+  if (credentials.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🔐</div>
+        <h3>デバイスが登録されていません</h3>
+        <p>下のボタンから最初のデバイスを追加しましょう</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = credentials.map((cred, index) => {
+    const lastUsed = cred.last_used_at
+      ? formatRelativeTime(new Date(cred.last_used_at))
+      : '未使用';
+
+    const deviceIcon = getDeviceIcon(cred.device_type);
+
+    return `
+      <div class="device-item">
+        <div class="device-info">
+          <div class="device-icon">${deviceIcon}</div>
+          <div class="device-details">
+            <h3>${escapeHtml(cred.device_name)}</h3>
+            <p>最終使用: ${lastUsed} • 登録日: ${formatDate(new Date(cred.created_at))}</p>
+          </div>
+        </div>
+        <div class="device-actions">
+          <button class="btn btn-ghost" data-action="rename" data-id="${cred.id}" data-name="${escapeHtml(cred.device_name)}">
+            ✏️ 名前変更
+          </button>
+          <button class="btn btn-danger" data-action="delete" data-id="${cred.id}" data-name="${escapeHtml(cred.device_name)}">
+            🗑️ 削除
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // イベントデリゲーション：ボタンクリックイベント
+  container.querySelectorAll('button[data-action]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const action = e.currentTarget.dataset.action;
+      const id = e.currentTarget.dataset.id;
+      const name = e.currentTarget.dataset.name;
+
+      if (action === 'rename') {
+        renameDevice(id, name);
+      } else if (action === 'delete') {
+        deleteDevice(id, name);
+      }
+    });
+  });
+}
+
+// デバイス追加
+async function addDevice(event) {
+  event.preventDefault();
+
+  const deviceName = document.getElementById('deviceName').value.trim();
+  const btn = document.getElementById('addDeviceBtn');
+  const errorDiv = document.getElementById('addDeviceError');
+
+  if (!deviceName) return;
+
+  try {
+    btn.disabled = true;
+    btn.innerHTML = '生体認証中<span class="loading"></span>';
+    errorDiv.style.display = 'none';
+
+    // Step 1: チャレンジ取得
+    const challengeResponse = await fetch('/api/webauthn/register/challenge', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken
+      },
+      credentials: 'same-origin'
+    });
+    const challengeData = await challengeResponse.json();
+
+    if (!challengeData.success) {
+      throw new Error(challengeData.error);
+    }
+
+    // Step 2: ブラウザで生体認証実行
+    const credential = await startRegistration(challengeData.options);
+
+    // Step 3: レスポンス検証
+    const verifyResponse = await fetch('/api/webauthn/register/verify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        response: credential,
+        deviceName: deviceName
+      })
+    });
+    const verifyData = await verifyResponse.json();
+
+    if (!verifyData.success) {
+      throw new Error(verifyData.error);
+    }
+
+    // 成功
+    alert('✅ デバイスを登録しました！');
+    closeAddDeviceModal();
+    loadDevices();
+
+  } catch (error) {
+    console.error('Failed to add device:', error);
+    errorDiv.style.display = 'block';
+    document.getElementById('addDeviceErrorText').textContent =
+      error.message || 'デバイスの登録に失敗しました。もう一度お試しください。';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '生体認証で登録';
+  }
+}
+
+// デバイス削除
+async function deleteDevice(credentialId, deviceName) {
+  if (!confirm(`「${deviceName}」を削除してもよろしいですか？`)) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/webauthn/credentials/${credentialId}`, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRF-Token': csrfToken
+      },
+      credentials: 'same-origin'
+    });
+    const data = await response.json();
+
+    if (data.success) {
+      alert('✅ デバイスを削除しました');
+      loadDevices();
+    } else {
+      throw new Error(data.error);
+    }
+  } catch (error) {
+    console.error('Failed to delete device:', error);
+    alert('❌ デバイスの削除に失敗しました');
+  }
+}
+
+// デバイス名変更
+async function renameDevice(credentialId, currentName) {
+  const newName = prompt('新しいデバイス名を入力してください:', currentName);
+
+  if (!newName || newName === currentName) return;
+
+  try {
+    const response = await fetch(`/api/webauthn/credentials/${credentialId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({ deviceName: newName })
+    });
+    const data = await response.json();
+
+    if (data.success) {
+      loadDevices();
+    } else {
+      throw new Error(data.error);
+    }
+  } catch (error) {
+    console.error('Failed to rename device:', error);
+    alert('❌ 名前の変更に失敗しました');
+  }
+}
+
+// モーダル開閉
+function openAddDeviceModal() {
+  document.getElementById('addDeviceModal').classList.add('active');
+  document.getElementById('deviceName').value = '';
+  document.getElementById('addDeviceError').style.display = 'none';
+}
+
+function closeAddDeviceModal() {
+  document.getElementById('addDeviceModal').classList.remove('active');
+}
+
+// ボタンとフォームにイベントリスナーを追加
+document.getElementById('addDeviceButton').addEventListener('click', openAddDeviceModal);
+document.getElementById('addDeviceForm').addEventListener('submit', addDevice);
+document.getElementById('cancelDeviceBtn').addEventListener('click', closeAddDeviceModal);
+
+// モーダル外クリックで閉じる
+document.getElementById('addDeviceModal').addEventListener('click', (e) => {
+  if (e.target.id === 'addDeviceModal') {
+    closeAddDeviceModal();
+  }
+});
+
+// ユーティリティ関数
+function getDeviceIcon(deviceType) {
+  const icons = {
+    'mobile': '📱',
+    'desktop': '💻',
+    'tablet': '📱',
+    'security_key': '🔑'
+  };
+  return icons[deviceType] || '🔐';
+}
+
+function formatRelativeTime(date) {
+  const now = new Date();
+  const diff = Math.floor((now - date) / 1000);
+
+  if (diff < 60) return 'たった今';
+  if (diff < 3600) return `${Math.floor(diff / 60)}分前`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}時間前`;
+  if (diff < 2592000) return `${Math.floor(diff / 86400)}日前`;
+  return formatDate(date);
+}
+
+function formatDate(date) {
+  return date.toLocaleDateString('ja-JP', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// 初期化
+loadDevices();
+</script>
+
+<%- include('../partials/footer') %>
