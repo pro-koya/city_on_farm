@@ -1,10 +1,65 @@
 <%- include('../partials/header', { title: '二要素認証', extraCSS: '', extraCSS2: '' }) %>
 
+<style>
+.webauthn-button {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #4C6B5C 0%, #3d5749 100%);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(76, 107, 92, 0.3);
+  margin-bottom: 20px;
+}
+
+.webauthn-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(76, 107, 92, 0.4);
+}
+
+.webauthn-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.webauthn-icon {
+  font-size: 24px;
+  margin-right: 8px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 24px 0;
+  color: #999;
+  font-size: 0.85rem;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.divider::before {
+  margin-right: 12px;
+}
+
+.divider::after {
+  margin-left: 12px;
+}
+</style>
+
 <main style="max-width: 480px; margin: 120px auto 64px; padding: 0 16px;">
   <section style="background:#fff; border-radius:16px; box-shadow:0 8px 24px rgba(0,0,0,.08); padding:32px 28px;">
     <h1 style="margin:0 0 8px; font-size:1.6rem; text-align:center;">二要素認証</h1>
     <p style="color:#666; margin:0 0 24px; text-align:center; font-size:0.9rem;">
-      認証アプリに表示されている6桁のコードを入力してください
+      ログインを完了するために認証してください
     </p>
 
     <% if (error) { %>
@@ -14,9 +69,24 @@
     <% } %>
 
     <% if (!useBackupCode) { %>
+      <!-- WebAuthn認証ボタン（優先表示） -->
+      <div id="webauthnSection" style="display: none;">
+        <button type="button" class="webauthn-button" id="webauthnButton">
+          <span class="webauthn-icon">🔐</span>
+          生体認証で認証する
+        </button>
+
+        <div style="text-align: center; margin-top: 16px;">
+          <a href="#" id="showTotpLink" style="display: none; color: #666; font-size: 0.9rem; text-decoration: underline;">
+            認証コードで認証
+          </a>
+        </div>
+      </div>
+
       <!-- 通常の2FAコード入力 -->
-      <form id="verify2FAForm" method="POST" action="/login/2fa/verify" style="margin-bottom:20px;">
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div id="totpSection">
+        <form id="verify2FAForm" method="POST" action="/login/2fa/verify" style="margin-bottom:20px;">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
         <div style="margin-bottom:20px;">
           <label for="token" style="display:block; margin-bottom:6px; font-weight:600; font-size:0.9rem;">
@@ -49,11 +119,16 @@
         </button>
       </form>
 
-      <div style="text-align:center; margin-top:16px;">
-        <a href="?useBackup=true" style="color:#666; font-size:0.9rem; text-decoration:underline;">
-          バックアップコードを使用
-        </a>
+        <div style="text-align:center; margin-top:16px;">
+          <a href="#" id="showWebAuthnLink" style="display: none; color: #4C6B5C; font-size: 0.9rem; text-decoration: underline; margin-right: 16px;">
+            🔐 生体認証に戻る
+          </a>
+          <a href="?useBackup=true" style="color:#666; font-size:0.9rem; text-decoration:underline;">
+            バックアップコードを使用
+          </a>
+        </div>
       </div>
+      <!-- /totpSection -->
 
     <% } else { %>
       <!-- バックアップコード入力 -->
@@ -110,6 +185,147 @@
     </p>
   </div>
 </main>
+
+<script type="module">
+import { startAuthentication } from 'https://unpkg.com/@simplewebauthn/browser@9.0.1/dist/bundle/index.js';
+
+const csrfToken = '<%= csrfToken %>';
+
+// ページ読み込み時にWebAuthn利用可能かチェック
+async function checkWebAuthnAvailability() {
+  try {
+    // WebAuthn対応ブラウザかチェック
+    if (!window.PublicKeyCredential) {
+      return;
+    }
+
+    // ユーザーがWebAuthnを登録しているかチェック（2FA認証中でも利用可能なエンドポイント）
+    const response = await fetch('/api/webauthn/credentials/check', {
+      credentials: 'same-origin'
+    });
+
+    if (!response.ok) {
+      return;
+    }
+
+    const data = await response.json();
+
+    if (data.success && data.hasCredentials) {
+      // WebAuthnセクションを表示
+      document.getElementById('webauthnSection').style.display = 'block';
+      // TOTPセクションを折りたたむ
+      document.getElementById('totpSection').style.display = 'none';
+      document.getElementById('showTotpLink').style.display = 'block';
+      document.getElementById('showWebAuthnLink').style.display = 'inline-block';
+    }
+  } catch (error) {
+    console.log('WebAuthn check failed:', error);
+  }
+}
+
+// WebAuthn認証実行
+async function authenticateWithWebAuthn() {
+  const button = document.getElementById('webauthnButton');
+  const originalText = button.innerHTML;
+
+  try {
+    button.disabled = true;
+    button.innerHTML = '<span class="webauthn-icon">🔐</span>認証中...';
+
+    // Step 1: チャレンジ取得
+    const challengeResponse = await fetch('/api/webauthn/auth/challenge', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken
+      },
+      credentials: 'same-origin'
+    });
+
+    if (!challengeResponse.ok) {
+      throw new Error('チャレンジの取得に失敗しました');
+    }
+
+    const challengeData = await challengeResponse.json();
+
+    if (!challengeData.success) {
+      throw new Error(challengeData.error || 'チャレンジの取得に失敗しました');
+    }
+
+    // Step 2: ブラウザで生体認証実行
+    button.innerHTML = '<span class="webauthn-icon">🔐</span>生体認証を実行してください...';
+    const credential = await startAuthentication(challengeData.options);
+
+    // Step 3: レスポンス検証
+    button.innerHTML = '<span class="webauthn-icon">🔐</span>検証中...';
+    const verifyResponse = await fetch('/api/webauthn/auth/verify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({ response: credential })
+    });
+
+    if (!verifyResponse.ok) {
+      throw new Error('認証に失敗しました');
+    }
+
+    const verifyData = await verifyResponse.json();
+
+    if (!verifyData.success) {
+      throw new Error(verifyData.error || '認証に失敗しました');
+    }
+
+    // 成功 - ログイン完了後のページにリダイレクト
+    button.innerHTML = '<span class="webauthn-icon">✅</span>認証成功！リダイレクト中...';
+    window.location.href = '/';
+
+  } catch (error) {
+    console.error('WebAuthn authentication failed:', error);
+    button.disabled = false;
+    button.innerHTML = originalText;
+
+    // エラーメッセージを表示
+    alert('生体認証に失敗しました: ' + error.message);
+  }
+}
+
+// 「認証コードで認証」リンクのイベントリスナー
+const showTotpLink = document.getElementById('showTotpLink');
+if (showTotpLink) {
+  showTotpLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('webauthnSection').style.display = 'none';
+    document.getElementById('totpSection').style.display = 'block';
+    // フォーカスを認証コード入力欄に移動
+    const tokenInput = document.getElementById('token');
+    if (tokenInput) {
+      tokenInput.focus();
+    }
+  });
+}
+
+// 「生体認証に戻る」リンクのイベントリスナー
+const showWebAuthnLink = document.getElementById('showWebAuthnLink');
+if (showWebAuthnLink) {
+  showWebAuthnLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('totpSection').style.display = 'none';
+    document.getElementById('webauthnSection').style.display = 'block';
+  });
+}
+
+// イベントリスナーを追加
+const webauthnButton = document.getElementById('webauthnButton');
+if (webauthnButton) {
+  webauthnButton.addEventListener('click', authenticateWithWebAuthn);
+}
+
+// 初期化
+checkWebAuthnAvailability();
+</script>
 
 <script>
 // 自動フォーカスと入力補助
