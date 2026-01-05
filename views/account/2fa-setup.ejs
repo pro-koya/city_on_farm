@@ -10,9 +10,27 @@
         </p>
       </div>
     <% } %>
-    <p style="color:#666; margin:0 0 28px; text-align:center; font-size:0.9rem;">
+    <p style="color:#666; margin:0 0 12px; text-align:center; font-size:0.9rem;">
       アカウントのセキュリティを強化するために、二要素認証を設定します
     </p>
+
+    <!-- 生体認証の推奨バナー -->
+    <div style="background:linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border:1.5px solid #3b82f6; border-radius:12px; padding:14px 16px; margin-bottom:28px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="font-size:24px;">🔐</div>
+        <div style="flex:1;">
+          <p style="margin:0 0 4px; font-weight:600; font-size:0.9rem; color:#1e40af;">
+            より簡単で安全な認証方法があります
+          </p>
+          <p style="margin:0 0 8px; font-size:0.8rem; color:#1e40af; line-height:1.5;">
+            生体認証（FaceID/指紋認証）なら、ワンタッチでログインできます
+          </p>
+          <a href="/account/webauthn/setup" style="display:inline-block; background:#3b82f6; color:#fff; padding:6px 14px; border-radius:8px; text-decoration:none; font-size:0.8rem; font-weight:600; transition:all 0.2s ease;">
+            生体認証を設定 →
+          </a>
+        </div>
+      </div>
+    </div>
 
     <!-- Step 1: QRコードスキャン -->
     <div id="step1" style="margin-bottom:32px;">

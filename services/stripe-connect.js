@@ -107,7 +107,16 @@ async function syncConnectAccount(accountId) {
 
     // Stripeからアカウント情報を取得
     const account = await stripe.accounts.retrieve(accountId);
-    console.log('account'+account);
+
+    // デバッグ: アカウント情報を詳細にログ出力
+    logger.info('Stripe account details retrieved', {
+      accountId,
+      details_submitted: account.details_submitted,
+      charges_enabled: account.charges_enabled,
+      payouts_enabled: account.payouts_enabled,
+      capabilities: account.capabilities,
+      requirements: account.requirements
+    });
 
     // DBのpartnerを取得
     const partners = await dbQuery(
@@ -121,7 +130,18 @@ async function syncConnectAccount(accountId) {
     }
 
     const partnerId = partners[0].id;
-    console.log('partnerId'+partnerId);
+
+    // Stripe Expressアカウントの場合、capabilities.transfersのステータスを確認
+    const transfersActive = account.capabilities?.transfers === 'active';
+    const payoutsEnabled = account.payouts_enabled || transfersActive;
+
+    logger.info('Determined payouts_enabled status', {
+      partnerId,
+      accountId,
+      rawPayoutsEnabled: account.payouts_enabled,
+      transfersCapability: account.capabilities?.transfers,
+      finalPayoutsEnabled: payoutsEnabled
+    });
 
     // ステータスを更新
     await dbQuery(
@@ -137,8 +157,8 @@ async function syncConnectAccount(accountId) {
       [
         account.details_submitted || false,
         account.charges_enabled || false,
-        account.payouts_enabled || false,
-        account.payouts_enabled || false, // 自動送金フラグもStripe準拠で更新
+        payoutsEnabled,
+        payoutsEnabled, // 自動送金フラグもStripe準拠で更新
         account.details_submitted || false,
         partnerId
       ]
@@ -149,7 +169,7 @@ async function syncConnectAccount(accountId) {
       accountId,
       detailsSubmitted: account.details_submitted,
       chargesEnabled: account.charges_enabled,
-      payoutsEnabled: account.payouts_enabled
+      payoutsEnabled: payoutsEnabled
     });
 
     return {
@@ -157,7 +177,7 @@ async function syncConnectAccount(accountId) {
       accountId,
       detailsSubmitted: account.details_submitted,
       chargesEnabled: account.charges_enabled,
-      payoutsEnabled: account.payouts_enabled
+      payoutsEnabled: payoutsEnabled
     };
   } catch (error) {
     logger.error('Failed to sync Connect account', {
@@ -205,6 +225,10 @@ async function getConnectAccountDetails(partnerId) {
     // Stripeから最新情報を取得
     const account = await stripe.accounts.retrieve(partner.stripe_account_id);
 
+    // Stripe Expressアカウントの場合、capabilities.transfersのステータスを確認
+    const transfersActive = account.capabilities?.transfers === 'active';
+    const payoutsEnabled = account.payouts_enabled || transfersActive;
+
     return {
       partnerId: partner.id,
       partnerName: partner.name,
@@ -212,7 +236,7 @@ async function getConnectAccountDetails(partnerId) {
       accountId: partner.stripe_account_id,
       detailsSubmitted: account.details_submitted || false,
       chargesEnabled: account.charges_enabled || false,
-      payoutsEnabled: account.payouts_enabled || false,
+      payoutsEnabled: payoutsEnabled,
       email: account.email,
       country: account.country,
       defaultCurrency: account.default_currency,
