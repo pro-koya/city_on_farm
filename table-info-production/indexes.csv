@@ -227,5 +227,14 @@ public,users,idx_users_partner,CREATE INDEX idx_users_partner ON public.users US
 public,users,idx_users_postal_norm,CREATE INDEX idx_users_postal_norm ON public.users USING btree (postal_norm),f,f
 public,users,idx_users_prefecture_city,"CREATE INDEX idx_users_prefecture_city ON public.users USING btree (prefecture, city)",f,f
 public,users,idx_users_two_factor_enabled,CREATE INDEX idx_users_two_factor_enabled ON public.users USING btree (two_factor_enabled),f,f
+public,users,idx_users_webauthn_enabled,CREATE INDEX idx_users_webauthn_enabled ON public.users USING btree (webauthn_enabled) WHERE (webauthn_enabled = true),f,f
 public,users,users_email_key,CREATE UNIQUE INDEX users_email_key ON public.users USING btree (email),t,f
 public,users,users_pkey,CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id),t,t
+public,webauthn_challenges,idx_webauthn_challenges_expires,CREATE INDEX idx_webauthn_challenges_expires ON public.webauthn_challenges USING btree (expires_at),f,f
+public,webauthn_challenges,idx_webauthn_challenges_user,CREATE INDEX idx_webauthn_challenges_user ON public.webauthn_challenges USING btree (user_id),f,f
+public,webauthn_challenges,webauthn_challenges_pkey,CREATE UNIQUE INDEX webauthn_challenges_pkey ON public.webauthn_challenges USING btree (id),t,t
+public,webauthn_credentials,idx_webauthn_credential_id,CREATE INDEX idx_webauthn_credential_id ON public.webauthn_credentials USING btree (credential_id),f,f
+public,webauthn_credentials,idx_webauthn_last_used,CREATE INDEX idx_webauthn_last_used ON public.webauthn_credentials USING btree (last_used_at),f,f
+public,webauthn_credentials,idx_webauthn_user_id,CREATE INDEX idx_webauthn_user_id ON public.webauthn_credentials USING btree (user_id),f,f
+public,webauthn_credentials,webauthn_credentials_credential_id_key,CREATE UNIQUE INDEX webauthn_credentials_credential_id_key ON public.webauthn_credentials USING btree (credential_id),t,f
+public,webauthn_credentials,webauthn_credentials_pkey,CREATE UNIQUE INDEX webauthn_credentials_pkey ON public.webauthn_credentials USING btree (id),t,t

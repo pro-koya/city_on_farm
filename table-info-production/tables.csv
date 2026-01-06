@@ -47,4 +47,6 @@ public,tags,,5
 public,trusted_devices,,8
 public,user_allowed_payment_methods,,5
 public,user_recent_products,,3
-public,users,,28
+public,users,,30
+public,webauthn_challenges,WebAuthn認証用チャレンジ一時保存,7
+public,webauthn_credentials,WebAuthn認証器（生体認証・セキュリティキー）情報,13

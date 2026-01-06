@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2026-01-05T18:34:12.186Z
+> Generated at: 2026-01-06T18:32:33.646Z
 
 ---
 
@@ -2648,6 +2648,8 @@ _No indexes_
 | 26 | `account_locked_reason` | `text` | YES |  |  |
 | 27 | `failed_login_attempts` | `integer` | YES | 0 |  |
 | 28 | `last_failed_login_at` | `timestamp without time zone` | YES |  |  |
+| 29 | `webauthn_enabled` | `boolean` | YES | false |  |
+| 30 | `webauthn_enabled_at` | `timestamp without time zone` | YES |  |  |
 
 **Constraints**
 
@@ -2687,6 +2689,11 @@ _No indexes_
   ```sql
   CREATE INDEX idx_users_two_factor_enabled ON public.users USING btree (two_factor_enabled)
   ```
+- `idx_users_webauthn_enabled`
+  
+  ```sql
+  CREATE INDEX idx_users_webauthn_enabled ON public.users USING btree (webauthn_enabled) WHERE (webauthn_enabled = true)
+  ```
 - `users_email_key`
   
   ```sql
@@ -2696,6 +2703,107 @@ _No indexes_
   
   ```sql
   CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id)
+  ```
+
+---
+
+### `public.webauthn_challenges`
+
+WebAuthn認証用チャレンジ一時保存
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `user_id` | `uuid` | NO |  |  |
+| 3 | `challenge` | `text` | NO |  | 認証時のチャレンジ（ランダム文字列） |
+| 4 | `type` | `varchar(20)` | NO |  | チャレンジの種類（registration/authentication） |
+| 5 | `used` | `boolean` | YES | false |  |
+| 6 | `expires_at` | `timestamp without time zone` | NO |  |  |
+| 7 | `created_at` | `timestamp without time zone` | YES | CURRENT_TIMESTAMP |  |
+
+**Constraints**
+
+- **CHECK**: `webauthn_challenges_challenge_not_null`, `webauthn_challenges_expires_at_not_null`, `webauthn_challenges_id_not_null`, `webauthn_challenges_type_not_null`, `webauthn_challenges_user_id_not_null`
+- **FOREIGN KEY**: `webauthn_challenges_user_id_fkey`
+- **PRIMARY KEY**: `webauthn_challenges_pkey`
+
+**Indexes**
+
+- `idx_webauthn_challenges_expires`
+  
+  ```sql
+  CREATE INDEX idx_webauthn_challenges_expires ON public.webauthn_challenges USING btree (expires_at)
+  ```
+- `idx_webauthn_challenges_user`
+  
+  ```sql
+  CREATE INDEX idx_webauthn_challenges_user ON public.webauthn_challenges USING btree (user_id)
+  ```
+- `webauthn_challenges_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX webauthn_challenges_pkey ON public.webauthn_challenges USING btree (id)
+  ```
+
+---
+
+### `public.webauthn_credentials`
+
+WebAuthn認証器（生体認証・セキュリティキー）情報
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `user_id` | `uuid` | NO |  |  |
+| 3 | `credential_id` | `text` | NO |  | 認証器の一意識別子 |
+| 4 | `public_key` | `text` | NO |  | 認証器の公開鍵（署名検証用） |
+| 5 | `counter` | `bigint` | YES | 0 | リプレイ攻撃防止用カウンター |
+| 6 | `aaguid` | `text` | YES |  |  |
+| 7 | `credential_type` | `varchar(50)` | YES | 'public-key'::character varying |  |
+| 8 | `transports` | `ARRAY` | YES |  |  |
+| 9 | `device_name` | `text` | NO |  | ユーザーが設定したデバイス名 |
+| 10 | `device_type` | `varchar(50)` | YES |  |  |
+| 11 | `last_used_at` | `timestamp without time zone` | YES |  |  |
+| 12 | `created_at` | `timestamp without time zone` | YES | CURRENT_TIMESTAMP |  |
+| 13 | `updated_at` | `timestamp without time zone` | YES | CURRENT_TIMESTAMP |  |
+
+**Constraints**
+
+- **CHECK**: `webauthn_credentials_credential_id_not_null`, `webauthn_credentials_device_name_not_null`, `webauthn_credentials_id_not_null`, `webauthn_credentials_public_key_not_null`, `webauthn_credentials_user_id_not_null`
+- **FOREIGN KEY**: `webauthn_credentials_user_id_fkey`
+- **PRIMARY KEY**: `webauthn_credentials_pkey`
+- **UNIQUE**: `webauthn_credentials_credential_id_key`
+
+**Indexes**
+
+- `idx_webauthn_credential_id`
+  
+  ```sql
+  CREATE INDEX idx_webauthn_credential_id ON public.webauthn_credentials USING btree (credential_id)
+  ```
+- `idx_webauthn_last_used`
+  
+  ```sql
+  CREATE INDEX idx_webauthn_last_used ON public.webauthn_credentials USING btree (last_used_at)
+  ```
+- `idx_webauthn_user_id`
+  
+  ```sql
+  CREATE INDEX idx_webauthn_user_id ON public.webauthn_credentials USING btree (user_id)
+  ```
+- `webauthn_credentials_credential_id_key`
+  
+  ```sql
+  CREATE UNIQUE INDEX webauthn_credentials_credential_id_key ON public.webauthn_credentials USING btree (credential_id)
+  ```
+- `webauthn_credentials_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX webauthn_credentials_pkey ON public.webauthn_credentials USING btree (id)
   ```
 
 ---
