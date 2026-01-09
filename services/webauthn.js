@@ -15,6 +15,20 @@ const RP_NAME = 'セッツマルシェ';
 const RP_ID = process.env.WEBAUTHN_RP_ID || (process.env.NODE_ENV === 'production' ? 'yourdomain.com' : 'localhost');
 const ORIGIN = process.env.APP_ORIGIN || 'http://localhost:3000';
 
+// 警告: 本番環境で正しいドメインが設定されているか確認
+if (process.env.NODE_ENV === 'production' && RP_ID === 'yourdomain.com') {
+  console.warn('⚠️  WARNING: WEBAUTHN_RP_ID is not set. Please set it to your actual domain in .env file');
+  console.warn('⚠️  Example: WEBAUTHN_RP_ID=example.com');
+}
+
+// 開発環境での注意
+if (process.env.NODE_ENV !== 'production' && RP_ID === 'localhost') {
+  console.log('ℹ️  WebAuthn RP ID: localhost (for local testing only)');
+  console.log('ℹ️  For iPhone/external device testing, use ngrok and set:');
+  console.log('   WEBAUTHN_RP_ID=your-ngrok-domain.ngrok-free.app');
+  console.log('   APP_ORIGIN=https://your-ngrok-domain.ngrok-free.app');
+}
+
 /**
  * Base64URL文字列をBase64文字列に変換
  * @param {string} base64url - Base64URL文字列

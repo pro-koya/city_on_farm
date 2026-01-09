@@ -1,4 +1,4 @@
-<%- include('../partials/header', { 
+<%- include('../partials/header', {
   title: '特定商取引法に基づく表記',
   description: 'セッツマルシェの特定商取引法に基づく表記ページです。販売事業者情報、返品・返金に関する条件、支払い方法などをご確認いただけます。',
   canonicalUrl: '/tokusho',
@@ -12,7 +12,7 @@
     <header class="tokusho-header">
       <h1 class="tokusho-title">特定商取引法に基づく表記</h1>
       <p class="tokusho-lead">セッツマルシェでのお取引に関する重要な情報をご確認ください。</p>
-      <p class="tokusho-updated">最終更新日：2025年1月</p>
+      <p class="tokusho-updated">最終更新日：2026年1月</p>
     </header>
 
     <!-- 販売事業者情報 -->
@@ -30,8 +30,8 @@
         <div class="tokusho-definition-item">
           <dt>所在地</dt>
           <dd>
-            ご請求があった場合に遅滞なく開示いたします。<br>
-            お問い合わせフォームよりご連絡ください。
+            〒566-0061
+            <br>大阪府摂津市鳥飼八町１丁目１３
           </dd>
         </div>
         <div class="tokusho-definition-item">
@@ -43,8 +43,14 @@
         <div class="tokusho-definition-item">
           <dt>電話番号</dt>
           <dd>
-            ご請求があった場合に遅滞なく開示いたします。<br>
-            お問い合わせフォームよりご連絡ください。
+            090-6595-5008
+          </dd>
+        </div>
+        <div class="tokusho-definition-item">
+          <dt>受付時間</dt>
+          <dd>
+            平日 10:00〜18:00（土日祝日・年末年始を除く）<br>
+            ※ お問い合わせへの返信は、受付時間内に順次対応いたします。
           </dd>
         </div>
       </dl>
@@ -99,11 +105,29 @@
       <h2 id="delivery-timing" class="tokusho-section-title">商品の引き渡し時期</h2>
       <div class="tokusho-content">
         <p>商品は、ご注文確定後、出品者より直接お届けいたします。引き渡し時期は以下のとおりです。</p>
+
+        <h3 class="tokusho-subtitle">配送の場合</h3>
         <ul class="tokusho-list">
           <li>各商品ページに記載されている「お届け予定日」または「お届け可能期間」をご確認ください。</li>
+          <li>通常、ご注文確定後 3〜7営業日以内に出品者より発送いたします。</li>
           <li>農作物の性質上、天候や収穫状況により、お届け時期が前後する場合があります。</li>
           <li>お届け時期の変更が生じる場合は、出品者より事前にご連絡いたします。</li>
         </ul>
+
+        <h3 class="tokusho-subtitle">畑での受け取り（ピックアップ）の場合</h3>
+        <ul class="tokusho-list">
+          <li>受け取り可能な商品の場合、商品ページに「畑での受け取り可能」と表示されます。</li>
+          <li>受け取り場所・日時は、ご注文確定後に出品者よりメールでご案内いたします。</li>
+          <li>受け取り日時の調整が必要な場合は、出品者と直接連絡を取り合ってください。</li>
+        </ul>
+
+        <h3 class="tokusho-subtitle">配送遅延・配送事故時の対応</h3>
+        <ul class="tokusho-list">
+          <li>配送の遅延が発生した場合は、出品者またはセッツマルシェ運営よりご連絡いたします。</li>
+          <li>配送中の事故や商品の未着については、<a href="/contact" class="tokusho-link">お問い合わせフォーム</a>より運営までご連絡ください。運営が一次窓口として対応いたします。</li>
+          <li>配送事故の確認後、速やかに代替品の発送または返金手続きを行います。</li>
+        </ul>
+
         <p class="tokusho-note">※ 商品の性質上、在庫状況や収穫状況により、ご注文をお受けできない場合があります。あらかじめご了承ください。</p>
       </div>
     </section>
@@ -113,18 +137,44 @@
       <h2 id="return-refund" class="tokusho-section-title">返品・返金に関する条件</h2>
       <div class="tokusho-content">
         <h3 class="tokusho-subtitle">不良品・配送事故の場合</h3>
-        <p>商品に不良があった場合、または配送中の事故により商品が破損・汚損した場合は、出品者負担で返品・返金に対応いたします。以下の場合に該当する場合は、お問い合わせフォームよりご連絡ください。</p>
+        <p>商品に不良があった場合、または配送中の事故により商品が破損・汚損した場合は、出品者負担で返品・返金に対応いたします。以下の場合に該当する場合は、<strong>商品到着後 7日以内</strong>に<a href="/contact" class="tokusho-link">お問い合わせフォーム</a>よりご連絡ください。</p>
         <ul class="tokusho-list">
           <li>商品が注文内容と異なる場合</li>
           <li>商品に明らかな不良・欠陥がある場合</li>
           <li>配送中の事故により商品が破損・汚損した場合</li>
           <li>商品が未到着の場合（配送トラブル）</li>
         </ul>
-        <p class="tokusho-note">※ 返金の際は、商品代金および送料を返金いたします。ただし、Stripe決済手数料は返金対象外となります。</p>
 
-        <h3 class="tokusho-subtitle">購入者都合による返品・返金</h3>
-        <p>農作物の性質上、購入者都合による返品・返金は原則としてお受けできません。ただし、商品到着前にキャンセルをご希望の場合は、お問い合わせフォームよりご連絡ください。出品者と協議の上、対応可能な場合は対応いたします。</p>
+        <h3 class="tokusho-subtitle">返金対象と返金方法</h3>
+        <dl class="tokusho-definition-list">
+          <div class="tokusho-definition-item">
+            <dt>返金対象</dt>
+            <dd>商品代金および送料を返金いたします。ただし、<strong>Stripe決済手数料は返金対象外</strong>となります。</dd>
+          </div>
+          <div class="tokusho-definition-item">
+            <dt>返送料の負担</dt>
+            <dd>不良品・配送事故の場合は<strong>出品者負担</strong>となります。</dd>
+          </div>
+          <div class="tokusho-definition-item">
+            <dt>返金方法</dt>
+            <dd>クレジットカード決済の場合、Stripeを通じてお支払いに使用されたカードへ返金いたします。代金引換の場合は、ご指定の銀行口座へお振込みいたします。</dd>
+          </div>
+          <div class="tokusho-definition-item">
+            <dt>返金時期</dt>
+            <dd>返金手続き完了後、<strong>5〜10営業日程度</strong>でご利用のカード会社または銀行口座に反映されます。（カード会社によっては、さらに時間がかかる場合があります）</dd>
+          </div>
+        </dl>
+
+        <h3 class="tokusho-subtitle">購入者都合による返品・キャンセル</h3>
+        <p>農作物の性質上、購入者都合による返品・返金は原則としてお受けできません。</p>
+        <ul class="tokusho-list">
+          <li><strong>発送前のキャンセル</strong>：商品の発送前であれば、キャンセルを承ります。<a href="/contact" class="tokusho-link">お問い合わせフォーム</a>よりご連絡ください。</li>
+          <li><strong>発送後のキャンセル</strong>：商品発送後のキャンセルは原則としてお受けできません。</li>
+        </ul>
         <p class="tokusho-note">※ キャンセルが可能な場合でも、既に発生している配送手数料等は返金対象外となる場合があります。</p>
+
+        <h3 class="tokusho-subtitle">クーリングオフについて</h3>
+        <p>特定商取引法に定めるクーリングオフ制度は、通信販売には適用されません。本サービスは通信販売に該当するため、クーリングオフによる返品・解約はお受けしておりません。ご注文前に商品内容をよくご確認ください。</p>
       </div>
     </section>
 
@@ -137,6 +187,36 @@
           <li>各商品ページに記載されている「在庫数」または「販売可能数量」を上限とします。</li>
           <li>1回のご注文における数量制限が設けられている場合があります。詳細は各商品ページをご確認ください。</li>
           <li>在庫がなくなり次第、販売を終了いたします。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- マーケットプレイスとしての責任分界 -->
+    <section class="tokusho-section" aria-labelledby="marketplace-responsibility">
+      <h2 id="marketplace-responsibility" class="tokusho-section-title">マーケットプレイスとしての責任分界</h2>
+      <div class="tokusho-content">
+        <h3 class="tokusho-subtitle">当サイトの役割</h3>
+        <p>セッツマルシェは、地域の生産者（出品者）と購入者をつなぐマーケットプレイスです。当サイトは取引の場を提供し、<strong>商品の販売は各出品者が行います</strong>。</p>
+        <ul class="tokusho-list">
+          <li><strong>商品の品質管理・発送</strong>：各出品者が責任を持って行います。</li>
+          <li><strong>売買契約</strong>：購入者と出品者との間で成立します。</li>
+          <li><strong>決済処理</strong>：セッツマルシェ運営がStripeを通じて代行します。</li>
+        </ul>
+
+        <h3 class="tokusho-subtitle">運営による購入者サポート</h3>
+        <p>お取引に関するお問い合わせやトラブルについては、<strong>セッツマルシェ運営が一次窓口</strong>として対応いたします。</p>
+        <ul class="tokusho-list">
+          <li>商品の不良・配送トラブル等については、まず<a href="/contact" class="tokusho-link">お問い合わせフォーム</a>より運営にご連絡ください。</li>
+          <li>運営が出品者と連携し、返品・返金等の対応を調整いたします。</li>
+          <li>解決が困難な場合は、運営が仲介役として対応にあたります。</li>
+        </ul>
+
+        <h3 class="tokusho-subtitle">出品者情報の開示</h3>
+        <p>出品者の詳細情報（事業者名・連絡先等）は、以下の場合に開示されます。</p>
+        <ul class="tokusho-list">
+          <li><strong>ご注文確定後</strong>：注文確認メールおよびマイページの注文詳細にて、出品者情報をご確認いただけます。</li>
+          <li><strong>配送伝票</strong>：発送元として出品者情報が記載されます。</li>
+          <li><strong>正当な理由がある場合</strong>：法令に基づく開示請求や、トラブル解決に必要な場合に限り、運営から開示することがあります。</li>
         </ul>
       </div>
     </section>
@@ -161,6 +241,14 @@
           <li>有機栽培や無農薬栽培の商品は、一般的な商品と比較して、外観やサイズにばらつきがある場合があります。</li>
           <li>収穫直後の新鮮な状態でお届けするため、配送中に多少の傷みが生じる場合があります。</li>
           <li>商品到着後は、できるだけ早く冷蔵庫等で適切に保管してください。</li>
+        </ul>
+
+        <h3 class="tokusho-subtitle">セキュリティ・決済情報の取扱い</h3>
+        <p>当サイトでは、お客様の決済情報を安全に取り扱うため、以下の対策を講じています。</p>
+        <ul class="tokusho-list">
+          <li><strong>クレジットカード情報の非保持</strong>：当サイトはクレジットカード情報（カード番号、有効期限、セキュリティコード等）を一切保持しません。すべての決済処理は、PCI DSS準拠の決済代行サービス「<a href="https://stripe.com/jp" target="_blank" rel="noopener noreferrer" class="tokusho-link">Stripe</a>」を通じて安全に行われます。</li>
+          <li><strong>SSL/TLS暗号化通信</strong>：当サイトとの通信はすべてSSL/TLSにより暗号化されています。</li>
+          <li><strong>不正利用防止</strong>：Stripeの不正検知システムにより、不正な取引を監視しています。</li>
         </ul>
 
         <h3 class="tokusho-subtitle">個人情報の取り扱い</h3>
