@@ -545,7 +545,7 @@ section {
   border: 1px solid var(--border) !important;
   border-radius: 12px;
   padding: .6rem 1.2rem .6rem .9rem !important; /* 右は矢印分広め */
-  font-size: .95rem;
+  font-size: 16px; /* iOS自動ズーム防止 */
   line-height: 1.2;
   cursor: pointer;
   transition: border-color .15s ease, box-shadow .15s ease, transform .06s ease;
@@ -609,11 +609,12 @@ section {
   cursor: not-allowed;
 }
 
-input {
-  font-size: 16px;
-}
-
-textarea {
+/* iOS自動ズーム防止: フォーム要素は16px以上必須 */
+input,
+textarea,
+select,
+.ql-editor,
+[contenteditable="true"] {
   font-size: 16px;
 }
 

@@ -194,6 +194,7 @@
 
 .sp-editor .ql-editor {
   min-height: 200px;
+  font-size: 16px; /* iOS自動ズーム防止 */
 }
 
 .sp-form__foot {
