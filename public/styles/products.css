@@ -407,8 +407,8 @@ main.page {
 
 .badge--low {
   position: absolute;
-  top: .5rem;
-  right: .5rem;
+  top: .6rem;
+  left: .5rem;
   background: #f59e0b;
   color: #fff;
   font-weight: 700;
