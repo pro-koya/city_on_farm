@@ -1,0 +1,772 @@
+<%- include('../partials/header', {
+  title: 'ご利用ガイド',
+  description: 'セッツマルシェのご利用方法をわかりやすくご説明します。会員登録、商品の購入方法、出品者向けの使い方など、初めての方でも安心してご利用いただけるよう丁寧に解説しています。',
+  canonicalUrl: '/help',
+  extraCSS2: '',
+  extraCSS: '/styles/help.css'
+}) %>
+
+<main class="help">
+  <div class="wrap">
+    <!-- ページヘッダー -->
+    <header class="help-header">
+      <h1 class="help-title">ご利用ガイド</h1>
+      <p class="help-lead">セッツマルシェの使い方をわかりやすくご説明します。<br>わからないことがあれば、こちらのガイドをご確認ください。</p>
+    </header>
+
+    <!-- 目次 -->
+    <nav class="help-toc" aria-label="目次">
+      <h2 class="help-toc__title">このページの内容</h2>
+      <div class="help-toc__grid">
+        <a href="#buyer" class="help-toc__card">
+          <span class="help-toc__icon">🛒</span>
+          <span class="help-toc__label">購入される方へ</span>
+          <span class="help-toc__desc">会員登録、商品の買い方</span>
+        </a>
+        <a href="#seller" class="help-toc__card">
+          <span class="help-toc__icon">🌾</span>
+          <span class="help-toc__label">出品される方へ</span>
+          <span class="help-toc__desc">商品登録、配送設定、取引管理</span>
+        </a>
+        <a href="#security" class="help-toc__card">
+          <span class="help-toc__icon">🔐</span>
+          <span class="help-toc__label">セキュリティ設定</span>
+          <span class="help-toc__desc">2段階認証、パスキー設定</span>
+        </a>
+        <a href="#faq" class="help-toc__card">
+          <span class="help-toc__icon">❓</span>
+          <span class="help-toc__label">よくある質問</span>
+          <span class="help-toc__desc">困ったときはこちら</span>
+        </a>
+      </div>
+    </nav>
+
+    <!-- ========================================
+         購入される方へ
+    ========================================= -->
+    <section class="help-section" id="buyer" aria-labelledby="buyer-title">
+      <h2 id="buyer-title" class="help-section__title">
+        <span class="help-section__icon">🛒</span>
+        購入される方へ
+      </h2>
+      <p class="help-section__lead">セッツマルシェで商品を購入するための手順をご説明します。</p>
+
+      <!-- 会員登録 -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">1</span>
+          <span class="help-accordion__title">会員登録の方法</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-steps">
+            <div class="help-step">
+              <div class="help-step__num">1</div>
+              <div class="help-step__body">
+                <h4>「新規登録」をクリック</h4>
+                <p>サイト右上にある「<strong>新規登録</strong>」ボタンをクリックしてください。</p>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">2</div>
+              <div class="help-step__body">
+                <h4>アカウントの種類を選ぶ</h4>
+                <p>「<strong>法人（飲食店・事業者）</strong>」か「<strong>個人</strong>」を選んでください。</p>
+                <div class="help-note">
+                  <strong>法人を選んだ場合</strong>：店舗名や会社の住所なども入力が必要です。
+                </div>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">3</div>
+              <div class="help-step__body">
+                <h4>必要な情報を入力</h4>
+                <ul class="help-list">
+                  <li><strong>お名前</strong>（姓・名）</li>
+                  <li><strong>メールアドレス</strong>（ログインに使います）</li>
+                  <li><strong>パスワード</strong>（8文字以上がおすすめです）</li>
+                </ul>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">4</div>
+              <div class="help-step__body">
+                <h4>利用規約に同意して登録</h4>
+                <p>「利用規約」と「プライバシーポリシー」を確認し、チェックを入れて「<strong>登録</strong>」ボタンを押してください。</p>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">5</div>
+              <div class="help-step__body">
+                <h4>届いたメールを確認</h4>
+                <p>登録したメールアドレスに<strong>認証メール</strong>が届きます。メール内のリンクをクリックすると登録完了です。</p>
+                <div class="help-note help-note--warning">
+                  <strong>メールが届かない場合</strong>：迷惑メールフォルダを確認してください。それでも届かない場合は「認証メールを再送」ボタンを押してください。
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- 商品を探す -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">2</span>
+          <span class="help-accordion__title">商品の探し方</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <h4>トップページから探す</h4>
+            <p>トップページには<strong>おすすめの商品</strong>や<strong>新着商品</strong>が表示されています。気になる商品をクリックすると詳細が見られます。</p>
+
+            <h4>商品一覧から探す</h4>
+            <p>メニューの「<strong>農作物一覧</strong>」をクリックすると、すべての商品を見ることができます。</p>
+
+            <h4>商品詳細で確認できること</h4>
+            <ul class="help-list">
+              <li><strong>価格</strong>と<strong>内容量</strong>（1玉、500gなど）</li>
+              <li>商品の<strong>説明</strong>（栽培方法、味の特徴など）</li>
+              <li><strong>出品者</strong>（生産者）の情報</li>
+              <li><strong>配送方法</strong>（常温便、クール便など）</li>
+              <li><strong>受け取り方法</strong>（配送 or 畑で受け取り）</li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 購入方法 -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">3</span>
+          <span class="help-accordion__title">商品の購入方法</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-steps">
+            <div class="help-step">
+              <div class="help-step__num">1</div>
+              <div class="help-step__body">
+                <h4>カートに入れる</h4>
+                <p>商品詳細ページで数量を選び、「<strong>カートに追加</strong>」ボタンを押します。</p>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">2</div>
+              <div class="help-step__body">
+                <h4>カートを確認</h4>
+                <p>右上のカートアイコンをクリックして、カートの中身を確認します。数量の変更や削除もここでできます。</p>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">3</div>
+              <div class="help-step__body">
+                <h4>購入手続きへ進む</h4>
+                <p>「<strong>購入手続きへ</strong>」ボタンを押します。ログインしていない場合は、ログイン画面が表示されます。</p>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">4</div>
+              <div class="help-step__body">
+                <h4>受け取り方法を選ぶ</h4>
+                <p>商品の受け取り方法を選びます。</p>
+                <div class="help-choice">
+                  <div class="help-choice__item">
+                    <strong>配送</strong>
+                    <p>ご自宅や指定の場所へ配送します。住所の入力が必要です。</p>
+                  </div>
+                  <div class="help-choice__item">
+                    <strong>畑で受け取り</strong>
+                    <p>出品者の畑まで受け取りに行きます。送料がかからないことが多いです。</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">5</div>
+              <div class="help-step__body">
+                <h4>配送先を入力（配送の場合）</h4>
+                <p>お届け先の住所を入力します。以前入力した住所は自動で表示されるので、選ぶだけでOKです。</p>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">6</div>
+              <div class="help-step__body">
+                <h4>お届け日時を選ぶ</h4>
+                <p>希望のお届け日と時間帯を選べます。（任意）</p>
+                <div class="help-note">
+                  <strong>当日のお届けをご希望の場合</strong>：お電話で直接ご相談ください。
+                </div>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">7</div>
+              <div class="help-step__body">
+                <h4>支払い方法を選ぶ</h4>
+                <p>お支払い方法を選んでください。</p>
+                <ul class="help-list">
+                  <li><strong>クレジットカード</strong>：カード情報を入力して決済します（Stripe社の安全な決済システムを使用）</li>
+                  <li><strong>代金引換</strong>：商品到着時に配送員にお支払いください</li>
+                </ul>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">8</div>
+              <div class="help-step__body">
+                <h4>注文を確定</h4>
+                <p>内容を確認して「<strong>注文を確定する</strong>」ボタンを押せば完了です。確認メールが届きます。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- クーポンの使い方 -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">4</span>
+          <span class="help-accordion__title">クーポンの使い方</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <p>クーポンコードをお持ちの場合、購入手続き画面で使用できます。</p>
+            <ol class="help-list help-list--ordered">
+              <li>購入手続き画面の「<strong>クーポンコード</strong>」欄にコードを入力</li>
+              <li>「<strong>適用</strong>」ボタンを押す</li>
+              <li>割引が適用され、合計金額が変わります</li>
+            </ol>
+            <div class="help-note">
+              クーポンを取り消したい場合は「<strong>解除</strong>」ボタンを押してください。
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- 注文履歴 -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">5</span>
+          <span class="help-accordion__title">注文履歴の確認方法</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <p>過去の注文は「<strong>ダッシュボード</strong>」から確認できます。</p>
+            <ol class="help-list help-list--ordered">
+              <li>ログインしてメニューから「<strong>ダッシュボード</strong>」を選ぶ</li>
+              <li>「<strong>注文履歴</strong>」をクリック</li>
+              <li>注文の一覧が表示されます</li>
+            </ol>
+            <p>各注文をクリックすると、詳細や配送状況を確認できます。請求書のダウンロードも可能です。</p>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ========================================
+         出品される方へ
+    ========================================= -->
+    <section class="help-section" id="seller" aria-labelledby="seller-title">
+      <h2 id="seller-title" class="help-section__title">
+        <span class="help-section__icon">🌾</span>
+        出品される方へ
+      </h2>
+      <p class="help-section__lead">セッツマルシェで商品を販売するための手順をご説明します。</p>
+
+      <div class="help-note help-note--info">
+        <strong>出品を始めるには</strong>：まず会員登録をしていただき、運営へ出品者申請をお願いします。承認後に商品の出品が可能になります。<a href="/contact">お問い合わせフォーム</a>よりご連絡ください。
+      </div>
+
+      <!-- 商品登録 -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">1</span>
+          <span class="help-accordion__title">商品の登録方法</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-steps">
+            <div class="help-step">
+              <div class="help-step__num">1</div>
+              <div class="help-step__body">
+                <h4>出品者メニューを開く</h4>
+                <p>ログインしてメニューから「<strong>マイショップ</strong>」または「<strong>ダッシュボード</strong>」を選びます。</p>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">2</div>
+              <div class="help-step__body">
+                <h4>新規商品を登録</h4>
+                <p>「<strong>新規商品を登録</strong>」ボタンを押します。</p>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">3</div>
+              <div class="help-step__body">
+                <h4>商品情報を入力</h4>
+                <table class="help-table">
+                  <tr>
+                    <th>商品名</th>
+                    <td>わかりやすい名前を付けてください<br>例）朝採れレタス（無農薬）</td>
+                  </tr>
+                  <tr>
+                    <th>カテゴリ</th>
+                    <td>商品の種類を選んでください</td>
+                  </tr>
+                  <tr>
+                    <th>価格</th>
+                    <td>税抜きの価格を入力</td>
+                  </tr>
+                  <tr>
+                    <th>単位</th>
+                    <td>1個あたりの量<br>例）1玉、500g、1箱</td>
+                  </tr>
+                  <tr>
+                    <th>在庫数</th>
+                    <td>販売できる数量</td>
+                  </tr>
+                  <tr>
+                    <th>商品説明</th>
+                    <td>栽培方法、味の特徴、保存方法、おすすめの食べ方など</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">4</div>
+              <div class="help-step__body">
+                <h4>商品画像をアップロード</h4>
+                <p>「<strong>画像を追加</strong>」ボタンを押して写真を選びます。<strong>最低1枚</strong>、最大8枚まで登録できます。</p>
+                <div class="help-note">
+                  <strong>ポイント</strong>：明るく鮮明な写真を使うと、商品の魅力が伝わりやすくなります。
+                </div>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">5</div>
+              <div class="help-step__body">
+                <h4>配送方法を設定</h4>
+                <ul class="help-list">
+                  <li><strong>常温便</strong> or <strong>クール便</strong>を選択</li>
+                  <li><strong>発送目安</strong>（注文から何日で発送するか）を選択</li>
+                </ul>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">6</div>
+              <div class="help-step__body">
+                <h4>公開設定を選ぶ</h4>
+                <ul class="help-list">
+                  <li><strong>公開</strong>：すぐにお客様に表示されます</li>
+                  <li><strong>下書き</strong>：まだ公開せず保存だけします</li>
+                  <li><strong>限定公開</strong>：URLを知っている人だけが見られます</li>
+                </ul>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">7</div>
+              <div class="help-step__body">
+                <h4>登録を完了</h4>
+                <p>「<strong>公開する</strong>」ボタンを押せば完了です。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- 送料設定 -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">2</span>
+          <span class="help-accordion__title">送料・配送地域の設定方法</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <p>出品者メニューの「<strong>配送設定</strong>」から、送料と配送できる地域を設定します。</p>
+
+            <h4>基本の送料を決める</h4>
+            <p>まず「<strong>全国デフォルト送料</strong>」を設定します。これが基本の送料になります。</p>
+            <div class="help-example">
+              例）全国一律 800円
+            </div>
+
+            <h4>地域ごとに送料を変える</h4>
+            <p>特定の地域だけ送料を変えたい場合は、都道府県や市区町村ごとに設定できます。</p>
+            <div class="help-example">
+              例）
+              <ul class="help-list">
+                <li>北海道：1,200円（遠方なので高め）</li>
+                <li>大阪府摂津市：0円（地元なので無料）</li>
+                <li>沖縄県：配送不可</li>
+              </ul>
+            </div>
+
+            <h4>配送できない地域を設定する</h4>
+            <p>配送が難しい地域は「<strong>配送可</strong>」のスイッチをオフにすると、その地域のお客様は購入できなくなります。</p>
+          </div>
+        </div>
+      </article>
+
+      <!-- 取引管理 -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">3</span>
+          <span class="help-accordion__title">注文が入ったときの対応</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-steps">
+            <div class="help-step">
+              <div class="help-step__num">1</div>
+              <div class="help-step__body">
+                <h4>通知を確認</h4>
+                <p>注文が入ると<strong>メールで通知</strong>が届きます。ダッシュボードにも表示されます。</p>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">2</div>
+              <div class="help-step__body">
+                <h4>取引一覧を確認</h4>
+                <p>「<strong>取引管理</strong>」メニューから注文の一覧を確認します。「詳細」を押すと注文内容が見られます。</p>
+                <ul class="help-list">
+                  <li>注文した商品と数量</li>
+                  <li>お届け先の住所（配送の場合）</li>
+                  <li>希望の受け取り日時</li>
+                </ul>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">3</div>
+              <div class="help-step__body">
+                <h4>商品を準備・発送する</h4>
+                <div class="help-choice">
+                  <div class="help-choice__item">
+                    <strong>配送の場合</strong>
+                    <ol class="help-list help-list--ordered">
+                      <li>商品を梱包する</li>
+                      <li>納品書を印刷して同梱（「納品書を表示」ボタンから）</li>
+                      <li>配送業者に渡す</li>
+                      <li>取引画面で「<strong>お届け中</strong>」に更新</li>
+                    </ol>
+                  </div>
+                  <div class="help-choice__item">
+                    <strong>畑で受け取りの場合</strong>
+                    <ol class="help-list help-list--ordered">
+                      <li>商品を準備する</li>
+                      <li>必要に応じてお客様に連絡</li>
+                      <li>お客様が来たら商品を渡す</li>
+                      <li>取引画面で「<strong>受け渡し完了</strong>」に更新</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="help-step__num">4</div>
+              <div class="help-step__body">
+                <h4>取引を完了する</h4>
+                <p>配送完了または受け渡し完了後、取引画面でステータスを「<strong>完了</strong>」に更新します。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ステータスの意味 -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">4</span>
+          <span class="help-accordion__title">ステータスの意味</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <h4>注文ステータス</h4>
+            <table class="help-table">
+              <tr><th>処理中</th><td>注文を受け付けて対応中</td></tr>
+              <tr><th>完了</th><td>すべての対応が終わった</td></tr>
+              <tr><th>キャンセル</th><td>注文がキャンセルされた</td></tr>
+            </table>
+
+            <h4>支払いステータス</h4>
+            <table class="help-table">
+              <tr><th>未入金</th><td>まだ支払いがされていない</td></tr>
+              <tr><th>入金完了</th><td>支払いが確認できた</td></tr>
+              <tr><th>返金済み</th><td>返金処理が完了した</td></tr>
+            </table>
+
+            <h4>配送ステータス（配送の場合）</h4>
+            <table class="help-table">
+              <tr><th>出荷準備中</th><td>商品を準備している</td></tr>
+              <tr><th>お届け中</th><td>配送業者に渡した</td></tr>
+              <tr><th>配達完了</th><td>お届けが完了した</td></tr>
+            </table>
+
+            <h4>受け取りステータス（畑受け取りの場合）</h4>
+            <table class="help-table">
+              <tr><th>受け取り準備中</th><td>商品を準備している</td></tr>
+              <tr><th>準備完了</th><td>お客様に連絡済み</td></tr>
+              <tr><th>受け渡し完了</th><td>お客様に渡した</td></tr>
+            </table>
+          </div>
+        </div>
+      </article>
+
+      <!-- 売上の確認 -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">5</span>
+          <span class="help-accordion__title">売上の確認と入金について</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <p>売上はダッシュボードの「<strong>分析</strong>」画面で確認できます。</p>
+
+            <h4>入金のしくみ</h4>
+            <p>クレジットカードでの売上は、Stripe社を通じて登録いただいた<strong>銀行口座</strong>に振り込まれます。</p>
+            <div class="help-note">
+              入金のタイミングや詳細については、運営までお問い合わせください。
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ========================================
+         セキュリティ設定
+    ========================================= -->
+    <section class="help-section" id="security" aria-labelledby="security-title">
+      <h2 id="security-title" class="help-section__title">
+        <span class="help-section__icon">🔐</span>
+        セキュリティ設定
+      </h2>
+      <p class="help-section__lead">アカウントを安全に保つための設定方法をご説明します。</p>
+
+      <!-- 2段階認証 -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">1</span>
+          <span class="help-accordion__title">2段階認証（認証アプリ）の設定</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <p>2段階認証を設定すると、ログイン時にパスワードに加えて<strong>6桁のコード</strong>が必要になり、セキュリティが高まります。</p>
+
+            <h4>必要なもの</h4>
+            <p>スマートフォンに「<strong>認証アプリ</strong>」をインストールしてください。</p>
+            <ul class="help-list">
+              <li>Google Authenticator（無料）</li>
+              <li>Microsoft Authenticator（無料）</li>
+              <li>Authy（無料）</li>
+            </ul>
+
+            <h4>設定手順</h4>
+            <ol class="help-list help-list--ordered">
+              <li>ダッシュボードの「<strong>アカウント情報</strong>」→「<strong>セキュリティ</strong>」を開く</li>
+              <li>「<strong>二要素認証を設定する</strong>」をクリック</li>
+              <li>表示された<strong>QRコード</strong>を認証アプリでスキャン</li>
+              <li>アプリに表示された<strong>6桁のコード</strong>を入力</li>
+              <li>「<strong>有効化</strong>」ボタンを押す</li>
+              <li>表示された<strong>バックアップコード</strong>を<strong>必ず保存</strong>してください</li>
+            </ol>
+
+            <div class="help-note help-note--warning">
+              <strong>バックアップコードは大切に保管してください</strong><br>
+              スマートフォンを紛失した場合などに必要になります。再表示はできません。
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- パスキー -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">2</span>
+          <span class="help-accordion__title">パスキー（指紋・顔認証）の設定</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <p>パスキーを設定すると、<strong>指紋認証</strong>や<strong>顔認証</strong>でログインできるようになります。パスワードを入力する手間がなく、安全です。</p>
+
+            <h4>対応デバイス</h4>
+            <ul class="help-list">
+              <li>iPhone（Face ID / Touch ID）</li>
+              <li>Android（指紋認証 / 顔認証）</li>
+              <li>パソコン（Windows Hello / Touch IDなど）</li>
+            </ul>
+
+            <h4>設定手順</h4>
+            <ol class="help-list help-list--ordered">
+              <li>ダッシュボードの「<strong>アカウント情報</strong>」→「<strong>セキュリティ</strong>」を開く</li>
+              <li>「<strong>生体認証を設定</strong>」をクリック</li>
+              <li>「<strong>+ 新しいデバイスを追加</strong>」ボタンを押す</li>
+              <li>デバイスの名前を入力（例：iPhone 14）</li>
+              <li>ブラウザの指示に従って<strong>指紋認証</strong>や<strong>顔認証</strong>を行う</li>
+              <li>登録完了！</li>
+            </ol>
+
+            <div class="help-note">
+              <strong>ポイント</strong>：複数のデバイスを登録しておくと、1つを紛失しても安心です。
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- パスワード変更 -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">3</span>
+          <span class="help-accordion__title">パスワードを忘れたとき</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <ol class="help-list help-list--ordered">
+              <li>ログイン画面で「<strong>パスワードをお忘れですか？</strong>」をクリック</li>
+              <li>登録したメールアドレスを入力</li>
+              <li>届いたメールのリンクをクリック</li>
+              <li>新しいパスワードを入力して完了</li>
+            </ol>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ========================================
+         よくある質問
+    ========================================= -->
+    <section class="help-section" id="faq" aria-labelledby="faq-title">
+      <h2 id="faq-title" class="help-section__title">
+        <span class="help-section__icon">❓</span>
+        よくある質問
+      </h2>
+
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__title">注文をキャンセルしたい</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <p>注文のキャンセルについては、出品者に直接ご連絡いただくか、<a href="/contact">お問い合わせフォーム</a>よりご連絡ください。</p>
+            <p>すでに発送済みの場合はキャンセルできないことがあります。</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__title">届いた商品に問題があった</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <p>商品の破損や品質に問題があった場合は、<strong>商品到着後すぐに</strong><a href="/contact">お問い合わせフォーム</a>よりご連絡ください。</p>
+            <p>状況を確認の上、返金や交換の対応をさせていただきます。</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__title">会員登録のメールが届かない</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <ol class="help-list help-list--ordered">
+              <li><strong>迷惑メールフォルダ</strong>を確認してください</li>
+              <li>メールアドレスに間違いがないか確認してください</li>
+              <li>「<strong>認証メールを再送</strong>」ボタンを押してみてください</li>
+            </ol>
+            <p>それでも届かない場合は、<a href="/contact">お問い合わせフォーム</a>よりご連絡ください。</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__title">支払い方法を変更したい</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <p>注文確定前であれば、購入手続き画面で支払い方法を選び直すことができます。</p>
+            <p>注文確定後の変更はできません。キャンセルして再度ご注文ください。</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__title">出品者になりたい</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <p>セッツマルシェで農作物を販売したい方は、以下の手順でお申し込みください。</p>
+            <ol class="help-list help-list--ordered">
+              <li>まず<strong>会員登録</strong>を行う</li>
+              <li><a href="/contact">お問い合わせフォーム</a>から「<strong>出品者希望</strong>」とご連絡ください</li>
+              <li>運営からご連絡いたします</li>
+              <li>審査後、出品者として登録されます</li>
+            </ol>
+          </div>
+        </div>
+      </article>
+
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__title">退会したい</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <p>退会をご希望の場合は、<a href="/contact">お問い合わせフォーム</a>よりご連絡ください。</p>
+            <p>未完了の注文がある場合は、先に完了していただく必要があります。</p>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- お問い合わせ -->
+    <section class="help-contact">
+      <h2>解決しない場合は</h2>
+      <p>このガイドで解決しない場合は、お気軽にお問い合わせください。</p>
+      <a href="/contact" class="help-contact__btn">お問い合わせフォームへ</a>
+    </section>
+
+  </div>
+</main>
+
+<script>
+// アコーディオン機能
+document.querySelectorAll('[data-accordion]').forEach(accordion => {
+  const trigger = accordion.querySelector('.help-accordion__trigger');
+  const content = accordion.querySelector('.help-accordion__content');
+
+  trigger.addEventListener('click', () => {
+    const isExpanded = trigger.getAttribute('aria-expanded') === 'true';
+    trigger.setAttribute('aria-expanded', !isExpanded);
+    accordion.classList.toggle('is-open', !isExpanded);
+  });
+});
+
+// URLハッシュがある場合、該当セクションまでスクロール
+if (window.location.hash) {
+  const target = document.querySelector(window.location.hash);
+  if (target) {
+    setTimeout(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  }
+}
+</script>
+
+<%- include('../partials/footer') %>
