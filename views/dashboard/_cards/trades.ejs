@@ -3,23 +3,46 @@
     <h2>取引履歴</h2>
     <a class="link" href="/seller/trades">すべて見る →</a>
   </div>
-  <ul class="list">
+  <div class="list">
     <% if (trades && trades.length) { %>
-      <% trades.forEach(function(t){ %>
-        <% const isPickup = t.ship_method === 'pickup' ? true : false; %>
-        <a href="/seller/trades/<%= t.id %>" class="trade-link">
-          <li class="row">
-            <span class="lv-badge <%= /完了|配達完了|支払い済み/.test(t.status)?'ok' : /キャンセル|返金済み/.test(t.status)?'ng' : 'pending' %>">
-              <%= t.status %>：¥<%= Number(t.amount||0).toLocaleString() %>
+      <% trades.forEach(function(t){
+        const isPickup = t.ship_method === 'pickup';
+        const statusText = t.status || '';
+
+        // ステータスバッジクラスを決定
+        let badgeClass = 'status-badge--processing';
+        if (/完了|配達完了|支払い済み/.test(statusText)) {
+          badgeClass = 'status-badge--delivered';
+        } else if (/キャンセル/.test(statusText)) {
+          badgeClass = 'status-badge--cancelled';
+        } else if (/返金/.test(statusText)) {
+          badgeClass = 'status-badge--refunded';
+        }
+
+        // 日時表示
+        const etaText = t.eta || '日付指定なし';
+        const timeText = t.shipTimeJa || '';
+      %>
+        <a href="/seller/trades/<%= t.id %>" class="trade-item">
+          <div class="trade-item__row">
+            <span class="status-badge <%= badgeClass %>"><%= statusText %></span>
+            <span class="order-item__amount">¥<%= Number(t.amount||0).toLocaleString() %></span>
+            <span class="trade-item__buyer"><%= t.buyer_name %></span>
+          </div>
+          <div class="trade-item__row">
+            <span class="trade-item__detail">
+              <span class="method-badge <%= isPickup ? 'method-badge--pickup' : 'method-badge--delivery' %>">
+                <%= isPickup ? '畑受取' : '配送' %>
+              </span>
             </span>
-            <span class="mono">注文者：<%= t.buyer_name %></span>
-            <span>注文日：<%= t.date %><br>受渡方法：<span class="lv-badge <%= isPickup ? 'ok' : 'warn'; %>"><%= t.ship_method === 'pickup' ? '畑受取' : '配送'; %></span></span>
-            <span><%= isPickup ? '受取希望日時' : '配送希望日時'; %>：<%= !t.eta ? '日付指定なし' : t.eta; %> <%= !t.shipTimeJa ? '時間指定なし' : t.shipTimeJa; %></span>
-          </li>
+            <span class="trade-item__detail">
+              <%= isPickup ? '受取' : '配送' %>: <%= etaText %><% if (timeText) { %> <%= timeText %><% } %>
+            </span>
+          </div>
         </a>
       <% }) %>
     <% } else { %>
-      <li class="empty">まだ取引がありません。</li>
+      <p class="empty">まだ取引がありません。</p>
     <% } %>
-  </ul>
+  </div>
 </section>

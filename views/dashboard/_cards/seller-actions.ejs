@@ -10,7 +10,9 @@
     const partnerId = (typeof currentUser !== 'undefined' && currentUser?.partner_id) ? currentUser.partner_id : '';
     %>
     <% if (partnerId) { %>
-      <a class="btn btn--primary" href="/admin/partners/<%= partnerId %>">🏪 マイショップ</a>
+      <a class="btn btn--primary" href="/admin/partners/<%= partnerId %>">マイショップ</a>
+      <a class="btn btn--accent" href="/admin/partners/<%= partnerId %>/shipping">配送設定</a>
+      <a class="btn btn--accent" href="/admin/partners/<%= partnerId %>/availability">受け渡し日</a>
     <% } %>
     <a class="btn" href="/seller/trades?q=&status=processing&payment=all&ship=all&owner=owner_own">未完了の注文</a>
     <a class="btn" href="/seller/trades?q=&status=delivered&payment=all&ship=all&owner=owner_own">完了した注文</a>
