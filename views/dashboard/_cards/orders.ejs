@@ -3,19 +3,41 @@
     <h2>最近の注文</h2>
     <a class="link" href="/orders/recent">すべて見る →</a>
   </div>
-  <ul class="list">
+  <div class="list">
     <% if (orders && orders.length) { %>
-      <% orders.slice(0,5).forEach(function(o){ %>
-        <li class="row">
-          <span class="mono">注文日：<%= new Date(o.created_at).toLocaleDateString('ja-JP') %></span>
-          <!-- <span><%= o.date %></span> -->
-          <span>小計：¥<%= o.total.toLocaleString() %></span>
-          <span>状況：<%= o.status_ja %></span>
-          <a class="btn btn--sm" href="/orders/<%= o.id %>">詳細</a>
-        </li>
+      <% orders.slice(0,5).forEach(function(o){
+        // ステータスに応じたバッジクラスを決定
+        const statusLower = (o.status || '').toLowerCase();
+        const statusJa = o.status_ja || o.status || '';
+        let badgeClass = 'status-badge--processing';
+        if (/delivered|完了|配達/.test(statusJa)) {
+          badgeClass = 'status-badge--delivered';
+        } else if (/shipped|発送|出荷/.test(statusJa)) {
+          badgeClass = 'status-badge--shipped';
+        } else if (/cancel|キャンセル/.test(statusJa)) {
+          badgeClass = 'status-badge--cancelled';
+        } else if (/refund|返金/.test(statusJa)) {
+          badgeClass = 'status-badge--refunded';
+        }
+
+        const orderDate = new Date(o.created_at);
+        const dateStr = orderDate.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
+      %>
+        <a class="order-item" href="/orders/<%= o.id %>">
+          <span class="order-item__status">
+            <span class="status-badge <%= badgeClass %>"><%= statusJa %></span>
+          </span>
+          <div class="order-item__info">
+            <div class="order-item__main">
+              <span class="order-item__date"><%= dateStr %></span>
+              <span class="order-item__amount">¥<%= o.total.toLocaleString() %></span>
+            </div>
+          </div>
+          <span class="order-item__arrow">›</span>
+        </a>
       <% }) %>
     <% } else { %>
-      <li class="empty">まだ注文はありません。</li>
+      <p class="empty">まだ注文はありません。</p>
     <% } %>
-  </ul>
+  </div>
 </section>

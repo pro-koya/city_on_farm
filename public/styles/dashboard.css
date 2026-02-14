@@ -50,7 +50,7 @@ section {
 
 .db__grid {
   display: flex;
-  gap: .9rem;
+  gap: 1.2rem;
   flex-direction: column;
 }
 
@@ -147,6 +147,181 @@ section {
 .lv-badge.ng {
     background: #FDECEC;
     color: #8A1C1C
+}
+
+/* ===== 注文/取引アイテム（改善版） ===== */
+.order-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem;
+  margin: 0 -0.5rem;
+  border-radius: 10px;
+  border-bottom: 1px solid #f1f5f9;
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 0.15s ease;
+}
+
+.order-item:last-child {
+  border-bottom: none;
+}
+
+.order-item:hover {
+  background-color: var(--hi);
+}
+
+.order-item__status {
+  flex-shrink: 0;
+}
+
+.order-item__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.order-item__main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.order-item__date {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.order-item__meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
+.order-item__amount {
+  font-weight: 600;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.order-item__arrow {
+  color: var(--muted);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+/* 取引アイテム（出品者用） */
+.trade-item {
+  display: block;
+  padding: 0.8rem;
+  margin: 0 -0.5rem;
+  border-radius: 10px;
+  border-bottom: 1px solid #f1f5f9;
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 0.15s ease;
+}
+
+.trade-item:last-child {
+  border-bottom: none;
+}
+
+.trade-item:hover {
+  background-color: var(--hi);
+}
+
+.trade-item__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.trade-item__row + .trade-item__row {
+  margin-top: 0.4rem;
+}
+
+.trade-item__buyer {
+  font-weight: 500;
+}
+
+.trade-item__detail {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.trade-item__method {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* ステータスバッジ（共通） */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-badge--processing {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.status-badge--shipped {
+  background: #DBEAFE;
+  color: #1E40AF;
+}
+
+.status-badge--delivered {
+  background: #D1FAE5;
+  color: #065F46;
+}
+
+.status-badge--cancelled {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+.status-badge--refunded {
+  background: #F3E8FF;
+  color: #6B21A8;
+}
+
+.status-badge--paid {
+  background: #D1FAE5;
+  color: #065F46;
+}
+
+.status-badge--unpaid {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+/* 受渡方法バッジ */
+.method-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.method-badge--delivery {
+  background: #EFF6FF;
+  color: #1D4ED8;
+}
+
+.method-badge--pickup {
+  background: #F0FDF4;
+  color: #166534;
 }
 
 .trade-link {
@@ -304,6 +479,28 @@ section {
   transition: all .4s ease-in-out;
 }
 
+.btn--primary {
+  background-color: var(--main);
+  color: var(--white);
+  border-color: var(--main);
+}
+.btn--primary:hover {
+  background-color: #3d5749;
+  border-color: #3d5749;
+}
+
+.btn--accent {
+  background-color: var(--accent);
+  color: var(--main);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.btn--accent:hover {
+  background-color: var(--main);
+  color: var(--white);
+  border-color: var(--main);
+}
+
 .btn-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -386,4 +583,148 @@ section {
   background-color: var(--white);
   color: var(--main);
   border: 1px solid var(--accent);
+}
+
+/* ===== レスポンシブ改善 ===== */
+
+/* タブレット横向き */
+@media (max-width: 1024px) {
+  main.db {
+    max-width: 100%;
+    padding: 0 1.2rem;
+  }
+}
+
+/* タブレット縦向き */
+@media (max-width: 768px) {
+  main.db {
+    padding: 0 1rem;
+    margin-top: 70px;
+  }
+
+  .db__head h1 {
+    font-size: 1.25rem;
+  }
+
+  .card {
+    padding: 0.9rem;
+  }
+
+  .card__head h2 {
+    font-size: 1rem;
+  }
+
+  .order-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.6rem;
+  }
+
+  .order-item__main {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .order-item__arrow {
+    display: none;
+  }
+
+  .btn-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+}
+
+/* スマートフォン */
+@media (max-width: 480px) {
+  main.db {
+    padding: 0 0.8rem;
+    margin-top: 65px;
+  }
+
+  .db__head {
+    margin: 0.8rem 0.2rem 1.2rem;
+  }
+
+  .db__head h1 {
+    font-size: 1.15rem;
+  }
+
+  .db__tabs .tab {
+    padding: 0.4rem 0.65rem;
+    font-size: 0.85rem;
+  }
+
+  .kpis {
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .kpi {
+    flex: 1 1 calc(50% - 0.3rem);
+    min-width: 120px;
+  }
+
+  .card-mini {
+    width: 140px;
+  }
+
+  .card-mini img {
+    height: 95px;
+  }
+
+  .btn {
+    padding: 0.55rem 0.9rem;
+    font-size: 0.9rem;
+  }
+
+  .btn-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  /* 取引アイテムのモバイル最適化 */
+  .trade-item__row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+}
+
+/* iOS Safe Area 対応 */
+@supports (padding: max(0px)) {
+  main.db {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* iOS フォントサイズ（自動ズーム回避） */
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+/* タッチターゲット最適化 */
+@media (pointer: coarse) {
+  .btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .order-item,
+  .trade-item {
+    min-height: 56px;
+  }
+
+  .notice {
+    min-height: 44px;
+  }
 }

@@ -36,10 +36,17 @@
 
 .ps__grid{
   display:grid; gap:16px;
-  grid-template-columns: 1fr; 
+  grid-template-columns: 1.3fr 0.7fr;
 }
-@media (min-width: 960px){
-  .ps__grid{ grid-template-columns: 1.2fr .8fr; }
+
+/* タブレット横向き */
+@media (max-width: 1024px){
+  .ps__grid{ grid-template-columns: 1fr 1fr; gap: 14px; }
+}
+
+/* タブレット縦向き・モバイル */
+@media (max-width: 768px){
+  .ps__grid{ grid-template-columns: 1fr; gap: 12px; }
 }
 
 .card{
@@ -686,4 +693,146 @@ input[type="checkbox"]:checked::after{
   .grid2 {
     grid-template-columns: 1fr;
   }
+}
+
+/* ===== iOS対応 ===== */
+
+/* iOS フォントサイズ（自動ズーム回避） */
+@media (max-width: 768px) {
+  .field input[type="text"],
+  .field input[type="email"],
+  .field input[type="tel"],
+  .field input[type="url"],
+  .field select,
+  .field textarea {
+    font-size: 16px;
+  }
+}
+
+/* タッチターゲット最適化 */
+@media (pointer: coarse) {
+  .btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .link-btn,
+  .link {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .chip {
+    min-height: 44px;
+  }
+
+  .ship-tab {
+    min-height: 36px;
+    padding: .35rem 1rem;
+  }
+}
+
+/* Safe Area 対応 */
+@supports (padding: max(0px)) {
+  .ps {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
+
+/* ===== 空状態・ガイダンス表示 ===== */
+.card--empty {
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 20px 16px;
+}
+
+.empty-state__icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+  opacity: 0.5;
+}
+
+.empty-state__title {
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 6px;
+}
+
+.empty-state__desc {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+/* ===== Stripe接続状態カード ===== */
+.stripe-status {
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+.stripe-status--connected {
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+}
+
+.stripe-status--pending {
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+}
+
+.stripe-status--disconnected {
+  background: #f9fafb;
+  border: 1px dashed var(--border);
+}
+
+.stripe-status__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.stripe-status__icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.stripe-status__title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.stripe-status__desc {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+/* ===== カード最小高さ（スカスカ防止） ===== */
+.card--info {
+  min-height: 180px;
+}
+
+.card--stripe {
+  min-height: 160px;
+}
+
+.card--availability {
+  min-height: 200px;
+}
+
+.card--shipping {
+  min-height: 200px;
 }
