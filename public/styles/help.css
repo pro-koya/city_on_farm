@@ -1,0 +1,551 @@
+/* ========================================
+   ヘルプページ CSS
+   ======================================== */
+
+.help {
+  padding: 120px 0 80px;
+  background: linear-gradient(180deg, #f8faf8 0%, #fff 100%);
+  min-height: 100vh;
+}
+
+.help .wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ヘッダー */
+.help-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.help-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #2B2B2B;
+  margin: 0 0 16px;
+}
+
+.help-lead {
+  font-size: 1.05rem;
+  color: #666;
+  line-height: 1.8;
+  margin: 0;
+}
+
+/* 目次 */
+.help-toc {
+  margin-bottom: 56px;
+}
+
+.help-toc__title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #666;
+  margin: 0 0 20px;
+  text-align: center;
+}
+
+.help-toc__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.help-toc__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.help-toc__card:hover {
+  border-color: #4C6B5C;
+  box-shadow: 0 8px 24px rgba(76, 107, 92, 0.12);
+  transform: translateY(-2px);
+}
+
+.help-toc__icon {
+  font-size: 2rem;
+  margin-bottom: 12px;
+}
+
+.help-toc__label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2B2B2B;
+  margin-bottom: 4px;
+}
+
+.help-toc__desc {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+/* セクション */
+.help-section {
+  margin-bottom: 56px;
+  scroll-margin-top: 100px;
+}
+
+.help-section__title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #2B2B2B;
+  margin: 0 0 12px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #4C6B5C;
+}
+
+.help-section__icon {
+  font-size: 1.5rem;
+}
+
+.help-section__lead {
+  font-size: 0.95rem;
+  color: #666;
+  margin: 0 0 24px;
+  line-height: 1.7;
+}
+
+/* アコーディオン */
+.help-accordion {
+  margin-bottom: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.help-accordion__trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.2s ease;
+}
+
+.help-accordion__trigger:hover {
+  background: #f9fafb;
+}
+
+.help-accordion__num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: #4C6B5C;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.help-accordion__title {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2B2B2B;
+}
+
+.help-accordion__arrow {
+  font-size: 0.8rem;
+  color: #999;
+  transition: transform 0.2s ease;
+}
+
+.help-accordion.is-open .help-accordion__arrow {
+  transform: rotate(180deg);
+}
+
+.help-accordion__content {
+  display: none;
+  padding: 0 20px 24px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.help-accordion.is-open .help-accordion__content {
+  display: block;
+}
+
+/* ステップ */
+.help-steps {
+  padding-top: 20px;
+}
+
+.help-step {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.help-step:last-child {
+  margin-bottom: 0;
+}
+
+.help-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 36px;
+  bottom: -12px;
+  width: 2px;
+  background: #e5e7eb;
+}
+
+.help-step__num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: #4C6B5C;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.9rem;
+  font-weight: 600;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.help-step__body {
+  flex: 1;
+  padding-top: 4px;
+}
+
+.help-step__body h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2B2B2B;
+  margin: 0 0 8px;
+}
+
+.help-step__body p {
+  font-size: 0.9rem;
+  color: #555;
+  line-height: 1.7;
+  margin: 0 0 12px;
+}
+
+/* コンテンツ */
+.help-content {
+  padding-top: 20px;
+}
+
+.help-content h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2B2B2B;
+  margin: 24px 0 12px;
+}
+
+.help-content h4:first-child {
+  margin-top: 0;
+}
+
+.help-content p {
+  font-size: 0.9rem;
+  color: #555;
+  line-height: 1.7;
+  margin: 0 0 12px;
+}
+
+/* リスト */
+.help-list {
+  margin: 0 0 16px;
+  padding-left: 0;
+  list-style: none;
+}
+
+.help-list li {
+  position: relative;
+  padding-left: 20px;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  color: #555;
+  line-height: 1.6;
+}
+
+.help-list li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: #4C6B5C;
+  font-weight: bold;
+}
+
+.help-list--ordered {
+  counter-reset: list-counter;
+}
+
+.help-list--ordered li {
+  counter-increment: list-counter;
+}
+
+.help-list--ordered li::before {
+  content: counter(list-counter) '.';
+  color: #4C6B5C;
+  font-weight: 600;
+}
+
+/* ノート */
+.help-note {
+  padding: 16px;
+  background: #f0fdf4;
+  border-left: 4px solid #4C6B5C;
+  border-radius: 0 8px 8px 0;
+  margin: 16px 0;
+  font-size: 0.85rem;
+  color: #2B2B2B;
+  line-height: 1.6;
+}
+
+.help-note strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.help-note--warning {
+  background: #fffbeb;
+  border-left-color: #f59e0b;
+}
+
+.help-note--info {
+  background: #eff6ff;
+  border-left-color: #3b82f6;
+}
+
+/* 選択肢 */
+.help-choice {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.help-choice__item {
+  padding: 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.help-choice__item strong {
+  display: block;
+  font-size: 0.95rem;
+  color: #2B2B2B;
+  margin-bottom: 8px;
+}
+
+.help-choice__item p {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.help-choice__item .help-list {
+  margin-top: 12px;
+}
+
+/* テーブル */
+.help-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 0.9rem;
+}
+
+.help-table th,
+.help-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.help-table th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #2B2B2B;
+  width: 30%;
+}
+
+.help-table td {
+  color: #555;
+  line-height: 1.5;
+}
+
+/* 例 */
+.help-example {
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  margin: 12px 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.help-example .help-list {
+  margin: 8px 0 0;
+}
+
+/* お問い合わせ */
+.help-contact {
+  text-align: center;
+  padding: 48px 32px;
+  background: #fff;
+  border: 2px solid #4C6B5C;
+  border-radius: 20px;
+  margin-top: 48px;
+}
+
+.help-contact h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #2B2B2B;
+  margin: 0 0 12px;
+}
+
+.help-contact p {
+  font-size: 0.95rem;
+  color: #666;
+  margin: 0 0 24px;
+}
+
+.help-contact__btn {
+  display: inline-block;
+  padding: 14px 32px;
+  background: #4C6B5C;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.help-contact__btn:hover {
+  background: #3d5749;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(76, 107, 92, 0.25);
+}
+
+/* リンク */
+.help-content a,
+.help-accordion__content a {
+  color: #4C6B5C;
+  text-decoration: underline;
+}
+
+.help-content a:hover,
+.help-accordion__content a:hover {
+  color: #3d5749;
+}
+
+/* レスポンシブ */
+@media (max-width: 640px) {
+  .help {
+    padding: 100px 0 60px;
+  }
+
+  .help-title {
+    font-size: 1.6rem;
+  }
+
+  .help-lead {
+    font-size: 0.95rem;
+  }
+
+  .help-toc__grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .help-toc__card {
+    padding: 16px 12px;
+  }
+
+  .help-toc__icon {
+    font-size: 1.5rem;
+  }
+
+  .help-toc__label {
+    font-size: 0.9rem;
+  }
+
+  .help-section__title {
+    font-size: 1.25rem;
+  }
+
+  .help-accordion__trigger {
+    padding: 14px 16px;
+  }
+
+  .help-accordion__num {
+    width: 24px;
+    height: 24px;
+    font-size: 0.8rem;
+  }
+
+  .help-accordion__title {
+    font-size: 0.9rem;
+  }
+
+  .help-accordion__content {
+    padding: 0 16px 20px;
+  }
+
+  .help-step {
+    gap: 12px;
+  }
+
+  .help-step__num {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+  }
+
+  .help-step:not(:last-child)::after {
+    left: 13px;
+  }
+
+  .help-choice {
+    grid-template-columns: 1fr;
+  }
+
+  .help-table th {
+    width: 35%;
+    padding: 10px 12px;
+  }
+
+  .help-table td {
+    padding: 10px 12px;
+  }
+
+  .help-contact {
+    padding: 32px 20px;
+  }
+
+  .help-contact h2 {
+    font-size: 1.1rem;
+  }
+}

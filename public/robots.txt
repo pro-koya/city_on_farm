@@ -1,0 +1,21 @@
+# robots.txt for セッツマルシェ
+# https://settsu-marche.onrender.com
+
+User-agent: *
+Allow: /
+
+# サイトマップ
+Sitemap: https://settsu-marche.onrender.com/sitemap.xml
+
+# クロール不要なページ
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /my/
+Disallow: /seller/
+Disallow: /checkout/
+Disallow: /cart
+Disallow: /login
+Disallow: /signup
+Disallow: /logout
+Disallow: /api/
+Disallow: /stripe/
