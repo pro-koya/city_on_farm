@@ -2580,7 +2580,7 @@ app.get('/sitemap.xml', async (req, res, next) => {
     const productsResult = await dbQuery(`
       SELECT id, updated_at
       FROM products
-      WHERE status = 'published'
+      WHERE status = 'public'
       ORDER BY updated_at DESC
     `);
     const products = productsResult.rows || [];
