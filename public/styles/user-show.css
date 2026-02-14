@@ -85,13 +85,49 @@ a {
 
 .us__grid {
     display: grid;
-    grid-template-columns: 2fr 1.1fr;
-    gap: 12px
+    grid-template-columns: 1.5fr 1fr;
+    gap: 16px
 }
 
-@media(max-width:960px) {
+/* タブレット横向き */
+@media(max-width:1024px) {
     .us__grid {
-        grid-template-columns: 1fr
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 14px
+    }
+}
+
+/* タブレット縦向き */
+@media(max-width:768px) {
+    .us__grid {
+        grid-template-columns: 1fr;
+        gap: 12px
+    }
+
+    .us {
+        margin: 70px auto;
+        padding: 0 12px;
+    }
+
+    .us__head {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+
+/* スマートフォン */
+@media(max-width:480px) {
+    .us {
+        margin: 65px auto;
+        padding: 0 10px;
+    }
+
+    .us__title h1 {
+        font-size: 1.2rem;
+    }
+
+    .card {
+        padding: 12px;
     }
 }
 
@@ -508,4 +544,158 @@ input[type="checkbox"]:checked::after{
 .kv>div.us__actions {
     display: flex;
     gap: 8px;
+}
+
+/* ===== セキュリティカード専用スタイル ===== */
+.security__section {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.security__section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.security__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.security__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.security__icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.security__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.security__status--enabled {
+    background: #D1FAE5;
+    color: #065F46;
+}
+
+.security__status--disabled {
+    background: #FEF3C7;
+    color: #92400E;
+}
+
+.security__description {
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+.security__actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* セキュリティチェックリスト */
+.security__checklist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+}
+
+.security__check-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #f9fafb;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+.security__check-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+
+.security__check-icon--done {
+    background: #D1FAE5;
+    color: #065F46;
+}
+
+.security__check-icon--pending {
+    background: #FEF3C7;
+    color: #92400E;
+}
+
+/* カード最小高さ（スカスカ防止） */
+.card--security {
+    min-height: 160px;
+}
+
+.card--partner {
+    min-height: 140px;
+}
+
+/* ===== iOS対応 ===== */
+@media (max-width: 768px) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="tel"],
+    textarea,
+    select {
+        font-size: 16px; /* iOS自動ズーム回避 */
+    }
+}
+
+/* タッチターゲット */
+@media (pointer: coarse) {
+    .btn {
+        min-height: 44px;
+        padding: 0.6rem 1rem;
+    }
+
+    .link-btn {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .chip {
+        min-height: 44px;
+    }
+}
+
+/* Safe Area */
+@supports (padding: max(0px)) {
+    .us {
+        padding-bottom: max(16px, env(safe-area-inset-bottom));
+    }
 }

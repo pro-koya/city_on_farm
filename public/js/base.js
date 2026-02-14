@@ -13,6 +13,37 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /* ====== 階層メニューのアコーディオン ====== */
+    document.querySelectorAll('.navbar-menu__header').forEach(header => {
+        header.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const group = this.closest('.navbar-menu__group');
+            if (!group) return;
+
+            const isOpen = group.classList.contains('is-open');
+
+            // 現在のグループをトグル
+            group.classList.toggle('is-open');
+
+            // アクセシビリティ属性を更新
+            this.setAttribute('aria-expanded', !isOpen);
+        });
+    });
+
+    /* メニュー外クリックで閉じる */
+    document.addEventListener('click', function(e) {
+        const menu = document.getElementById('navbar-menu');
+        const toggle = document.getElementById('navbar-toggle');
+        if (menu?.classList.contains('active') &&
+            !menu.contains(e.target) &&
+            !toggle?.contains(e.target)) {
+            menu.classList.remove('active');
+            toggle?.classList.remove('open');
+            const icon = document.getElementById('toggle-icon');
+            if (icon) icon.textContent = '☰';
+        }
+    });
+
     /* ====== スライドショー ====== */
     const slides = document.querySelectorAll('.slide');
     if (slides.length > 0) {

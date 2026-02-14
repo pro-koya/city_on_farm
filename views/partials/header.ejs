@@ -130,55 +130,121 @@
       </div>
     </div>
 
-    <!-- 共通：ハンバーガーメニュー（PC/モバイル同一UI） -->
+    <!-- 共通：ハンバーガーメニュー（PC/モバイル同一UI・階層化） -->
     <ul class="navbar-menu" id="navbar-menu" role="menu">
-      <li role="none"><a role="menuitem" href="/">ホーム</a></li>
-      <li role="none"><a role="menuitem" href="/products">農作物一覧</a></li>
-      <li role="none"><a role="menuitem" href="/blog">ブログ</a></li>
-      <li role="none"><a role="menuitem" href="/contact">お問い合わせ</a></li>
-      <li role="none"><a role="menuitem" href="/help">ヘルプ</a></li>
-      <li role="none"><a role="menuitem" href="/cart">カート（<%= (typeof cartCount!=='undefined' ? cartCount : 0) %>）</a>
+      <!-- ホーム（単独） -->
+      <li class="navbar-menu__single" role="none">
+        <a role="menuitem" href="/">ホーム</a>
       </li>
+
+      <% if (typeof currentUser !== 'undefined' && currentUser && currentUser.roles?.includes('seller') && currentUser.partner_id) { %>
+      <!-- 出品者メニュー（出品者のみ表示・初期展開） -->
+      <li class="navbar-menu__group navbar-menu__group--seller is-open" role="none">
+        <div class="navbar-menu__header" role="button" aria-expanded="true">
+          <span>出品者メニュー</span>
+          <span class="navbar-menu__toggle-icon"></span>
+        </div>
+        <ul class="navbar-menu__items" role="menu">
+          <li role="none"><a role="menuitem" href="/admin/partners/<%= currentUser.partner_id %>">マイショップ</a></li>
+          <li role="none">
+            <a role="menuitem" href="/admin/partners/<%= currentUser.partner_id %>/shipping">
+              配送設定<span class="navbar-menu__quick">Quick</span>
+            </a>
+          </li>
+          <li role="none">
+            <a role="menuitem" href="/admin/partners/<%= currentUser.partner_id %>/availability">
+              受け渡し日設定<span class="navbar-menu__quick">Quick</span>
+            </a>
+          </li>
+          <li role="none"><a role="menuitem" href="/seller/listings">出品一覧</a></li>
+        </ul>
+      </li>
+      <% } %>
+
+      <!-- ショップ -->
+      <li class="navbar-menu__group" role="none">
+        <div class="navbar-menu__header" role="button" aria-expanded="false">
+          <span>ショップ</span>
+          <span class="navbar-menu__toggle-icon"></span>
+        </div>
+        <ul class="navbar-menu__items" role="menu">
+          <li role="none"><a role="menuitem" href="/products">農作物一覧</a></li>
+          <li role="none">
+            <a role="menuitem" href="/cart">カート（<%= (typeof cartCount!=='undefined' ? cartCount : 0) %>）</a>
+          </li>
+        </ul>
+      </li>
+
       <% if (typeof currentUser !== 'undefined' && currentUser) { %>
-        <% const unread = (typeof unreadNoticeCount !== 'undefined' ? unreadNoticeCount : 0); %>
-        <li role="none">
-          <a role="menuitem" href="/my/notifications">
-            お知らせ
-            <% if (unread > 0) { %>
-              （<%= unread > 99 ? '99+' : unread %>）
-            <% } %>
-          </a>
-        </li>
-
-        <!-- 出品者用：マイショップへのリンク -->
-        <% if (currentUser.roles?.includes('seller') && currentUser.partner_id) { %>
-          <li role="none"><a role="menuitem" href="/admin/partners/<%= currentUser.partner_id %>">🏪 マイショップ</a></li>
-        <% } %>
-
-        <li role="none"><a role="menuitem"
-            href="/dashboard/<%= (currentUser.roles?.includes('seller') ? 'seller' : 'buyer') %>">ダッシュボード</a></li>
-        <li><a href="/admin/users/<%= currentUser.id %>">アカウント情報</a></li>
-        <li class="nav-logout" role="none">
-          <form method="POST" action="/logout">
-            <% if (typeof csrfToken !=='undefined' && csrfToken) { %>
-              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-              <button type="submit" class="linklike" role="menuitem">ログアウト</button>
-              <% } %>
-          </form>
-        </li>
-
-        <!-- モバイル専用：メニュー最下部にログインピル（PCでは非表示） -->
-        <li class="nav-loginstatus" aria-live="polite">
-          <span class="nav-loginstatus__pill">
-            <strong>
-              <%= currentUser.name %>
-            </strong> さんとしてログイン中
-          </span>
-        </li>
-        <% } else { %>
-          <li role="none"><a role="menuitem" href="/login">ログイン</a></li>
-          <li role="none"><a role="menuitem" href="/signup">サインアップ</a></li>
+      <% const unread = (typeof unreadNoticeCount !== 'undefined' ? unreadNoticeCount : 0); %>
+      <!-- マイページ（ログイン時） -->
+      <li class="navbar-menu__group" role="none">
+        <div class="navbar-menu__header" role="button" aria-expanded="false">
+          <span>マイページ</span>
+          <span class="navbar-menu__toggle-icon"></span>
+        </div>
+        <ul class="navbar-menu__items" role="menu">
+          <li role="none">
+            <a role="menuitem" href="/dashboard/<%= (currentUser.roles?.includes('seller') ? 'seller' : 'buyer') %>">
+              ダッシュボード
+            </a>
+          </li>
+          <li role="none">
+            <a role="menuitem" href="/my/notifications">
+              お知らせ<% if (unread > 0) { %>（<%= unread > 99 ? '99+' : unread %>）<% } %>
+            </a>
+          </li>
+          <% if (currentUser.roles?.includes('seller') && currentUser.partner_id) { %>
+          <li role="none"><a role="menuitem" href="/admin/partners/<%= currentUser.partner_id %>">出品者情報</a></li>
           <% } %>
+          <li role="none"><a role="menuitem" href="/admin/users/<%= currentUser.id %>">アカウント情報</a></li>
+        </ul>
+      </li>
+      <% } %>
+
+      <!-- 情報 -->
+      <li class="navbar-menu__group" role="none">
+        <div class="navbar-menu__header" role="button" aria-expanded="false">
+          <span>情報</span>
+          <span class="navbar-menu__toggle-icon"></span>
+        </div>
+        <ul class="navbar-menu__items" role="menu">
+          <li role="none"><a role="menuitem" href="/blog">ブログ</a></li>
+          <li role="none"><a role="menuitem" href="/help">ヘルプ</a></li>
+        </ul>
+      </li>
+
+      <!-- お問い合わせ（単独） -->
+      <li class="navbar-menu__single" role="none">
+        <a role="menuitem" href="/contact">お問い合わせ</a>
+      </li>
+
+      <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+      <!-- ログアウト -->
+      <li class="nav-logout navbar-menu__single" role="none">
+        <form method="POST" action="/logout">
+          <% if (typeof csrfToken !=='undefined' && csrfToken) { %>
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button type="submit" class="linklike" role="menuitem">ログアウト</button>
+          <% } %>
+        </form>
+      </li>
+
+      <!-- モバイル専用：メニュー最下部にログインピル（PCでは非表示） -->
+      <li class="nav-loginstatus" aria-live="polite">
+        <span class="nav-loginstatus__pill">
+          <strong><%= currentUser.name %></strong> さんとしてログイン中
+        </span>
+      </li>
+      <% } else { %>
+      <!-- 非ログイン時 -->
+      <li class="navbar-menu__single" role="none">
+        <a role="menuitem" href="/login">ログイン</a>
+      </li>
+      <li class="navbar-menu__single" role="none">
+        <a role="menuitem" href="/signup">サインアップ</a>
+      </li>
+      <% } %>
     </ul>
   </header>
 

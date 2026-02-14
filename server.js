@@ -1216,7 +1216,8 @@ app.post(
       const rows = await dbQuery(
         `SELECT id, name, email, password_hash, roles, seller_intro_summary, email_verified_at,
                 two_factor_enabled, two_factor_secret, two_factor_backup_codes,
-                account_locked_at, account_locked_reason, failed_login_attempts
+                account_locked_at, account_locked_reason, failed_login_attempts,
+                partner_id
          FROM users
          WHERE email = $1
          LIMIT 1`,
@@ -1399,7 +1400,8 @@ app.post(
         id: user.id,
         name: user.name,
         email: user.email,
-        roles: user.roles || []
+        roles: user.roles || [],
+        partner_id: user.partner_id || null
       };
 
       await mergeSessionCartToDb(req, user.id);
@@ -1469,7 +1471,7 @@ app.post(
 
       // ユーザー情報取得
       const rows = await dbQuery(
-        `SELECT two_factor_secret FROM users WHERE id = $1`,
+        `SELECT two_factor_secret, partner_id FROM users WHERE id = $1`,
         [userId]
       );
       const user = rows[0];
@@ -1541,7 +1543,7 @@ app.post(
       }
 
       // セッションにユーザー情報を保存
-      req.session.user = { id: userId, name, email, roles };
+      req.session.user = { id: userId, name, email, roles, partner_id: user.partner_id || null };
       delete req.session.pending2FA;
 
       await mergeSessionCartToDb(req, userId);
@@ -1572,7 +1574,7 @@ app.post(
 
       // ユーザー情報取得
       const rows = await dbQuery(
-        `SELECT two_factor_backup_codes FROM users WHERE id = $1`,
+        `SELECT two_factor_backup_codes, partner_id FROM users WHERE id = $1`,
         [userId]
       );
       const user = rows[0];
@@ -1625,7 +1627,7 @@ app.post(
         twoFactorUsed: true
       });
 
-      req.session.user = { id: userId, name, email, roles };
+      req.session.user = { id: userId, name, email, roles, partner_id: user.partner_id || null };
       delete req.session.pending2FA;
 
       await mergeSessionCartToDb(req, userId);
