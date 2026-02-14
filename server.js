@@ -2544,6 +2544,105 @@ app.get('/terms', (req, res) => {
   });
 });
 
+app.get('/help', (req, res) => {
+  res.render('pages/help', {
+    title: 'ヘルプ・ご利用ガイド',
+    description: 'セッツマルシェのご利用方法をご案内します。会員登録、商品の購入方法、出品方法、セキュリティ設定など、よくある質問にお答えします。',
+    canonicalUrl: '/help',
+    extraCSS2: '',
+    extraCSS: '/styles/help.css'
+  });
+});
+
+/* =========================================================
+ * サイトマップ XML
+ * GET /sitemap.xml
+ * ========================================================= */
+app.get('/sitemap.xml', async (req, res, next) => {
+  try {
+    const baseUrl = process.env.SITE_URL || 'https://settsu-marche.onrender.com';
+    const now = new Date().toISOString().split('T')[0];
+
+    // 静的ページ
+    const staticPages = [
+      { loc: '/', priority: '1.0', changefreq: 'daily' },
+      { loc: '/products', priority: '0.9', changefreq: 'daily' },
+      { loc: '/blog', priority: '0.8', changefreq: 'daily' },
+      { loc: '/about', priority: '0.7', changefreq: 'monthly' },
+      { loc: '/contact', priority: '0.6', changefreq: 'monthly' },
+      { loc: '/help', priority: '0.6', changefreq: 'monthly' },
+      { loc: '/terms', priority: '0.3', changefreq: 'yearly' },
+      { loc: '/privacy', priority: '0.3', changefreq: 'yearly' },
+      { loc: '/tokusho', priority: '0.3', changefreq: 'yearly' },
+    ];
+
+    // 商品ページ（公開中のもの）
+    const productsResult = await dbQuery(`
+      SELECT id, updated_at
+      FROM products
+      WHERE status = 'published'
+      ORDER BY updated_at DESC
+    `);
+    const products = productsResult.rows || [];
+
+    // ブログ記事（noteServiceから取得）
+    let blogPosts = [];
+    try {
+      const blogData = await noteService.getListFiltered({ page: 1, perPage: 100 });
+      blogPosts = blogData.posts || [];
+    } catch (e) {
+      console.warn('サイトマップ: ブログ記事の取得に失敗', e.message);
+    }
+
+    // XML生成
+    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+
+    // 静的ページ
+    for (const page of staticPages) {
+      xml += '  <url>\n';
+      xml += `    <loc>${baseUrl}${page.loc}</loc>\n`;
+      xml += `    <lastmod>${now}</lastmod>\n`;
+      xml += `    <changefreq>${page.changefreq}</changefreq>\n`;
+      xml += `    <priority>${page.priority}</priority>\n`;
+      xml += '  </url>\n';
+    }
+
+    // 商品ページ
+    for (const product of products) {
+      const lastmod = product.updated_at
+        ? new Date(product.updated_at).toISOString().split('T')[0]
+        : now;
+      xml += '  <url>\n';
+      xml += `    <loc>${baseUrl}/products/${product.id}</loc>\n`;
+      xml += `    <lastmod>${lastmod}</lastmod>\n`;
+      xml += '    <changefreq>weekly</changefreq>\n';
+      xml += '    <priority>0.8</priority>\n';
+      xml += '  </url>\n';
+    }
+
+    // ブログ記事
+    for (const post of blogPosts) {
+      const lastmod = post.updatedAt
+        ? new Date(post.updatedAt).toISOString().split('T')[0]
+        : (post.publishedAt ? new Date(post.publishedAt).toISOString().split('T')[0] : now);
+      xml += '  <url>\n';
+      xml += `    <loc>${baseUrl}/blog/${post.id}</loc>\n`;
+      xml += `    <lastmod>${lastmod}</lastmod>\n`;
+      xml += '    <changefreq>monthly</changefreq>\n';
+      xml += '    <priority>0.7</priority>\n';
+      xml += '  </url>\n';
+    }
+
+    xml += '</urlset>';
+
+    res.set('Content-Type', 'application/xml');
+    res.send(xml);
+  } catch (e) {
+    next(e);
+  }
+});
+
 async function attachContactsToUserAfterLogin(user) {
   if (!user || !user.email) return;
   await dbQuery(
