@@ -147,8 +147,16 @@ function registerWebAuthnRoutes(app, requireAuth) {
         const result = await verifyAuthentication(userId, response);
 
         if (result.verified) {
+          // partner_id を DB から取得（出品者証などのヘッダーメニュー表示に必要）
+          const { dbQuery } = require('./services/db');
+          const userRows = await dbQuery(
+            'SELECT partner_id FROM users WHERE id = $1::uuid LIMIT 1',
+            [userId]
+          );
+          const partnerId = userRows[0]?.partner_id || null;
+
           // MFA認証成功 - セッションを確立
-          req.session.user = { id: userId, name, email, roles };
+          req.session.user = { id: userId, name, email, roles, partner_id: partnerId };
           req.session.mfaVerified = true;
           delete req.session.pending2FA;
 
@@ -157,10 +165,12 @@ function registerWebAuthnRoutes(app, requireAuth) {
             deviceName: result.deviceName
           });
 
+          const redirectUrl = roles.includes('seller') ? '/dashboard/seller' : '/dashboard/buyer';
           res.json({
             success: true,
             message: 'Authentication successful',
-            deviceName: result.deviceName
+            deviceName: result.deviceName,
+            redirectUrl
           });
         } else {
           throw new Error('Authentication failed');

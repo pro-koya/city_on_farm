@@ -149,58 +149,37 @@
 
         <!-- ⑤ 本文（リッチテキスト） -->
         <div class="field">
-            <label for="editor">
-            農園・出品者のストーリー
-            </label>
+            <label>農園・出品者のストーリー</label>
             <p class="hint">
             自己紹介、栽培のこだわり、土・水・環境への想い、栽培方法の工夫などを自由に記載できます。
-            画像挿入や箇条書きもご利用いただけます。
+            見出し・画像・表などが使えます。
             </p>
-
-            <div class="ql-editer-group">
-                <div id="editorToolbar">
-                    <!-- 見出し -->
-                    <span class="ql-formats">
-                        <select class="ql-header">
-                            <option value="3">見出し3</option>
-                            <option value="4">見出し4</option>
-                            <option value="5">見出し5</option>
-                            <option selected>通常</option>
-                        </select>
-                    </span>
-
-                    <!-- 文字装飾 -->
-                    <span class="ql-formats">
-                        <button class="ql-bold"></button>
-                        <button class="ql-italic"></button>
-                        <button class="ql-underline"></button>
-                    </span>
-
-                    <!-- リスト -->
-                    <span class="ql-formats">
-                        <button class="ql-list" value="ordered"></button>
-                        <button class="ql-list" value="bullet"></button>
-                    </span>
-
-                    <!-- リンク & 画像 -->
-                    <span class="ql-formats">
-                        <button class="ql-link"></button>
-                        <button class="ql-image"></button>
-                    </span>
-                </div>
-
-                <div id="editor" class="sp-editor">
-                    <% if (profile && profile.intro_html) { %>
-                    <%- profile.intro_html %>
-                    <% } else { %>
-                    <p>はじめまして。◯◯農園です。ここに自己紹介やこだわりを書いていきましょう。</p>
-                    <% } %>
-                </div>
-        
-                <!-- サーバに送るための hidden -->
-                <input type="hidden" name="intro_html" id="intro_html">
-        
-                <!-- ★ Quill 画像用：R2アップローダの隠しDOM（画面には出ません） -->
+            <input type="hidden" name="intro_html" id="intro_html">
+            <button type="button" class="btn btn--ghost" id="openProfileEditorBtn" data-context="profile" data-return-url="/seller/profile/edit" data-subject-name="出品者紹介">ストーリーをリッチテキストで編集</button>
+            <script>
+              (function(){ var h = <%- JSON.stringify((profile && profile.intro_html) || '') %>;
+                document.getElementById('intro_html').value = h;
+              })();
+              (function(){
+                var btn = document.getElementById('openProfileEditorBtn');
+                var htmlEl = document.getElementById('intro_html');
+                if (!btn || !htmlEl) return;
+                btn.addEventListener('click', function(){
+                  var form = document.createElement('form');
+                  form.method = 'POST'; form.action = '/editor';
+                  var csrf = <%- JSON.stringify(typeof csrfToken !== 'undefined' ? csrfToken : '') %>;
+                  if (csrf) { var i = document.createElement('input'); i.type='hidden'; i.name='_csrf'; i.value=csrf; form.appendChild(i); }
+                  var hi = document.createElement('input'); hi.type='hidden'; hi.name='html'; hi.value = htmlEl.value || ''; form.appendChild(hi);
+                  var ci = document.createElement('input'); ci.type='hidden'; ci.name='context'; ci.value = btn.dataset.context || 'profile'; form.appendChild(ci);
+                  var ri = document.createElement('input'); ri.type='hidden'; ri.name='returnUrl'; ri.value = btn.dataset.returnUrl || '/'; form.appendChild(ri);
+                  var sn = btn.dataset.subjectName || '';
+                  if (sn) { var si = document.createElement('input'); si.type='hidden'; si.name='subjectName'; si.value = sn; form.appendChild(si); }
+                  document.body.appendChild(form);
+                  form.submit();
+                });
+              })();
+            </script>
+            <!-- ★ 旧Quill画像用DOM（非表示・将来削除可） -->
                 <div id="quill-image-hidden" hidden>
                 <input type="file" id="editorImgFile" accept="image/*" hidden>
                 <ul id="editorImgList" hidden></ul>
@@ -208,53 +187,7 @@
                 <p id="editorImgMsg" hidden></p>
                 </div>
             </div>
-        </div>
-
-        <!-- ⑥ 栽培のポイント（表形式・任意） -->
-        <div class="field">
-            <label>
-                栽培のポイント（表形式・任意）
-            </label>
-            <p class="hint">
-                商品ページの下部で、栽培方法やこだわりを表形式で整理して表示できます。
-                未入力の場合、この表は表示されません。
-            </p>
-
-            <div class="sp-table-editor">
-                <div class="sp-table-editor__row">
-                <input
-                    type="text"
-                    name="fact_labels[]"
-                    placeholder="例）栽培方法">
-                <textarea
-                    name="fact_values[]"
-                    rows="2"
-                    placeholder="例）減農薬・有機肥料を中心に栽培しています。"></textarea>
-                </div>
-
-                <div class="sp-table-editor__row">
-                <input
-                    type="text"
-                    name="fact_labels[]"
-                    placeholder="例）こだわり">
-                <textarea
-                    name="fact_values[]"
-                    rows="2"
-                    placeholder="例）収穫のタイミングを厳密に見極めています。"></textarea>
-                </div>
-
-                <div class="sp-table-editor__row">
-                <input
-                    type="text"
-                    name="fact_labels[]"
-                    placeholder="任意の項目">
-                <textarea
-                    name="fact_values[]"
-                    rows="2"
-                    placeholder="任意の説明"></textarea>
-                </div>
-            </div>
-        </div>
+        </div>        
 
         <div class="sp-form__foot">
             <a href="/dashboard/seller" class="btn btn--ghost">キャンセル</a>
@@ -268,12 +201,6 @@
   </section>
 </main>
 
-<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
-<!-- 画像リサイズ用モジュール（Quillプラグイン） -->
-<script src="https://cdn.jsdelivr.net/npm/johnny-quill-image-resize-module@3.0.2/image-resize.min.js"></script>
-<!-- 既存の R2 アップローダ共通ロジック -->
-<script src="/js/uploader-r2.js"></script>
-<!-- このページ専用のJS -->
 <script src="/js/seller-profile-edit.js" defer></script>
 
 <%- include('../partials/footer') %>

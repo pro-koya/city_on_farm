@@ -1,0 +1,100 @@
+/**
+ * リッチテキスト内の表デザイン（商品詳細・出品者紹介・キャンペーン共通）
+ * シンプルで見やすいスタイル
+ */
+.prose table,
+.product-desc table,
+.seller-intro table,
+.campaign-body table,
+.prose .editor-table,
+.product-desc .editor-table,
+.seller-intro .editor-table,
+.campaign-body .editor-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0 1.25rem;
+  font-size: 0.95rem;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.prose thead,
+.product-desc thead,
+.seller-intro thead,
+.campaign-body thead {
+  background: #f8faf9;
+}
+
+.prose th,
+.product-desc th,
+.seller-intro th,
+.campaign-body th,
+.prose .editor-table th,
+.product-desc .editor-table th,
+.seller-intro .editor-table th,
+.campaign-body .editor-table th {
+  padding: 0.65rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
+}
+
+.prose th:last-child,
+.product-desc th:last-child,
+.seller-intro th:last-child,
+.campaign-body th:last-child {
+  border-right: none;
+}
+
+.prose td,
+.product-desc td,
+.seller-intro td,
+.campaign-body td,
+.prose .editor-table td,
+.product-desc .editor-table td,
+.seller-intro .editor-table td,
+.campaign-body .editor-table td {
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid #f3f4f6;
+  border-right: 1px solid #f3f4f6;
+  color: #1f2937;
+}
+
+.prose td:last-child,
+.product-desc td:last-child,
+.seller-intro td:last-child,
+.campaign-body td:last-child {
+  border-right: none;
+}
+
+.prose tbody tr:last-child td,
+.product-desc tbody tr:last-child td,
+.seller-intro tbody tr:last-child td,
+.campaign-body tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.prose tbody tr:hover,
+.product-desc tbody tr:hover,
+.seller-intro tbody tr:hover,
+.campaign-body tbody tr:hover {
+  background: rgba(163, 201, 168, 0.06);
+}
+
+/* 表全体を横スクロール可能にするラッパー（親で overflow-x: auto を付与する場合） */
+.prose .table-wrapper,
+.product-desc .table-wrapper,
+.seller-intro .table-wrapper,
+.campaign-body .table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 1rem 0 1.25rem;
+}
+
+.editor-table p {
+  margin: 0;
+}

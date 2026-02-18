@@ -202,47 +202,38 @@
 
     <!-- 右：リッチテキスト -->
     <section class="pane pane--editor">
-      <div class="field quil_field">
+      <div class="field">
         <label>本文（キャンペーン詳細） *</label>
-        <div id="campaignToolbar" class="editor-toolbar">
-          <span class="ql-formats">
-            <select class="ql-header">
-              <option value="3">見出し3</option>
-              <option value="4">見出し4</option>
-              <option value="5">見出し5</option>
-              <option selected>通常</option>
-            </select>
-          </span>
-          <span class="ql-formats">
-            <button class="ql-bold"></button>
-            <button class="ql-italic"></button>
-            <button class="ql-underline"></button>
-          </span>
-          <span class="ql-formats">
-            <button class="ql-list" value="ordered"></button>
-            <button class="ql-list" value="bullet"></button>
-          </span>
-          <span class="ql-formats">
-            <button class="ql-link"></button>
-            <button class="ql-image"></button>
-          </span>
-        </div>
-
-        <div id="campaignEditor" class="editor"><%- values.body_html || '' %></div>
-
         <p class="hint">
-          見出し・画像・表を使って、キャンペーンの内容をわかりやすく構成してください。画像サイズは自動調整されます。
+          見出し・画像・表を使って、キャンペーンの内容をわかりやすく構成してください。
         </p>
+        <button type="button" class="btn btn--ghost" id="openCampaignEditorBtn" data-context="campaign" data-return-url="<%= mode === 'create' ? '/admin/campaigns/new' : '/admin/campaigns/edit/' + (values.id || '') %>" data-subject-name="<%= (values.title || (mode === 'create' ? '新規キャンペーン' : '')).replace(/"/g, '&quot;') %>">本文をリッチテキストで編集</button>
         <p class="error <%= fieldErrors?.body_html ? 'is-visible' : '' %>" data-for="body_html">
           <%= fieldErrors?.body_html || '' %>
         </p>
-
-        <div id="quill-image-hidden" hidden>
-            <input type="file" id="editorImgFile" accept="image/*" hidden>
-            <ul id="editorImgList" hidden></ul>
-            <textarea id="editorImgUrls" hidden></textarea>
-            <p id="editorImgMsg" hidden></p>
-        </div>
+        <script>
+          (function(){ var h = <%- JSON.stringify(values.body_html || '') %>;
+            document.getElementById('body_html').value = h;
+          })();
+          (function(){
+            var btn = document.getElementById('openCampaignEditorBtn');
+            var htmlEl = document.getElementById('body_html');
+            if (!btn || !htmlEl) return;
+            btn.addEventListener('click', function(){
+              var form = document.createElement('form');
+              form.method = 'POST'; form.action = '/editor';
+              var csrf = <%- JSON.stringify(typeof csrfToken !== 'undefined' ? csrfToken : '') %>;
+              if (csrf) { var i = document.createElement('input'); i.type='hidden'; i.name='_csrf'; i.value=csrf; form.appendChild(i); }
+              var hi = document.createElement('input'); hi.type='hidden'; hi.name='html'; hi.value = htmlEl.value || ''; form.appendChild(hi);
+              var ci = document.createElement('input'); ci.type='hidden'; ci.name='context'; ci.value = btn.dataset.context || 'campaign'; form.appendChild(ci);
+              var ri = document.createElement('input'); ri.type='hidden'; ri.name='returnUrl'; ri.value = btn.dataset.returnUrl || '/'; form.appendChild(ri);
+              var sn = btn.dataset.subjectName || '';
+              if (sn) { var si = document.createElement('input'); si.type='hidden'; si.name='subjectName'; si.value = sn; form.appendChild(si); }
+              document.body.appendChild(form);
+              form.submit();
+            });
+          })();
+        </script>
       </div>
     </section>
   </div>

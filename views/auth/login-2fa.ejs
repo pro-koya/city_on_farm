@@ -278,9 +278,9 @@ async function authenticateWithWebAuthn() {
       throw new Error(verifyData.error || '認証に失敗しました');
     }
 
-    // 成功 - ログイン完了後のページにリダイレクト
+    // 成功 - ダッシュボードへリダイレクト（認証コードログインと同様）
     button.innerHTML = '<span class="webauthn-icon">✅</span>認証成功！リダイレクト中...';
-    window.location.href = '/';
+    window.location.href = verifyData.redirectUrl || '/';
 
   } catch (error) {
     console.error('WebAuthn authentication failed:', error);

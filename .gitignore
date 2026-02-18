@@ -2,6 +2,7 @@
 # .gitignore
 gmail_token.json
 .env
+node_modules/
 
 # Logs
 logs/*.log

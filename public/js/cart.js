@@ -6,7 +6,6 @@
   const applyCoupon = document.getElementById('applyCoupon');
 
   const CSRF = document.querySelector('input[name="_csrf"]')?.value || '';
-  const FREE_SHIP_THRESHOLD = 5000; // 任意：送料無料のしきい値（円）
   let discount = 0;
 
   if (!list) return; // 空カートのとき
@@ -56,35 +55,39 @@
         const checked = li.querySelector('.rowCheck')?.checked;
         if (!checked) return;
         const price = Number(li.dataset.price || 0);
-        console.log(li.dataset.price);
         const qty   = Number(li.querySelector('.qty__input')?.value || 1);
         subtotal += price * qty;
-        console.log(subtotal);
         const subEl = li.querySelector('.subtotal__val');
         if (subEl) subEl.textContent = (price * qty).toLocaleString();
       });
-      // 仮の送料：合計300円（0円 if FREE_SHIP）
-      const shipping = subtotal >= FREE_SHIP_THRESHOLD || subtotal === 0 ? 0 : 300;
-      const total = Math.max(0, subtotal - discount) + shipping;
+      // カートでは送料を表示しない。合計＝小計−割引（送料は注文手続き時に確定）
+      const total = Math.max(0, subtotal - discount);
 
       const sumSubtotal = document.getElementById('sumSubtotal-' + partnerId);
       const sumDiscount = document.getElementById('sumDiscount-' + partnerId);
-      const sumShipping = document.getElementById('sumShipping-' + partnerId);
       const sumTotal    = document.getElementById('sumTotal-' + partnerId);
 
       if (sumSubtotal) sumSubtotal.textContent = yen(subtotal);
       if (sumDiscount) sumDiscount.textContent = `-${yen(discount)}`;
-      if (sumShipping) sumShipping.textContent = yen(shipping);
       if (sumTotal)    sumTotal.textContent    = yen(total);
 
-      // 送料無料メーター
-      const freeShipBar    = document.getElementById('freeShipBar-' + partnerId);
+      // 送料無料メーター（出品者ごとの設定を反映）
+      const threshold = parseInt(group.dataset.freeShipThreshold, 10) || 0;
+      const freeShipCard = document.getElementById('freeShip-' + partnerId);
+      const freeShipBar  = document.getElementById('freeShipBar-' + partnerId);
       const freeShipRemain = document.getElementById('freeShipRemain-' + partnerId);
-      const remain = Math.max(0, FREE_SHIP_THRESHOLD - subtotal);
-      if (freeShipRemain) freeShipRemain.textContent = remain.toLocaleString();
-      if (freeShipBar) {
-        const pct = Math.min(100, Math.floor((subtotal / FREE_SHIP_THRESHOLD) * 100));
-        freeShipBar.style.width = `${pct}%`;
+      if (freeShipCard) {
+        if (threshold > 0) {
+          freeShipCard.style.display = '';
+          const remain = Math.max(0, threshold - subtotal);
+          if (freeShipRemain) freeShipRemain.textContent = remain.toLocaleString();
+          if (freeShipBar) {
+            const pct = Math.min(100, Math.floor((subtotal / threshold) * 100));
+            freeShipBar.style.width = `${pct}%`;
+          }
+        } else {
+          freeShipCard.style.display = 'none';
+        }
       }
     });
     afterAnyRemovalCleanup();
