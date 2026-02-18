@@ -25,18 +25,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- 都道府県 / 市区町村の追加・削除 ---
   const prefContainer = form.querySelector('.js-pref-rows');
   const cityContainer = form.querySelector('.js-city-rows');
+  const tierContainer = form.querySelector('.js-tier-rows');
   const prefEmpty     = form.querySelector('.js-pref-empty');
   const cityEmpty     = form.querySelector('.js-city-empty');
+  const tierEmpty     = form.querySelector('.js-tier-empty');
   const tplPref       = document.getElementById('tpl-pref-row');
   const tplCity       = document.getElementById('tpl-city-row');
+  const tplTier       = document.getElementById('tpl-tier-row');
 
-  // 既存行数からスタート
-  let prefIndex = prefContainer
-    ? prefContainer.querySelectorAll('[data-row]').length
-    : 0;
-  let cityIndex = cityContainer
-    ? cityContainer.querySelectorAll('[data-row]').length
-    : 0;
+  let prefIndex = prefContainer ? prefContainer.querySelectorAll('[data-row]').length : 0;
+  let cityIndex = cityContainer ? cityContainer.querySelectorAll('[data-row]').length : 0;
+  let tierIndex = tierContainer ? tierContainer.querySelectorAll('[data-row]').length : 0;
 
   function setupRow(root) {
     if (!root) return;
@@ -63,20 +62,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function setupTierRow(root) {
+    if (!root) return;
+    root.querySelectorAll('.js-remove-row').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const row = btn.closest('[data-row]');
+        if (row) { row.remove(); updateEmptyStates(); }
+      });
+    });
+  }
+
   function updateEmptyStates() {
     if (prefEmpty) {
-      const hasRows = !!prefContainer && !!prefContainer.querySelector('[data-row]');
-      prefEmpty.style.display = hasRows ? 'none' : '';
+      prefEmpty.style.display = (prefContainer && prefContainer.querySelector('[data-row]')) ? 'none' : '';
     }
     if (cityEmpty) {
-      const hasRows = !!cityContainer && !!cityContainer.querySelector('[data-row]');
-      cityEmpty.style.display = hasRows ? 'none' : '';
+      cityEmpty.style.display = (cityContainer && cityContainer.querySelector('[data-row]')) ? 'none' : '';
+    }
+    if (tierEmpty) {
+      tierEmpty.style.display = (tierContainer && tierContainer.querySelector('[data-row]')) ? 'none' : '';
     }
   }
 
-  // 既存行にハンドラ付与
   if (prefContainer) setupRow(prefContainer);
   if (cityContainer) setupRow(cityContainer);
+  if (tierContainer) setupTierRow(tierContainer);
   updateEmptyStates();
 
   const addPrefBtn = document.querySelector('.js-add-pref-row');
@@ -98,6 +108,17 @@ document.addEventListener('DOMContentLoaded', () => {
       const html = cityHtmlBase.replace(/__INDEX__/g, String(cityIndex++));
       cityContainer.insertAdjacentHTML('beforeend', html);
       setupRow(cityContainer);
+      updateEmptyStates();
+    });
+  }
+
+  const addTierBtn = document.querySelector('.js-add-tier-row');
+  if (addTierBtn && tplTier && tierContainer) {
+    const tierHtmlBase = tplTier.innerHTML.trim();
+    addTierBtn.addEventListener('click', () => {
+      const html = tierHtmlBase.replace(/__INDEX__/g, String(tierIndex++));
+      tierContainer.insertAdjacentHTML('beforeend', html);
+      setupTierRow(tierContainer);
       updateEmptyStates();
     });
   }

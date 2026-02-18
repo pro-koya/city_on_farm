@@ -97,6 +97,53 @@
       </div>
     </section>
 
+    <!-- 1.5 購入金額に応じた送料割引 -->
+    <section class="sh-card">
+      <div class="sh-card__head">
+        <div>
+          <h2 class="sh-card__title">購入金額に応じた送料割引</h2>
+          <p class="sh-card__hint">
+            購入金額が一定以上の場合、送料を割り引く設定ができます。<br>
+            例）3,000円以上で送料50%割引、5,000円以上で送料無料 など。
+          </p>
+        </div>
+        <button type="button" class="btn btn--ghost btn--sm js-add-tier-row">+ 割引ルールを追加</button>
+      </div>
+      <div class="sh-table sh-table--tiers" data-scope="tier">
+        <div class="sh-table__header">
+          <div>購入金額（円）以上</div>
+          <div>送料の割引率（%）</div>
+          <div class="sh-table__col-actions"></div>
+        </div>
+        <div class="sh-table__body js-tier-rows">
+          <% if (!discountTiers || !discountTiers.length) { %>
+          <p class="sh-table__empty js-tier-empty">割引ルールはまだありません。「追加」ボタンから設定できます。</p>
+          <% } %>
+          <% (discountTiers || []).forEach(function(t, idx) { %>
+          <div class="sh-row" data-row data-index="<%= idx %>">
+            <div class="sh-cell">
+              <div class="sh-input-inline">
+                <input type="number" min="1" step="1" name="discountTiers[<%= idx %>][threshold_min]"
+                  class="sh-input" value="<%= t.threshold_min != null ? t.threshold_min : '' %>" placeholder="例）3000">
+                <span class="sh-input-suffix">円以上</span>
+              </div>
+            </div>
+            <div class="sh-cell">
+              <div class="sh-input-inline">
+                <input type="number" min="0" max="100" step="1" name="discountTiers[<%= idx %>][discount_percent]"
+                  class="sh-input" value="<%= t.discount_percent != null ? t.discount_percent : '' %>" placeholder="例）50">
+                <span class="sh-input-suffix">%割引（100=無料）</span>
+              </div>
+            </div>
+            <div class="sh-cell sh-cell--actions">
+              <button type="button" class="sh-icon-btn js-remove-row" aria-label="このルールを削除">✕</button>
+            </div>
+          </div>
+          <% }); %>
+        </div>
+      </div>
+    </section>
+
     <!-- 2. 都道府県ごとの設定 -->
     <section class="sh-card">
       <div class="sh-card__head">
@@ -279,6 +326,29 @@
       </button>
     </div>
   </form>
+
+  <!-- テンプレート：購入金額に応じた送料割引 -->
+  <template id="tpl-tier-row">
+    <div class="sh-row" data-row data-index="__INDEX__">
+      <div class="sh-cell">
+        <div class="sh-input-inline">
+          <input type="number" min="1" step="1" name="discountTiers[__INDEX__][threshold_min]"
+            class="sh-input" placeholder="例）3000">
+          <span class="sh-input-suffix">円以上</span>
+        </div>
+      </div>
+      <div class="sh-cell">
+        <div class="sh-input-inline">
+          <input type="number" min="0" max="100" step="1" name="discountTiers[__INDEX__][discount_percent]"
+            class="sh-input" placeholder="例）50">
+          <span class="sh-input-suffix">%割引（100=無料）</span>
+        </div>
+      </div>
+      <div class="sh-cell sh-cell--actions">
+        <button type="button" class="sh-icon-btn js-remove-row" aria-label="このルールを削除">✕</button>
+      </div>
+    </div>
+  </template>
 
   <!-- テンプレート：都道府県ルール -->
   <template id="tpl-pref-row">

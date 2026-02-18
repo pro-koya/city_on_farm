@@ -78,8 +78,34 @@
 
         <div class="field">
           <label for="description">商品説明 *</label>
-          <textarea id="description" name="description" rows="8" required
-                    placeholder="栽培方法、味の特徴、保存方法、おすすめレシピなど"><%= product.description_raw || '' %></textarea>
+          <input type="hidden" name="description_html" id="description_html">
+          <div class="description-editor-area">
+            <p class="hint">リッチテキスト（見出し・画像・表など）で編集できます。</p>
+            <button type="button" class="btn btn--ghost" id="openEditorBtn" data-context="product" data-return-url="/seller/listing-edit/<%= product.id %>" data-subject-name="<%= (product.title || '').replace(/"/g, '&quot;') %>">説明をリッチテキストで編集</button>
+          </div>
+          <script>
+            (function(){ var h = <%- JSON.stringify(product.description_html || '') %>;
+              document.getElementById('description_html').value = h;
+            })();
+            (function(){
+              var btn = document.getElementById('openEditorBtn');
+              var htmlEl = document.getElementById('description_html');
+              if (!btn || !htmlEl) return;
+              btn.addEventListener('click', function(){
+                var form = document.createElement('form');
+                form.method = 'POST'; form.action = '/editor';
+                var csrf = <%- JSON.stringify(typeof csrfToken !== 'undefined' ? csrfToken : '') %>;
+                if (csrf) { var i = document.createElement('input'); i.type='hidden'; i.name='_csrf'; i.value=csrf; form.appendChild(i); }
+                var hi = document.createElement('input'); hi.type='hidden'; hi.name='html'; hi.value = htmlEl.value || ''; form.appendChild(hi);
+                var ci = document.createElement('input'); ci.type='hidden'; ci.name='context'; ci.value = btn.dataset.context || 'product'; form.appendChild(ci);
+                var ri = document.createElement('input'); ri.type='hidden'; ri.name='returnUrl'; ri.value = btn.dataset.returnUrl || '/'; form.appendChild(ri);
+                var sn = btn.dataset.subjectName || '';
+                if (sn) { var si = document.createElement('input'); si.type='hidden'; si.name='subjectName'; si.value = sn; form.appendChild(si); }
+                document.body.appendChild(form);
+                form.submit();
+              });
+            })();
+          </script>
           <p class="error" data-for="description"></p>
         </div>
 

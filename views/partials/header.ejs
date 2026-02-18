@@ -31,6 +31,19 @@
     <link rel="canonical" href="<%= canonicalUrl %>" />
   <% } %>
 
+  <!-- JSON-LD: サイト名を明確に指定（検索結果での「Render」表示を防ぐ） -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "セッツマルシェ",
+    "alternateName": "settsu-marche",
+    "url": "<%= typeof siteBaseUrl !== 'undefined' ? siteBaseUrl : 'https://settsu-marche.onrender.com' %>",
+    "description": "セッツマルシェは地域の農家が育てた新鮮な農作物を直接お届けするオンラインマーケット。旬の野菜や果物、こだわりの農産物を生産者から直接購入できます。",
+    "inLanguage": "ja"
+  }
+  </script>
+
   <!-- Open Graph / Facebook -->
   <%
     const siteName = "セッツマルシェ";
@@ -70,6 +83,9 @@
   <% } %>
   <% if (extraCSS2) { %>
     <link rel="stylesheet" href="<%= extraCSS2 %>" />
+  <% } %>
+  <% if (typeof extraCSS3 !== 'undefined' && extraCSS3) { %>
+    <link rel="stylesheet" href="<%= extraCSS3 %>" />
   <% } %>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_green.css"> -->

@@ -243,14 +243,17 @@ async function getPublicProfileWithProducts(userId) {
   const products = await dbQuery(
     `
       SELECT p.*,
+        u.name AS seller_name,
+        pa.name AS seller_partner_name,
+        pa.icon_url AS seller_partner_icon_url,
         (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url
-        FROM products p
-        JOIN users u
-          ON u.id = p.seller_id
-       WHERE u.partner_id = $1::uuid
-       AND p.status='public'
-       ORDER BY p.created_at DESC
-       LIMIT 30
+      FROM products p
+        JOIN users u ON u.id = p.seller_id
+        LEFT JOIN partners pa ON pa.id = u.partner_id
+      WHERE u.partner_id = $1::uuid
+        AND p.status = 'public'
+      ORDER BY p.created_at DESC
+      LIMIT 30
     `,
     [base.seller.partner_id]
   );

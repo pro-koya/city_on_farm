@@ -32,8 +32,9 @@
                   <% for (const partnerId in groupedBySeller) { %>
                     <% const errMsg=(typeof errorsBySeller !=='undefined' && errorsBySeller &&
                       errorsBySeller[partnerId]) ? errorsBySeller[partnerId] : null; %>
+                    <% const freeShipThreshold = (typeof freeShipThresholdBySeller !== 'undefined' && freeShipThresholdBySeller && freeShipThresholdBySeller[partnerId] != null) ? freeShipThresholdBySeller[partnerId] : null; %>
                       <!-- SP -->
-                      <div class="partner-group" id="seller-<%= partnerId %>">
+                      <div class="partner-group" id="seller-<%= partnerId %>" data-free-ship-threshold="<%= freeShipThreshold != null ? freeShipThreshold : '' %>">
                         <div class="partner-info">
                           <p>出品者：<%= groupedBySeller[partnerId][0].seller_partner_name ||
                               groupedBySeller[partnerId][0].seller_name %>
@@ -122,13 +123,11 @@
                               <div class="summary__row">
                                 <span>割引</span><span id="sumDiscount-<%= partnerId %>">-</span>
                               </div>
-                              <div class="summary__row">
-                                <span>送料</span><span id="sumShipping-<%= partnerId %>">-</span>
-                              </div>
                               <hr>
                               <div class="summary__total">
-                                <span>合計（税込）</span><span id="sumTotal-<%= partnerId %>">-</span>
+                                <span>合計（税込・送料別）</span><span id="sumTotal-<%= partnerId %>">-</span>
                               </div>
+                              <p class="summary__shipping-note">※送料は注文手続き時（配送先入力後）に確定します</p>
     
                               <a class="btn btn--lg btn--primary checkoutBtn" data-seller="<%= partnerId %>"
                                 href="/checkout?seller=<%= encodeURIComponent(partnerId) %>">購入手続きへ</a>
@@ -137,7 +136,7 @@
                               </p>
                               <p class="summary__note">お支払いは安全に処理されます</p>
                             </div>
-                            <div class="freeship card" id="freeShip">
+                            <div class="freeship card" id="freeShip-<%= partnerId %>" data-has-threshold="<%= freeShipThreshold != null ? '1' : '0' %>">
                               <p class="freeship__label" id="freeShipLabel-<%= partnerId %>">あと <span
                                   id="freeShipRemain-<%= partnerId %>">-</span> 円で送料無料</p>
                               <div class="freeship__track">

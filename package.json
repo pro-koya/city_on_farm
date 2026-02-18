@@ -10,7 +10,8 @@
     "schema:prod:csv": "psql \"$PGURL\" -v ON_ERROR_STOP=1 -f table-info-production/export-tableSchema.sql",
     "schema:prod:md": "node table-info-production/generate_schema_md.mjs",
     "schema:prod:all": "npm run schema:prod:csv && npm run schema:prod:md",
-    "schema:all": "npm run schema:csv && npm run schema:md"
+    "schema:all": "npm run schema:csv && npm run schema:md",
+    "build:editor": "node scripts/build-editor.mjs"
   },
   "keywords": [],
   "author": "",
@@ -22,6 +23,17 @@
     "@fontsource/noto-sans-jp": "^5.2.8",
     "@simplewebauthn/browser": "^9.0.1",
     "@simplewebauthn/server": "^9.0.3",
+    "@tiptap/core": "^3.19.0",
+    "@tiptap/extension-character-count": "^3.19.0",
+    "@tiptap/extension-image": "^3.19.0",
+    "@tiptap/extension-link": "^3.19.0",
+    "@tiptap/extension-placeholder": "^3.19.0",
+    "@tiptap/extension-table": "^3.19.0",
+    "@tiptap/extension-table-cell": "^3.19.0",
+    "@tiptap/extension-table-header": "^3.19.0",
+    "@tiptap/extension-table-row": "^3.19.0",
+    "@tiptap/extension-underline": "^3.19.0",
+    "@tiptap/starter-kit": "^3.19.0",
     "base32-decode": "^1.0.0",
     "base32-encode": "^2.0.0",
     "base64url": "^3.0.1",
@@ -57,6 +69,7 @@
   },
   "devDependencies": {
     "csv-parse": "^6.1.0",
+    "esbuild": "^0.27.3",
     "nodemon": "^3.1.10"
   }
 }
