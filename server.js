@@ -712,6 +712,9 @@ app.use(async (req, res, next) => {
     // フォント配信（既存処理）
     if (req.path.endsWith('.woff2')) res.type('font/woff2');
 
+    // サイトベースURL（JSON-LD等で使用、検索結果のサイト名表示に影響）
+    res.locals.siteBaseUrl = process.env.SITE_URL || process.env.BASE_URL || 'https://settsu-marche.onrender.com';
+
     // カート件数：デフォルトはセッション内（未ログイン / エラー時フォールバック）
     const sessItems = req.session?.cart?.items || [];
     res.locals.cartCount = sessItems.length;
@@ -4014,6 +4017,41 @@ app.get('/products/:id', async (req, res, next) => {
       sellerHighlight = await getSellerHighlightByUserId(sellerUserId);
     }
 
+    // 配送・送料サマリ（出品者の partner_id に紐づく seller_shipping_rules を取得）
+    let shippingSummary = { hasAny: false };
+    if (sellerUserId) {
+      const userRows = await dbQuery(
+        `SELECT partner_id FROM users WHERE id = $1::uuid LIMIT 1`,
+        [sellerUserId]
+      );
+      const partnerId = userRows[0]?.partner_id || null;
+      if (partnerId) {
+        const rules = await getRulesForSeller(partnerId);
+        if (rules && rules.length > 0) {
+          const globalRule = rules.find(r => r.scope === 'all') || null;
+          const prefectureRules = rules.filter(r => r.scope === 'prefecture');
+          const cityRules = rules.filter(r => r.scope === 'city');
+          let globalLabel = '未設定';
+          if (globalRule) {
+            if (!globalRule.can_ship) {
+              globalLabel = '全国配送不可（個別地域のみ配送）';
+            } else if (globalRule.shipping_fee == null) {
+              globalLabel = '全国配送可（送料未設定）';
+            } else {
+              globalLabel = `全国一律 ${globalRule.shipping_fee}円`;
+            }
+          }
+          shippingSummary = {
+            hasAny: true,
+            globalRule,
+            globalLabel,
+            prefectureRules,
+            cityRules
+          };
+        }
+      }
+    }
+
     // お気に入り状態の取得（ログインユーザーのみ）
     let isFavorited = false;
     if (req.session?.user) {
@@ -4029,6 +4067,7 @@ app.get('/products/:id', async (req, res, next) => {
       title: product.title,
       product, specs, tags, related, reviews, myReview,
       recentlyViewed, currentUser, sellerHighlight,
+      shippingSummary,
       isFavorited, csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
     });
   } catch (e) {
@@ -4167,15 +4206,20 @@ app.get(
         dbQuery(`SELECT id, name, slug FROM categories ORDER BY sort_order NULLS LAST, name ASC`),
         dbQuery(`SELECT id, name, slug FROM tags ORDER BY name ASC`)
       ]);
+      let values = {};
+      if (req.session.editorDraftResult?.context === 'product' && req.session.editorDraftResult?.returnUrl === '/seller/listing-new') {
+        values.description_html = req.session.editorDraftResult.html || '';
+        delete req.session.editorDraftResult;
+      }
       res.render('seller/listing-new', {
         title: '新規出品',
-        categories, tags, values: {}, fieldErrors: {}
+        categories, tags, values, fieldErrors: {}
       });
     } catch (e) { next(e); }
   }
 );
 
-const { renderDescHtml } = require('./services/desc');
+const { renderDescHtml, htmlToRaw } = require('./services/desc');
 // POST 出品保存
 app.post(
   '/seller/listing-new',
@@ -4192,12 +4236,15 @@ app.post(
     body('shipMethod').isIn(['normal','cool']).withMessage('配送方法を選択してください。'),
     body('shipDays').isIn(['1-2','2-3','4-7']).withMessage('発送目安を選択してください。'),
     body('status').isIn(['draft','private','public']).withMessage('ステータスを選択してください。'),
-    body('description').trim().isLength({ min: 1 }).withMessage('商品の詳細説明を入力してください。'),
+    body('description').trim().optional(),
+    body('description_html').optional(),
     body('imageUrls').optional({ checkFalsy: true }).isString(),
     body('tags').optional({ checkFalsy: true })
   ],
   async (req, res, next) => {
     const errors = validationResult(req);
+    const descHtmlRaw = String(req.body.description_html || '').trim();
+    const descRaw = String(req.body.description || '').trim();
     const values = {
       title: req.body.title || '',
       price: req.body.price || '',
@@ -4209,7 +4256,8 @@ app.post(
       status: req.body.status || 'public',
       isOrganic: !!req.body.isOrganic,
       isSeasonal: !!req.body.isSeasonal,
-      description: req.body.description || '',
+      description: descRaw,
+      description_html: descHtmlRaw,
       imageUrls: req.body.imageUrls || '',
       tags: req.body.tags || ''
     };
@@ -4219,6 +4267,16 @@ app.post(
       dbQuery(`SELECT id, name, slug FROM tags ORDER BY name ASC`)
     ]);
 
+    if (!descHtmlRaw && !descRaw) {
+      const fieldErrors = {};
+      for (const e of errors.array()) if (!fieldErrors[e.path]) fieldErrors[e.path] = e.msg;
+      fieldErrors.description = '商品の詳細説明を入力するか、リッチテキストで編集してください。';
+      return res.status(422).render('seller/listing-new', {
+        title: '新規出品',
+        values, categories, tags: tagsMaster,
+        fieldErrors
+      });
+    }
     if (!errors.isEmpty()) {
       const fieldErrors = {};
       for (const e of errors.array()) if (!fieldErrors[e.path]) fieldErrors[e.path] = e.msg;
@@ -4232,8 +4290,8 @@ app.post(
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      const descriptionRaw  = String(req.body.description || '');
-      const descriptionHtml = await renderDescHtml(req.body.description || '');
+      const descriptionHtml = descHtmlRaw ? require('./routes-editor').sanitize(descHtmlRaw) : await renderDescHtml(descRaw);
+      const descriptionRaw  = descHtmlRaw ? htmlToRaw(descHtmlRaw) : descRaw;
 
       const sellerId = req.session.user.id;
 
@@ -4513,9 +4571,14 @@ app.get(
 
       const { htmlToRaw } = require('./services/desc');
       const rawForForm = product.description_raw ? product.description_raw : htmlToRaw(product.description_html || '');
+      let descriptionHtml = product.description_html || '';
+      if (req.session?.editorDraftResult?.html) {
+        descriptionHtml = req.session.editorDraftResult.html;
+        delete req.session.editorDraftResult;
+      }
       return res.render('seller/listing-edit', {
         title: '出品を編集',
-        product: { ...product, description_raw: rawForForm },
+        product: { ...product, description_raw: rawForForm, description_html: descriptionHtml },
         categories, images, specs, tags
       });
     } catch (e) { next(e); }
@@ -4538,7 +4601,8 @@ app.post(
     body('shipMethod').isIn(['normal','cool']).withMessage('配送方法を選択してください。'),
     body('shipDays').isIn(['1-2','2-3','4-7']).withMessage('発送目安を選択してください。'),
     body('status').isIn(['draft','private','public']).withMessage('ステータスを選択してください。'),
-    body('description').trim().isLength({ min: 1 }).withMessage('商品の詳細説明を入力してください。'),
+    body('description').trim().optional(),
+    body('description_html').optional(),
   ],
   async (req, res, next) => {
     const id = String(req.params.id || '').trim();
@@ -4596,7 +4660,26 @@ app.post(
     const status      = req.body.status;
     const isOrganic   = !!req.body.isOrganic;
     const isSeasonal  = !!req.body.isSeasonal;
-    const description = renderDescHtml(req.body.description);
+    const descHtmlRaw = String(req.body.description_html || '').trim();
+    const descRaw     = String(req.body.description || '').trim();
+    if (!descHtmlRaw && !descRaw) {
+      const fieldErrors = { description: '商品の詳細説明を入力するか、リッチテキストで編集してください。' };
+      const [catRows, imgRows, specRows, tagRows] = await Promise.all([
+        dbQuery('SELECT id, name FROM categories ORDER BY sort_order NULLS LAST, name ASC'),
+        dbQuery('SELECT id, url, alt, position FROM product_images WHERE product_id = $1::uuid ORDER BY position ASC', [id]),
+        dbQuery('SELECT id, label, value, position FROM product_specs WHERE product_id = $1::uuid ORDER BY position ASC', [id]),
+        dbQuery(`SELECT t.id, t.name, t.slug FROM product_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.product_id = $1::uuid ORDER BY t.name ASC`, [id])
+      ]);
+      const prodRow = await dbQuery('SELECT * FROM products WHERE id = $1::uuid LIMIT 1', [id]);
+      const prod = prodRow[0] || {};
+      return res.status(422).render('seller/listing-edit', {
+        title: '出品を編集',
+        product: { ...prod, ...req.body },
+        categories: catRows, images: imgRows, specs: specRows, tags: tagRows,
+        fieldErrors
+      });
+    }
+    const description = descHtmlRaw ? (require('./routes-editor').sanitize(descHtmlRaw)) : renderDescHtml(descRaw);
 
     // 画像（既存リスト + 新規URL）
     const imagesPayload = req.body.images || []; // {id?, url, alt?, position}[]
@@ -4658,8 +4741,8 @@ app.post(
         return res.status(404).render('errors/404', { title: '商品が見つかりません' });
       }
 
-      const descriptionRaw  = String(req.body.description || '');
-      const descriptionHtml = await renderDescHtml(req.body.description || '');
+      const descriptionHtml = descHtmlRaw ? (require('./routes-editor').sanitize(descHtmlRaw)) : await renderDescHtml(descRaw);
+      const descriptionRaw  = descHtmlRaw ? htmlToRaw(descHtmlRaw) : descRaw;
       // 本体 UPDATE（slug は据え置き）
       await client.query(
         `UPDATE products SET
@@ -6410,7 +6493,11 @@ async function fetchCartItemsWithDetails(items) {
 
 const {
   getRulesForSeller,
-  saveRulesForSeller
+  saveRulesForSeller,
+  getShippingDiscountPercent,
+  getFreeShipThresholdForSeller,
+  getDiscountTiersForSeller,
+  saveDiscountTiersForSeller
 } = require('./services/shippingRulesService');
 
 function selectShippingRuleForAddress(rules, addr) {
@@ -6506,7 +6593,10 @@ async function buildTotalsForFrontend(req, { shipMethod, sellerId, shippingAddre
         shippingError = '配送先住所が不正です。別の住所を選択してください。';
       }
     } else {
-      shippingOverride = shipRes.shipping;
+      let baseShipping = shipRes.shipping || 0;
+      const subtotal = items.reduce((acc, it) => acc + (toInt(it.price, 0) * toInt(it.quantity, 1)), 0);
+      const discountPct = await getShippingDiscountPercent(sellerId, subtotal);
+      shippingOverride = Math.floor(baseShipping * (1 - discountPct / 100));
     }
   }
 
@@ -6711,10 +6801,12 @@ app.get('/cart', async (req, res, next) => {
     }, {});
 
     const totalPerSeller = new Map();
+    const freeShipThresholdBySeller = {};
     for (const partnerId in groupedBySeller) {
       const perItems = groupedBySeller[partnerId];
       const total = calcTotals(perItems, null);
       totalPerSeller.set(partnerId, total);
+      freeShipThresholdBySeller[partnerId] = await getFreeShipThresholdForSeller(partnerId);
     }
 
     const errorsBySeller = (req.session.cart && req.session.cart.errorsBySeller) || {};
@@ -6725,7 +6817,8 @@ app.get('/cart', async (req, res, next) => {
       items,
       totals,
       req,
-      errorsBySeller
+      errorsBySeller,
+      freeShipThresholdBySeller
     });
     if (req.session?.cart) req.session.cart.errorsBySeller = {};
   } catch (e) { next(e); }
@@ -6763,7 +6856,7 @@ app.post('/cart/add', upload.none(), async (req, res, next) => {
     if (uid) {
       await dbCartAdd(uid, prod.id, Math.min(qtyNum, prod.stock));
       const cartRow = await getOrCreateUserCart(uid);
-      const cntRes = await dbQuery(`SELECT COALESCE(SUM(quantity),0)::int AS cnt FROM cart_items WHERE cart_id = $1 AND saved_for_later=false`, [cartRow.id]);
+      const cntRes = await dbQuery(`SELECT COUNT(*)::int AS cnt FROM cart_items WHERE cart_id = $1 AND saved_for_later=false`, [cartRow.id]);
       return res.json({ ok:true, cartCount: cntRes[0]?.cnt || 0 });
     }
 
@@ -8514,7 +8607,9 @@ app.post('/checkout/confirm', async (req, res, next) => {
         return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
       }
 
-      shipping_fee = shipRes.shipping || 0;
+      let baseShipping = shipRes.shipping || 0;
+      const discountPct = await getShippingDiscountPercent(sellerId, subtotal);
+      shipping_fee = Math.floor(baseShipping * (1 - discountPct / 100));
     }
 
     const total = Math.max(0, subtotal - discount) + shipping_fee;
@@ -11830,16 +11925,20 @@ app.get(
       }
       const seller = sellerRows[0];
 
-      // 既存ルール
-      const rules = await getRulesForSeller(sellerId);
+      // 既存ルール・割引tier
+      const [rules, discountTiers] = await Promise.all([
+        getRulesForSeller(sellerId),
+        getDiscountTiersForSeller(sellerId)
+      ]);
 
       res.render('seller/shipping', {
         title: '送料・配送地域設定',
         action: '/admin/partners/' + sellerId + '/shipping',
         csrfToken: req.csrfToken(),
         seller,
-        partner: {},      // 必要ならパートナー情報を入れてもOK
-        rules
+        partner: {},
+        rules,
+        discountTiers
       });
     } catch (err) {
       next(err);
@@ -11861,8 +11960,15 @@ app.post(
       const defaultRule = req.body.default || null;
       const prefRules   = req.body.prefRules || [];
       const cityRules   = req.body.cityRules || [];
+      const discountTiersRaw = req.body.discountTiers;
+      const discountTiers = Array.isArray(discountTiersRaw)
+        ? discountTiersRaw
+        : (discountTiersRaw ? [discountTiersRaw] : []);
 
-      await saveRulesForSeller(sellerId, { defaultRule, prefRules, cityRules });
+      await Promise.all([
+        saveRulesForSeller(sellerId, { defaultRule, prefRules, cityRules }),
+        saveDiscountTiersForSeller(sellerId, discountTiers)
+      ]);
 
       return res.redirect(`/admin/partners/${encodeURIComponent(sellerId)}/shipping`);
     } catch (err) {
@@ -12995,13 +13101,18 @@ app.get(
 
       // user.id から partner 単位の profile を取得
       const {profile, user} = await getProfileByUserId(loginUser.id);
+      let introHtml = profile?.intro_html || '';
+      if (req.session?.editorDraftResult?.html) {
+        introHtml = req.session.editorDraftResult.html;
+        delete req.session.editorDraftResult;
+      }
+      const profileWithDraft = introHtml ? { ...profile, intro_html: introHtml } : profile;
 
       res.render('seller/profile-edit', {
         title: '出品者紹介ページ編集',
         currentUser: loginUser,
-        profile,
+        profile: profileWithDraft,
         csrfToken: typeof req.csrfToken === 'function' ? req.csrfToken() : null,
-        // 初期表示用（短い紹介文）
         sellerIntroSummary: user.seller_intro_summary || '',
       });
     } catch (e) {
@@ -13178,7 +13289,11 @@ app.get(
   requireAuth,
   requireRole(['admin']),
   (req, res) => {
-    const now = new Date();
+    let bodyHtml = '';
+    if (req.session?.editorDraftResult?.html) {
+      bodyHtml = req.session.editorDraftResult.html;
+      delete req.session.editorDraftResult;
+    }
     res.render('admin/campaigns/new', {
       title: 'キャンペーン新規作成',
       csrfToken: req.csrfToken(),
@@ -13191,7 +13306,7 @@ app.get(
         status: 'draft',
         starts_at: '',
         ends_at: '',
-        body_html: '',
+        body_html: bodyHtml,
         body_raw: '',
         table_labels: [],
         table_values: []
@@ -13366,6 +13481,11 @@ app.get(
         ? (Array.isArray(c.table_values) ? c.table_values : JSON.parse(c.table_values || '[]'))
         : [];
 
+      let bodyHtml = c.body_html || '';
+      if (req.session?.editorDraftResult?.html) {
+        bodyHtml = req.session.editorDraftResult.html;
+        delete req.session.editorDraftResult;
+      }
       const values = {
         id: c.id,
         title: c.title || '',
@@ -13376,7 +13496,7 @@ app.get(
         status: c.status || 'draft',
         starts_at: c.starts_at ? new Date(c.starts_at).toISOString().slice(0,16) : '',
         ends_at:   c.ends_at   ? new Date(c.ends_at).toISOString().slice(0,16)   : '',
-        body_html: c.body_html || '',
+        body_html: bodyHtml,
         body_raw:
           c.body_raw
             ? (typeof c.body_raw === 'string'
@@ -14202,6 +14322,9 @@ registerAdminFinanceRoutes(app, requireAuth, requireRole);
 // ============================================================
 const { registerWebAuthnRoutes } = require('./routes-webauthn');
 registerWebAuthnRoutes(app, requireAuth);
+
+const { registerEditorRoutes } = require('./routes-editor');
+registerEditorRoutes(app, requireAuth);
 
 app.use((req, res) => {
   res.status(404).render('errors/404', { title: 'ページが見つかりません' });

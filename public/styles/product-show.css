@@ -345,54 +345,79 @@ body {
 /* ===== Tabs / Panes ===== */
 .details {
   background: var(--white);
-  border-radius: 12px;
+  border-radius: 16px;
   box-shadow: var(--shadow);
-  padding: 1rem;
-  margin: 1rem 0 1.2rem
+  padding: 0;
+  margin: 1rem 0 1.2rem;
+  overflow: hidden;
 }
 
 .tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 1px;
+  gap: 0;
+  padding: 0 1rem;
+  background: linear-gradient(180deg, #f8faf9 0%, #fff 100%);
+  border-bottom: 1px solid rgba(76, 107, 92, 0.12);
+  position: relative;
 }
 
 .tab {
-  color: var(--text);
+  color: var(--muted);
   border: none;
-  padding: .45rem;
+  padding: 1rem 0.85rem;
   cursor: pointer;
-  font-weight: 700;
-  border-radius: 8px 8px 0 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  background: transparent;
+  position: relative;
+  transition: color 0.2s ease, background 0.2s ease;
+  flex: 1;
+  min-width: 0;
 }
 
-.tab1 {
-  width: 25%;
-}
-
-.tab2 {
-  width: calc(50% - 2px);
-}
-
-.tab3 {
-  width: 25%;
+.tab:hover {
+  color: var(--main);
 }
 
 .tab.is-active {
-  background: var(--hi);
-  color: var(--main)
+  color: var(--main);
+}
+
+.tab.is-active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--main));
+  border-radius: 2px 2px 0 0;
+}
+
+.tab1, .tab2, .tab3, .tab4 {
+  width: auto;
+  flex: 1;
+  min-width: 0;
 }
 
 .panes {
-  margin-top: .8rem
+  padding: 1.25rem 1rem 1rem;
 }
 
 .pane {
-  display: none
+  display: none;
+  animation: paneFade 0.25s ease;
 }
 
 .pane.is-active {
-  display: block
+  display: block;
+}
+
+@keyframes paneFade {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
 }
 
 /* 本文（読みやすさ強化） */
@@ -462,47 +487,187 @@ body {
   text-decoration: underline
 }
 
-/* スペック表 */
+/* スペック表・配送表 共通 */
 .table-wrapper {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  margin: .6rem 0
+  margin: 0 0 1.25rem;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* スペック表（サイズ・選定基準） */
+.specs {
+  margin: 0;
 }
 
 .spec-table {
   width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  border: 1px solid #e5e7eb;
+  border-collapse: collapse;
   border-radius: 12px;
-  overflow: hidden
+  overflow: hidden;
+  background: var(--white);
 }
 
-table th,
-table td {
-  border-radius: 0;
-  text-align: center;
-  padding: 10px 0;
+.spec-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.spec-table tbody tr:nth-child(even) {
+  background: #fafbfc;
+}
+
+.spec-table tbody tr:hover {
+  background: rgba(163, 201, 168, 0.12);
 }
 
 .spec-table th,
 .spec-table td {
-  padding: .7rem .9rem;
-  border-bottom: .25px solid var(--border);
-  border-radius: 0;
+  padding: 0.9rem 1.1rem;
+  text-align: left;
+  font-size: 0.95rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .spec-table th {
-  width: 35%;
-  border-right: .25px solid var(--border);
+  width: 36%;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.02em;
 }
 
 .spec-table td {
-  width: 65%;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.spec-table tbody tr:last-child th,
+.spec-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* 選定基準 */
+.criteria {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .criteria h4 {
-  margin: 1rem 0 .4rem
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--main);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.criteria ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.criteria li {
+  position: relative;
+  padding-left: 1.25rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.criteria li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 5px;
+  height: 5px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+/* 配送・送料タブ */
+.shipping-info {
+  margin: 0;
+}
+
+.shipping-info__intro {
+  margin-bottom: 1.25rem;
+  padding: 0.85rem 1rem;
+  background: linear-gradient(135deg, rgba(214, 234, 223, 0.5) 0%, rgba(163, 201, 168, 0.15) 100%);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.shipping-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--white);
+}
+
+.shipping-table thead {
+  background: linear-gradient(135deg, var(--main) 0%, #5a7a6a 100%);
+  color: var(--white);
+}
+
+.shipping-table thead th {
+  padding: 0.85rem 1.1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+.shipping-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.shipping-table tbody tr:nth-child(even) {
+  background: #fafbfc;
+}
+
+.shipping-table tbody tr:hover {
+  background: rgba(163, 201, 168, 0.1);
+}
+
+.shipping-table tbody td {
+  padding: 0.85rem 1.1rem;
+  font-size: 0.95rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  text-align: left;
+}
+
+.shipping-table tbody td:first-child {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.shipping-table tbody td:nth-child(2) {
+  font-weight: 600;
+  color: var(--main);
+}
+
+.shipping-table tbody td:nth-child(3) {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.shipping-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.shipping-table .muted {
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 /* レビュー */
@@ -828,6 +993,38 @@ table td {
 
   .details p, .spec-table th, .spec-table td {
     font-size: 0.9rem;
+  }
+
+  .tabs {
+    padding: 0 0.75rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab {
+    flex: 0 0 auto;
+    padding: 0.9rem 0.7rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+
+  .shipping-table thead th,
+  .shipping-table tbody td {
+    padding: 0.7rem 0.9rem;
+    font-size: 0.88rem;
+  }
+
+  .shipping-info__intro {
+    padding: 0.7rem 0.9rem;
+    font-size: 0.85rem;
   }
 }
 

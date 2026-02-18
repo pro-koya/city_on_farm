@@ -1,5 +1,4 @@
-<%- include('../partials/header', { title: product.title, extraCSS2: '',
-  extraCSS: '/styles/product-show.css' }) %>
+<%- include('../partials/header', { title: product.title, extraCSS: '/styles/product-show.css', extraCSS2: '/styles/prose-tables.css' }) %>
 
 <main class="product-page" itemscope itemtype="https://schema.org/Product">
   <a href="/products">←商品一覧へ</a>
@@ -298,7 +297,8 @@
     <div class="tabs" role="tablist">
       <button class="tab is-active tab1" role="tab" data-tab="desc">商品説明</button>
       <button class="tab tab2" role="tab" data-tab="specs">サイズ・選定基準</button>
-      <button class="tab tab3" role="tab" data-tab="reviews">レビュー</button>
+      <button class="tab tab3" role="tab" data-tab="shipping">配送・送料</button>
+      <button class="tab tab4" role="tab" data-tab="reviews">レビュー</button>
     </div>
 
     <div class="panes">
@@ -334,6 +334,72 @@
               <% }) %>
             </ul>
           </div>
+          <% } %>
+        </div>
+      </article>
+
+      <!-- 配送・送料 -->
+      <article id="pane-shipping" class="pane" role="tabpanel">
+        <div class="shipping-info">
+          <% if (shippingSummary && shippingSummary.hasAny) { %>
+            <div class="shipping-info__intro">
+              <p>出品者（<%= sellerHighlight ? sellerHighlight.name : 'この商品の出品者' %>）が設定している配送可能地域と送料です。</p>
+            </div>
+            <div class="table-wrapper">
+              <table class="shipping-table">
+                <thead>
+                  <tr>
+                    <th scope="col">地域</th>
+                    <th scope="col">送料（税込）</th>
+                    <th scope="col">備考</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% if (shippingSummary.globalRule) { %>
+                    <tr>
+                      <td>全国（上記以外）</td>
+                      <% if (shippingSummary.globalRule.can_ship) { %>
+                        <td><%= shippingSummary.globalRule.shipping_fee != null ? shippingSummary.globalRule.shipping_fee + '円' : '要問い合わせ' %></td>
+                        <td>都道府県・市区町村で個別設定されていない地域に適用</td>
+                      <% } else { %>
+                        <td>配送不可</td>
+                        <td>個別に指定した地域のみ配送可</td>
+                      <% } %>
+                    </tr>
+                  <% } %>
+                  <% if (shippingSummary.prefectureRules && shippingSummary.prefectureRules.length) { %>
+                    <% shippingSummary.prefectureRules.forEach(function(r){ %>
+                      <tr>
+                        <td><%= r.prefecture %></td>
+                        <% if (r.can_ship) { %>
+                          <td><%= r.shipping_fee != null ? r.shipping_fee + '円' : '要問い合わせ' %></td>
+                          <td></td>
+                        <% } else { %>
+                          <td>配送不可</td>
+                          <td></td>
+                        <% } %>
+                      </tr>
+                    <% }) %>
+                  <% } %>
+                  <% if (shippingSummary.cityRules && shippingSummary.cityRules.length) { %>
+                    <% shippingSummary.cityRules.forEach(function(r){ %>
+                      <tr>
+                        <td><%= r.prefecture %><%= r.city ? ' ' + r.city : '' %></td>
+                        <% if (r.can_ship) { %>
+                          <td><%= r.shipping_fee != null ? r.shipping_fee + '円' : '要問い合わせ' %></td>
+                          <td></td>
+                        <% } else { %>
+                          <td>配送不可</td>
+                          <td></td>
+                        <% } %>
+                      </tr>
+                    <% }) %>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+          <% } else { %>
+            <p class="muted">配送・送料の設定情報はありません。注文ページでご確認いただくか、出品者にお問い合わせください。</p>
           <% } %>
         </div>
       </article>

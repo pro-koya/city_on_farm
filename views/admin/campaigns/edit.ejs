@@ -1,7 +1,7 @@
 <%- include('../../partials/header', {
   title,
-  extraCSS2: 'https://cdn.quilljs.com/1.3.7/quill.snow.css',
-  extraCSS: '/styles/admin-campaigns.css'
+  extraCSS: '/styles/admin-campaigns.css',
+  extraCSS2: ''
 }) %>
 
 <main class="admin-main">
@@ -26,8 +26,6 @@
   </section>
 </main>
 
-<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/johnny-quill-image-resize-module@3.0.2/image-resize.min.js"></script>
 <script src="/js/uploader-r2.js"></script>
 <script src="/js/admin-campaign-edit.js"></script>
 <%- include('../../partials/footer') %>

@@ -197,8 +197,100 @@ async function saveRulesForSeller(sellerId, { defaultRule, prefRules, cityRules 
   }
 }
 
+/**
+ * 購入金額に応じた送料割引率を取得（0〜100、100=無料）
+ * subtotal 以上で適用される最高の tier を返す
+ */
+async function getShippingDiscountPercent(sellerId, subtotal) {
+  const rows = await dbQuery(
+    `
+      SELECT discount_percent
+        FROM seller_shipping_discount_tiers
+       WHERE seller_id = $1
+         AND threshold_min <= $2
+       ORDER BY threshold_min DESC
+       LIMIT 1
+    `,
+    [sellerId, Math.floor(Number(subtotal) || 0)]
+  );
+  return rows[0]?.discount_percent ?? 0;
+}
+
+/**
+ * 送料無料になる購入金額のしきい値（円）を取得
+ * discount_percent=100 の tier のうち、最小の threshold_min を返す。なければ null
+ */
+async function getFreeShipThresholdForSeller(sellerId) {
+  const rows = await dbQuery(
+    `
+      SELECT MIN(threshold_min) AS threshold
+        FROM seller_shipping_discount_tiers
+       WHERE seller_id = $1
+         AND discount_percent >= 100
+    `,
+    [sellerId]
+  );
+  const v = rows[0]?.threshold;
+  return v != null ? Number(v) : null;
+}
+
+/**
+ * 送料割引 tier 一覧を取得
+ */
+async function getDiscountTiersForSeller(sellerId) {
+  const rows = await dbQuery(
+    `
+      SELECT id, threshold_min, discount_percent
+        FROM seller_shipping_discount_tiers
+       WHERE seller_id = $1
+       ORDER BY threshold_min ASC
+    `,
+    [sellerId]
+  );
+  return rows;
+}
+
+/**
+ * 送料割引 tier を保存（既存削除→一括挿入）
+ * @param {string} sellerId - partner_id
+ * @param {Array|object} tiers - フォームから来る配列またはオブジェクト
+ */
+async function saveDiscountTiersForSeller(sellerId, tiers) {
+  await dbQuery(
+    `DELETE FROM seller_shipping_discount_tiers WHERE seller_id = $1`,
+    [sellerId]
+  );
+  let arr = [];
+  if (Array.isArray(tiers)) {
+    arr = tiers;
+  } else if (tiers && typeof tiers === 'object') {
+    arr = Object.keys(tiers)
+      .filter(k => /^\d+$/.test(k))
+      .map(k => tiers[k])
+      .filter(Boolean);
+  }
+  for (const t of arr) {
+    const th = t.threshold_min !== undefined && t.threshold_min !== '' ? t.threshold_min : null;
+    const pc = t.discount_percent !== undefined && t.discount_percent !== '' ? t.discount_percent : null;
+    const threshold = Math.max(0, parseInt(th, 10) || 0);
+    const pct = Math.max(0, Math.min(100, parseInt(pc, 10) || 0));
+    if (threshold <= 0) continue;
+    await dbQuery(
+      `
+        INSERT INTO seller_shipping_discount_tiers (seller_id, threshold_min, discount_percent)
+        VALUES ($1, $2, $3)
+      `,
+      [sellerId, threshold, pct]
+    );
+  }
+}
+
 module.exports = {
   getRulesForSeller,
   saveRulesForSeller,
-  normalizeRulesFromForm
+  normalizeRulesFromForm,
+  getShippingDiscountPercent,
+  getFreeShipThresholdForSeller,
+  getDiscountTiersForSeller,
+  saveDiscountTiersForSeller
 };

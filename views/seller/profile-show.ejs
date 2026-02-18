@@ -2,7 +2,8 @@
     <%- include('../partials/header', {
     title,
     extraCSS: '/styles/products.css',
-    extraCSS2: '/styles/seller-profile.css'
+    extraCSS2: '/styles/seller-profile.css',
+    extraCSS3: '/styles/prose-tables.css'
     }) %>
 <% } else { %>
   <!-- 埋め込みモード：header は読み込まないが CSS は適用 -->
@@ -15,6 +16,7 @@
     <!-- ここで CSS を直接読み込む -->
     <link rel="stylesheet" href="/styles/products.css">
     <link rel="stylesheet" href="/styles/seller-profile.css">
+    <link rel="stylesheet" href="/styles/prose-tables.css">
   </head>
   <body class="seller-embed">
 <% } %>
@@ -134,6 +136,13 @@
 
 <script src="/js/products.js"></script>
 <script src="/js/seller-profile.js" defer></script>
+<% if (isEmbed) { %>
+<script>
+  document.querySelectorAll('a[href]').forEach(function(a) {
+    a.setAttribute('target', '_top');
+  });
+</script>
+<% } %>
 <% if (!isEmbed) { %>
   <%- include('../partials/footer') %>
 <% } %>

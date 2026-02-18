@@ -1,0 +1,384 @@
+<%- include('../partials/header', {
+  title: pageTitle || 'リッチテキスト編集',
+  extraCSS: '/styles/editor.css',
+  extraCSS2: ''
+}) %>
+
+<main class="editor-page">
+  <header class="editor-header">
+    <a href="<%= returnUrl %>" class="editor-back">← 戻る</a>
+    <div class="editor-title-area">
+      <h1 class="editor-title"><%= pageTitle %></h1>
+      <% if (typeof subjectName !== 'undefined' && subjectName) { %>
+        <span class="editor-subject"><%= subjectName %></span>
+      <% } %>
+    </div>
+    <button type="button" class="editor-save" id="btnSave">保存して戻る</button>
+  </header>
+
+  <div class="editor-body">
+    <div class="editor-toolbar" id="editorToolbar">
+      <div class="toolbar-group">
+        <button type="button" data-action="heading" data-level="2" title="見出し2">H2</button>
+        <button type="button" data-action="heading" data-level="3" title="見出し3">H3</button>
+        <button type="button" data-action="heading" data-level="4" title="見出し4">H4</button>
+      </div>
+      <div class="toolbar-group">
+        <button type="button" data-action="bold" title="太字">B</button>
+        <button type="button" data-action="italic" title="斜体">I</button>
+        <button type="button" data-action="underline" title="下線">U</button>
+        <button type="button" data-action="strike" title="取り消し線">S</button>
+      </div>
+      <div class="toolbar-group">
+        <button type="button" data-action="bulletList" title="箇条書き">•</button>
+        <button type="button" data-action="orderedList" title="番号付きリスト">1.</button>
+        <button type="button" data-action="blockquote" title="引用">"</button>
+      </div>
+      <div class="toolbar-group">
+        <button type="button" data-action="image" title="画像を挿入">🖼</button>
+      </div>
+      <div class="toolbar-group">
+        <button type="button" data-action="table" title="表を挿入">表</button>
+        <button type="button" data-action="horizontalRule" title="区切り線">—</button>
+      </div>
+    </div>
+
+    <div id="editorMount" class="editor-mount"></div>
+
+    <!-- 画像挿入モーダル（タブ：新規アップロード / ライブラリ） -->
+    <div id="imageInsertModal" class="editor-image-modal" aria-hidden="true" role="dialog" aria-labelledby="imageInsertModalTitle">
+      <div class="editor-image-modal__backdrop"></div>
+      <div class="editor-image-modal__panel">
+        <header class="editor-image-modal__header">
+          <h2 id="imageInsertModalTitle" class="editor-image-modal__title">画像を挿入</h2>
+          <button type="button" class="editor-image-modal__close" aria-label="閉じる">×</button>
+        </header>
+        <div class="editor-image-modal__tabs" role="tablist">
+          <button type="button" class="editor-image-modal__tab is-active" role="tab" aria-selected="true" data-tab="upload">新規アップロード</button>
+          <button type="button" class="editor-image-modal__tab" role="tab" aria-selected="false" data-tab="library">ライブラリから選択</button>
+        </div>
+        <div class="editor-image-modal__body">
+          <div id="imageInsertPaneUpload" class="editor-image-modal__pane is-active" role="tabpanel">
+            <div class="editor-image-modal__upload-zone" id="imageUploadZone">
+              <p class="editor-image-modal__upload-hint">ファイルをドラッグ＆ドロップするか、下のボタンから選択</p>
+              <input type="file" id="imageFileInputInModal" accept="image/*" class="editor-image-modal__file-input">
+              <button type="button" class="editor-image-modal__btn editor-image-modal__btn--primary" id="imageUploadTrigger">ファイルを選択</button>
+              <p id="imageUploadStatus" class="editor-image-modal__status" aria-live="polite"></p>
+            </div>
+          </div>
+          <div id="imageInsertPaneLibrary" class="editor-image-modal__pane editor-image-modal__pane--library" role="tabpanel" hidden>
+            <div class="editor-image-modal__library-toolbar">
+              <input type="search" id="imageLibSearch" placeholder="検索" class="editor-image-modal__search">
+              <button type="button" id="imageLibSearchBtn" class="editor-image-modal__btn editor-image-modal__btn--secondary">検索</button>
+            </div>
+            <div id="imageLibBody" class="editor-image-modal__library-body">読み込み中…</div>
+            <div class="editor-image-modal__library-footer">
+              <button type="button" id="imageLibInsertBtn" class="editor-image-modal__btn editor-image-modal__btn--primary" disabled>選択した画像を挿入</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="application/json" id="editorInitialHtmlData"><%- typeof initialHtmlSafeJson !== 'undefined' ? initialHtmlSafeJson : '""' %></script>
+  <input type="hidden" name="_csrf" id="csrfInput" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+</main>
+
+<script src="/js/editor-bundle.js"></script>
+<script>
+(function() {
+  const mount = document.getElementById('editorMount');
+  const btnSave = document.getElementById('btnSave');
+  const returnUrl = <%- JSON.stringify(returnUrl || '/') %>;
+  const context = <%- JSON.stringify(context || 'default') %>;
+
+  if (!mount || typeof RichTextEditor === 'undefined' || !RichTextEditor.createEditor) {
+    console.error('Editor not loaded');
+    return;
+  }
+
+  var initialHtml = '';
+  try {
+    var dataEl = document.getElementById('editorInitialHtmlData');
+    if (dataEl && dataEl.textContent) initialHtml = JSON.parse(dataEl.textContent);
+  } catch (e) { console.warn('Editor initial HTML parse failed', e); }
+  if (typeof initialHtml !== 'string') initialHtml = '';
+  var editor = RichTextEditor.createEditor(mount, {
+    initialHtml,
+    context,
+    onUpdate: function() {}
+  });
+
+  // Toolbar handlers
+  function updateToolbarActive() {
+    document.querySelectorAll('#editorToolbar [data-action]').forEach(function(btn) {
+      var active = false;
+      var action = btn.dataset.action;
+      var level = btn.dataset.level ? parseInt(btn.dataset.level, 10) : null;
+      if (action === 'heading' && level) active = editor.isActive('heading', { level: level });
+      else if (action === 'bold') active = editor.isActive('bold');
+      else if (action === 'italic') active = editor.isActive('italic');
+      else if (action === 'underline') active = editor.isActive('underline');
+      else if (action === 'strike') active = editor.isActive('strike');
+      else if (action === 'bulletList') active = editor.isActive('bulletList');
+      else if (action === 'orderedList') active = editor.isActive('orderedList');
+      else if (action === 'blockquote') active = editor.isActive('blockquote');
+      btn.classList.toggle('is-active', !!active);
+    });
+  }
+  editor.on('selectionUpdate', updateToolbarActive);
+  editor.on('transaction', updateToolbarActive);
+  updateToolbarActive();
+
+  document.getElementById('editorToolbar')?.addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-action]');
+    if (!btn || !editor) return;
+    const action = btn.dataset.action;
+    const level = btn.dataset.level ? parseInt(btn.dataset.level, 10) : null;
+    if (action === 'heading' && level) {
+      editor.chain().focus().toggleHeading({ level }).run();
+    } else if (action === 'bold') editor.chain().focus().toggleBold().run();
+    else if (action === 'italic') editor.chain().focus().toggleItalic().run();
+    else if (action === 'underline') editor.chain().focus().toggleUnderline().run();
+    else if (action === 'strike') editor.chain().focus().toggleStrike().run();
+    else if (action === 'bulletList') editor.chain().focus().toggleBulletList().run();
+    else if (action === 'orderedList') editor.chain().focus().toggleOrderedList().run();
+    else if (action === 'blockquote') editor.chain().focus().toggleBlockquote().run();
+    else if (action === 'horizontalRule') editor.chain().focus().setHorizontalRule().run();
+    else if (action === 'table') {
+      var rows = parseInt(prompt('行数（2〜10）', '3'), 10) || 3;
+      var cols = parseInt(prompt('列数（2〜8）', '3'), 10) || 3;
+      rows = Math.max(2, Math.min(10, rows));
+      cols = Math.max(2, Math.min(8, cols));
+      var withHeader = confirm('1行目をヘッダーにしますか？');
+      var ok = editor.chain().focus().insertTable({ rows: rows, cols: cols, withHeaderRow: withHeader }).run();
+      if (!ok) {
+        var thRow = '<tr>' + Array(cols).fill('<th></th>').join('') + '</tr>';
+        var tdRow = '<tr>' + Array(cols).fill('<td></td>').join('') + '</tr>';
+        var thead = withHeader ? '<thead>' + thRow + '</thead>' : '';
+        var tbody = '<tbody>' + Array(withHeader ? rows - 1 : rows).fill(tdRow).join('') + '</tbody>';
+        var tbl = '<table class="editor-table">' + thead + tbody + '</table>';
+        editor.chain().focus().insertContent(tbl).run();
+      }
+    } else if (action === 'link') {
+      const url = prompt('URLを入力してください');
+      if (url) editor.chain().focus().setLink({ href: url }).run();
+    } else if (action === 'image') {
+      window._editorOpenImageModal?.(editor);
+    }
+    setTimeout(updateToolbarActive, 0);
+  });
+
+  var imageInsertModal = document.getElementById('imageInsertModal');
+  var imageUploadZone = document.getElementById('imageUploadZone');
+  var imageFileInputInModal = document.getElementById('imageFileInputInModal');
+  var imageUploadTrigger = document.getElementById('imageUploadTrigger');
+  var imageUploadStatus = document.getElementById('imageUploadStatus');
+
+  function closeImageModal() {
+    if (imageInsertModal) {
+      imageInsertModal.classList.remove('is-open');
+      imageInsertModal.setAttribute('aria-hidden', 'true');
+    }
+  }
+  function openImageModal() {
+    if (imageInsertModal) {
+      imageInsertModal.classList.add('is-open');
+      imageInsertModal.setAttribute('aria-hidden', 'false');
+      document.querySelector('#imageInsertModal .editor-image-modal__tab[data-tab="upload"]')?.click();
+    }
+  }
+  imageInsertModal?.querySelector('.editor-image-modal__backdrop')?.addEventListener('click', closeImageModal);
+  imageInsertModal?.querySelector('.editor-image-modal__close')?.addEventListener('click', closeImageModal);
+
+  document.querySelectorAll('#imageInsertModal .editor-image-modal__tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      var t = tab.dataset.tab;
+      document.querySelectorAll('#imageInsertModal .editor-image-modal__tab').forEach(function(x) {
+        x.classList.toggle('is-active', x.dataset.tab === t);
+        x.setAttribute('aria-selected', x.dataset.tab === t ? 'true' : 'false');
+      });
+      document.querySelectorAll('#imageInsertModal .editor-image-modal__pane').forEach(function(p) {
+        var isUpload = p.id === 'imageInsertPaneUpload';
+        var show = (t === 'upload' && isUpload) || (t === 'library' && !isUpload);
+        p.classList.toggle('is-active', show);
+        p.hidden = !show;
+      });
+      if (t === 'library') window._editorLoadLibraryTab?.();
+    });
+  });
+
+  if (imageUploadTrigger && imageFileInputInModal) {
+    imageUploadTrigger.addEventListener('click', function() { imageFileInputInModal.click(); });
+  }
+  imageFileInputInModal?.addEventListener('change', function(e) {
+    var file = e.target.files && e.target.files[0];
+    if (file && file.type.startsWith('image/') && editor) {
+      window._editorImageUpload?.(editor, file, {
+        onSuccess: function() { closeImageModal(); e.target.value = ''; },
+        onFail: function(msg) { if (imageUploadStatus) imageUploadStatus.textContent = msg || 'アップロードに失敗しました'; },
+        statusEl: imageUploadStatus
+      });
+    }
+    e.target.value = '';
+  });
+  if (imageUploadZone) {
+    imageUploadZone.addEventListener('dragover', function(e) { e.preventDefault(); imageUploadZone.classList.add('is-dragover'); });
+    imageUploadZone.addEventListener('dragleave', function() { imageUploadZone.classList.remove('is-dragover'); });
+    imageUploadZone.addEventListener('drop', function(e) {
+      e.preventDefault();
+      imageUploadZone.classList.remove('is-dragover');
+      var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/') && editor) {
+        window._editorImageUpload?.(editor, file, {
+          onSuccess: function() { closeImageModal(); },
+          onFail: function(msg) { if (imageUploadStatus) imageUploadStatus.textContent = msg || 'アップロードに失敗しました'; },
+          statusEl: imageUploadStatus
+        });
+      }
+    });
+  }
+
+  window._editorOpenImageModal = function(ed) {
+    editor = ed;
+    if (imageUploadStatus) imageUploadStatus.textContent = '';
+    openImageModal();
+  };
+
+  var librarySelectedUrl = null;
+  window._editorLoadLibraryTab = async function() {
+    var body = document.getElementById('imageLibBody');
+    if (!body) return;
+    body.textContent = '読み込み中…';
+    try {
+      var u = new URL('/uploads/library', location.origin);
+      u.searchParams.set('page', 1);
+      u.searchParams.set('pageSize', 24);
+      var r = await fetch(u, { credentials: 'same-origin' });
+      if (!r.ok) throw new Error('fetch failed');
+      var data = await r.json();
+      var items = data.items || [];
+      librarySelectedUrl = null;
+      document.getElementById('imageLibInsertBtn').disabled = true;
+      if (!items.length) { body.innerHTML = '<p class="editor-image-modal__muted">画像がありません。</p>'; return; }
+      body.innerHTML = '<ul class="editor-image-modal__grid">' + items.map(function(it) {
+        return '<li class="editor-image-modal__grid-item" data-url="' + (it.url||'').replace(/"/g,'&quot;') + '">' +
+          '<img src="' + (it.url||'') + '" alt="" loading="lazy">' + '</li>';
+      }).join('') + '</ul>';
+      body.querySelectorAll('.editor-image-modal__grid-item').forEach(function(li) {
+        li.addEventListener('click', function() {
+          body.querySelectorAll('.editor-image-modal__grid-item').forEach(function(x) { x.classList.remove('is-selected'); });
+          li.classList.add('is-selected');
+          librarySelectedUrl = li.dataset.url;
+          document.getElementById('imageLibInsertBtn').disabled = false;
+        });
+      });
+    } catch (err) {
+      body.innerHTML = '<p class="editor-image-modal__muted editor-image-modal__error">読み込みに失敗しました。</p>';
+    }
+  };
+  document.getElementById('imageLibSearchBtn')?.addEventListener('click', function() {
+    var q = document.getElementById('imageLibSearch').value.trim();
+    var body = document.getElementById('imageLibBody');
+    body.textContent = '読み込み中…';
+    fetch(new URL('/uploads/library', location.origin) + '?page=1&pageSize=24&q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var items = data.items || [];
+        if (!items.length) { body.innerHTML = '<p class="editor-image-modal__muted">画像がありません。</p>'; return; }
+        body.innerHTML = '<ul class="editor-image-modal__grid">' + items.map(function(it) {
+          return '<li class="editor-image-modal__grid-item" data-url="' + (it.url||'').replace(/"/g,'&quot;') + '">' +
+            '<img src="' + (it.url||'') + '" alt="" loading="lazy">' + '</li>';
+        }).join('') + '</ul>';
+        body.querySelectorAll('.editor-image-modal__grid-item').forEach(function(li) {
+          li.addEventListener('click', function() {
+            body.querySelectorAll('.editor-image-modal__grid-item').forEach(function(x) { x.classList.remove('is-selected'); });
+            li.classList.add('is-selected');
+            librarySelectedUrl = li.dataset.url;
+            document.getElementById('imageLibInsertBtn').disabled = false;
+          });
+        });
+      }).catch(function() { body.innerHTML = '<p class="editor-image-modal__error">読み込みに失敗しました。</p>'; });
+  });
+  document.getElementById('imageLibInsertBtn')?.addEventListener('click', function() {
+    if (librarySelectedUrl && editor) {
+      editor.chain().focus().setImage({ src: librarySelectedUrl }).run();
+      closeImageModal();
+    }
+  });
+
+  window._editorImageUpload = function(ed, file, opts) {
+    if (!ed) return;
+    opts = opts || {};
+    var statusEl = opts.statusEl;
+    var onSuccess = opts.onSuccess || function() {};
+    var onFail = opts.onFail || function(msg) { alert(msg || '画像のアップロードに失敗しました'); };
+    function setStatus(text) { if (statusEl) statusEl.textContent = text || ''; }
+    setStatus('アップロード中…');
+    fetch('/uploads/sign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.getElementById('csrfInput')?.value || '' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ mime: file.type, ext: (file.name.split('.').pop() || 'jpg').toLowerCase(), bytes: file.size })
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      if (data.exists && data.image && data.image.url) {
+        ed.chain().focus().setImage({ src: data.image.url }).run();
+        setStatus('');
+        onSuccess();
+        return;
+      }
+      return fetch(data.putUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } })
+        .then(function(putRes) { if (!putRes.ok) throw new Error('Upload failed'); return putRes; })
+        .then(function() {
+          return fetch('/uploads/confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.getElementById('csrfInput')?.value || '' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ key: data.key, mime: file.type, bytes: file.size })
+          });
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(confirmData) {
+          var url = (confirmData.image && confirmData.image.url) || confirmData.url;
+          if (url) {
+            ed.chain().focus().setImage({ src: url }).run();
+            setStatus('');
+            onSuccess();
+          } else {
+            setStatus('');
+            onFail('画像の登録に失敗しました');
+          }
+        });
+    }).catch(function(err) {
+      console.error(err);
+      setStatus('');
+      onFail('画像のアップロードに失敗しました');
+    });
+  };
+
+  btnSave?.addEventListener('click', function() {
+    const html = editor?.getHTML() || '';
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/api/editor/draft';
+    const csrf = document.getElementById('csrfInput');
+    if (csrf?.value) {
+      const inp = document.createElement('input');
+      inp.type = 'hidden'; inp.name = '_csrf'; inp.value = csrf.value;
+      form.appendChild(inp);
+    }
+    const htmlInp = document.createElement('input');
+    htmlInp.type = 'hidden'; htmlInp.name = 'html'; htmlInp.value = html;
+    form.appendChild(htmlInp);
+    const returnInp = document.createElement('input');
+    returnInp.type = 'hidden'; returnInp.name = 'returnUrl'; returnInp.value = returnUrl;
+    form.appendChild(returnInp);
+    const ctxInp = document.createElement('input');
+    ctxInp.type = 'hidden'; ctxInp.name = 'context'; ctxInp.value = context;
+    form.appendChild(ctxInp);
+    document.body.appendChild(form);
+    form.submit();
+  });
+})();
+</script>
