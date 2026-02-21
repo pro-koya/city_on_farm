@@ -40,6 +40,7 @@ public,products,,20
 public,r2_assets,,8
 public,seller_profile_values,,2
 public,seller_profiles,,13
+public,seller_shipping_discount_tiers,購入金額に応じた送料割引率。例: 3000円以上50%割引、5000円以上100%無料,5
 public,seller_shipping_rules,,10
 public,seller_value_tags,,3
 public,shipments,,9

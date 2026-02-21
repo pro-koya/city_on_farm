@@ -196,6 +196,8 @@ public,seller_profiles,idx_seller_profiles_last_updated_by_user,CREATE INDEX idx
 public,seller_profiles,idx_seller_profiles_partner_id,CREATE INDEX idx_seller_profiles_partner_id ON public.seller_profiles USING btree (partner_id),f,f
 public,seller_profiles,seller_profiles_pkey,CREATE UNIQUE INDEX seller_profiles_pkey ON public.seller_profiles USING btree (id),t,t
 public,seller_profiles,ux_seller_profiles_partner,CREATE UNIQUE INDEX ux_seller_profiles_partner ON public.seller_profiles USING btree (partner_id),t,f
+public,seller_shipping_discount_tiers,idx_shipping_discount_tiers_seller,CREATE INDEX idx_shipping_discount_tiers_seller ON public.seller_shipping_discount_tiers USING btree (seller_id),f,f
+public,seller_shipping_discount_tiers,seller_shipping_discount_tiers_pkey,CREATE UNIQUE INDEX seller_shipping_discount_tiers_pkey ON public.seller_shipping_discount_tiers USING btree (id),t,t
 public,seller_shipping_rules,seller_shipping_rules_pkey,CREATE UNIQUE INDEX seller_shipping_rules_pkey ON public.seller_shipping_rules USING btree (id),t,t
 public,seller_shipping_rules,ux_seller_shipping_default,CREATE UNIQUE INDEX ux_seller_shipping_default ON public.seller_shipping_rules USING btree (seller_id) WHERE (scope = 'all'::shipping_scope),t,f
 public,seller_shipping_rules,ux_seller_shipping_region,"CREATE UNIQUE INDEX ux_seller_shipping_region ON public.seller_shipping_rules USING btree (seller_id, scope, prefecture, city) WHERE (scope <> 'all'::shipping_scope)",t,f

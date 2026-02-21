@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2026-02-20T18:49:52.665Z
+> Generated at: 2026-02-21T18:36:02.145Z
 
 ---
 
@@ -2309,6 +2309,41 @@ _No indexes_
   
   ```sql
   CREATE UNIQUE INDEX ux_seller_profiles_partner ON public.seller_profiles USING btree (partner_id)
+  ```
+
+---
+
+### `public.seller_shipping_discount_tiers`
+
+購入金額に応じた送料割引率。例: 3000円以上50%割引、5000円以上100%無料
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `seller_id` | `uuid` | NO |  |  |
+| 3 | `threshold_min` | `integer` | NO |  |  |
+| 4 | `discount_percent` | `integer` | NO | 0 |  |
+| 5 | `created_at` | `timestamp with time zone` | YES | now() |  |
+
+**Constraints**
+
+- **CHECK**: `chk_discount_pct`, `chk_threshold`, `seller_shipping_discount_tiers_discount_percent_not_null`, `seller_shipping_discount_tiers_id_not_null`, `seller_shipping_discount_tiers_seller_id_not_null`, `seller_shipping_discount_tiers_threshold_min_not_null`
+- **FOREIGN KEY**: `seller_shipping_discount_tiers_seller_id_fkey`
+- **PRIMARY KEY**: `seller_shipping_discount_tiers_pkey`
+
+**Indexes**
+
+- `idx_shipping_discount_tiers_seller`
+  
+  ```sql
+  CREATE INDEX idx_shipping_discount_tiers_seller ON public.seller_shipping_discount_tiers USING btree (seller_id)
+  ```
+- `seller_shipping_discount_tiers_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX seller_shipping_discount_tiers_pkey ON public.seller_shipping_discount_tiers USING btree (id)
   ```
 
 ---
