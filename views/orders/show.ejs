@@ -127,6 +127,13 @@
         お支払いは現金のみです。カードやバーコード決済はご利用いただけませんのでご注意ください。
       </p>
     <% } %>
+
+    <% if (order.payment_method === 'invoice' || order.paymentMethod === '掛売（請求書払い）') { %>
+      <p class="alert alert--notice">
+        お支払い方法：掛売（請求書払い）<br>
+        月末締めで請求書をお送りいたします。翌月末までにお振込をお願いいたします。
+      </p>
+    <% } %>
   </section>
 
   <section class="grid">

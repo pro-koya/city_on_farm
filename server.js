@@ -7307,8 +7307,8 @@ async function fetchSellerConfig(sellerUserId) {
   // ★ 修正: デフォルト値を設定しない（決済方法が未設定の場合は空配列）
   // これにより、決済方法が1つも許可されていない場合は空配列が返される
 
-  // codとcardのみフィルタリング
-  const filteredCodes = allowedCodes.filter(code => ['cod', 'card'].includes(code));
+  // 全ての許可された決済方法を返す（B2B対応: invoiceを含む）
+  const filteredCodes = allowedCodes;
 
   // 日本語ラベル付きで整形
   const allowedPaymentMethods = filteredCodes.map(code => {
@@ -7488,6 +7488,14 @@ app.get('/checkout', async (req, res, next) => {
     // 出品者の許可決済手段（例：DBから）
     const sellerConfig = await fetchSellerConfig(sellerId);
 
+    // ★ B2B: 購入者のpartner_id を取得し、invoice（掛売）の利用可否を判定
+    const buyerPartnerId = req.session.user.partner_id || null;
+    if (!buyerPartnerId) {
+      // 個人ユーザー（法人組織に未所属）→ invoiceを除外
+      sellerConfig.allowedPaymentMethods = (sellerConfig.allowedPaymentMethods || [])
+        .filter(m => m.code !== 'invoice');
+    }
+
     // ★ 追加: 決済方法が1つも許可されていない場合はエラー
     if (!sellerConfig.allowedPaymentMethods || sellerConfig.allowedPaymentMethods.length === 0) {
       req.session.cart = req.session.cart || {};
@@ -7606,7 +7614,8 @@ app.get('/checkout', async (req, res, next) => {
       shipAvailability: shipAvailability || { delivery: [], pickup: [] },
       shipTimeSlots: shipTimeSlots || { delivery: {}, pickup: {} },
       flash,
-      req
+      req,
+      buyerPartnerId                  // ← B2B: 掛売の表示制御用
     });
   } catch (e) { next(e); }
 });
@@ -7635,6 +7644,19 @@ app.post('/checkout', async (req, res, next) => {
 
     // 出品者の許可設定
     const sellerConfig = await fetchSellerConfig(sellerId);
+
+    // ★ B2B: 個人ユーザーは掛売を利用不可
+    const buyerPartnerId = req.session.user.partner_id || null;
+    if (!buyerPartnerId) {
+      sellerConfig.allowedPaymentMethods = (sellerConfig.allowedPaymentMethods || [])
+        .filter(m => m.code !== 'invoice');
+    }
+    // ★ B2B: 掛売は法人のみ — サーバー側でも再検証
+    if (paymentMethod === 'invoice' && !buyerPartnerId) {
+      req.session.flash = { type:'error', message:'掛売（請求書払い）は法人アカウントのみご利用いただけます。' };
+      return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
+    }
+
     const allowedPayments = sellerConfig.allowedPaymentMethods || [];
     const allowedPaymentCodes = allowedPayments.map(p => String(p.code || '').trim());
     const allowedShips = sellerConfig.allowedShipMethods || [];
@@ -8652,6 +8674,9 @@ app.post('/checkout/confirm', async (req, res, next) => {
     const orderSellerId = sellerUsers[0].partner_id; // これがpartner_id
     console.log('[POST /checkout/confirm] Order seller_id (partner_id):', orderSellerId);
 
+    // ★ B2B: 購入者のpartner_idを取得（掛売の月次集計用）
+    const buyerPartnerId = req.session.user.partner_id || null;
+
     await client.query('BEGIN');
 
     // orders
@@ -8660,18 +8685,19 @@ app.post('/checkout/confirm', async (req, res, next) => {
          (order_number, buyer_id, seller_id, status,
           subtotal, discount, shipping_fee, total,
           payment_method, note, eta_at, coupon_code, ship_method, ship_time_code,
-          payment_status, delivery_status)
+          payment_status, delivery_status, buyer_partner_id)
        VALUES
          ($1, $2, $3, 'pending',
           $4, $5, $6, $7,
           $8, $9, $10, $11, $12, $13,
-          'unpaid', 'preparing')
+          'unpaid', 'preparing', $14)
        RETURNING id`,
       [
         orderNo, uid, orderSellerId,
         subtotal, discount, shipping_fee, total,
         safePaymentMethod, (draft.orderNote || '').slice(0,1000), etaAt,
-        coupon?.code || null, draft.shipMethod, rawShipTimeCode
+        coupon?.code || null, draft.shipMethod, rawShipTimeCode,
+        buyerPartnerId
       ]
     );
     const orderId = oins.rows[0].id;

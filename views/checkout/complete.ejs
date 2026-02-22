@@ -47,6 +47,19 @@
       </div>
     </div>
 
+    <% if (order?.payment_method === 'invoice') { %>
+      <div class="complete-payment-notice complete-payment-notice--paid">
+        <div class="complete-payment-notice__title">
+          <span class="payment-icon payment-icon--paid">📄</span>
+          掛売（請求書払い）でご注文を受け付けました
+        </div>
+        <p class="complete-payment-notice__message">
+          月末締めで請求書をお送りいたします。翌月末までにお振込をお願いいたします。<br>
+          請求書はマイページの「請求書」からもご確認いただけます。
+        </p>
+      </div>
+    <% } %>
+
     <% if (order?.payment_method === 'card') { %>
       <%
         const statusClass = order.payment_status === 'paid' ? 'paid'
