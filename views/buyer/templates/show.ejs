@@ -1,0 +1,128 @@
+<%- include('../../partials/header', { title: `テンプレート: ${template.name}`, extraCSS2: '',
+  extraCSS: '/styles/order-templates.css' }) %>
+
+<main class="tpl-show">
+  <div class="tpl-show__head">
+    <div class="tpl-show__head-left">
+      <a href="/my/templates" class="btn btn--ghost btn--sm">&larr; 一覧に戻る</a>
+      <h1><%= template.name %></h1>
+      <div class="tpl-show__meta">
+        <span class="pill pill--small"><%= template.seller_name || '出品者' %></span>
+        <span class="muted">作成: <%= new Date(template.created_at).toLocaleDateString('ja-JP') %></span>
+        <span class="muted">更新: <%= new Date(template.updated_at).toLocaleDateString('ja-JP') %></span>
+      </div>
+    </div>
+    <div class="tpl-show__head-right">
+      <form method="POST" action="/my/templates/<%= template.id %>/to-cart" class="inline">
+        <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <% } %>
+        <button type="submit" class="btn btn--primary">カートに一括追加</button>
+      </form>
+    </div>
+  </div>
+
+  <% if (flash) { %>
+    <div class="alert alert--<%= flash.type === 'success' ? 'safe' : 'danger' %>">
+      <%= flash.message %>
+    </div>
+  <% } %>
+
+  <!-- テンプレート名編集 -->
+  <section class="card tpl-edit-name">
+    <form method="POST" action="/my/templates/<%= template.id %>/update" class="tpl-name-form">
+      <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <% } %>
+      <div class="field field--inline">
+        <label for="tpl_name">テンプレート名</label>
+        <input type="text" id="tpl_name" name="name" value="<%= template.name %>" maxlength="60" required>
+        <button type="submit" class="btn btn--ghost btn--sm">名前を変更</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- 商品一覧 -->
+  <section class="card">
+    <div class="card__head">
+      <h2>登録商品（<%= items.length %>件）</h2>
+    </div>
+
+    <% if (!items.length) { %>
+      <p class="muted" style="padding: 1rem;">商品が登録されていません。</p>
+    <% } else { %>
+      <form method="POST" action="/my/templates/<%= template.id %>/update" id="tplUpdateForm">
+        <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <% } %>
+        <ul class="tpl-items">
+          <% items.forEach(function(it) { %>
+            <li class="tpl-item <%= !it.is_active || it.stock <= 0 ? 'tpl-item--unavailable' : '' %>">
+              <a class="tpl-item__thumb" href="/products/<%= it.id %>">
+                <img src="<%= it.image_url || '/images/placeholder.png' %>" alt="" loading="lazy">
+              </a>
+              <div class="tpl-item__main">
+                <a class="tpl-item__title" href="/products/<%= it.id %>"><%= it.title %></a>
+                <div class="tpl-item__meta">
+                  <span>&#165;<%= Number(it.price).toLocaleString() %> / <%= it.unit || '点' %></span>
+                  <% if (!it.is_active) { %>
+                    <span class="badge badge--danger">非公開</span>
+                  <% } else if (it.stock <= 0) { %>
+                    <span class="badge badge--danger">在庫なし</span>
+                  <% } else if (it.stock <= 10) { %>
+                    <span class="badge badge--warn">在庫わずか</span>
+                  <% } %>
+                </div>
+              </div>
+              <div class="tpl-item__qty">
+                <label class="sr-only" for="qty_<%= it.template_item_id %>">数量</label>
+                <div class="qty" role="group" aria-label="数量">
+                  <button class="qty__btn" type="button" data-act="dec" aria-label="減らす">&minus;</button>
+                  <input class="qty__input" type="number" min="1" step="1"
+                    id="qty_<%= it.template_item_id %>"
+                    name="quantities[<%= it.template_item_id %>]"
+                    value="<%= it.quantity %>" inputmode="numeric">
+                  <button class="qty__btn" type="button" data-act="inc" aria-label="増やす">+</button>
+                </div>
+              </div>
+              <div class="tpl-item__actions">
+                <form method="POST" action="/my/templates/<%= template.id %>/remove-item" class="inline">
+                  <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <% } %>
+                  <input type="hidden" name="itemId" value="<%= it.template_item_id %>">
+                  <button type="submit" class="btn btn--ghost btn--sm btn--danger" title="削除">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="3 6 5 6 21 6"/>
+                      <path d="M19 6l-1 14H6L5 6"/>
+                      <path d="M10 11v6"/>
+                      <path d="M14 11v6"/>
+                      <path d="M9 6V4h6v2"/>
+                    </svg>
+                  </button>
+                </form>
+              </div>
+            </li>
+          <% }) %>
+        </ul>
+        <div class="tpl-save-bar">
+          <button type="submit" class="btn btn--primary">数量を保存</button>
+        </div>
+      </form>
+    <% } %>
+  </section>
+
+  <!-- 削除 -->
+  <section class="tpl-danger-zone">
+    <form method="POST" action="/my/templates/<%= template.id %>/delete"
+          onsubmit="return confirm('このテンプレートを完全に削除しますか？この操作は元に戻せません。')">
+      <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <% } %>
+      <button type="submit" class="btn btn--ghost btn--danger">このテンプレートを削除</button>
+    </form>
+  </section>
+</main>
+
+<script src="/js/order-templates.js"></script>
+<%- include('../../partials/footer') %>

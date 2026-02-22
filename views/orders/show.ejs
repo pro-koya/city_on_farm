@@ -108,6 +108,15 @@
             <button type="submit" class="btn">この注文をもう一度</button>
           </form>
         <% } %>
+        <form method="POST" action="/my/templates" class="inline">
+          <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <% } %>
+          <input type="hidden" name="source" value="order">
+          <input type="hidden" name="sourceId" value="<%= order.id %>">
+          <input type="hidden" name="sellerId" value="<%= order.seller_id || '' %>">
+          <button type="submit" class="btn btn--ghost">テンプレートとして保存</button>
+        </form>
         <button class="btn btn--ghost" id="printPage" type="button">このページを印刷</button>
         <a class="btn btn--primary" href="/orders/recent">注文一覧へ</a>
       </div>

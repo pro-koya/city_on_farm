@@ -1,0 +1,391 @@
+/* order-templates.css — 注文テンプレート */
+
+/* 一覧 */
+.tpl-list {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.tpl-list__head {
+  margin-bottom: 1.5rem;
+}
+
+.tpl-list__head h1 {
+  font-size: clamp(1.3rem, 4vw, 1.7rem);
+  color: var(--color-text, #2B2B2B);
+  margin-bottom: 0.25rem;
+}
+
+/* 空 */
+.tpl-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6b7280;
+}
+
+.tpl-empty__icon {
+  margin-bottom: 1rem;
+  color: var(--color-main, #4C6B5C);
+  opacity: 0.5;
+}
+
+.tpl-empty h3 {
+  font-size: 1.1rem;
+  color: var(--color-text, #2B2B2B);
+  margin-bottom: 0.5rem;
+}
+
+/* グリッド */
+.tpl-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+/* カード */
+.tpl-card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .06);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: box-shadow 0.2s;
+}
+
+.tpl-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .1);
+}
+
+.tpl-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tpl-card__name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-text, #2B2B2B);
+  margin: 0;
+  flex: 1;
+}
+
+.tpl-card__meta {
+  font-size: 0.85rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tpl-card__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+
+/* 詳細 */
+.tpl-show {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.tpl-show__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.tpl-show__head h1 {
+  font-size: clamp(1.3rem, 4vw, 1.7rem);
+  color: var(--color-text, #2B2B2B);
+  margin: 0.25rem 0 0;
+}
+
+.tpl-show__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+/* 名前編集 */
+.tpl-edit-name {
+  margin-bottom: 1rem;
+}
+
+.tpl-name-form .field--inline {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.tpl-name-form .field--inline label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text, #2B2B2B);
+  white-space: nowrap;
+}
+
+.tpl-name-form .field--inline input {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+/* アイテム一覧 */
+.tpl-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tpl-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  transition: background 0.15s;
+}
+
+.tpl-item:last-child {
+  border-bottom: none;
+}
+
+.tpl-item:hover {
+  background: var(--color-highlight, #D6EADF);
+}
+
+.tpl-item--unavailable {
+  opacity: 0.55;
+}
+
+.tpl-item__thumb {
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tpl-item__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tpl-item__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.tpl-item__title {
+  font-weight: 600;
+  color: var(--color-text, #2B2B2B);
+  text-decoration: none;
+  font-size: 0.95rem;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tpl-item__title:hover {
+  color: var(--color-main, #4C6B5C);
+}
+
+.tpl-item__meta {
+  font-size: 0.82rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.15rem;
+}
+
+.tpl-item__qty {
+  flex: 0 0 auto;
+}
+
+.tpl-item__qty .qty {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tpl-item__qty .qty__btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--color-highlight, #D6EADF);
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.tpl-item__qty .qty__btn:hover {
+  background: var(--color-accent, #A3C9A8);
+}
+
+.tpl-item__qty .qty__input {
+  width: 48px;
+  text-align: center;
+  border: none;
+  font-size: 0.9rem;
+  padding: 0.25rem 0;
+  -moz-appearance: textfield;
+}
+
+.tpl-item__qty .qty__input::-webkit-inner-spin-button,
+.tpl-item__qty .qty__input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.tpl-item__actions {
+  flex: 0 0 auto;
+}
+
+/* 保存バー */
+.tpl-save-bar {
+  padding: 1rem;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+/* 削除ゾーン */
+.tpl-danger-zone {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border, #e5e7eb);
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* バッジ */
+.badge--danger {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+}
+
+.badge--warn {
+  background: #fffbeb;
+  color: #d97706;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+}
+
+/* ボタン補助 */
+.btn--danger {
+  color: #dc2626 !important;
+  border-color: #fecaca !important;
+}
+
+.btn--danger:hover {
+  background: #fef2f2 !important;
+}
+
+.btn--sm {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+/* アラート */
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.alert--safe {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.alert--danger {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+/* ユーティリティ */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.inline {
+  display: inline;
+}
+
+.dot {
+  color: #d1d5db;
+}
+
+/* レスポンシブ */
+@media (max-width: 640px) {
+  .tpl-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tpl-item {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .tpl-item__thumb {
+    flex: 0 0 48px;
+    width: 48px;
+    height: 48px;
+  }
+
+  .tpl-item__main {
+    flex: 1 1 calc(100% - 64px);
+  }
+
+  .tpl-item__qty {
+    flex: 0 0 auto;
+  }
+
+  .tpl-show__head {
+    flex-direction: column;
+  }
+
+  .tpl-name-form .field--inline {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

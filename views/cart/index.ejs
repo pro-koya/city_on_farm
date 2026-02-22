@@ -135,6 +135,14 @@
                                 role="alert" <%=errMsg ? '' : 'hidden' %>><%= errMsg || '' %>
                               </p>
                               <p class="summary__note">お支払いは安全に処理されます</p>
+                              <form method="POST" action="/my/templates" class="tpl-save-inline">
+                                <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+                                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                <% } %>
+                                <input type="hidden" name="source" value="cart">
+                                <input type="hidden" name="sellerId" value="<%= partnerId %>">
+                                <button type="submit" class="btn btn--ghost btn--sm" style="width:100%; margin-top:0.5rem;">テンプレートとして保存</button>
+                              </form>
                             </div>
                             <div class="freeship card" id="freeShip-<%= partnerId %>" data-has-threshold="<%= freeShipThreshold != null ? '1' : '0' %>">
                               <p class="freeship__label" id="freeShipLabel-<%= partnerId %>">あと <span

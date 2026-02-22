@@ -1,0 +1,64 @@
+<%- include('../../partials/header', { title: '注文テンプレート', extraCSS2: '',
+  extraCSS: '/styles/order-templates.css' }) %>
+
+<main class="tpl-list">
+  <div class="tpl-list__head">
+    <h1>注文テンプレート</h1>
+    <p class="muted">よく注文する商品セットをテンプレートとして保存し、ワンクリックでカートに追加できます。</p>
+  </div>
+
+  <% if (flash) { %>
+    <div class="alert alert--<%= flash.type === 'success' ? 'safe' : 'danger' %>">
+      <%= flash.message %>
+    </div>
+  <% } %>
+
+  <% if (!templates || !templates.length) { %>
+    <section class="tpl-empty">
+      <div class="tpl-empty__icon" aria-hidden="true">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+          <rect x="9" y="3" width="6" height="4" rx="1"/>
+          <path d="M9 12h6M9 16h4"/>
+        </svg>
+      </div>
+      <h3>テンプレートがまだありません</h3>
+      <p>カートや注文詳細から「テンプレートとして保存」を押すと、ここに表示されます。</p>
+      <a class="btn" href="/products">商品を探す</a>
+    </section>
+  <% } else { %>
+    <div class="tpl-grid">
+      <% templates.forEach(function(t) { %>
+        <article class="tpl-card">
+          <div class="tpl-card__head">
+            <h2 class="tpl-card__name"><%= t.name %></h2>
+            <span class="pill pill--small"><%= t.seller_name || '出品者' %></span>
+          </div>
+          <div class="tpl-card__meta">
+            <span><%= t.item_count %> 商品</span>
+            <span class="dot">&middot;</span>
+            <span>更新: <%= new Date(t.updated_at).toLocaleDateString('ja-JP') %></span>
+          </div>
+          <div class="tpl-card__actions">
+            <form method="POST" action="/my/templates/<%= t.id %>/to-cart" class="inline">
+              <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <% } %>
+              <button type="submit" class="btn btn--primary btn--sm">カートに追加</button>
+            </form>
+            <a class="btn btn--ghost btn--sm" href="/my/templates/<%= t.id %>">詳細・編集</a>
+            <form method="POST" action="/my/templates/<%= t.id %>/delete" class="inline"
+                  onsubmit="return confirm('このテンプレートを削除しますか？')">
+              <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <% } %>
+              <button type="submit" class="btn btn--ghost btn--sm btn--danger">削除</button>
+            </form>
+          </div>
+        </article>
+      <% }) %>
+    </div>
+  <% } %>
+</main>
+
+<%- include('../../partials/footer') %>

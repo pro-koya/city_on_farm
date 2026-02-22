@@ -210,6 +210,8 @@
               お知らせ<% if (unread > 0) { %>（<%= unread > 99 ? '99+' : unread %>）<% } %>
             </a>
           </li>
+          <li role="none"><a role="menuitem" href="/orders/recent">注文履歴</a></li>
+          <li role="none"><a role="menuitem" href="/my/templates">注文テンプレート</a></li>
           <% if (currentUser.partner_id) { %>
           <li role="none"><a role="menuitem" href="/my/invoices">請求書</a></li>
           <% } %>

@@ -14435,6 +14435,12 @@ const { registerAdminInvoiceRoutes } = require('./routes-admin-invoice');
 registerAdminInvoiceRoutes(app, requireAuth, requireRole);
 
 // ============================================================
+// 注文テンプレートルート登録
+// ============================================================
+const { registerOrderTemplateRoutes } = require('./routes-order-templates');
+registerOrderTemplateRoutes(app, requireAuth, dbCartAdd);
+
+// ============================================================
 // WebAuthn（生体認証・パスキー）ルート登録
 // ============================================================
 const { registerWebAuthnRoutes } = require('./routes-webauthn');
