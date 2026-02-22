@@ -256,6 +256,14 @@ async function recordPayment(invoiceId, amount, method, userId, note) {
       );
     }
 
+    // ★ 与信利用額を解放
+    try {
+      const { releaseCreditUsage } = require('./creditService');
+      await releaseCreditUsage(inv.buyer_partner_id, amount);
+    } catch (creditErr) {
+      logger.error('Failed to release credit usage', { invoiceId, error: creditErr.message });
+    }
+
     logger.info('Payment recorded', {
       invoiceId,
       amount,

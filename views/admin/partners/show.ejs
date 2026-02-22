@@ -885,6 +885,62 @@
       <% } %>
     </article>
   </section>
+
+  <!-- 与信管理セクション -->
+  <% if (user && user.roles && user.roles.includes('admin')) { %>
+  <section class="ps__section" id="credit">
+    <article class="card">
+      <div class="card__head"><h2>与信管理</h2></div>
+      <div class="ps__form-grid" style="padding: 1rem;">
+        <dl class="kv" style="margin-bottom: 1rem;">
+          <div style="display:flex; gap:1rem; margin-bottom:0.5rem;">
+            <dt style="min-width:120px; font-size:0.85rem; color:#6b7280;">与信限度額</dt>
+            <dd style="font-size:0.95rem;">
+              <% if (partner.credit_limit > 0) { %>
+                <strong>&#165;<%= Number(partner.credit_limit || 0).toLocaleString() %></strong>
+              <% } else { %>
+                <span class="muted">未設定（無制限）</span>
+              <% } %>
+            </dd>
+          </div>
+          <div style="display:flex; gap:1rem; margin-bottom:0.5rem;">
+            <dt style="min-width:120px; font-size:0.85rem; color:#6b7280;">利用中</dt>
+            <dd style="font-size:0.95rem;">&#165;<%= Number(partner.credit_used || 0).toLocaleString() %></dd>
+          </div>
+          <div style="display:flex; gap:1rem; margin-bottom:0.5rem;">
+            <dt style="min-width:120px; font-size:0.85rem; color:#6b7280;">残高</dt>
+            <dd style="font-size:0.95rem;">
+              <% if (partner.credit_limit > 0) { %>
+                <strong>&#165;<%= Number((partner.credit_limit || 0) - (partner.credit_used || 0)).toLocaleString() %></strong>
+              <% } else { %>
+                <span class="muted">無制限</span>
+              <% } %>
+            </dd>
+          </div>
+          <div style="display:flex; gap:1rem;">
+            <dt style="min-width:120px; font-size:0.85rem; color:#6b7280;">支払期限</dt>
+            <dd style="font-size:0.95rem;"><%= partner.payment_terms_days || 30 %> 日</dd>
+          </div>
+        </dl>
+
+        <form method="POST" action="/admin/partners/<%= partner.id %>/credit" style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:flex-end;">
+          <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <% } %>
+          <div class="field" style="flex:1; min-width:140px;">
+            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.25rem;">与信限度額（円）</label>
+            <input type="number" name="creditLimit" value="<%= partner.credit_limit || 0 %>" min="0" step="1000"
+              style="width:100%; padding:0.5rem 0.75rem; border:1px solid var(--border, #e5e7eb); border-radius:8px; font-size:0.95rem;">
+          </div>
+          <div class="field" style="flex:0 0 auto;">
+            <button type="submit" class="btn btn--primary">更新</button>
+          </div>
+        </form>
+        <p style="font-size: 0.8rem; color: #6b7280; margin-top: 0.5rem;">0 に設定すると与信チェックが無効（無制限）になります。</p>
+      </div>
+    </article>
+  </section>
+  <% } %>
 </main>
 
 <script src="https://yubinbango.github.io/yubinbango/yubinbango.js" charset="UTF-8"></script>

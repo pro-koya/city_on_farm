@@ -7672,6 +7672,22 @@ app.post('/checkout', async (req, res, next) => {
       return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
     }
 
+    // ★ B2B: 掛売時の与信チェック
+    if (paymentMethod === 'invoice' && buyerPartnerId) {
+      const { checkCreditAvailable } = require('./services/creditService');
+      // 注文合計の仮計算（後で正式に計算するが、与信チェックは早めに行う）
+      const cartItems = await loadCartItems(req);
+      const { applyCustomerPricing } = require('./services/customerPriceService');
+      let tempItems = await fetchCartItemsWithDetails(cartItems);
+      tempItems = await applyCustomerPricing(tempItems, buyerPartnerId);
+      const tempTotal = tempItems.reduce((s, it) => s + (it.price * (it.quantity || 1)), 0);
+      const creditCheck = await checkCreditAvailable(buyerPartnerId, tempTotal);
+      if (!creditCheck.available) {
+        req.session.flash = { type:'error', message: creditCheck.reason + '　他のお支払い方法をご選択ください。' };
+        return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
+      }
+    }
+
     const allowedPayments = sellerConfig.allowedPaymentMethods || [];
     const allowedPaymentCodes = allowedPayments.map(p => String(p.code || '').trim());
     const allowedShips = sellerConfig.allowedShipMethods || [];
@@ -8787,6 +8803,16 @@ app.post('/checkout/confirm', async (req, res, next) => {
         logger.info('Approval workflow started for order', { orderId, buyerPartnerId });
       } catch (approvalErr) {
         logger.error('Failed to create approval request', { orderId, error: approvalErr.message });
+      }
+    }
+
+    // ★ B2B: 掛売の場合、与信利用額を加算
+    if (safePaymentMethod === 'invoice' && buyerPartnerId) {
+      try {
+        const { addCreditUsage } = require('./services/creditService');
+        await addCreditUsage(buyerPartnerId, total);
+      } catch (creditErr) {
+        logger.error('Failed to add credit usage', { orderId, error: creditErr.message });
       }
     }
 
@@ -11465,6 +11491,22 @@ app.post(
     }
   }
 );
+
+// ========================
+// 与信限度額更新API
+// ========================
+app.post('/admin/partners/:id/credit', requireAuth, requireRole(['admin']), async (req, res, next) => {
+  try {
+    const partnerId = req.params.id;
+    const creditLimit = parseInt(req.body.creditLimit, 10) || 0;
+
+    const { updateCreditLimit } = require('./services/creditService');
+    await updateCreditLimit(partnerId, Math.max(0, creditLimit));
+
+    req.session.flash = { type: 'ok', message: `与信限度額を ¥${creditLimit.toLocaleString()} に更新しました。` };
+    return res.redirect(`/admin/partners/${partnerId}#credit`);
+  } catch (e) { next(e); }
+});
 
 // ========================
 // 送金管理API
