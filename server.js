@@ -14462,6 +14462,12 @@ const { registerCustomerPriceRoutes } = require('./routes-customer-prices');
 registerCustomerPriceRoutes(app, requireAuth);
 
 // ============================================================
+// 組織メンバー管理ルート登録
+// ============================================================
+const { registerOrgMemberRoutes } = require('./routes-org-members');
+registerOrgMemberRoutes(app, requireAuth);
+
+// ============================================================
 // WebAuthn（生体認証・パスキー）ルート登録
 // ============================================================
 const { registerWebAuthnRoutes } = require('./routes-webauthn');
