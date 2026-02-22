@@ -8694,25 +8694,34 @@ app.post('/checkout/confirm', async (req, res, next) => {
 
     await client.query('BEGIN');
 
+    // ★ B2B: 承認ワークフローチェック
+    const { isApprovalRequired, createApprovalRequest } = require('./services/approvalService');
+    const needsApproval = buyerPartnerId ? await isApprovalRequired(buyerPartnerId) : false;
+
     // orders
     const oins = await client.query(
       `INSERT INTO orders
          (order_number, buyer_id, seller_id, status,
           subtotal, discount, shipping_fee, total,
           payment_method, note, eta_at, coupon_code, ship_method, ship_time_code,
-          payment_status, delivery_status, buyer_partner_id)
+          payment_status, delivery_status, buyer_partner_id,
+          submitted_by, approval_status)
        VALUES
-         ($1, $2, $3, 'pending',
+         ($1, $2, $3, $14,
           $4, $5, $6, $7,
           $8, $9, $10, $11, $12, $13,
-          'unpaid', 'preparing', $14)
+          'unpaid', 'preparing', $15,
+          $16, $17)
        RETURNING id`,
       [
         orderNo, uid, orderSellerId,
         subtotal, discount, shipping_fee, total,
         safePaymentMethod, (draft.orderNote || '').slice(0,1000), etaAt,
         coupon?.code || null, draft.shipMethod, rawShipTimeCode,
-        buyerPartnerId
+        needsApproval ? 'pending_approval' : 'pending',
+        buyerPartnerId,
+        uid,
+        needsApproval ? 'pending' : 'none'
       ]
     );
     const orderId = oins.rows[0].id;
@@ -8770,6 +8779,16 @@ app.post('/checkout/confirm', async (req, res, next) => {
     req.session.cart.coupon = null;
 
     await client.query('COMMIT');
+
+    // ★ B2B: 承認フロー開始（COMMIT後に実行）
+    if (needsApproval && buyerPartnerId) {
+      try {
+        await createApprovalRequest(orderId, buyerPartnerId);
+        logger.info('Approval workflow started for order', { orderId, buyerPartnerId });
+      } catch (approvalErr) {
+        logger.error('Failed to create approval request', { orderId, error: approvalErr.message });
+      }
+    }
 
     // 表示名付き From（Gmail APIでもOK。実送は認可済アカウント）
     const FROM = process.env.MAIL_FROM || process.env.CONTACT_FROM || process.env.SMTP_USER || 'no-reply@example.com';
@@ -14466,6 +14485,12 @@ registerCustomerPriceRoutes(app, requireAuth);
 // ============================================================
 const { registerOrgMemberRoutes } = require('./routes-org-members');
 registerOrgMemberRoutes(app, requireAuth);
+
+// ============================================================
+// 発注承認ワークフロールート登録
+// ============================================================
+const { registerApprovalRoutes } = require('./routes-approval');
+registerApprovalRoutes(app, requireAuth);
 
 // ============================================================
 // WebAuthn（生体認証・パスキー）ルート登録

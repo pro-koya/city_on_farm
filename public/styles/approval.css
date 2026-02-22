@@ -1,0 +1,229 @@
+/* approval.css — 承認ワークフロー */
+
+.wf-settings, .appr-list, .appr-show {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.wf-settings__head, .appr-list__head, .appr-show__head {
+  margin-bottom: 1.5rem;
+}
+
+.wf-settings__head h1, .appr-list__head h1, .appr-show__head h1 {
+  font-size: clamp(1.3rem, 4vw, 1.7rem);
+  color: var(--color-text, #2B2B2B);
+  margin: 0.25rem 0 0;
+}
+
+/* トグル */
+.wf-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.5rem 0;
+}
+
+.wf-toggle input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-main, #4C6B5C);
+}
+
+.wf-toggle__label {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* ステップ */
+.wf-step {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  margin-bottom: 0.5rem;
+  background: #fff;
+  transition: box-shadow 0.15s;
+}
+
+.wf-step:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+
+.wf-step__order {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-main, #4C6B5C);
+  min-width: 80px;
+}
+
+.wf-step__role {
+  flex: 1;
+}
+
+.wf-step__role select {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.wf-actions {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* 空状態 */
+.appr-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.appr-empty h3 {
+  font-size: 1.1rem;
+  color: var(--color-text, #2B2B2B);
+  margin-bottom: 0.5rem;
+}
+
+.appr-empty p {
+  color: #6b7280;
+}
+
+/* テーブル */
+.table-wrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.table th, .table td { padding: 0.65rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border, #e5e7eb); }
+.table th { font-weight: 600; font-size: 0.8rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.03em; }
+.table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.table tbody tr:hover { background: var(--color-highlight, #D6EADF); }
+
+/* 承認詳細: 商品 */
+.appr-items { list-style: none; padding: 0; margin: 0; }
+
+.appr-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.appr-item:last-child { border-bottom: none; }
+
+.appr-item__img {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.appr-item__main { flex: 1; }
+
+.appr-item__title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.appr-item__meta {
+  font-size: 0.82rem;
+  color: #6b7280;
+}
+
+.appr-item__amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 承認履歴 */
+.appr-history { list-style: none; padding: 0; margin: 0; }
+
+.appr-history__item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  flex-wrap: wrap;
+}
+
+.appr-history__item:last-child { border-bottom: none; }
+
+.appr-history__step {
+  font-weight: 600;
+  font-size: 0.9rem;
+  min-width: 80px;
+}
+
+.appr-history__who, .appr-history__when {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.appr-history__comment {
+  width: 100%;
+  font-size: 0.85rem;
+  color: #6b7280;
+  font-style: italic;
+  padding-left: 80px;
+}
+
+/* ステータスピル */
+.pill--pending { background: #fffbeb; color: #d97706; }
+.pill--approved { background: #ecfdf5; color: #059669; }
+.pill--rejected { background: #fef2f2; color: #dc2626; }
+
+/* 承認アクション */
+.appr-actions-card { margin-top: 1rem; }
+
+.appr-comment {
+  margin-bottom: 1rem;
+}
+
+.appr-comment label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.appr-comment textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  resize: vertical;
+}
+
+.appr-action-btns {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.btn--lg {
+  padding: 0.6rem 1.5rem;
+  font-size: 0.95rem;
+}
+
+/* kv */
+.kv { display: grid; gap: 0.5rem; }
+.kv > div { display: flex; gap: 1rem; }
+.kv dt { flex: 0 0 auto; min-width: 80px; font-size: 0.85rem; color: #6b7280; font-weight: 500; }
+.kv dd { margin: 0; font-size: 0.95rem; }
+
+/* アラート */
+.alert { padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.9rem; margin-bottom: 1rem; }
+.alert--safe { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+.alert--danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+
+.inline { display: inline; }
+
+@media (max-width: 640px) {
+  .appr-action-btns { flex-direction: column; }
+  .wf-step { flex-wrap: wrap; }
+}

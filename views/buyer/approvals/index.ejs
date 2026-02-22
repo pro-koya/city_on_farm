@@ -1,0 +1,51 @@
+<%- include('../../partials/header', { title: '承認待ち', extraCSS2: '',
+  extraCSS: '/styles/approval.css' }) %>
+
+<main class="appr-list">
+  <div class="appr-list__head">
+    <h1>承認待ち</h1>
+    <p class="muted">あなたの承認が必要な注文が表示されます。</p>
+  </div>
+
+  <% if (flash) { %>
+    <div class="alert alert--<%= flash.type === 'success' ? 'safe' : 'danger' %>">
+      <%= flash.message %>
+    </div>
+  <% } %>
+
+  <% if (!orders || !orders.length) { %>
+    <section class="appr-empty">
+      <h3>承認待ちの注文はありません</h3>
+      <p>承認が必要な注文があると、ここに表示されます。</p>
+    </section>
+  <% } else { %>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>注文日時</th>
+            <th>発注者</th>
+            <th class="num">金額</th>
+            <th>ステップ</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% orders.forEach(function(o) { %>
+            <tr>
+              <td><%= new Date(o.created_at).toLocaleString('ja-JP') %></td>
+              <td><%= o.submitted_by_name || '—' %></td>
+              <td class="num"><strong>&#165;<%= Number(o.total || 0).toLocaleString() %></strong></td>
+              <td>ステップ <%= o.step_order %></td>
+              <td>
+                <a class="btn btn--ghost btn--sm" href="/my/approvals/<%= o.id %>">詳細を確認</a>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</main>
+
+<%- include('../../partials/footer') %>

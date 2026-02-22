@@ -1,0 +1,124 @@
+<%- include('../../partials/header', { title: '承認詳細', extraCSS2: '',
+  extraCSS: '/styles/approval.css' }) %>
+
+<main class="appr-show">
+  <div class="appr-show__head">
+    <a href="/my/approvals" class="btn btn--ghost btn--sm">&larr; 承認待ち一覧</a>
+    <h1>承認詳細</h1>
+  </div>
+
+  <% if (flash) { %>
+    <div class="alert alert--<%= flash.type === 'success' ? 'safe' : 'danger' %>">
+      <%= flash.message %>
+    </div>
+  <% } %>
+
+  <!-- 注文情報 -->
+  <section class="card">
+    <div class="card__head"><h2>注文情報</h2></div>
+    <dl class="kv">
+      <div><dt>発注者</dt><dd><%= order.submitted_by_name || '—' %></dd></div>
+      <div><dt>注文日時</dt><dd><%= new Date(order.created_at).toLocaleString('ja-JP') %></dd></div>
+      <div><dt>小計</dt><dd>&#165;<%= Number(order.subtotal || 0).toLocaleString() %></dd></div>
+      <div><dt>合計</dt><dd><strong>&#165;<%= Number(order.total || 0).toLocaleString() %></strong></dd></div>
+      <div><dt>承認状態</dt>
+        <dd>
+          <span class="pill pill--small pill--<%= order.approval_status %>">
+            <%= order.approval_status === 'pending' ? '承認待ち' : order.approval_status === 'approved' ? '承認済み' : order.approval_status === 'rejected' ? '却下' : order.approval_status %>
+          </span>
+        </dd>
+      </div>
+    </dl>
+  </section>
+
+  <!-- 商品一覧 -->
+  <section class="card">
+    <div class="card__head"><h2>注文商品</h2></div>
+    <ul class="appr-items">
+      <% items.forEach(function(it) { %>
+        <li class="appr-item">
+          <img src="<%= it.image_url || '/images/placeholder.png' %>" alt="" class="appr-item__img">
+          <div class="appr-item__main">
+            <div class="appr-item__title"><%= it.title %></div>
+            <div class="appr-item__meta">
+              数量: <%= it.quantity %><%= it.unit || '点' %>
+              / 単価: &#165;<%= Number(it.unit_price || it.price || 0).toLocaleString() %>
+            </div>
+          </div>
+          <div class="appr-item__amount">&#165;<%= Number((it.unit_price || it.price || 0) * it.quantity).toLocaleString() %></div>
+        </li>
+      <% }) %>
+    </ul>
+  </section>
+
+  <!-- 承認履歴 -->
+  <section class="card">
+    <div class="card__head"><h2>承認履歴</h2></div>
+    <% if (approvals.length) { %>
+      <ul class="appr-history">
+        <% approvals.forEach(function(a) { %>
+          <li class="appr-history__item appr-history--<%= a.status %>">
+            <div class="appr-history__step">ステップ <%= a.step_order %></div>
+            <div class="appr-history__status">
+              <span class="pill pill--small pill--<%= a.status %>">
+                <%= a.status === 'pending' ? '待ち' : a.status === 'approved' ? '承認' : '却下' %>
+              </span>
+            </div>
+            <% if (a.approver_name) { %>
+              <div class="appr-history__who"><%= a.approver_name %></div>
+            <% } %>
+            <% if (a.decided_at) { %>
+              <div class="appr-history__when"><%= new Date(a.decided_at).toLocaleString('ja-JP') %></div>
+            <% } %>
+            <% if (a.comment) { %>
+              <div class="appr-history__comment"><%= a.comment %></div>
+            <% } %>
+          </li>
+        <% }) %>
+      </ul>
+    <% } else { %>
+      <p class="muted" style="padding: 1rem;">承認履歴はまだありません。</p>
+    <% } %>
+  </section>
+
+  <!-- 承認/却下アクション -->
+  <% if (order.approval_status === 'pending') { %>
+    <section class="card appr-actions-card">
+      <div class="card__head"><h2>アクション</h2></div>
+      <div class="appr-comment">
+        <label for="appr_comment">コメント（任意）</label>
+        <textarea id="appr_comment" rows="3" placeholder="承認・却下の理由やメモ..."></textarea>
+      </div>
+      <div class="appr-action-btns">
+        <form method="POST" action="/my/approvals/<%= order.id %>/approve" class="inline" id="approveForm">
+          <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <% } %>
+          <input type="hidden" name="comment" class="js-comment-input">
+          <button type="submit" class="btn btn--primary btn--lg">承認する</button>
+        </form>
+        <form method="POST" action="/my/approvals/<%= order.id %>/reject" class="inline" id="rejectForm"
+              onsubmit="return confirm('この注文を却下しますか？')">
+          <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <% } %>
+          <input type="hidden" name="comment" class="js-comment-input">
+          <button type="submit" class="btn btn--ghost btn--danger btn--lg">却下する</button>
+        </form>
+      </div>
+    </section>
+  <% } %>
+</main>
+
+<script>
+(function() {
+  var textarea = document.getElementById('appr_comment');
+  if (!textarea) return;
+  var inputs = document.querySelectorAll('.js-comment-input');
+  textarea.addEventListener('input', function() {
+    inputs.forEach(function(inp) { inp.value = textarea.value; });
+  });
+})();
+</script>
+
+<%- include('../../partials/footer') %>

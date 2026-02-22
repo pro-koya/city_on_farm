@@ -215,7 +215,9 @@
           <li role="none"><a role="menuitem" href="/my/templates">注文テンプレート</a></li>
           <% if (currentUser.partner_id) { %>
           <li role="none"><a role="menuitem" href="/my/invoices">請求書</a></li>
+          <li role="none"><a role="menuitem" href="/my/approvals">承認待ち</a></li>
           <li role="none"><a role="menuitem" href="/my/org/members">組織管理</a></li>
+          <li role="none"><a role="menuitem" href="/my/org/workflow">承認フロー設定</a></li>
           <% } %>
           <% if (currentUser.roles?.includes('seller') && currentUser.partner_id) { %>
           <li role="none"><a role="menuitem" href="/admin/partners/<%= currentUser.partner_id %>">出品者情報</a></li>
