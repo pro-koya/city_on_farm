@@ -23,8 +23,8 @@ END $$;
 -- ============================================================
 -- 2. option_labels に invoice の日本語ラベルを追加
 -- ============================================================
-INSERT INTO option_labels (category, value, label_ja, sort, active)
-VALUES ('payment_method', 'invoice', '掛売（請求書払い）', 60, true)
+INSERT INTO option_labels (category, value, label_ja, label_en, sort, active)
+VALUES ('payment_method', 'invoice', '掛売（請求書払い）', 'Invoice', 60, true)
 ON CONFLICT DO NOTHING;
 
 -- ============================================================
