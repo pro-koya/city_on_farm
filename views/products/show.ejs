@@ -65,8 +65,17 @@
       </div>
 
       <div class="price-row" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
-        <span class="price">¥<span itemprop="price"><%= product.price %></span></span>
-        <% if (product.unit) { %><span class="unit">/ <%= product.unit %></span><% } %>
+        <% if (typeof customerPrice !== 'undefined' && customerPrice != null) { %>
+          <span class="price">&#165;<span itemprop="price"><%= customerPrice %></span></span>
+          <% if (product.unit) { %><span class="unit">/ <%= product.unit %></span><% } %>
+          <div class="customer-price-badge">
+            <span>特別価格</span>
+            <span class="customer-price-badge__original">&#165;<%= Number(product.price).toLocaleString() %></span>
+          </div>
+        <% } else { %>
+          <span class="price">&#165;<span itemprop="price"><%= product.price %></span></span>
+          <% if (product.unit) { %><span class="unit">/ <%= product.unit %></span><% } %>
+        <% } %>
         <link itemprop="priceCurrency" content="JPY">
         <link itemprop="availability" href="https://schema.org/<%= product.stock>0?'InStock':'OutOfStock' %>">
       </div>

@@ -1,0 +1,47 @@
+<%- include('../partials/header', { title: '顧客別価格 - 取引先一覧', extraCSS2: '',
+  extraCSS: '/styles/customer-prices.css' }) %>
+
+<main class="cp-list">
+  <div class="cp-list__head">
+    <h1>顧客別価格</h1>
+    <p class="muted">取引先ごとに特別価格を設定できます。設定された価格は、該当取引先のユーザーがログインした際に自動的に適用されます。</p>
+  </div>
+
+  <% if (flash) { %>
+    <div class="alert alert--<%= flash.type === 'success' ? 'safe' : 'danger' %>">
+      <%= flash.message %>
+    </div>
+  <% } %>
+
+  <% if (!buyers || !buyers.length) { %>
+    <section class="cp-empty">
+      <h3>取引先がまだありません</h3>
+      <p>法人アカウントからの注文があると、ここに取引先が表示されます。</p>
+    </section>
+  <% } else { %>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>取引先名</th>
+            <th class="num">設定済み価格数</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% buyers.forEach(function(b) { %>
+            <tr>
+              <td><strong><%= b.name %></strong></td>
+              <td class="num"><%= b.price_count || 0 %> 件</td>
+              <td>
+                <a class="btn btn--ghost btn--sm" href="/seller/partners/<%= b.id %>/prices">価格を管理</a>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</main>
+
+<%- include('../partials/footer') %>

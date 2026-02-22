@@ -4062,12 +4062,19 @@ app.get('/products/:id', async (req, res, next) => {
       isFavorited = favRows.length > 0;
     }
 
+    // 顧客別価格の取得（法人ユーザーのみ）
+    let customerPrice = null;
+    if (req.session?.user?.partner_id) {
+      const { getCustomerPrice } = require('./services/customerPriceService');
+      customerPrice = await getCustomerPrice(req.session.user.partner_id, product.id);
+    }
+
     res.set('Cache-Control', 'no-store');
     res.render('products/show', {
       title: product.title,
       product, specs, tags, related, reviews, myReview,
       recentlyViewed, currentUser, sellerHighlight,
-      shippingSummary,
+      shippingSummary, customerPrice,
       isFavorited, csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
     });
   } catch (e) {
@@ -6784,7 +6791,15 @@ function genOrderNo(){
 app.get('/cart', async (req, res, next) => {
   try {
     const cartItems = await loadCartItems(req);
-    const items = await fetchCartItemsWithDetails(cartItems);
+    let items = await fetchCartItemsWithDetails(cartItems);
+
+    // 顧客別価格の適用（法人ユーザーのみ）
+    const buyerPid = req.session?.user?.partner_id;
+    if (buyerPid) {
+      const { applyCustomerPricing } = require('./services/customerPriceService');
+      items = await applyCustomerPricing(items, buyerPid);
+    }
+
     const totals = calcTotals(items, req.session?.cart?.coupon || null);
 
     const groupedBySeller = items.reduce((partner, item) => {
@@ -14439,6 +14454,12 @@ registerAdminInvoiceRoutes(app, requireAuth, requireRole);
 // ============================================================
 const { registerOrderTemplateRoutes } = require('./routes-order-templates');
 registerOrderTemplateRoutes(app, requireAuth, dbCartAdd);
+
+// ============================================================
+// 顧客別価格ルート登録
+// ============================================================
+const { registerCustomerPriceRoutes } = require('./routes-customer-prices');
+registerCustomerPriceRoutes(app, requireAuth);
 
 // ============================================================
 // WebAuthn（生体認証・パスキー）ルート登録

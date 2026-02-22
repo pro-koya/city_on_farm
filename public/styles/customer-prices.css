@@ -1,0 +1,173 @@
+/* customer-prices.css — 顧客別価格管理 */
+
+.cp-list, .cp-show {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.cp-list__head, .cp-show__head {
+  margin-bottom: 1.5rem;
+}
+
+.cp-list__head h1, .cp-show__head h1 {
+  font-size: clamp(1.3rem, 4vw, 1.7rem);
+  color: var(--color-text, #2B2B2B);
+  margin: 0.25rem 0 0;
+}
+
+.cp-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.cp-empty h3 {
+  font-size: 1.1rem;
+  color: var(--color-text, #2B2B2B);
+  margin-bottom: 0.5rem;
+}
+
+.cp-empty p {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+/* フォーム */
+.cp-form__row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.cp-form__row .field {
+  flex: 1;
+  min-width: 140px;
+}
+
+.cp-form__row .field--btn {
+  flex: 0 0 auto;
+}
+
+.cp-form__row .field label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: var(--color-text, #2B2B2B);
+}
+
+.cp-form__row .field select,
+.cp-form__row .field input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+/* テーブル */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th, .table td {
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  white-space: nowrap;
+}
+
+.table th {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.table tbody tr:hover {
+  background: var(--color-highlight, #D6EADF);
+}
+
+/* バッジ */
+.badge--discount {
+  background: #ecfdf5;
+  color: #059669;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.badge--up {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* 商品詳細の特別価格表示 */
+.customer-price-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #ecfdf5;
+  color: #059669;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-top: 0.35rem;
+}
+
+.customer-price-badge__original {
+  text-decoration: line-through;
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+/* アラート */
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.alert--safe {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.alert--danger {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+/* レスポンシブ */
+@media (max-width: 640px) {
+  .cp-form__row {
+    flex-direction: column;
+  }
+
+  .cp-form__row .field {
+    min-width: auto;
+  }
+}
