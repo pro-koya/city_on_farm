@@ -1,0 +1,105 @@
+<%- include('../../partials/header', { title: '請求書管理', extraCSS2: '',
+  extraCSS: '/styles/admin-invoices.css' }) %>
+
+<main class="inv-list">
+  <header class="inv-list__head">
+    <h1>請求書管理</h1>
+  </header>
+
+  <!-- 請求書生成 -->
+  <section class="card inv-generate">
+    <form method="POST" action="/admin/invoices/generate" class="inv-generate__form">
+      <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <% } %>
+      <div class="field">
+        <label for="yearMonth">対象年月</label>
+        <input type="month" id="yearMonth" name="yearMonth" required>
+      </div>
+      <button type="submit" class="btn">請求書を一括生成</button>
+    </form>
+    <% if (req.session?.flash) { %>
+      <p class="alert alert--<%= req.session.flash.type === 'success' ? 'safe' : 'danger' %>">
+        <%= req.session.flash.message %>
+      </p>
+      <% req.session.flash = null; %>
+    <% } %>
+  </section>
+
+  <!-- フィルタ -->
+  <section class="card">
+    <form class="inv-filters" method="GET" action="/admin/invoices">
+      <div class="inv-filters__row">
+        <input type="search" name="q" placeholder="請求番号・取引先名で検索" value="<%= filters.q %>" class="inv-filters__search">
+        <select name="status" class="pulldown">
+          <option value="all" <%= filters.status === 'all' ? 'selected' : '' %>>すべて</option>
+          <option value="unpaid" <%= filters.status === 'unpaid' ? 'selected' : '' %>>未入金</option>
+          <option value="partial" <%= filters.status === 'partial' ? 'selected' : '' %>>一部入金</option>
+          <option value="paid" <%= filters.status === 'paid' ? 'selected' : '' %>>入金済</option>
+          <option value="overdue" <%= filters.status === 'overdue' ? 'selected' : '' %>>期限超過</option>
+        </select>
+        <input type="month" name="ym" value="<%= filters.ym %>" placeholder="対象月">
+        <button type="submit" class="btn btn--ghost">絞り込む</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- 一覧テーブル -->
+  <section class="card">
+    <% if (!items || !items.length) { %>
+      <p class="muted" style="padding: 2rem; text-align: center;">請求書はまだありません。</p>
+    <% } else { %>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>請求番号</th>
+              <th>購入者</th>
+              <th>出品者</th>
+              <th>対象月</th>
+              <th class="num">合計</th>
+              <th class="num">入金済</th>
+              <th>ステータス</th>
+              <th>期限</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% items.forEach(inv => { %>
+              <tr>
+                <td class="mono"><%= inv.invoice_number %></td>
+                <td><%= inv.buyer_name || '-' %></td>
+                <td><%= inv.seller_name || '-' %></td>
+                <td><%= inv.year_month %></td>
+                <td class="num">¥<%= Number(inv.total).toLocaleString() %></td>
+                <td class="num">¥<%= Number(inv.paid_amount).toLocaleString() %></td>
+                <td>
+                  <span class="status status--<%= inv.status %>">
+                    <%= inv.status === 'unpaid' ? '未入金' :
+                       inv.status === 'partial' ? '一部入金' :
+                       inv.status === 'paid' ? '入金済' :
+                       inv.status === 'overdue' ? '期限超過' :
+                       inv.status === 'void' ? '無効' : inv.status %>
+                  </span>
+                </td>
+                <td><%= inv.due_date ? new Date(inv.due_date).toLocaleDateString('ja-JP') : '-' %></td>
+                <td><a href="/admin/invoices/<%= inv.id %>" class="btn btn--ghost btn--sm">詳細</a></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+
+      <% if (pagination && pagination.pageCount > 1) { %>
+        <nav class="pagination">
+          <% for (let i = 1; i <= pagination.pageCount; i++) { %>
+            <a class="page <%= i === pagination.page ? 'is-active' : '' %>"
+               href="/admin/invoices?page=<%= i %>&status=<%= filters.status %>&q=<%= filters.q %>&ym=<%= filters.ym %>"><%= i %></a>
+          <% } %>
+        </nav>
+      <% } %>
+    <% } %>
+  </section>
+</main>
+
+<%- include('../../partials/footer') %>

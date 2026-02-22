@@ -1,0 +1,310 @@
+/* admin-invoices.css — 請求書管理・閲覧 */
+
+.inv-list {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.inv-list__head {
+  margin-bottom: 1.5rem;
+}
+
+.inv-list__head h1 {
+  font-size: clamp(1.3rem, 4vw, 1.7rem);
+  color: var(--color-text, #2B2B2B);
+}
+
+/* 生成フォーム */
+.inv-generate {
+  margin-bottom: 1rem;
+}
+
+.inv-generate__form {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.inv-generate__form .field {
+  flex: 0 0 auto;
+}
+
+.inv-generate__form .field label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--color-text, #2B2B2B);
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+}
+
+.inv-generate__form input[type="month"] {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+/* フィルタ */
+.inv-filters__row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.inv-filters__search {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.inv-filters__row input[type="month"] {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+/* テーブル */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th,
+.table td {
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  white-space: nowrap;
+}
+
+.table th {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.table .mono {
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 0.85rem;
+}
+
+.table tbody tr:hover {
+  background: var(--color-highlight, #D6EADF);
+}
+
+.btn--sm {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+/* ステータスバッジ */
+.status--unpaid { color: #dc2626; background: #fef2f2; padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; }
+.status--partial { color: #d97706; background: #fffbeb; padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; }
+.status--paid { color: #059669; background: #ecfdf5; padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; }
+.status--overdue { color: #dc2626; background: #fef2f2; padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; }
+.status--void { color: #6b7280; background: #f3f4f6; padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; }
+
+/* 詳細ページ */
+.inv-show {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.inv-show__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.inv-show__head h1 {
+  font-size: clamp(1.3rem, 4vw, 1.7rem);
+  margin: 0;
+}
+
+.inv-show__head .mono {
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.inv-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .inv-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 金額サマリー */
+.inv-amounts {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+.inv-amounts__row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.35rem 0;
+  font-size: 0.95rem;
+}
+
+.inv-amounts__total {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-main, #4C6B5C);
+}
+
+.inv-amounts__remaining {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.inv-amounts hr {
+  border: none;
+  border-top: 1px solid var(--border, #e5e7eb);
+  margin: 0.5rem 0;
+}
+
+/* 入金フォーム */
+.inv-payment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.inv-payment-form .field label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.inv-payment-form input,
+.inv-payment-form select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+/* 空状態 */
+.inv-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.inv-empty h3 {
+  font-size: 1.1rem;
+  color: var(--color-text, #2B2B2B);
+  margin-bottom: 0.5rem;
+}
+
+.inv-empty p {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+/* kv (key-value) リスト */
+.kv {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.kv > div {
+  display: flex;
+  gap: 1rem;
+}
+
+.kv dt {
+  flex: 0 0 auto;
+  min-width: 80px;
+  font-size: 0.85rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.kv dd {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+/* ページネーション */
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 1.5rem 0 0.5rem;
+}
+
+.pagination .page {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 0.5rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--color-text, #2B2B2B);
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.pagination .page:hover {
+  background: var(--color-highlight, #D6EADF);
+}
+
+.pagination .page.is-active {
+  background: var(--color-main, #4C6B5C);
+  color: #fff;
+}
+
+/* アラート */
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin: 0.75rem 0;
+}
+
+.alert--safe {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.alert--danger {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}

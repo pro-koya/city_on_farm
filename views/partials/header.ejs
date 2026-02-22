@@ -210,8 +210,14 @@
               お知らせ<% if (unread > 0) { %>（<%= unread > 99 ? '99+' : unread %>）<% } %>
             </a>
           </li>
+          <% if (currentUser.partner_id) { %>
+          <li role="none"><a role="menuitem" href="/my/invoices">請求書</a></li>
+          <% } %>
           <% if (currentUser.roles?.includes('seller') && currentUser.partner_id) { %>
           <li role="none"><a role="menuitem" href="/admin/partners/<%= currentUser.partner_id %>">出品者情報</a></li>
+          <% } %>
+          <% if (currentUser.roles?.includes('admin')) { %>
+          <li role="none"><a role="menuitem" href="/admin/invoices">請求書管理</a></li>
           <% } %>
           <li role="none"><a role="menuitem" href="/admin/users/<%= currentUser.id %>">アカウント情報</a></li>
         </ul>

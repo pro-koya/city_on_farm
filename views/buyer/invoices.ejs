@@ -1,0 +1,65 @@
+<%- include('../partials/header', { title: '請求書', extraCSS2: '',
+  extraCSS: '/styles/admin-invoices.css' }) %>
+
+<main class="inv-list">
+  <header class="inv-list__head">
+    <h1>請求書一覧</h1>
+  </header>
+
+  <section class="card">
+    <% if (!items || !items.length) { %>
+      <div class="inv-empty">
+        <h3>請求書はまだありません</h3>
+        <p>掛売（請求書払い）でご注文いただくと、月末締めで請求書が発行されます。</p>
+      </div>
+    <% } else { %>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>請求番号</th>
+              <th>出品者</th>
+              <th>対象月</th>
+              <th class="num">合計</th>
+              <th class="num">入金済</th>
+              <th>ステータス</th>
+              <th>支払期限</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% items.forEach(inv => { %>
+              <tr>
+                <td class="mono"><%= inv.invoice_number %></td>
+                <td><%= inv.seller_name || '-' %></td>
+                <td><%= inv.year_month %></td>
+                <td class="num">¥<%= Number(inv.total).toLocaleString() %></td>
+                <td class="num">¥<%= Number(inv.paid_amount).toLocaleString() %></td>
+                <td>
+                  <span class="status status--<%= inv.status %>">
+                    <%= inv.status === 'unpaid' ? '未入金' :
+                       inv.status === 'partial' ? '一部入金' :
+                       inv.status === 'paid' ? '入金済' :
+                       inv.status === 'overdue' ? '期限超過' :
+                       inv.status === 'void' ? '無効' : inv.status %>
+                  </span>
+                </td>
+                <td><%= inv.due_date ? new Date(inv.due_date).toLocaleDateString('ja-JP') : '-' %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+
+      <% if (pagination && pagination.pageCount > 1) { %>
+        <nav class="pagination">
+          <% for (let i = 1; i <= pagination.pageCount; i++) { %>
+            <a class="page <%= i === pagination.page ? 'is-active' : '' %>"
+               href="/my/invoices?page=<%= i %>"><%= i %></a>
+          <% } %>
+        </nav>
+      <% } %>
+    <% } %>
+  </section>
+</main>
+
+<%- include('../partials/footer') %>

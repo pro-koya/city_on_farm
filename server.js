@@ -14343,6 +14343,9 @@ registerRefundRoutes(app, requireAuth, requireRole, csrfProtect);
 const { registerAdminFinanceRoutes } = require('./routes-admin-finance');
 registerAdminFinanceRoutes(app, requireAuth, requireRole);
 
+const { registerAdminInvoiceRoutes } = require('./routes-admin-invoice');
+registerAdminInvoiceRoutes(app, requireAuth, requireRole);
+
 // ============================================================
 // WebAuthn（生体認証・パスキー）ルート登録
 // ============================================================

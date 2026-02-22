@@ -1,0 +1,167 @@
+<%- include('../../partials/header', { title: `請求書 ${invoice.invoice_number}`, extraCSS2: '',
+  extraCSS: '/styles/admin-invoices.css' }) %>
+
+<main class="inv-show">
+  <header class="inv-show__head">
+    <div>
+      <h1>請求書詳細</h1>
+      <span class="mono"><%= invoice.invoice_number %></span>
+    </div>
+    <div class="inv-show__actions">
+      <a href="/admin/invoices" class="btn btn--ghost">一覧へ戻る</a>
+    </div>
+  </header>
+
+  <% if (flash) { %>
+    <p class="alert alert--<%= flash.type === 'success' ? 'safe' : 'danger' %>"><%= flash.message %></p>
+  <% } %>
+
+  <div class="inv-grid">
+    <!-- 請求書情報 -->
+    <section class="card">
+      <div class="card__head"><h2>請求書情報</h2></div>
+      <dl class="kv">
+        <div><dt>請求番号</dt><dd class="mono"><%= invoice.invoice_number %></dd></div>
+        <div><dt>対象月</dt><dd><%= invoice.year_month %></dd></div>
+        <div><dt>ステータス</dt><dd>
+          <span class="status status--<%= invoice.status %>">
+            <%= invoice.status === 'unpaid' ? '未入金' :
+               invoice.status === 'partial' ? '一部入金' :
+               invoice.status === 'paid' ? '入金済' :
+               invoice.status === 'overdue' ? '期限超過' :
+               invoice.status === 'void' ? '無効' : invoice.status %>
+          </span>
+        </dd></div>
+        <div><dt>支払期限</dt><dd><%= invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('ja-JP') : '-' %></dd></div>
+        <div><dt>購入者</dt><dd><%= invoice.buyer_name || '-' %></dd></div>
+        <div><dt>出品者</dt><dd><%= invoice.seller_name || '-' %></dd></div>
+      </dl>
+
+      <div class="inv-amounts">
+        <div class="inv-amounts__row">
+          <span>小計</span>
+          <strong>¥<%= Number(invoice.subtotal).toLocaleString() %></strong>
+        </div>
+        <div class="inv-amounts__row">
+          <span>送料・税等</span>
+          <strong>¥<%= Number(invoice.tax).toLocaleString() %></strong>
+        </div>
+        <hr>
+        <div class="inv-amounts__row inv-amounts__total">
+          <span>請求合計</span>
+          <strong>¥<%= Number(invoice.total).toLocaleString() %></strong>
+        </div>
+        <div class="inv-amounts__row">
+          <span>入金済</span>
+          <strong>¥<%= Number(invoice.paid_amount).toLocaleString() %></strong>
+        </div>
+        <div class="inv-amounts__row inv-amounts__remaining">
+          <span>残額</span>
+          <strong>¥<%= Number(Math.max(0, invoice.total - invoice.paid_amount)).toLocaleString() %></strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- 入金消込 -->
+    <section class="card">
+      <div class="card__head"><h2>入金消込</h2></div>
+
+      <% if (invoice.status !== 'paid' && invoice.status !== 'void') { %>
+        <form method="POST" action="/admin/invoices/<%= invoice.id %>/payment" class="inv-payment-form">
+          <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <% } %>
+          <div class="field">
+            <label for="amount">入金額（円）</label>
+            <input type="number" id="amount" name="amount" min="1"
+                   max="<%= Math.max(0, invoice.total - invoice.paid_amount) %>"
+                   value="<%= Math.max(0, invoice.total - invoice.paid_amount) %>" required>
+          </div>
+          <div class="field">
+            <label for="method">入金方法</label>
+            <select id="method" name="method" class="pulldown">
+              <option value="bank_transfer">銀行振込</option>
+              <option value="cash">現金</option>
+              <option value="other">その他</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="note">メモ（任意）</label>
+            <input type="text" id="note" name="note" placeholder="入金メモ">
+          </div>
+          <button type="submit" class="btn">入金を記録</button>
+        </form>
+      <% } else { %>
+        <p class="muted"><%= invoice.status === 'paid' ? '入金完了済みです。' : 'この請求書は無効です。' %></p>
+      <% } %>
+
+      <!-- 入金履歴 -->
+      <% if (payments && payments.length) { %>
+        <h3 style="margin-top: 1.5rem;">入金履歴</h3>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>日時</th>
+                <th>方法</th>
+                <th class="num">金額</th>
+                <th>記録者</th>
+                <th>メモ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% payments.forEach(p => { %>
+                <tr>
+                  <td><%= new Date(p.created_at).toLocaleString('ja-JP') %></td>
+                  <td><%= p.method === 'bank_transfer' ? '銀行振込' : p.method === 'cash' ? '現金' : p.method %></td>
+                  <td class="num">¥<%= Number(p.amount).toLocaleString() %></td>
+                  <td><%= p.recorded_by_name || '-' %></td>
+                  <td><%= p.note || '-' %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+  </div>
+
+  <!-- 対象注文一覧 -->
+  <section class="card">
+    <div class="card__head"><h2>対象注文（<%= orders.length %>件）</h2></div>
+    <% if (!orders || !orders.length) { %>
+      <p class="muted">対象注文はありません。</p>
+    <% } else { %>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>注文番号</th>
+              <th>注文日</th>
+              <th class="num">小計</th>
+              <th class="num">送料</th>
+              <th class="num">割引</th>
+              <th class="num">合計</th>
+              <th>ステータス</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% orders.forEach(o => { %>
+              <tr>
+                <td><a href="/orders/<%= o.order_number %>" class="mono"><%= o.order_number %></a></td>
+                <td><%= new Date(o.created_at).toLocaleDateString('ja-JP') %></td>
+                <td class="num">¥<%= Number(o.subtotal).toLocaleString() %></td>
+                <td class="num">¥<%= Number(o.shipping_fee || 0).toLocaleString() %></td>
+                <td class="num">-¥<%= Number(o.discount || 0).toLocaleString() %></td>
+                <td class="num">¥<%= Number(o.total).toLocaleString() %></td>
+                <td><span class="status status--<%= o.status %>"><%= o.status %></span></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+</main>
+
+<%- include('../../partials/footer') %>
