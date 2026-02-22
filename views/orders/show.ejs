@@ -100,6 +100,14 @@
 
     <div class="order-head__right">
       <div class="order-actions">
+        <% if (order.status !== 'canceled' && order.status !== 'cancelled') { %>
+          <form method="POST" action="/orders/<%= orderNo %>/reorder" class="inline">
+            <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <% } %>
+            <button type="submit" class="btn">この注文をもう一度</button>
+          </form>
+        <% } %>
         <button class="btn btn--ghost" id="printPage" type="button">このページを印刷</button>
         <a class="btn btn--primary" href="/orders/recent">注文一覧へ</a>
       </div>

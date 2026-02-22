@@ -9209,6 +9209,94 @@ app.get('/checkout/complete', async (req, res, next) => {
 });
 
 // =========================================================
+// 再注文: POST /orders/:no/reorder
+//  - 過去注文の商品をカートに追加
+// =========================================================
+app.post('/orders/:no/reorder', requireAuth, async (req, res, next) => {
+  try {
+    const no = String(req.params.no || '').trim();
+    const uid = req.session.user.id;
+
+    // 注文を取得（購入者本人チェック）
+    const orderRows = await dbQuery(
+      `SELECT id, order_number FROM orders
+       WHERE (order_number = $1 OR id::text = $1) AND buyer_id = $2
+       LIMIT 1`,
+      [no, uid]
+    );
+    if (!orderRows.length) {
+      req.session.flash = { type: 'error', message: '注文が見つかりません。' };
+      return res.redirect('/orders/recent');
+    }
+
+    // 注文アイテムを取得
+    const items = await dbQuery(
+      `SELECT oi.product_id, oi.quantity,
+              p.title, p.stock, p.status AS product_status, p.price AS current_price,
+              oi.price AS ordered_price
+       FROM order_items oi
+       LEFT JOIN products p ON p.id = oi.product_id
+       WHERE oi.order_id = $1`,
+      [orderRows[0].id]
+    );
+
+    let addedCount = 0;
+    const warnings = [];
+
+    for (const item of items) {
+      // 非公開・削除済み商品はスキップ
+      if (!item.product_status || item.product_status !== 'public') {
+        warnings.push(`${item.title || '商品'} は現在取り扱いがありません。`);
+        continue;
+      }
+      // 在庫切れチェック
+      if ((item.stock || 0) <= 0) {
+        warnings.push(`${item.title} は在庫切れです。`);
+        continue;
+      }
+      // 在庫不足の場合は利用可能な数量だけ追加
+      const qty = Math.min(item.quantity, item.stock || 0);
+
+      // カートに追加
+      await dbCartAdd(uid, item.product_id, qty);
+      addedCount++;
+
+      // 価格変更通知
+      if (item.current_price !== item.ordered_price) {
+        warnings.push(`${item.title} の価格が ¥${Number(item.ordered_price).toLocaleString()} → ¥${Number(item.current_price).toLocaleString()} に変更されています。`);
+      }
+      if (qty < item.quantity) {
+        warnings.push(`${item.title} は在庫が ${item.stock} 点のため、${qty} 点のみカートに追加しました。`);
+      }
+    }
+
+    // セッションカートも同期
+    if (uid) {
+      const sessionItems = await loadDbCartItems(uid);
+      req.session.cart = req.session.cart || {};
+      req.session.cart.items = sessionItems;
+    }
+
+    // フラッシュメッセージ
+    let msg = '';
+    if (addedCount > 0) {
+      msg = `${addedCount} 点の商品をカートに追加しました。`;
+    } else {
+      msg = '追加できる商品がありませんでした。';
+    }
+    if (warnings.length) {
+      msg += '\n' + warnings.join('\n');
+    }
+
+    req.session.flash = {
+      type: addedCount > 0 ? 'success' : 'error',
+      message: msg
+    };
+    return res.redirect('/cart');
+  } catch (e) { next(e); }
+});
+
+// =========================================================
 // 注文詳細: GET /orders/:no
 //  - :no は order_number か UUID（id）のどちらでも可
 //  - 購入者本人のみ閲覧可能
