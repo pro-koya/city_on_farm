@@ -33,6 +33,7 @@ public,payment_method,convenience_store,3
 public,payment_method,cod,4
 public,payment_method,bank,5
 public,payment_method,paypay,6
+public,payment_method,invoice,7
 public,payment_status,pending,1
 public,payment_status,completed,2
 public,payment_status,failed,3

@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2026-02-22T18:36:36.411Z
+> Generated at: 2026-02-23T19:03:22.479Z
 
 ---
 
@@ -58,6 +58,45 @@
   
   ```sql
   CREATE UNIQUE INDEX ux_user_default_address ON public.addresses USING btree (user_id, address_type) WHERE ((scope = 'user'::text) AND (is_default = true))
+  ```
+
+---
+
+### `public.approval_workflow_steps`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `partner_id` | `uuid` | NO |  |  |
+| 3 | `step_order` | `integer` | NO |  |  |
+| 4 | `role` | `text` | NO |  |  |
+| 5 | `created_at` | `timestamp with time zone` | YES | now() |  |
+
+**Constraints**
+
+- **CHECK**: `approval_workflow_steps_id_not_null`, `approval_workflow_steps_partner_id_not_null`, `approval_workflow_steps_role_check`, `approval_workflow_steps_role_not_null`, `approval_workflow_steps_step_order_not_null`
+- **FOREIGN KEY**: `approval_workflow_steps_partner_id_fkey`
+- **PRIMARY KEY**: `approval_workflow_steps_pkey`
+- **UNIQUE**: `approval_workflow_steps_partner_id_step_order_key`
+
+**Indexes**
+
+- `approval_workflow_steps_partner_id_step_order_key`
+  
+  ```sql
+  CREATE UNIQUE INDEX approval_workflow_steps_partner_id_step_order_key ON public.approval_workflow_steps USING btree (partner_id, step_order)
+  ```
+- `approval_workflow_steps_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX approval_workflow_steps_pkey ON public.approval_workflow_steps USING btree (id)
+  ```
+- `idx_approval_workflow_steps_partner`
+  
+  ```sql
+  CREATE INDEX idx_approval_workflow_steps_partner ON public.approval_workflow_steps USING btree (partner_id)
   ```
 
 ---
@@ -414,6 +453,54 @@
 
 ---
 
+### `public.customer_prices`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `buyer_partner_id` | `uuid` | NO |  |  |
+| 3 | `product_id` | `uuid` | NO |  |  |
+| 4 | `price` | `integer` | NO |  |  |
+| 5 | `created_by` | `uuid` | YES |  |  |
+| 6 | `starts_at` | `timestamp with time zone` | YES | now() |  |
+| 7 | `expires_at` | `timestamp with time zone` | YES |  |  |
+| 8 | `created_at` | `timestamp with time zone` | YES | now() |  |
+| 9 | `updated_at` | `timestamp with time zone` | YES | now() |  |
+
+**Constraints**
+
+- **CHECK**: `customer_prices_buyer_partner_id_not_null`, `customer_prices_id_not_null`, `customer_prices_price_not_null`, `customer_prices_product_id_not_null`
+- **FOREIGN KEY**: `customer_prices_buyer_partner_id_fkey`, `customer_prices_created_by_fkey`, `customer_prices_product_id_fkey`
+- **PRIMARY KEY**: `customer_prices_pkey`
+- **UNIQUE**: `customer_prices_buyer_partner_id_product_id_key`
+
+**Indexes**
+
+- `customer_prices_buyer_partner_id_product_id_key`
+  
+  ```sql
+  CREATE UNIQUE INDEX customer_prices_buyer_partner_id_product_id_key ON public.customer_prices USING btree (buyer_partner_id, product_id)
+  ```
+- `customer_prices_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX customer_prices_pkey ON public.customer_prices USING btree (id)
+  ```
+- `idx_customer_prices_buyer`
+  
+  ```sql
+  CREATE INDEX idx_customer_prices_buyer ON public.customer_prices USING btree (buyer_partner_id)
+  ```
+- `idx_customer_prices_product`
+  
+  ```sql
+  CREATE INDEX idx_customer_prices_product ON public.customer_prices USING btree (product_id)
+  ```
+
+---
+
 ### `public.email_verifications`
 
 **Columns**
@@ -514,7 +601,7 @@
 |---:|---|---|:---:|---|---|
 | 1 | `method` | `payment_method` *(enum)* | NO |  |  |
 
-> **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`
+> **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`, `invoice`
 
 **Constraints**
 
@@ -713,6 +800,71 @@
   
   ```sql
   CREATE UNIQUE INDEX login_history_pkey ON public.login_history USING btree (id)
+  ```
+
+---
+
+### `public.monthly_invoices`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `invoice_number` | `text` | NO |  |  |
+| 3 | `buyer_partner_id` | `uuid` | NO |  |  |
+| 4 | `seller_partner_id` | `uuid` | NO |  |  |
+| 5 | `year_month` | `text` | NO |  |  |
+| 6 | `subtotal` | `integer` | NO | 0 |  |
+| 7 | `tax` | `integer` | NO | 0 |  |
+| 8 | `total` | `integer` | NO | 0 |  |
+| 9 | `status` | `text` | NO | 'unpaid'::text |  |
+| 10 | `due_date` | `date` | NO |  |  |
+| 11 | `paid_amount` | `integer` | NO | 0 |  |
+| 12 | `paid_at` | `timestamp with time zone` | YES |  |  |
+| 13 | `note` | `text` | YES |  |  |
+| 14 | `pdf_url` | `text` | YES |  |  |
+| 15 | `created_at` | `timestamp with time zone` | YES | now() |  |
+| 16 | `updated_at` | `timestamp with time zone` | YES | now() |  |
+
+**Constraints**
+
+- **CHECK**: `monthly_invoices_buyer_partner_id_not_null`, `monthly_invoices_due_date_not_null`, `monthly_invoices_id_not_null`, `monthly_invoices_invoice_number_not_null`, `monthly_invoices_paid_amount_not_null`, `monthly_invoices_seller_partner_id_not_null`, `monthly_invoices_status_check`, `monthly_invoices_status_not_null`, `monthly_invoices_subtotal_not_null`, `monthly_invoices_tax_not_null`, `monthly_invoices_total_not_null`, `monthly_invoices_year_month_not_null`
+- **FOREIGN KEY**: `monthly_invoices_buyer_partner_id_fkey`, `monthly_invoices_seller_partner_id_fkey`
+- **PRIMARY KEY**: `monthly_invoices_pkey`
+- **UNIQUE**: `monthly_invoices_buyer_partner_id_seller_partner_id_year_mo_key`, `monthly_invoices_invoice_number_key`
+
+**Indexes**
+
+- `idx_monthly_invoices_seller`
+  
+  ```sql
+  CREATE INDEX idx_monthly_invoices_seller ON public.monthly_invoices USING btree (seller_partner_id)
+  ```
+- `idx_monthly_invoices_status`
+  
+  ```sql
+  CREATE INDEX idx_monthly_invoices_status ON public.monthly_invoices USING btree (status)
+  ```
+- `idx_monthly_invoices_year_month`
+  
+  ```sql
+  CREATE INDEX idx_monthly_invoices_year_month ON public.monthly_invoices USING btree (year_month)
+  ```
+- `monthly_invoices_buyer_partner_id_seller_partner_id_year_mo_key`
+  
+  ```sql
+  CREATE UNIQUE INDEX monthly_invoices_buyer_partner_id_seller_partner_id_year_mo_key ON public.monthly_invoices USING btree (buyer_partner_id, seller_partner_id, year_month)
+  ```
+- `monthly_invoices_invoice_number_key`
+  
+  ```sql
+  CREATE UNIQUE INDEX monthly_invoices_invoice_number_key ON public.monthly_invoices USING btree (invoice_number)
+  ```
+- `monthly_invoices_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX monthly_invoices_pkey ON public.monthly_invoices USING btree (id)
   ```
 
 ---
@@ -963,6 +1115,52 @@
 
 ---
 
+### `public.order_approvals`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `order_id` | `uuid` | NO |  |  |
+| 3 | `step_order` | `integer` | NO |  |  |
+| 4 | `approver_id` | `uuid` | YES |  |  |
+| 5 | `status` | `text` | NO | 'pending'::text |  |
+| 6 | `comment` | `text` | YES |  |  |
+| 7 | `decided_at` | `timestamp with time zone` | YES |  |  |
+| 8 | `created_at` | `timestamp with time zone` | YES | now() |  |
+
+**Constraints**
+
+- **CHECK**: `order_approvals_id_not_null`, `order_approvals_order_id_not_null`, `order_approvals_status_check`, `order_approvals_status_not_null`, `order_approvals_step_order_not_null`
+- **FOREIGN KEY**: `order_approvals_approver_id_fkey`, `order_approvals_order_id_fkey`
+- **PRIMARY KEY**: `order_approvals_pkey`
+
+**Indexes**
+
+- `idx_order_approvals_approver`
+  
+  ```sql
+  CREATE INDEX idx_order_approvals_approver ON public.order_approvals USING btree (approver_id)
+  ```
+- `idx_order_approvals_order`
+  
+  ```sql
+  CREATE INDEX idx_order_approvals_order ON public.order_approvals USING btree (order_id)
+  ```
+- `idx_order_approvals_status`
+  
+  ```sql
+  CREATE INDEX idx_order_approvals_status ON public.order_approvals USING btree (status)
+  ```
+- `order_approvals_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX order_approvals_pkey ON public.order_approvals USING btree (id)
+  ```
+
+---
+
 ### `public.order_groups`
 
 **Columns**
@@ -1054,6 +1252,79 @@
 
 ---
 
+### `public.order_template_items`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `template_id` | `uuid` | NO |  |  |
+| 3 | `product_id` | `uuid` | NO |  |  |
+| 4 | `quantity` | `integer` | NO | 1 |  |
+| 5 | `sort_order` | `integer` | YES | 0 |  |
+
+**Constraints**
+
+- **CHECK**: `order_template_items_id_not_null`, `order_template_items_product_id_not_null`, `order_template_items_quantity_not_null`, `order_template_items_template_id_not_null`
+- **FOREIGN KEY**: `order_template_items_product_id_fkey`, `order_template_items_template_id_fkey`
+- **PRIMARY KEY**: `order_template_items_pkey`
+
+**Indexes**
+
+- `idx_order_template_items_template`
+  
+  ```sql
+  CREATE INDEX idx_order_template_items_template ON public.order_template_items USING btree (template_id)
+  ```
+- `order_template_items_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX order_template_items_pkey ON public.order_template_items USING btree (id)
+  ```
+
+---
+
+### `public.order_templates`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `user_id` | `uuid` | NO |  |  |
+| 3 | `partner_id` | `uuid` | YES |  |  |
+| 4 | `name` | `text` | NO |  |  |
+| 5 | `seller_partner_id` | `uuid` | NO |  |  |
+| 6 | `created_at` | `timestamp with time zone` | YES | now() |  |
+| 7 | `updated_at` | `timestamp with time zone` | YES | now() |  |
+
+**Constraints**
+
+- **CHECK**: `order_templates_id_not_null`, `order_templates_name_not_null`, `order_templates_seller_partner_id_not_null`, `order_templates_user_id_not_null`
+- **FOREIGN KEY**: `order_templates_partner_id_fkey`, `order_templates_seller_partner_id_fkey`, `order_templates_user_id_fkey`
+- **PRIMARY KEY**: `order_templates_pkey`
+
+**Indexes**
+
+- `idx_order_templates_partner`
+  
+  ```sql
+  CREATE INDEX idx_order_templates_partner ON public.order_templates USING btree (partner_id)
+  ```
+- `idx_order_templates_user`
+  
+  ```sql
+  CREATE INDEX idx_order_templates_user ON public.order_templates USING btree (user_id)
+  ```
+- `order_templates_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX order_templates_pkey ON public.order_templates USING btree (id)
+  ```
+
+---
+
 ### `public.orders`
 
 **Columns**
@@ -1101,22 +1372,29 @@
 | 39 | `ledger_sale_id` | `uuid` | YES |  | 売上台帳エントリのID（ledger.idを参照） |
 | 40 | `ledger_fee_id` | `uuid` | YES |  | 手数料台帳エントリのID（ledger.idを参照） |
 | 41 | `stripe_refund_id` | `text` | YES |  |  |
+| 42 | `approval_status` | `text` | YES | 'none'::text |  |
+| 43 | `submitted_by` | `uuid` | YES |  |  |
 
 > **Enum `order_status` values**: `pending`, `paid`, `shipped`, `cancelled`, `confirmed`, `processing`, `delivered`, `canceled`, `refunded`, `fulfilled`
-> **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`
+> **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`, `invoice`
 > **Enum `payment_status` values**: `pending`, `completed`, `failed`, `authorized`, `paid`, `canceled`, `refunded`, `unpaid`, `cancelled`
 > **Enum `ship_method` values**: `pickup`, `delivery`
 > **Enum `shipment_status` values**: `pending`, `preparing`, `shipped`, `delivered`, `cancelled`, `returned`, `lost`, `canceled`, `in_transit`
 
 **Constraints**
 
-- **CHECK**: `orders_amounts_check`, `orders_bill_same_not_null`, `orders_buyer_id_not_null`, `orders_coupon_discount_not_null`, `orders_created_at_not_null`, `orders_discount_not_null`, `orders_id_not_null`, `orders_payment_status_not_null`, `orders_receipt_name_length_check`, `orders_shipment_status_not_null`, `orders_shipping_fee_not_null`, `orders_status_not_null`, `orders_subtotal_not_null`, `orders_tax_not_null`, `orders_total_not_null`, `orders_updated_at_not_null`
-- **FOREIGN KEY**: `orders_buyer_id_fkey`, `orders_group_id_fkey`, `orders_seller_id_fkey`, `orders_transfer_id_fkey`
+- **CHECK**: `orders_amounts_check`, `orders_approval_status_check`, `orders_bill_same_not_null`, `orders_buyer_id_not_null`, `orders_coupon_discount_not_null`, `orders_created_at_not_null`, `orders_discount_not_null`, `orders_id_not_null`, `orders_payment_status_not_null`, `orders_receipt_name_length_check`, `orders_shipment_status_not_null`, `orders_shipping_fee_not_null`, `orders_status_not_null`, `orders_subtotal_not_null`, `orders_tax_not_null`, `orders_total_not_null`, `orders_updated_at_not_null`
+- **FOREIGN KEY**: `orders_buyer_id_fkey`, `orders_group_id_fkey`, `orders_seller_id_fkey`, `orders_submitted_by_fkey`, `orders_transfer_id_fkey`
 - **PRIMARY KEY**: `orders_pkey`
 - **UNIQUE**: `orders_order_number_key`, `uq_orders_order_number`
 
 **Indexes**
 
+- `idx_orders_approval_status`
+  
+  ```sql
+  CREATE INDEX idx_orders_approval_status ON public.orders USING btree (approval_status)
+  ```
 - `idx_orders_buyer`
   
   ```sql
@@ -1305,7 +1583,7 @@ _No indexes_
 | 3 | `created_at` | `timestamp with time zone` | NO | now() |  |
 | 4 | `updated_at` | `timestamp with time zone` | NO | now() |  |
 
-> **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`
+> **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`, `invoice`
 
 **Constraints**
 
@@ -1624,6 +1902,8 @@ _No indexes_
 | 42 | `details_submitted` | `boolean` | YES | false |  |
 | 43 | `charges_enabled` | `boolean` | YES | false |  |
 | 44 | `requirements_due_by` | `timestamp without time zone` | YES |  |  |
+| 45 | `credit_limit` | `integer` | YES | 0 |  |
+| 46 | `credit_used` | `integer` | YES | 0 |  |
 
 > **Enum `partner_type` values**: `restaurant`, `retailer`, `wholesale`, `corporate`, `individual`, `other`
 > **Enum `partner_status` values**: `active`, `inactive`, `prospect`, `suspended`
@@ -1748,6 +2028,41 @@ _No indexes_
 
 ---
 
+### `public.payment_records`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `invoice_id` | `uuid` | NO |  |  |
+| 3 | `amount` | `integer` | NO |  |  |
+| 4 | `method` | `text` | NO | 'bank_transfer'::text |  |
+| 5 | `recorded_by` | `uuid` | YES |  |  |
+| 6 | `note` | `text` | YES |  |  |
+| 7 | `created_at` | `timestamp with time zone` | YES | now() |  |
+
+**Constraints**
+
+- **CHECK**: `payment_records_amount_not_null`, `payment_records_id_not_null`, `payment_records_invoice_id_not_null`, `payment_records_method_not_null`
+- **FOREIGN KEY**: `payment_records_invoice_id_fkey`, `payment_records_recorded_by_fkey`
+- **PRIMARY KEY**: `payment_records_pkey`
+
+**Indexes**
+
+- `idx_payment_records_invoice`
+  
+  ```sql
+  CREATE INDEX idx_payment_records_invoice ON public.payment_records USING btree (invoice_id)
+  ```
+- `payment_records_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX payment_records_pkey ON public.payment_records USING btree (id)
+  ```
+
+---
+
 ### `public.payments`
 
 **Columns**
@@ -1763,7 +2078,7 @@ _No indexes_
 | 7 | `created_at` | `timestamp with time zone` | NO | now() |  |
 | 8 | `updated_at` | `timestamp with time zone` | NO | now() |  |
 
-> **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`
+> **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`, `invoice`
 > **Enum `payment_status` values**: `pending`, `completed`, `failed`, `authorized`, `paid`, `canceled`, `refunded`, `unpaid`, `cancelled`
 
 **Constraints**
@@ -2595,7 +2910,7 @@ _No indexes_
 | 4 | `updated_at` | `timestamp with time zone` | NO | now() |  |
 | 5 | `synced_from_partner` | `boolean` | NO | true |  |
 
-> **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`
+> **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`, `invoice`
 
 **Constraints**
 
@@ -2850,7 +3165,7 @@ WebAuthn認証器（生体認証・セキュリティキー）情報
 - `public.order_status`: `pending`, `paid`, `shipped`, `cancelled`, `confirmed`, `processing`, `delivered`, `canceled`, `refunded`, `fulfilled`
 - `public.partner_status`: `active`, `inactive`, `prospect`, `suspended`
 - `public.partner_type`: `restaurant`, `retailer`, `wholesale`, `corporate`, `individual`, `other`
-- `public.payment_method`: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`
+- `public.payment_method`: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`, `invoice`
 - `public.payment_status`: `pending`, `completed`, `failed`, `authorized`, `paid`, `canceled`, `refunded`, `unpaid`, `cancelled`
 - `public.product_status`: `draft`, `private`, `public`
 - `public.review_status`: `published`, `pending`, `hidden`
