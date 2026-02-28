@@ -1,0 +1,59 @@
+<%- include('../../partials/header', { title: '承認待ち', extraCSS2: '',
+  extraCSS: '/styles/approval.css' }) %>
+
+<main class="appr-list">
+  <div class="appr-list__head">
+    <h1>承認待ち</h1>
+    <p class="muted">あなたの承認が必要な承認リクエストが表示されます。</p>
+  </div>
+
+  <% if (flash) { %>
+    <div class="alert alert--<%= flash.type === 'success' ? 'safe' : 'danger' %>">
+      <%= flash.message %>
+    </div>
+  <% } %>
+
+  <% if (!requests || !requests.length) { %>
+    <section class="appr-empty">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" style="margin-bottom: .75rem;">
+        <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+      </svg>
+      <h3>承認待ちのリクエストはありません</h3>
+      <p>承認が必要なリクエストがあると、ここに表示されます。</p>
+    </section>
+  <% } else { %>
+    <section class="card">
+      <div class="card__head">
+        <h2>承認リクエスト（<%= requests.length %>件）</h2>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>申請日時</th>
+              <th>申請者</th>
+              <th class="num">金額</th>
+              <th>ステップ</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% requests.forEach(function(r) { %>
+              <tr>
+                <td><%= new Date(r.created_at).toLocaleString('ja-JP') %></td>
+                <td><strong><%= r.requester_name || '—' %></strong></td>
+                <td class="num"><strong>&#165;<%= Number(r.total || 0).toLocaleString() %></strong></td>
+                <td><span class="pill pill--pending">ステップ <%= r.step_order %></span></td>
+                <td>
+                  <a class="btn btn--primary btn--sm" href="/my/approvals/requests/<%= r.id %>">詳細を確認</a>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  <% } %>
+</main>
+
+<%- include('../../partials/footer') %>

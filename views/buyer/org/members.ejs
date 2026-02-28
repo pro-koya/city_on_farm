@@ -1,0 +1,161 @@
+<%- include('../../partials/header', { title: '組織メンバー管理', extraCSS2: '',
+  extraCSS: '/styles/org-members.css' }) %>
+
+<main class="org-members">
+  <div class="org-members__head">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem;">
+      <h1><%= orgName %> - メンバー管理</h1>
+      <a href="/my/org/workflow" class="btn btn--ghost btn--sm">承認フロー設定 &rarr;</a>
+    </div>
+    <p class="muted">メンバーのロールを設定し、発注・承認・経理の権限を管理できます。</p>
+  </div>
+
+  <% if (flash) { %>
+    <div class="alert alert--<%= flash.type === 'success' ? 'safe' : 'danger' %>">
+      <%= flash.message %>
+    </div>
+  <% } %>
+
+  <!-- ロール説明 -->
+  <section class="card org-roles-info">
+    <div class="card__head"><h2>ロールの説明</h2></div>
+    <div class="roles-grid">
+      <div class="role-desc">
+        <strong>発注者</strong>
+        <span>商品の発注が可能</span>
+      </div>
+      <div class="role-desc">
+        <strong>承認者</strong>
+        <span>発注の承認・却下が可能</span>
+      </div>
+      <div class="role-desc">
+        <strong>経理</strong>
+        <span>請求書の閲覧が可能</span>
+      </div>
+      <div class="role-desc">
+        <strong>組織管理者</strong>
+        <span>全機能へのアクセス + メンバー管理</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- メンバー一覧 -->
+  <section class="card">
+    <div class="card__head"><h2>メンバー一覧（<%= members.length %>名）</h2></div>
+
+    <% if (!members.length) { %>
+      <p class="muted" style="padding: 1rem;">メンバーがいません。</p>
+    <% } else { %>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>名前</th>
+              <th>メール</th>
+              <th>現在のロール</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% members.forEach(function(m) { %>
+              <%
+                const userRoles = Array.isArray(m.roles) ? m.roles : (typeof m.roles === 'string' ? JSON.parse(m.roles) : []);
+              %>
+              <tr>
+                <td><strong><%= m.name %></strong></td>
+                <td class="muted"><%= m.email %></td>
+                <td>
+                  <% if (userRoles.length) { %>
+                    <% userRoles.forEach(function(r) { %>
+                      <span class="pill pill--small pill--role"><%= roleLabels[r] || r %></span>
+                    <% }) %>
+                  <% } else { %>
+                    <span class="muted">未設定</span>
+                  <% } %>
+                </td>
+                <td>
+                  <button type="button" class="btn btn--ghost btn--sm js-edit-roles"
+                    data-user-id="<%= m.user_id %>"
+                    data-user-name="<%= m.name %>"
+                    data-roles="<%= JSON.stringify(userRoles) %>">
+                    ロール変更
+                  </button>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+</main>
+
+<!-- ロール変更モーダル -->
+<div id="roleModal" class="modal" style="display: none;">
+  <div class="modal__overlay"></div>
+  <div class="modal__content">
+    <div class="modal__header">
+      <h2>ロールを変更: <span id="roleModalName"></span></h2>
+      <button class="modal__close" type="button" aria-label="閉じる">&times;</button>
+    </div>
+    <div class="modal__body">
+      <form id="roleForm" method="POST" action="">
+        <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <% } %>
+        <div class="role-checkboxes">
+          <% validRoles.forEach(function(r) { %>
+            <label class="role-check">
+              <input type="checkbox" name="roles" value="<%= r %>" class="role-check__input">
+              <span class="role-check__label">
+                <strong><%= roleLabels[r] %></strong>
+              </span>
+            </label>
+          <% }) %>
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" id="cancelRoleBtn">キャンセル</button>
+          <button type="submit" class="btn btn--primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const modal = document.getElementById('roleModal');
+  const overlay = modal.querySelector('.modal__overlay');
+  const closeBtn = modal.querySelector('.modal__close');
+  const cancelBtn = document.getElementById('cancelRoleBtn');
+  const form = document.getElementById('roleForm');
+  const nameEl = document.getElementById('roleModalName');
+  const checkboxes = form.querySelectorAll('.role-check__input');
+
+  function openModal(userId, userName, roles) {
+    nameEl.textContent = userName;
+    form.action = '/my/org/members/' + userId + '/roles';
+    checkboxes.forEach(function(cb) {
+      cb.checked = roles.includes(cb.value);
+    });
+    modal.style.display = '';
+  }
+
+  function closeModal() {
+    modal.style.display = 'none';
+  }
+
+  document.querySelectorAll('.js-edit-roles').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var roles = JSON.parse(this.dataset.roles || '[]');
+      openModal(this.dataset.userId, this.dataset.userName, roles);
+    });
+  });
+
+  overlay.addEventListener('click', closeModal);
+  closeBtn.addEventListener('click', closeModal);
+  cancelBtn.addEventListener('click', closeModal);
+})();
+</script>
+
+<%- include('../../partials/footer') %>

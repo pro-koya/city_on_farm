@@ -103,15 +103,18 @@
 
     const stock = Number(li.dataset.stock || 999);
     const id = li.dataset.id;
+    const variantId = li.dataset.variantId || '';
 
     function updateServer(qty) {
       // サーバに在庫超過させないよう clamp
       const safe = Math.max(1, Math.min(stock || 999, Number(qty||1)));
+      const body = { quantity: safe };
+      if (variantId) body.variantId = variantId;
       // API（任意・無くてもフロント側は動く）
       fetch(`/cart/${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF },
-        body: JSON.stringify({ quantity: safe })
+        body: JSON.stringify(body)
       }).catch(()=>{ /* サイレント失敗 */ });
     }
 
@@ -143,7 +146,10 @@
       removeGroupIfEmpty(group);
       recalc();
       // API（任意）
-      fetch(`/cart/${encodeURIComponent(id)}`, {
+      const delUrl = variantId
+        ? `/cart/${encodeURIComponent(id)}?variantId=${encodeURIComponent(variantId)}`
+        : `/cart/${encodeURIComponent(id)}`;
+      fetch(delUrl, {
         method: 'DELETE',
         headers: { 'CSRF-Token': CSRF }
       }).catch(()=>{});
@@ -167,10 +173,14 @@
     if (!targets.length) return;
     targets.forEach(li => {
       const id = li.dataset.id;
+      const vid = li.dataset.variantId || '';
       const group = getGroupRoot(li);
       li.remove();
       removeGroupIfEmpty(group);
-      fetch(`/cart/${encodeURIComponent(id)}`, {
+      const delUrl = vid
+        ? `/cart/${encodeURIComponent(id)}?variantId=${encodeURIComponent(vid)}`
+        : `/cart/${encodeURIComponent(id)}`;
+      fetch(delUrl, {
         method: 'DELETE',
         headers: { 'CSRF-Token': CSRF }
       }).catch(()=>{});
@@ -213,9 +223,13 @@
   // 既存の .checkoutBtn へのリスナーを書き換え/追加
   document.querySelectorAll('.checkoutBtn').forEach((btn) => {
     btn.addEventListener('click', async (e) => {
+      // 承認申請フォーム内のボタンは通常送信させる（妨げない）
+      if (btn.closest('.approval-request-form')) return;
+
       e.preventDefault();
 
       const sellerId = btn.dataset.seller;
+      const approvalRequestId = btn.dataset.approvalRequestId || '';
       const errEl = document.getElementById('checkoutError-' + sellerId);
       const list = document.querySelector('#cartList-' + sellerId);
       const CSRF = document.querySelector('input[name="_csrf"]')?.value || '';
@@ -265,7 +279,10 @@
           return;
         }
         clearError();
-        window.location.href = `/checkout?seller=${encodeURIComponent(sellerId)}`;
+        const checkoutUrl = approvalRequestId
+          ? `/checkout?seller=${encodeURIComponent(sellerId)}&approval_request_id=${encodeURIComponent(approvalRequestId)}`
+          : `/checkout?seller=${encodeURIComponent(sellerId)}`;
+        window.location.href = checkoutUrl;
       } catch (err) {
         console.error(err);
         showError('通信に失敗しました。ネットワーク状況をご確認ください。');

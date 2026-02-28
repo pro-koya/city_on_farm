@@ -158,6 +158,8 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
                       <% } else if (pm.code === 'cod') { %>
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                      <% } else if (pm.code === 'invoice') { %>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                       <% } else { %>
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path><path d="M12 18V6"></path></svg>
                       <% } %>
@@ -172,6 +174,10 @@
                       クレジットカード決済（Stripe）でお支払いいただけます
                     <% } else if (pm.code === 'cod') { %>
                       商品到着時に配送員へ現金でお支払いください
+                    <% } else if (pm.code === 'invoice') { %>
+                      月末締め翌月末払い。月次で請求書をお送りします
+                    <% } else if (pm.code === 'bank_transfer') { %>
+                      指定口座へのお振込でお支払いください
                     <% } else { %>
                       お支払い方法の詳細
                     <% } %>
@@ -323,6 +329,12 @@
           } else if (paymentCode === 'cod') {
             icon = '💴';
             note = '商品到着時に配送員へ現金でお支払いください。';
+          } else if (paymentCode === 'invoice') {
+            icon = '📄';
+            note = '月末締め翌月末払い。月次で請求書をお送りします。';
+          } else if (paymentCode === 'bank_transfer') {
+            icon = '🏦';
+            note = '指定口座へのお振込でお支払いください。';
           }
 
           // 参照モードの表示を更新

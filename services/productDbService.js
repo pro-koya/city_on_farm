@@ -96,7 +96,7 @@ async function fetchProductsWithCount(dbQuery, {
     // データ
     const dataSql = `
         SELECT
-        p.id, p.slug, p.title, p.price, p.unit, p.stock,
+        p.id, p.slug, p.title, p.price, p.unit, p.stock, p.has_variants,
         p.is_organic, p.is_seasonal, p.published_at, p.created_at,
         c.name AS category_name,
         u.name AS seller_name,

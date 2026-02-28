@@ -140,7 +140,7 @@
             <% items.forEach(function(it){ %>
               <tr>
                 <td class="col-name">
-                  <div class="product-name"><%= it.name %></div>
+                  <div class="product-name"><%= it.name %><% if (it.variant_label) { %> (<%= it.variant_label %>)<% } %></div>
                   <% if (it.unit) { %>
                     <div class="product-unit">単位：<%= it.unit %></div>
                   <% } %>

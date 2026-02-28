@@ -1,0 +1,127 @@
+<%- include('../../partials/header', { title: '承認ワークフロー設定', extraCSS2: '',
+  extraCSS: '/styles/approval.css' }) %>
+
+<main class="wf-settings">
+  <div class="wf-settings__head">
+    <a href="/my/org/members" class="btn btn--ghost btn--sm" style="margin-bottom:.5rem;">&larr; 組織管理に戻る</a>
+    <h1>承認ワークフロー設定</h1>
+    <p class="muted">有効にすると、発注者の注文は指定されたロールの承認者による承認を経て確定されます。</p>
+  </div>
+
+  <% if (flash) { %>
+    <div class="alert alert--<%= flash.type === 'success' ? 'safe' : 'danger' %>">
+      <%= flash.message %>
+    </div>
+  <% } %>
+
+  <form method="POST" action="/my/org/workflow" id="workflowForm">
+    <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% } %>
+
+    <!-- 有効/無効 -->
+    <section class="card">
+      <div class="card__head"><h2>ワークフロー</h2></div>
+      <label class="wf-toggle">
+        <input type="checkbox" name="enabled" value="on" <%= workflowEnabled ? 'checked' : '' %> id="wfEnabled">
+        <span class="wf-toggle__label">承認ワークフローを有効にする</span>
+      </label>
+      <p class="muted" style="margin-top: 0.5rem; font-size: 0.85rem;">
+        有効にすると、発注者の注文は承認者の承認を経て初めて確定します。
+      </p>
+    </section>
+
+    <!-- ステップ設定（ワークフロー有効時のみ表示） -->
+    <section class="card" id="stepsSection" style="<%= workflowEnabled ? '' : 'display:none;' %>">
+      <div class="card__head">
+        <h2>承認ステップ</h2>
+        <button type="button" class="btn btn--ghost btn--sm" id="addStepBtn">+ ステップ追加</button>
+      </div>
+
+      <div id="stepsContainer">
+        <% if (steps.length) { %>
+          <% steps.forEach(function(s, i) { %>
+            <div class="wf-step" data-step="<%= i + 1 %>">
+              <div class="wf-step__order">ステップ <%= i + 1 %></div>
+              <div class="wf-step__role">
+                <select name="steps[<%= i + 1 %>][role]" required>
+                  <option value="approver" <%= s.role === 'approver' ? 'selected' : '' %>>承認者</option>
+                  <option value="org_admin" <%= s.role === 'org_admin' ? 'selected' : '' %>>組織管理者</option>
+                </select>
+              </div>
+              <button type="button" class="btn btn--ghost btn--sm btn--danger js-remove-step">削除</button>
+            </div>
+          <% }) %>
+        <% } else { %>
+          <div class="wf-step" data-step="1">
+            <div class="wf-step__order">ステップ 1</div>
+            <div class="wf-step__role">
+              <select name="steps[1][role]" required>
+                <option value="approver">承認者</option>
+                <option value="org_admin">組織管理者</option>
+              </select>
+            </div>
+            <button type="button" class="btn btn--ghost btn--sm btn--danger js-remove-step">削除</button>
+          </div>
+        <% } %>
+      </div>
+
+      <p class="muted" style="margin-top: 0.75rem; font-size: 0.85rem;">
+        ステップは上から順に実行されます。各ステップで指定されたロールを持つメンバーが承認できます。
+      </p>
+    </section>
+
+    <div class="wf-actions">
+      <button type="submit" class="btn btn--primary">設定を保存</button>
+    </div>
+  </form>
+</main>
+
+<script>
+(function() {
+  var container = document.getElementById('stepsContainer');
+  var addBtn = document.getElementById('addStepBtn');
+  var stepsSection = document.getElementById('stepsSection');
+  var wfCheckbox = document.getElementById('wfEnabled');
+
+  // ワークフロー有効/無効に応じてステップセクションを表示切替
+  if (wfCheckbox && stepsSection) {
+    wfCheckbox.addEventListener('change', function() {
+      stepsSection.style.display = this.checked ? '' : 'none';
+    });
+  }
+
+  addBtn.addEventListener('click', function() {
+    var steps = container.querySelectorAll('.wf-step');
+    var num = steps.length + 1;
+    var div = document.createElement('div');
+    div.className = 'wf-step';
+    div.dataset.step = num;
+    div.innerHTML =
+      '<div class="wf-step__order">ステップ ' + num + '</div>' +
+      '<div class="wf-step__role">' +
+        '<select name="steps[' + num + '][role]" required>' +
+          '<option value="approver">承認者</option>' +
+          '<option value="org_admin">組織管理者</option>' +
+        '</select>' +
+      '</div>' +
+      '<button type="button" class="btn btn--ghost btn--sm btn--danger js-remove-step">削除</button>';
+    container.appendChild(div);
+  });
+
+  container.addEventListener('click', function(e) {
+    if (e.target.classList.contains('js-remove-step')) {
+      e.target.closest('.wf-step').remove();
+      // re-number
+      container.querySelectorAll('.wf-step').forEach(function(el, i) {
+        el.dataset.step = i + 1;
+        el.querySelector('.wf-step__order').textContent = 'ステップ ' + (i + 1);
+        var sel = el.querySelector('select');
+        sel.name = 'steps[' + (i + 1) + '][role]';
+      });
+    }
+  });
+})();
+</script>
+
+<%- include('../../partials/footer') %>

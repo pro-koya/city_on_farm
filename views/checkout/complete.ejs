@@ -6,22 +6,39 @@
   const isPickup = order && order.ship_method === 'pickup';
 %>
 
+<%
+  const isAwaitingPayment = order && order.status === 'awaiting_payment';
+%>
+
 <main class="complete">
   <!-- ヒーロー：完了メッセージ -->
   <section class="complete-hero" aria-labelledby="completeTitle">
-    <div class="complete-hero__icon" aria-hidden="true">✔</div>
+    <% if (isAwaitingPayment) { %>
+      <div class="complete-hero__icon" aria-hidden="true">⏳</div>
 
-    <h1 id="completeTitle" class="complete-hero__title">
-      ご注文ありがとうございます
-    </h1>
+      <h1 id="completeTitle" class="complete-hero__title">
+        決済処理中です
+      </h1>
 
-    <p class="complete-hero__lead">
-      ご注文を受け付けました。<br>
-      <%= isPickup
-        ? '収穫の準備ができ次第、受け取り場所の詳細をメールでお送りします。'
-        : '確認メールを送信しています。出荷準備ができ次第、改めてご連絡します。'
-      %>
-    </p>
+      <p class="complete-hero__lead">
+        クレジットカード決済の確認を行っています。<br>
+        通常数秒〜数分で完了します。完了後、確認メールをお送りします。
+      </p>
+    <% } else { %>
+      <div class="complete-hero__icon" aria-hidden="true">✔</div>
+
+      <h1 id="completeTitle" class="complete-hero__title">
+        ご注文ありがとうございます
+      </h1>
+
+      <p class="complete-hero__lead">
+        ご注文を受け付けました。<br>
+        <%= isPickup
+          ? '収穫の準備ができ次第、受け取り場所の詳細をメールでお送りします。'
+          : '確認メールを送信しています。出荷準備ができ次第、改めてご連絡します。'
+        %>
+      </p>
+    <% } %>
 
     <div class="complete-order" aria-label="ご注文情報">
       <div class="complete-order__no">
@@ -46,6 +63,19 @@
         <%= order?.created_at ? new Date(order.created_at).toLocaleString('ja-JP') : '' %>
       </div>
     </div>
+
+    <% if (order?.payment_method === 'invoice') { %>
+      <div class="complete-payment-notice complete-payment-notice--paid">
+        <div class="complete-payment-notice__title">
+          <span class="payment-icon payment-icon--paid">📄</span>
+          掛売（請求書払い）でご注文を受け付けました
+        </div>
+        <p class="complete-payment-notice__message">
+          月末締めで請求書をお送りいたします。翌月末までにお振込をお願いいたします。<br>
+          請求書はマイページの「請求書」からもご確認いただけます。
+        </p>
+      </div>
+    <% } %>
 
     <% if (order?.payment_method === 'card') { %>
       <%
@@ -73,7 +103,8 @@
             決済確認中です
           </div>
           <p class="complete-payment-notice__message">
-            決済処理には数分かかる場合があります。完了後、注文詳細ページに反映されます。
+            決済処理には数分かかる場合があります。完了後、確認メールをお送りし、注文詳細ページにも反映されます。<br>
+            このページは閉じていただいて問題ありません。
           </p>
         <% } %>
       </div>
@@ -88,12 +119,12 @@
 
     <!-- 注文の流れ（ワクワクさせる進行イメージ） -->
     <section class="complete-progress" aria-label="注文の流れ">
-      <ul class="progress progress--path is-step-2">
-        <li class="is-done">
+      <ul class="progress progress--path <%= isAwaitingPayment ? 'is-step-1' : 'is-step-2' %>">
+        <li class="<%= isAwaitingPayment ? 'is-active' : 'is-done' %>">
           <span class="progress__dot"></span>
-          <span class="progress__label">ご注文完了</span>
+          <span class="progress__label"><%= isAwaitingPayment ? '決済確認中' : 'ご注文完了' %></span>
         </li>
-        <li class="is-active">
+        <li class="<%= isAwaitingPayment ? '' : 'is-active' %>">
           <span class="progress__dot"></span>
           <span class="progress__label"><%= isPickup ? '収穫の準備' : '出荷準備' %></span>
         </li>

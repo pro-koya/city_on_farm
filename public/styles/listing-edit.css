@@ -93,6 +93,21 @@
   color: #fff;
 }
 
+/* バリエーション行（4入力＋削除） */
+.variant-row{
+  display:grid; grid-template-columns:2fr 1fr 1fr 1fr auto; gap:.5rem; margin:.4rem 0;
+  align-items: center;
+}
+.variant-row input[type="text"],
+.variant-row input[type="number"]{
+  min-width: 0;
+}
+@media(max-width:640px){
+  .variant-row{
+    grid-template-columns:1fr 1fr;
+  }
+}
+
 /* キー・バリュー行（ドラッグ用の余白を少し） */
 .kv__row {
   display: grid;

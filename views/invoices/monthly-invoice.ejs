@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>請求書 <%= invoice.invoice_number %></title>
+  <% if (typeof baseUrl !=='undefined' && baseUrl) { %>
+    <base href="<%= baseUrl %>">
+  <% } %>
+  <link rel="stylesheet" href="/styles/invoice.css">
+  <style>
+    /* 月次請求書固有スタイル */
+    .invoice-stamp {
+      display: inline-block;
+      border: 2px solid #dc2626;
+      color: #dc2626;
+      padding: 2px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 3px;
+      transform: rotate(-5deg);
+      margin-left: 8px;
+    }
+    .invoice-stamp--paid {
+      border-color: #059669;
+      color: #059669;
+    }
+    .invoice-title {
+      font-size: 18px;
+    }
+    .orders-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0;
+      font-size: 11px;
+    }
+    .orders-table thead { background-color: #f9fafb; }
+    .orders-table th {
+      padding: 6px 4px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 10px;
+      color: #334155;
+      border: 1px solid var(--border);
+    }
+    .orders-table td {
+      padding: 5px 4px;
+      border: 1px solid var(--border);
+      font-size: 11px;
+    }
+    .orders-table tbody tr:nth-child(even) { background-color: #fafafa; }
+    .orders-table .num { text-align: right; white-space: nowrap; }
+    .payment-info {
+      margin-top: 10px;
+      padding: 8px 10px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    .payment-info dt { font-weight: 600; color: var(--muted); font-size: 10px; }
+    .payment-info dd { margin: 0 0 4px; }
+  </style>
+</head>
+
+<body>
+  <div class="invoice-page">
+    <!-- ヘッダー：発行者情報（左）と発行日（右） -->
+    <div class="invoice-header">
+      <div class="header-left">
+        <% if (sellerPartner) { %>
+          <div class="issuer-name"><%= sellerPartner.name || '新・今日の食卓' %></div>
+          <% if (sellerPartner.tax_id) { %>
+            <div class="issuer-tax-id">登録番号：<%= sellerPartner.tax_id %></div>
+          <% } %>
+          <div class="issuer-address">
+            〒<%= sellerPartner.postal_code || '' %>　<%= [sellerPartner.prefecture, sellerPartner.city, sellerPartner.address1, sellerPartner.address2].filter(Boolean).join('') %>
+          </div>
+          <% if (sellerPartner.phone) { %>
+            <div class="issuer-phone">TEL：<%= sellerPartner.phone %></div>
+          <% } %>
+          <!-- <% if (sellerPartner.email) { %>
+            <div class="issuer-phone">Email：<%= sellerPartner.email %></div>
+          <% } %> -->
+        <% } else { %>
+          <div class="issuer-name">新・今日の食卓</div>
+        <% } %>
+      </div>
+      <div class="header-right">
+        <div class="issue-date">発行日：<%= new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' }) %></div>
+        <div class="issue-date" style="margin-top:2px;">請求番号：<%= invoice.invoice_number %></div>
+      </div>
+    </div>
+
+    <!-- タイトルと宛名・金額ブロック -->
+    <div class="invoice-main-block">
+      <h1 class="invoice-title">
+        請求書
+        <% if (invoice.status === 'paid') { %>
+          <span class="invoice-stamp invoice-stamp--paid">入金済</span>
+        <% } %>
+      </h1>
+
+      <div class="recipient-amount-block">
+        <div class="recipient-line">
+          <span class="recipient-name"><%= buyerPartner ? buyerPartner.name : '—' %> 御中</span>
+        </div>
+
+        <div class="amount-line">
+          <span class="amount-value">¥<%= Number(invoice.total || 0).toLocaleString('ja-JP') %></span>
+          <span class="amount-label">（税込）</span>
+        </div>
+
+        <div class="note-line">
+          対象期間：<%= invoice.year_month %> のお取引分
+        </div>
+      </div>
+    </div>
+
+    <!-- 請求情報 -->
+    <section class="invoice-section">
+      <h2 class="section-title">請求情報</h2>
+      <dl class="info-grid">
+        <div class="info-item">
+          <dt>対象月</dt>
+          <dd><%= invoice.year_month %></dd>
+        </div>
+        <div class="info-item">
+          <dt>支払期限</dt>
+          <dd><%= invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' }) : '—' %></dd>
+        </div>
+        <div class="info-item">
+          <dt>対象注文数</dt>
+          <dd><%= orders.length %> 件</dd>
+        </div>
+        <div class="info-item">
+          <dt>お支払い方法</dt>
+          <dd>掛売（請求書払い）</dd>
+        </div>
+      </dl>
+    </section>
+
+    <!-- 宛先情報 -->
+    <% if (buyerPartner) { %>
+    <section class="invoice-section">
+      <h2 class="section-title">請求先</h2>
+      <div class="shipping-info">
+        <div><strong><%= buyerPartner.name %></strong></div>
+        <% if (buyerPartner.postal_code) { %>
+          <div>〒<%= buyerPartner.postal_code %>　<%= [buyerPartner.prefecture, buyerPartner.city, buyerPartner.address1, buyerPartner.address2].filter(Boolean).join('') %></div>
+        <% } %>
+        <% if (buyerPartner.phone) { %>
+          <div>TEL：<%= buyerPartner.phone %></div>
+        <% } %>
+      </div>
+    </section>
+    <% } %>
+
+    <!-- 金額明細 -->
+    <section class="invoice-section">
+      <h2 class="section-title">金額明細</h2>
+      <dl class="amount-list">
+        <div class="amount-row">
+          <dt>商品小計（税込）</dt>
+          <dd class="amount-value"><%= Number(invoice.subtotal || 0).toLocaleString('ja-JP') %>円</dd>
+        </div>
+        <div class="amount-row">
+          <dt>送料・税等</dt>
+          <dd class="amount-value"><%= Number(invoice.tax || 0).toLocaleString('ja-JP') %>円</dd>
+        </div>
+        <div class="amount-row total-row">
+          <dt>ご請求金額</dt>
+          <dd class="amount-value"><strong>¥<%= Number(invoice.total || 0).toLocaleString('ja-JP') %></strong></dd>
+        </div>
+        <% if (Number(invoice.paid_amount || 0) > 0) { %>
+          <div class="amount-row">
+            <dt>入金済み</dt>
+            <dd class="amount-value">-<%= Number(invoice.paid_amount).toLocaleString('ja-JP') %>円</dd>
+          </div>
+          <div class="amount-row">
+            <dt>残額</dt>
+            <dd class="amount-value"><strong>¥<%= Math.max(0, Number(invoice.total) - Number(invoice.paid_amount)).toLocaleString('ja-JP') %></strong></dd>
+          </div>
+        <% } %>
+      </dl>
+    </section>
+
+    <!-- 振込先情報 -->
+    <section class="invoice-section">
+      <div class="payment-info">
+        <dt>お振込先</dt>
+        <% if (sellerPartner && sellerPartner.bank_name && sellerPartner.bank_account_number) { %>
+          <dd style="margin-bottom: 2px;">
+            <strong><%= sellerPartner.bank_name %></strong>　<%= sellerPartner.bank_branch_name || '' %><%= sellerPartner.bank_branch_code ? `（${sellerPartner.bank_branch_code}）` : '' %>
+          </dd>
+          <dd style="margin-bottom: 2px;">
+            <%= sellerPartner.bank_account_type === 'ordinary' ? '普通' : sellerPartner.bank_account_type === 'current' ? '当座' : sellerPartner.bank_account_type === 'savings' ? '貯蓄' : '普通' %>　<%= sellerPartner.bank_account_number %>
+          </dd>
+          <dd>口座名義：<%= sellerPartner.bank_account_holder || '' %></dd>
+        <% } else { %>
+          <dd>お振込先の詳細はお取引時にご案内しております。ご不明な場合はお問い合わせください。</dd>
+        <% } %>
+        <dt>備考</dt>
+        <dd>お振込手数料はお客様のご負担にてお願いいたします。</dd>
+      </div>
+    </section>
+
+    <p class="invoice-note-small">
+      ※本請求書は電子的に発行されたものです。
+    </p>
+
+    <!-- 対象注文・商品明細 -->
+    <section class="invoice-section">
+      <h2 class="section-title">対象注文・商品明細</h2>
+      <% if (orders && orders.length) { %>
+        <% orders.forEach(function(o, idx){ %>
+          <div style="margin-bottom: 14px; page-break-inside: avoid;">
+            <div style="display: flex; justify-content: space-between; align-items: center; background: #f1f5f9; padding: 5px 8px; border: 1px solid var(--border); border-bottom: none; font-size: 11px;">
+              <div>
+                <strong><%= o.order_number %></strong>
+                <span style="color: var(--muted); margin-left: 8px;"><%= new Date(o.created_at).toLocaleDateString('ja-JP') %></span>
+              </div>
+              <div style="font-weight: 600;">合計 ¥<%= Number(o.total || 0).toLocaleString('ja-JP') %></div>
+            </div>
+            <table class="items-table" style="margin: 0;">
+              <thead>
+                <tr>
+                  <th class="col-name">商品名</th>
+                  <th class="col-quantity">数量</th>
+                  <th class="col-price">単価</th>
+                  <th class="col-total">小計</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (o.items && o.items.length) { %>
+                  <% o.items.forEach(function(item){ %>
+                    <tr>
+                      <td>
+                        <div class="product-name"><%= item.title %></div>
+                        <% if (item.unit) { %><div class="product-unit"><%= item.unit %></div><% } %>
+                      </td>
+                      <td class="num"><%= item.quantity %></td>
+                      <td class="num">¥<%= Number(item.price || 0).toLocaleString('ja-JP') %></td>
+                      <td class="num">¥<%= (Number(item.price || 0) * Number(item.quantity || 0)).toLocaleString('ja-JP') %></td>
+                    </tr>
+                  <% }) %>
+                <% } else { %>
+                  <tr><td colspan="4" class="muted text-center">商品情報なし</td></tr>
+                <% } %>
+                <tr style="background: #fafafa;">
+                  <td colspan="3" class="num" style="font-size: 10px; color: var(--muted);">
+                    商品小計 ¥<%= Number(o.subtotal || 0).toLocaleString('ja-JP') %>
+                    <% if (Number(o.shipping_fee || 0) > 0) { %>　/　送料 ¥<%= Number(o.shipping_fee).toLocaleString('ja-JP') %><% } %>
+                    <% if (Number(o.discount || 0) > 0) { %>　/　割引 -¥<%= Number(o.discount).toLocaleString('ja-JP') %><% } %>
+                  </td>
+                  <td class="num" style="font-weight: 600;">¥<%= Number(o.total || 0).toLocaleString('ja-JP') %></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        <% }) %>
+      <% } else { %>
+        <p class="muted text-center">対象注文はありません。</p>
+      <% } %>
+    </section>
+  </div>
+</body>
+
+</html>

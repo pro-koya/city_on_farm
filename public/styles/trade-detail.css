@@ -381,16 +381,6 @@
     font-size: .9rem;
 }
 
-/* ボタン（共通） */
-.btn{
-    border:1px solid #e5e7eb;
-    background:var(--color-white);
-    padding:8px 12px;
-    border-radius:999px;
-    cursor:pointer;
-    font-size:.9rem;
-}
-
 /* レスポンシブ */
 @media (max-width: 1200px) {
     .td-items,

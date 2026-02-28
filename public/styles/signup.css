@@ -92,16 +92,52 @@ input:focus {
 }
 
 .check {
-  display: inline-flex;
   align-items: start;
   gap: 0;
   font-size: 14px;
   color: var(--text);
 }
 
-.check input[type="checkbox"] {
-  transform: translateY(3px);
-  margin: 0 .3rem;
+input[type="checkbox"]{
+  appearance: none;
+  -webkit-appearance: none;
+  width: 26px; height: 26px;
+  margin: 0;
+  border: 2px solid var(--muted);
+  border-radius: 4px;
+  background: #fff;
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+input[type="checkbox"]:hover{
+  border-color: #cfd6dc;
+}
+input[type="checkbox"]:focus{
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(76,107,92,.2); /* var(--c-main) の淡いフォーカス */
+}
+
+/* チェック時の配色（サイトトーンに合わせる） */
+input[type="checkbox"]:checked{
+  border-color: var(--main);
+  background: var(--main);
+}
+
+/* チェックマーク（SVGパス風） */
+input[type="checkbox"]::after{
+  content: "";
+  width: 10px; height: 18px;
+  transform: rotate(45deg) scale(0);
+  margin-bottom: .5rem;
+  margin-left: .1rem;
+  border-right: 3px solid #fff;
+  border-bottom: 3px solid #fff;
+  transition: transform .12s ease-in-out;
+}
+input[type="checkbox"]:checked::after{
+  transform: rotate(45deg) scale(1);
 }
 
 .hint {

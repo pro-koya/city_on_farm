@@ -46,18 +46,19 @@
                             <ul class="cart-list" id="cartList-<%= partnerId %>" aria-live="polite">
                               <% groupedBySeller[partnerId].forEach(function(it){ %>
                                 <li class="cart-item" data-id="<%= it.id %>" data-price="<%= it.price %>"
-                                  data-stock="<%= it.stock %>" data-seller="<%= partnerId %>">
+                                  data-stock="<%= it.stock %>" data-seller="<%= partnerId %>"
+                                  data-variant-id="<%= it.variant_id || '' %>">
                                   <!-- 左端：チェック＋サムネ -->
                                   <div class="cart-col cart-col--left order1">
                                     <label class="cart-item__select" aria-label="商品を選択">
                                       <input type="checkbox" class="rowCheck rowCheck-<%= partnerId %>" checked>
                                     </label>
                                   </div>
-    
+
                                   <!-- 中央：商品情報 -->
                                   <div class="cart-col cart-col--main order3">
                                     <a class="cart-item__title" href="/products/<%= it.id %>">
-                                      <%= it.title %>
+                                      <%= it.title %><% if (it.variant_label) { %> <span class="variant-label">(<%= it.variant_label %>)</span><% } %>
                                     </a>
                                     <div class="cart-item__meta">
                                       <span class="badge <%= it.is_organic ? 'is-green' : '' %>">
@@ -129,12 +130,49 @@
                               </div>
                               <p class="summary__shipping-note">※送料は注文手続き時（配送先入力後）に確定します</p>
     
-                              <a class="btn btn--lg btn--primary checkoutBtn" data-seller="<%= partnerId %>"
-                                href="/checkout?seller=<%= encodeURIComponent(partnerId) %>">購入手続きへ</a>
+                              <% if (typeof approvalRequired !== 'undefined' && approvalRequired) { %>
+                                <% const approvedReqId = (typeof approvedRequestBySeller !== 'undefined' && approvedRequestBySeller && approvedRequestBySeller[partnerId]) ? approvedRequestBySeller[partnerId] : null; %>
+                                <% if (approvedReqId) { %>
+                                  <!-- 承認済み: 注文手続きへ -->
+                                  <a class="btn btn--lg btn--primary checkoutBtn" data-seller="<%= partnerId %>" data-approval-request-id="<%= approvedReqId %>"
+                                    href="/checkout?seller=<%= encodeURIComponent(partnerId) %>&approval_request_id=<%= encodeURIComponent(approvedReqId) %>">承認済み：注文手続きへ</a>
+                                  <a href="/my/approval-requests" class="btn btn--ghost btn--sm" style="width:100%; margin-top:0.5rem;">承認申請一覧</a>
+                                <% } else { %>
+                                  <!-- 未承認: 承認申請ボタン -->
+                                  <form method="POST" action="/my/approval-requests" class="approval-request-form">
+                                    <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+                                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                    <% } %>
+                                    <input type="hidden" name="sellerId" value="<%= partnerId %>">
+                                    <button type="submit" class="btn btn--lg btn--primary checkoutBtn" style="width:100%;"
+                                      onclick="return confirm('この出品者の商品について承認申請を送信しますか？')">
+                                      承認申請する
+                                    </button>
+                                  </form>
+                                  <p class="summary__note" style="color: #b45309; margin-top: 0.5rem;">
+                                    ※ 承認ワークフローが有効です。注文には承認が必要です。
+                                  </p>
+                                  <a href="/my/approval-requests" class="btn btn--ghost btn--sm" style="width:100%; margin-top:0.5rem;">
+                                    承認状況を確認する
+                                  </a>
+                                <% } %>
+                              <% } else { %>
+                                <!-- 通常: 購入手続きボタン -->
+                                <a class="btn btn--lg btn--primary checkoutBtn" data-seller="<%= partnerId %>"
+                                  href="/checkout?seller=<%= encodeURIComponent(partnerId) %>">購入手続きへ</a>
+                              <% } %>
                               <p id="checkoutError-<%= partnerId %>" class="checkout-error" aria-live="polite"
                                 role="alert" <%=errMsg ? '' : 'hidden' %>><%= errMsg || '' %>
                               </p>
                               <p class="summary__note">お支払いは安全に処理されます</p>
+                              <form method="POST" action="/my/templates" class="tpl-save-inline">
+                                <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+                                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                <% } %>
+                                <input type="hidden" name="source" value="cart">
+                                <input type="hidden" name="sellerId" value="<%= partnerId %>">
+                                <button type="submit" class="btn btn--ghost btn--sm" style="width:100%; margin-top:0.5rem;">テンプレートとして保存</button>
+                              </form>
                             </div>
                             <div class="freeship card" id="freeShip-<%= partnerId %>" data-has-threshold="<%= freeShipThreshold != null ? '1' : '0' %>">
                               <p class="freeship__label" id="freeShipLabel-<%= partnerId %>">あと <span
