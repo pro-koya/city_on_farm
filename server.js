@@ -34,6 +34,7 @@ process.on('unhandledRejection', (reason, promise) => {
 // 【2】環境変数の防御的チェック
 // ============================================================
 const logger = require('./services/logger');
+const { getUserOrgRoles } = require('./services/orgRoleService');
 
 const missingEnvVars = [];
 if (!process.env.SESSION_SECRET) {
@@ -132,11 +133,12 @@ app.use(
 
 /* ========== Stripe Webhook (Raw Body Required) ========== */
 // Webhookエンドポイントは express.json() の前に配置する必要がある
+// /webhook と /webhooks/stripe の両方を受け付ける（stripe listen の --forward-to で /webhook を使う場合に対応）
 app.post(
-  '/webhooks/stripe',
+  ['/webhook', '/webhooks/stripe'],
   express.raw({ type: 'application/json' }),
   async (req, res) => {
-    console.log('[DEBUG] /webhooks/stripe handler ENTERED - this should appear if route is matched');
+    console.log('[DEBUG] Stripe webhook handler ENTERED', { path: req.path });
     logger.info('Stripe webhook received:', {
       path: req.path,
       url: req.url,
@@ -221,11 +223,12 @@ app.post(
 
           const order = orders[0];
 
-          // payment_status を更新（決済完了）
+          // payment_status を更新（決済完了）+ awaiting_payment → pending に昇格
           await dbQuery(
             `UPDATE orders
              SET payment_status = 'paid',
                  payment_txid = $1,
+                 status = CASE WHEN status = 'awaiting_payment' THEN 'pending' ELSE status END,
                  updated_at = now()
              WHERE id = $2
                AND payment_status != 'paid'`,
@@ -236,6 +239,101 @@ app.post(
             orderId: order.id,
             orderNumber: order.order_number
           });
+
+          // ★ 決済成功確認後にメール通知を送信
+          try {
+            const orderForMail = await dbQuery(
+              `SELECT o.id, o.order_number, o.buyer_id, o.seller_id,
+                      o.subtotal, o.discount, o.shipping_fee, o.total,
+                      o.payment_method, o.ship_method, o.eta_at,
+                      o.coupon_code, o.ship_time_code, o.created_at
+               FROM orders o WHERE o.id = $1`,
+              [order.id]
+            );
+            if (orderForMail.length) {
+              const od = orderForMail[0];
+              const FROM = process.env.MAIL_FROM || process.env.CONTACT_FROM || process.env.SMTP_USER || 'no-reply@example.com';
+              const ORDER_BCC = (process.env.ORDER_BCC || '').trim() || undefined;
+              const buyer = (await dbQuery(`SELECT id,name,email FROM users WHERE id=$1`, [od.buyer_id]))[0] || {name:'',email:''};
+
+              const orderItems = await dbQuery(
+                `SELECT oi.quantity, oi.price, p.title
+                 FROM order_items oi JOIN products p ON p.id = oi.product_id
+                 WHERE oi.order_id = $1`, [od.id]
+              );
+
+              const mailItems = orderItems.map(r => ({ title: r.title, quantity: r.quantity, price: r.price }));
+              const totals = { subtotal: od.subtotal, discount: od.discount, shipping_fee: od.shipping_fee, total: od.total };
+              const paymentMethodJa = jaLabel('payment_method', od.payment_method) || 'クレジットカード';
+              const shipMethodJa = jaLabel('ship_method', od.ship_method) || '';
+              const shipTimeJa = shipTimeLabel(od.ship_time_code);
+
+              // 配送先・請求先
+              const addrs = await dbQuery(
+                `SELECT address_type, full_name, phone, postal_code, prefecture, city,
+                        address_line1, address_line2
+                 FROM order_addresses WHERE order_id = $1`, [od.id]
+              );
+              const shippingAddress = addrs.find(a => a.address_type === 'shipping') || null;
+              const billingAddress = addrs.find(a => a.address_type === 'billing') || null;
+
+              // pickup住所
+              let pickupAddress = null;
+              const isPickup = od.ship_method === 'pickup';
+
+              // 出品者情報
+              const firstItem = orderItems[0];
+              let sellerUserId = null;
+              if (firstItem) {
+                const prodRow = await dbQuery(
+                  `SELECT seller_id FROM products p JOIN order_items oi ON oi.product_id = p.id
+                   WHERE oi.order_id = $1 LIMIT 1`, [od.id]
+                );
+                sellerUserId = prodRow[0]?.seller_id;
+              }
+
+              const { seller: sellerInfo, to: sellerTos } = sellerUserId
+                ? await getSellerRecipientsBySellerUserId(sellerUserId)
+                : { seller: null, to: [] };
+
+              // 購入者メール
+              const buyerMail = buildBuyerMail({
+                orderNo: od.order_number, createdAt: od.created_at, buyer,
+                items: mailItems, totals, shippingAddress, billingAddress,
+                paymentMethodJa, shipMethodJa, etaAt: od.eta_at,
+                coupon: od.coupon_code ? { code: od.coupon_code } : null,
+                shipTimeJa,
+                pickupAddress: isPickup ? pickupAddress : null,
+                isPickup
+              });
+              gmailSend({
+                from: FROM, to: buyer.email,
+                subject: buyerMail.subject, text: buyerMail.text, html: buyerMail.html,
+                bcc: ORDER_BCC
+              }).catch(err => logger.error('Webhook: buyer mail failed', { error: err.message }));
+
+              // 出品者メール
+              if (sellerTos.length && sellerInfo) {
+                const sellerMail = buildSellerMail({
+                  orderNo: od.order_number, createdAt: od.created_at,
+                  seller: sellerInfo, buyer, items: mailItems, totals,
+                  shippingAddress, paymentMethodJa, shipMethodJa,
+                  etaAt: od.eta_at, shipTimeJa,
+                  pickupAddress: isPickup ? pickupAddress : null,
+                  isPickup
+                });
+                gmailSend({
+                  from: FROM, to: sellerTos,
+                  subject: sellerMail.subject, text: sellerMail.text, html: sellerMail.html,
+                  replyTo: buyer.email, bcc: ORDER_BCC
+                }).catch(err => logger.error('Webhook: seller mail failed', { error: err.message }));
+              }
+
+              logger.info('Payment confirmed: notification emails sent', { orderId: od.id, orderNumber: od.order_number });
+            }
+          } catch (mailErr) {
+            logger.error('Webhook: failed to send order notification emails', { orderId: order.id, error: mailErr.message });
+          }
 
           // ★★★ 台帳計上処理を追加 ★★★
           try {
@@ -335,19 +433,110 @@ app.post(
 
           const order = orders[0];
 
-          // payment_status を failed に更新
+          // payment_status を failed に更新 + awaiting_payment なら cancelled に
+          const wasPending = order.payment_status !== 'paid';
           await dbQuery(
             `UPDATE orders
              SET payment_status = 'failed',
+                 status = CASE WHEN status = 'awaiting_payment' THEN 'cancelled' ELSE status END,
                  updated_at = now()
              WHERE id = $1`,
             [order.id]
           );
 
+          // awaiting_payment だった注文は在庫を復元（バリエーション対応）
+          if (wasPending) {
+            try {
+              const oi = await dbQuery(
+                `SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = $1`, [order.id]
+              );
+              for (const item of oi) {
+                if (item.variant_id) {
+                  await dbQuery(
+                    `UPDATE product_variants SET stock = stock + $1, updated_at = now() WHERE id = $2`,
+                    [item.quantity, item.variant_id]
+                  );
+                  const { syncProductDisplayValues } = require('./services/variantService');
+                  await syncProductDisplayValues(null, item.product_id);
+                } else {
+                  await dbQuery(
+                    `UPDATE products SET stock = stock + $1, updated_at = now() WHERE id = $2`,
+                    [item.quantity, item.product_id]
+                  );
+                }
+              }
+              logger.info('Stock restored for failed payment order', { orderId: order.id, itemCount: oi.length });
+            } catch (stockErr) {
+              logger.error('Failed to restore stock', { orderId: order.id, error: stockErr.message });
+            }
+          }
+
           logger.info('Order payment marked as failed', {
             orderId: order.id,
             orderNumber: order.order_number
           });
+          break;
+        }
+
+        // Stripe Checkout Session が期限切れ（ユーザーが決済を完了しなかった場合）
+        case 'checkout.session.expired': {
+          const session = event.data.object;
+          logger.info('Checkout session expired', { sessionId: session.id });
+
+          const orders = await dbQuery(
+            `SELECT id, order_number, status, payment_status
+             FROM orders
+             WHERE payment_provider = 'stripe' AND payment_external_id = $1`,
+            [session.id]
+          );
+
+          if (!orders.length) {
+            const orderNumber = session.metadata?.order_number;
+            if (orderNumber) {
+              const byNum = await dbQuery(
+                `SELECT id, order_number, status, payment_status FROM orders WHERE order_number = $1`, [orderNumber]
+              );
+              if (byNum.length) orders.push(byNum[0]);
+            }
+          }
+
+          if (orders.length) {
+            const order = orders[0];
+            // awaiting_payment のままならキャンセル + 在庫復元
+            if (order.status === 'awaiting_payment') {
+              await dbQuery(
+                `UPDATE orders SET status = 'cancelled', payment_status = 'expired', updated_at = now() WHERE id = $1`,
+                [order.id]
+              );
+
+              // 在庫復元（バリエーション対応）
+              try {
+                const oi = await dbQuery(
+                  `SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = $1`, [order.id]
+                );
+                for (const item of oi) {
+                  if (item.variant_id) {
+                    await dbQuery(
+                      `UPDATE product_variants SET stock = stock + $1, updated_at = now() WHERE id = $2`,
+                      [item.quantity, item.variant_id]
+                    );
+                    const { syncProductDisplayValues } = require('./services/variantService');
+                    await syncProductDisplayValues(null, item.product_id);
+                  } else {
+                    await dbQuery(
+                      `UPDATE products SET stock = stock + $1, updated_at = now() WHERE id = $2`,
+                      [item.quantity, item.product_id]
+                    );
+                  }
+                }
+                logger.info('Stock restored for expired session', { orderId: order.id, itemCount: oi.length });
+              } catch (stockErr) {
+                logger.error('Failed to restore stock for expired session', { orderId: order.id, error: stockErr.message });
+              }
+
+              logger.info('Order cancelled due to expired checkout session', { orderId: order.id, orderNumber: order.order_number });
+            }
+          }
           break;
         }
 
@@ -624,8 +813,9 @@ const csrfBrowseOnly = csrf();
 // Stripe webhookなど、外部からのPOSTリクエストを受け付けるパスを除外
 app.use((req, res, next) => {
   // webhookエンドポイントはCSRF保護をスキップ
-  // パスのマッチングを複数の方法で確認（Renderのリバースプロキシ対応）
+  // パスのマッチングを複数の方法で確認（/webhook は stripe listen のデフォルト向け、Renderのリバースプロキシ対応）
   const isWebhookPath = 
+    req.path === '/webhook' || req.url === '/webhook' || req.originalUrl === '/webhook' ||
     req.path === '/webhooks/stripe' || 
     req.url === '/webhooks/stripe' || 
     req.originalUrl === '/webhooks/stripe' ||
@@ -735,7 +925,7 @@ app.use(async (req, res, next) => {
       // carts / cart_items 構成（saved_for_later は集計に含めない想定）
       dbQuery(
         `
-        SELECT COUNT(DISTINCT ci.product_id)::int AS cnt
+        SELECT COUNT(ci.id)::int AS cnt
           FROM carts c
           LEFT JOIN cart_items ci
             ON ci.cart_id = c.id
@@ -773,6 +963,16 @@ app.use(async (req, res, next) => {
 
     // 未読お知らせ数
     res.locals.unreadNoticeCount = noticeRows[0]?.cnt ?? 0;
+
+    // 組織ロール（partner_id がある場合のみ）
+    res.locals.isOrgAdmin = false;
+    if (user.partner_id) {
+      try {
+        const orgRoles = await getUserOrgRoles(uid, user.partner_id);
+        res.locals.isOrgAdmin = orgRoles.includes('org_admin');
+        res.locals.userOrgRoles = orgRoles;
+      } catch { /* フォールバック: false のまま */ }
+    }
 
     next();
   } catch (e) {
@@ -923,12 +1123,14 @@ async function loadDbCartItems(userId){
   return rows;
 }
 
-async function dbCartAdd(userId, productId, addQty){
+async function dbCartAdd(userId, productId, addQty, variantId = null){
   const cart = await getOrCreateUserCart(userId);
-  // 既存数量取得
+  // 既存数量取得（variant_id も含めてマッチ）
   const ex = await dbQuery(
-    `SELECT id, quantity FROM cart_items WHERE cart_id = $1 AND product_id = $2 LIMIT 1`,
-    [cart.id, productId]
+    `SELECT id, quantity FROM cart_items
+     WHERE cart_id = $1 AND product_id = $2 AND variant_id IS NOT DISTINCT FROM $3
+     LIMIT 1`,
+    [cart.id, productId, variantId]
   );
   if (ex[0]) {
     await dbQuery(
@@ -937,28 +1139,43 @@ async function dbCartAdd(userId, productId, addQty){
     );
   } else {
     await dbQuery(
-      `INSERT INTO cart_items (cart_id, product_id, quantity, user_id) VALUES ($1, $2, $3, $4)`,
-      [cart.id, productId, Math.max(1, addQty), userId]
+      `INSERT INTO cart_items (cart_id, product_id, variant_id, quantity, user_id) VALUES ($1, $2, $3, $4, $5)`,
+      [cart.id, productId, variantId, Math.max(1, addQty), userId]
     );
   }
 }
 
 // DBカート：数量を直接セット
-async function dbCartSetQty(userId, productId, qty){
+async function dbCartSetQty(userId, productId, qty, variantId = null){
   const cart = await getOrCreateUserCart(userId);
-  await dbQuery(
-    `INSERT INTO cart_items (cart_id, product_id, quantity)
-     VALUES ($1, $2, $3)
-     ON CONFLICT (cart_id, product_id)
-     DO UPDATE SET quantity = EXCLUDED.quantity`,
-    [cart.id, productId, Math.max(1, qty)]
+  // 既存行を探して直接更新（新ユニーク制約に対応）
+  const ex = await dbQuery(
+    `SELECT id FROM cart_items
+     WHERE cart_id = $1 AND product_id = $2 AND variant_id IS NOT DISTINCT FROM $3
+     LIMIT 1`,
+    [cart.id, productId, variantId]
   );
+  if (ex[0]) {
+    await dbQuery(
+      `UPDATE cart_items SET quantity = $1 WHERE id = $2`,
+      [Math.max(1, qty), ex[0].id]
+    );
+  } else {
+    await dbQuery(
+      `INSERT INTO cart_items (cart_id, product_id, variant_id, quantity)
+       VALUES ($1, $2, $3, $4)`,
+      [cart.id, productId, variantId, Math.max(1, qty)]
+    );
+  }
 }
 
 // DBカート：行削除
-async function dbCartRemove(userId, productId){
+async function dbCartRemove(userId, productId, variantId = null){
   const cart = await getOrCreateUserCart(userId);
-  await dbQuery(`DELETE FROM cart_items WHERE cart_id = $1 AND product_id = $2`, [cart.id, productId]);
+  await dbQuery(
+    `DELETE FROM cart_items WHERE cart_id = $1 AND product_id = $2 AND variant_id IS NOT DISTINCT FROM $3`,
+    [cart.id, productId, variantId]
+  );
 }
 
 // DBカート：クーポン保存/解除
@@ -974,30 +1191,33 @@ async function mergeSessionCartToDb(req, userId){
 
   for (const it of cart.items) {
     const pid = it.productId;
+    const vid = it.variantId || null;
     const addQty = Math.max(1, parseInt(it.quantity, 10) || 1);
     if (!pid || !addQty) continue;
 
-    // 現在在庫にクランプ
-    const s = await dbQuery(`SELECT stock FROM products WHERE id = $1`, [pid]);
-    const stock = parseInt(s?.[0]?.stock, 10) || 0;
+    // 現在在庫にクランプ（バリエーションありならバリエーション在庫を参照）
+    let stock = 0;
+    if (vid) {
+      const vs = await dbQuery(`SELECT stock FROM product_variants WHERE id = $1 AND active = true`, [vid]);
+      stock = parseInt(vs?.[0]?.stock, 10) || 0;
+    } else {
+      const s = await dbQuery(`SELECT stock FROM products WHERE id = $1`, [pid]);
+      stock = parseInt(s?.[0]?.stock, 10) || 0;
+    }
     if (stock <= 0) continue;
 
     // 既存数量 + 追加 → 在庫上限
     const cartRow = await getOrCreateUserCart(userId);
     const exist = await dbQuery(
-      `SELECT quantity FROM cart_items WHERE cart_id = $1 AND product_id = $2 LIMIT 1`,
-      [cartRow.id, pid]
+      `SELECT quantity FROM cart_items
+       WHERE cart_id = $1 AND product_id = $2 AND variant_id IS NOT DISTINCT FROM $3
+       LIMIT 1`,
+      [cartRow.id, pid, vid]
     );
     const base = parseInt(exist?.[0]?.quantity, 10) || 0;
     const next = Math.max(1, Math.min(stock, base + addQty));
 
-    await dbQuery(
-      `INSERT INTO cart_items (cart_id, product_id, quantity)
-       VALUES ($1,$2,$3)
-       ON CONFLICT (cart_id, product_id)
-       DO UPDATE SET quantity = EXCLUDED.quantity`,
-      [cartRow.id, pid, next]
-    );
+    await dbCartSetQty(userId, pid, next, vid);
   }
 
   // クーポンも移しておく（任意）
@@ -1819,7 +2039,11 @@ app.post(
     body('email')
       .trim()
       .isEmail().withMessage('正しいメールアドレスの形式で入力してください。')
-      .normalizeEmail(),
+      .normalizeEmail({
+        gmail_remove_dots: false,
+        gmail_remove_subaddress: false,
+        gmail_convert_googlemaildotcom: false
+      }),
 
     body('password')
       .isLength({ min: 8 }).withMessage('8文字以上で入力してください。').bail()
@@ -1935,23 +2159,38 @@ app.post(
       let partnerId = null;
 
       if (values.account_type === 'corporate') {
-        // 法人の場合のみ partners を作成
-        const insPartner = await client.query(
-          `INSERT INTO partners
-             (name, postal_code, prefecture, city, address1, address2, phone)
-           VALUES ($1,$2,$3,$4,$5,$6,$7)
-           RETURNING id`,
-          [
-            values.partnerName,
-            values.partnerPostal || null,
-            values.partnerPrefecture || null,
-            values.partnerCity || null,
-            values.partnerAddress1 || null,
-            values.partnerAddress2 || null,
-            values.partnerPhone || null
-          ]
+        // 法人の場合: 既存パートナーがあればそちらに紐づけ、なければ新規作成
+        const existingPartner = await client.query(
+          `SELECT id FROM partners
+           WHERE partner_key = (
+             lower(regexp_replace(COALESCE($1,''), '\\s+', '', 'g'))
+             || '|' || regexp_replace(COALESCE($2,''), '[^0-9]', '', 'g')
+             || '|' || regexp_replace(COALESCE($3,''), '[^0-9]', '', 'g')
+           )
+           LIMIT 1`,
+          [values.partnerName, values.partnerPostal || '', values.partnerPhone || '']
         );
-        partnerId = insPartner.rows[0].id;
+
+        if (existingPartner.rows.length) {
+          partnerId = existingPartner.rows[0].id;
+        } else {
+          const insPartner = await client.query(
+            `INSERT INTO partners
+               (name, postal_code, prefecture, city, address1, address2, phone)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)
+             RETURNING id`,
+            [
+              values.partnerName,
+              values.partnerPostal || null,
+              values.partnerPrefecture || null,
+              values.partnerCity || null,
+              values.partnerAddress1 || null,
+              values.partnerAddress2 || null,
+              values.partnerPhone || null
+            ]
+          );
+          partnerId = insPartner.rows[0].id;
+        }
       }
 
       const crypto = require('crypto');
@@ -2228,7 +2467,11 @@ app.post(
   '/password/forgot',
   csrfProtect,
   forgotLimiter,
-  [ body('email').trim().isEmail().withMessage('有効なメールアドレスを入力してください。').normalizeEmail() ],
+  [ body('email').trim().isEmail().withMessage('有効なメールアドレスを入力してください。').normalizeEmail({
+    gmail_remove_dots: false,
+    gmail_remove_subaddress: false,
+    gmail_convert_googlemaildotcom: false
+  }) ],
   async (req, res) => {
     const errors = validationResult(req);
     const email = String(req.body.email || '').trim().toLowerCase();
@@ -2892,41 +3135,9 @@ app.get('/contact/thanks', (req, res) => {
 // アカウント設定・プロフィール
 // ============================================================
 
-// GET /account/profile - アカウント設定（プロフィール）画面
-app.get('/account/profile', requireAuth, async (req, res, next) => {
-  try {
-    const userId = req.session.user.id;
-    
-    // ユーザー情報取得（2FA状態も含める）
-    const userRows = await dbQuery(
-      `SELECT id, name, email, phone, two_factor_enabled
-       FROM users WHERE id = $1`,
-      [userId]
-    );
-    const user = userRows[0];
-    
-    if (!user) {
-      return res.status(404).render('errors/404', { title: '見つかりません' });
-    }
-
-    // 住所一覧取得
-    const addresses = await dbQuery(
-      `SELECT id, full_name, phone, postal_code, prefecture, city, address_line1, address_line2, address_type, is_default
-       FROM addresses
-       WHERE user_id = $1 AND scope = 'user'
-       ORDER BY is_default DESC, created_at DESC`,
-      [userId]
-    );
-
-    res.render('account/profile', {
-      title: 'アカウント設定',
-      user,
-      addresses: addresses || [],
-      csrfToken: typeof req.csrfToken === 'function' ? req.csrfToken() : null
-    });
-  } catch (err) {
-    next(err);
-  }
+// GET /account/profile - admin/users/me に統一リダイレクト
+app.get('/account/profile', requireAuth, (req, res) => {
+  res.redirect('/admin/users/' + req.session.user.id);
 });
 
 // ============================================================
@@ -4062,11 +4273,26 @@ app.get('/products/:id', async (req, res, next) => {
       isFavorited = favRows.length > 0;
     }
 
+    // ★ バリエーション取得
+    let variants = [];
+    if (product.has_variants) {
+      const { getVariantsForProduct } = require('./services/variantService');
+      variants = await getVariantsForProduct(product.id);
+    }
+
     // 顧客別価格の取得（法人ユーザーのみ）
     let customerPrice = null;
+    let variantCustomerPrices = {};
     if (req.session?.user?.partner_id) {
       const { getCustomerPrice } = require('./services/customerPriceService');
       customerPrice = await getCustomerPrice(req.session.user.partner_id, product.id);
+      // バリエーション別の顧客別価格も取得
+      if (variants.length) {
+        for (const v of variants) {
+          const cp = await getCustomerPrice(req.session.user.partner_id, product.id, v.id);
+          if (cp != null) variantCustomerPrices[v.id] = cp;
+        }
+      }
     }
 
     res.set('Cache-Control', 'no-store');
@@ -4074,7 +4300,7 @@ app.get('/products/:id', async (req, res, next) => {
       title: product.title,
       product, specs, tags, related, reviews, myReview,
       recentlyViewed, currentUser, sellerHighlight,
-      shippingSummary, customerPrice,
+      shippingSummary, customerPrice, variants, variantCustomerPrices,
       isFavorited, csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
     });
   } catch (e) {
@@ -4509,7 +4735,31 @@ app.post(
         }
       }
 
-      await client.query('COMMIT'); // pool helperはトランザクション対象外なので client 版が必要だが、簡易にclient.query利用→OK
+      // ★ バリエーション処理
+      const hasVariants = !!req.body.hasVariants;
+      if (hasVariants) {
+        const rawVariants = req.body.variants || [];
+        const variantsArr = (Array.isArray(rawVariants) ? rawVariants : Object.values(rawVariants))
+          .filter(v => v && String(v.label || '').trim())
+          .map(v => ({
+            label: String(v.label || '').trim(),
+            price: parseInt(v.price, 10) || 0,
+            unit: String(v.unit || '').trim(),
+            stock: parseInt(v.stock, 10) || 0
+          }));
+
+        if (variantsArr.length) {
+          await client.query(
+            `UPDATE products SET has_variants = true WHERE id = $1`,
+            [productId]
+          );
+          const { upsertVariants, syncProductDisplayValues } = require('./services/variantService');
+          await upsertVariants(client, productId, variantsArr);
+          await syncProductDisplayValues(client, productId);
+        }
+      }
+
+      await client.query('COMMIT');
       res.redirect(`/products/${productId}`);
     } catch (err) {
       await client.query('ROLLBACK');
@@ -4562,7 +4812,7 @@ app.get(
       if (!product) return res.status(404).render('errors/404', { title: '商品が見つかりません' });
 
       // マスタ・付随情報
-      const [categories, images, specs, tags] = await Promise.all([
+      const [categories, images, specs, tags, variants] = await Promise.all([
         dbQuery(`SELECT id, name FROM categories ORDER BY sort_order NULLS LAST, name ASC`),
         dbQuery(`SELECT id, url, alt, position FROM product_images WHERE product_id = $1::uuid ORDER BY position ASC`, [id]),
         dbQuery(`SELECT id, label, value, position FROM product_specs WHERE product_id = $1::uuid ORDER BY position ASC`, [id]),
@@ -4574,6 +4824,7 @@ app.get(
            ORDER BY t.name ASC`,
           [id]
         ),
+        dbQuery(`SELECT id, label, price, unit, stock, position FROM product_variants WHERE product_id = $1::uuid AND active = true ORDER BY position ASC`, [id]),
       ]);
 
       const { htmlToRaw } = require('./services/desc');
@@ -4586,7 +4837,7 @@ app.get(
       return res.render('seller/listing-edit', {
         title: '出品を編集',
         product: { ...product, description_raw: rawForForm, description_html: descriptionHtml },
-        categories, images, specs, tags
+        categories, images, specs, tags, variants
       });
     } catch (e) { next(e); }
   }
@@ -4975,6 +5226,34 @@ app.post(
             [id, ...tagIds]
           );
         }
+      }
+
+      // ★ バリエーション処理
+      const hasVariants = !!req.body.hasVariants;
+      await client.query(`UPDATE products SET has_variants = $1 WHERE id = $2`, [hasVariants, id]);
+      if (hasVariants) {
+        const rawVariants = req.body.variants || [];
+        const variantsArr = (Array.isArray(rawVariants) ? rawVariants : Object.values(rawVariants))
+          .filter(v => v && String(v.label || '').trim())
+          .map(v => ({
+            id: v.id || null,
+            label: String(v.label || '').trim(),
+            price: parseInt(v.price, 10) || 0,
+            unit: String(v.unit || '').trim(),
+            stock: parseInt(v.stock, 10) || 0
+          }));
+
+        if (variantsArr.length) {
+          const { upsertVariants, syncProductDisplayValues } = require('./services/variantService');
+          await upsertVariants(client, id, variantsArr);
+          await syncProductDisplayValues(client, id);
+        }
+      } else {
+        // バリエーションOFF: 既存バリエーションをすべて無効化
+        await client.query(
+          `UPDATE product_variants SET active = false, updated_at = now() WHERE product_id = $1`,
+          [id]
+        );
       }
 
       await client.query('COMMIT');
@@ -6057,13 +6336,15 @@ app.get('/seller/trades/:id', requireAuth, requireRole(['seller', 'admin']), asy
     const items = await dbQuery(
       `
       SELECT
-        oi.id, oi.quantity, oi.price,
+        oi.id, oi.quantity, oi.price, oi.variant_id,
         p.id AS product_id, p.slug, p.title, p.unit,
         (SELECT url FROM product_images pi WHERE pi.product_id = p.id ORDER BY position ASC LIMIT 1) AS image_url,
-        u.name AS producer
+        u.name AS producer,
+        pv.label AS variant_label
       FROM order_items oi
       JOIN products p ON p.id = oi.product_id
       LEFT JOIN users u ON u.id = p.seller_id
+      LEFT JOIN product_variants pv ON pv.id = oi.variant_id
       WHERE oi.order_id = $1::uuid
       ORDER BY oi.id ASC
       `,
@@ -6233,6 +6514,56 @@ app.post(
         }
       }
 
+      // ========== ステータス変更の通知 ==========
+      try {
+        const { createNotification, getUserIdsByPartnerId } = require('./services/notificationService');
+        const orderInfo = (await dbQuery(
+          `SELECT order_number, buyer_id, seller_id FROM orders WHERE id = $1`,
+          [id]
+        ))[0];
+
+        if (orderInfo) {
+          // 注文ステータス・配送ステータス変更 → 購入者に通知
+          if (shipment_status && okShipment.includes(shipment_status)) {
+            const statusJa = jaLabel('shipment_status', shipment_status);
+            await createNotification({
+              type: 'shipping_update',
+              title: '配送ステータスが更新されました',
+              body: `注文 ${orderInfo.order_number} が「${statusJa}」になりました。`,
+              linkUrl: `/orders/${orderInfo.order_number}`,
+              userIds: [orderInfo.buyer_id],
+              excludeUserId: req.session.user.id
+            });
+          }
+
+          // 支払いステータスが paid → 出品者に通知
+          if (payment_status === 'paid') {
+            const sellerUserIds = await getUserIdsByPartnerId(orderInfo.seller_id);
+            await createNotification({
+              type: 'payment_update',
+              title: '入金が確認されました',
+              body: `注文 ${orderInfo.order_number} の入金が確認されました。`,
+              linkUrl: `/seller/trades/${id}`,
+              userIds: sellerUserIds,
+              excludeUserId: req.session.user.id
+            });
+          } else if (payment_status && payment_status !== 'paid') {
+            // その他の支払いステータス変更 → 購入者に通知
+            const statusJa = jaLabel('payment_status', payment_status);
+            await createNotification({
+              type: 'payment_update',
+              title: '支払いステータスが更新されました',
+              body: `注文 ${orderInfo.order_number} の支払いステータスが「${statusJa}」に変更されました。`,
+              linkUrl: `/orders/${orderInfo.order_number}`,
+              userIds: [orderInfo.buyer_id],
+              excludeUserId: req.session.user.id
+            });
+          }
+        }
+      } catch (notifyErr) {
+        console.warn('Status update notification failed:', notifyErr.message);
+      }
+
       return res.json({
         ok: true,
         order: {
@@ -6394,6 +6725,7 @@ async function loadCartItems(req) {
     const rows = await dbQuery(
       `SELECT
          ci.product_id      AS product_id,
+         ci.variant_id      AS variant_id,
          ci.quantity        AS quantity,
          p.seller_id        AS seller_id,
          u.partner_id       AS seller_partner_id
@@ -6405,9 +6737,9 @@ async function loadCartItems(req) {
       [cart.id]
     );
 
-    // ここは素直にそのまま
     dbItems = rows.map(r => ({
       productId: String(r.product_id || '').trim(),
+      variantId: r.variant_id ? String(r.variant_id) : null,
       quantity: Math.max(1, parseInt(r.quantity, 10) || 1),
       sellerId: r.seller_id ? String(r.seller_id) : null,
       sellerPartnerId: r.seller_partner_id ? String(r.seller_partner_id) : null,
@@ -6416,34 +6748,38 @@ async function loadCartItems(req) {
     // 未ログイン時はセッションの cart.items 由来
     dbItems = (req.session?.cart?.items || []).map(it => ({
       productId: String(it.productId || it.product_id || '').trim(),
+      variantId: it.variantId || it.variant_id || null,
       quantity: Math.max(1, parseInt(it.quantity, 10) || 1),
       sellerId: it.seller_id ? String(it.seller_id) : null,
       sellerPartnerId: it.seller_partner_id ? String(it.seller_partner_id) : null,
     }));
   }
 
-  // マージ（同じ productId は quantity を足し合わせ、seller 情報も保持）
-  const map = new Map(); // key: productId, value: { quantity, sellerId, sellerPartnerId }
+  // マージ（同じ productId+variantId は quantity を足し合わせ）
+  const map = new Map(); // key: "productId|variantId", value: { ... }
   for (const src of dbItems) {
     if (!isUuid(src.productId)) continue;
-    const prev = map.get(src.productId);
+    const key = `${src.productId}|${src.variantId || ''}`;
+    const prev = map.get(key);
     if (!prev) {
-      map.set(src.productId, {
+      map.set(key, {
+        productId: src.productId,
+        variantId: src.variantId,
         quantity: src.quantity,
         sellerId: src.sellerId ?? null,
         sellerPartnerId: src.sellerPartnerId ?? null,
       });
     } else {
       prev.quantity += src.quantity;
-      // 既にある方を優先。空なら埋める
       if (!prev.sellerId && src.sellerId) prev.sellerId = src.sellerId;
       if (!prev.sellerPartnerId && src.sellerPartnerId) prev.sellerPartnerId = src.sellerPartnerId;
     }
   }
 
   // 正規化配列に戻す
-  return [...map.entries()].map(([productId, v]) => ({
-    productId,
+  return [...map.values()].map(v => ({
+    productId: v.productId,
+    variantId: v.variantId,
     quantity: v.quantity,
     sellerId: v.sellerId,
     sellerPartnerId: v.sellerPartnerId,
@@ -6453,8 +6789,10 @@ async function loadCartItems(req) {
 
 /** DB からカート内の商品詳細を取得して表示用に整形 */
 async function fetchCartItemsWithDetails(items) {
-  // items: [{ productId, quantity }]
-  const ids = (items || [])
+  // items: [{ productId, variantId?, quantity }]
+  if (!items?.length) return [];
+
+  const ids = items
     .map(x => String(x.productId || '').trim())
     .filter(isUuid);
 
@@ -6469,7 +6807,7 @@ async function fetchCartItemsWithDetails(items) {
     `
     SELECT
       p.id, p.slug, p.title, p.price, p.unit, p.stock,
-      p.is_organic, p.is_seasonal, p.seller_id,
+      p.is_organic, p.is_seasonal, p.seller_id, p.has_variants,
       (SELECT url FROM product_images i
          WHERE i.product_id = p.id
          ORDER BY position ASC
@@ -6486,16 +6824,38 @@ async function fetchCartItemsWithDetails(items) {
     uniqIds
   );
 
-  const qtyMap = new Map(items.map(i => [i.productId, Math.max(1, parseInt(i.quantity, 10) || 1)]));
+  // バリエーション情報を一括取得
+  const variantIds = items.map(i => i.variantId).filter(Boolean);
+  let variantMap = new Map();
+  if (variantIds.length) {
+    const vph = variantIds.map((_, i) => `$${i + 1}`).join(',');
+    const vrows = await dbQuery(
+      `SELECT id, product_id, label, price, unit, stock FROM product_variants WHERE id IN (${vph}) AND active = true`,
+      variantIds
+    );
+    variantMap = new Map(vrows.map(v => [v.id, v]));
+  }
 
-  // カートの順序で並べる
-  return uniqIds
-    .map(id => rows.find(r => r.id === id))
-    .filter(Boolean)
-    .map(r => ({
-      ...r,
-      quantity: qtyMap.get(r.id) || 1
-    }));
+  const productMap = new Map(rows.map(r => [r.id, r]));
+
+  // カートの items 順で並べる（同一商品・異なるバリエーションは別行）
+  return items
+    .map(item => {
+      const r = productMap.get(item.productId);
+      if (!r) return null;
+      const variant = item.variantId ? variantMap.get(item.variantId) : null;
+      return {
+        ...r,
+        variant_id: item.variantId || null,
+        variant_label: variant?.label || null,
+        // バリエーションがある場合はバリエーションの値でオーバーライド
+        price: variant ? variant.price : r.price,
+        unit: variant ? variant.unit : r.unit,
+        stock: variant ? variant.stock : r.stock,
+        quantity: Math.max(1, parseInt(item.quantity, 10) || 1),
+      };
+    })
+    .filter(Boolean);
 }
 
 const {
@@ -6826,6 +7186,26 @@ app.get('/cart', async (req, res, next) => {
 
     const errorsBySeller = (req.session.cart && req.session.cart.errorsBySeller) || {};
 
+    // B2B承認ワークフロー: 有効かどうかと、出品者ごとの承認済みリクエストID（あれば注文に進める）
+    let approvalRequired = false;
+    const approvedRequestBySeller = {};
+    if (buyerPid) {
+      try {
+        const { isApprovalRequired, getApprovedApprovalRequestForSeller } = require('./services/approvalService');
+        approvalRequired = await isApprovalRequired(buyerPid);
+        if (approvalRequired && req.session?.user?.id) {
+          for (const sellerPartnerId of Object.keys(groupedBySeller)) {
+            const row = await getApprovedApprovalRequestForSeller(
+              req.session.user.id,
+              buyerPid,
+              sellerPartnerId
+            );
+            if (row && row.id) approvedRequestBySeller[sellerPartnerId] = String(row.id);
+          }
+        }
+      } catch (e) { /* ignore */ }
+    }
+
     res.render('cart/index', {
       title: 'カート',
       groupedBySeller,
@@ -6833,7 +7213,9 @@ app.get('/cart', async (req, res, next) => {
       totals,
       req,
       errorsBySeller,
-      freeShipThresholdBySeller
+      freeShipThresholdBySeller,
+      approvalRequired,
+      approvedRequestBySeller
     });
     if (req.session?.cart) req.session.cart.errorsBySeller = {};
   } catch (e) { next(e); }
@@ -6847,16 +7229,16 @@ app.post('/cart/add', upload.none(), async (req, res, next) => {
   try {
     const body = req.body || {};
     const productId = String(body.productId || '').trim();
+    const variantId = String(body.variantId || '').trim() || null;
     const qtyNum = Math.max(1, toInt(body.quantity ?? body.qty, 1));
 
     if (!productId) {
       return res.status(400).json({ ok: false, message: 'productId が必要です。' });
     }
 
-    // ─ 以下はこれまでのロジックをそのまま ─
     const rows = await dbQuery(`
       SELECT
-        p.id, p.title AS name, p.price, p.unit, p.stock,
+        p.id, p.title AS name, p.price, p.unit, p.stock, p.has_variants,
         (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY position ASC LIMIT 1) AS image
       FROM products p
       WHERE p.id = $1 AND p.status = 'public'
@@ -6865,28 +7247,51 @@ app.post('/cart/add', upload.none(), async (req, res, next) => {
 
     const prod = rows[0];
     if (!prod) return res.status(404).json({ ok:false, message:'商品が見つかりません。' });
-    if (prod.stock <= 0) return res.status(409).json({ ok:false, message:'在庫切れの商品です。' });
+
+    // バリエーション対応: 価格・在庫・単位の決定
+    let effectivePrice = prod.price;
+    let effectiveStock = prod.stock;
+    let effectiveUnit = prod.unit;
+    let variantLabel = null;
+
+    if (variantId) {
+      const { getVariant } = require('./services/variantService');
+      const variant = await getVariant(variantId, productId);
+      if (!variant || !variant.active) {
+        return res.status(404).json({ ok: false, message: 'バリエーションが見つかりません。' });
+      }
+      effectivePrice = variant.price;
+      effectiveStock = variant.stock;
+      effectiveUnit = variant.unit;
+      variantLabel = variant.label;
+    } else if (prod.has_variants) {
+      return res.status(400).json({ ok: false, message: 'バリエーションを選択してください。' });
+    }
+
+    if (effectiveStock <= 0) return res.status(409).json({ ok:false, message:'在庫切れの商品です。' });
 
     const uid = req.session?.user?.id || null;
     if (uid) {
-      await dbCartAdd(uid, prod.id, Math.min(qtyNum, prod.stock));
+      await dbCartAdd(uid, prod.id, Math.min(qtyNum, effectiveStock), variantId);
       const cartRow = await getOrCreateUserCart(uid);
       const cntRes = await dbQuery(`SELECT COUNT(*)::int AS cnt FROM cart_items WHERE cart_id = $1 AND saved_for_later=false`, [cartRow.id]);
       return res.json({ ok:true, cartCount: cntRes[0]?.cnt || 0 });
     }
 
     const cart = ensureCart(req);
-    const idx = cart.items.findIndex(i => i.productId === prod.id);
+    const idx = cart.items.findIndex(i => i.productId === prod.id && (i.variantId || null) === variantId);
     if (idx >= 0) {
-      cart.items[idx].quantity = Math.min(cart.items[idx].quantity + qtyNum, prod.stock);
+      cart.items[idx].quantity = Math.min(cart.items[idx].quantity + qtyNum, effectiveStock);
     } else {
       cart.items.push({
         productId: prod.id,
+        variantId: variantId,
+        variantLabel: variantLabel,
         title:     prod.name,
-        price:     prod.price,
-        unit:      prod.unit,
+        price:     effectivePrice,
+        unit:      effectiveUnit,
         image:     prod.image,
-        quantity:  Math.min(qtyNum, prod.stock),
+        quantity:  Math.min(qtyNum, effectiveStock),
       });
     }
     const cartCount = cart.items.length;
@@ -6903,21 +7308,28 @@ app.post('/cart/add', upload.none(), async (req, res, next) => {
 app.patch('/cart/:id', async (req, res, next) => {
   try {
     const productId = req.params.id;
+    const variantId = String(req.body?.variantId || '').trim() || null;
     let qty = Math.max(1, toInt(req.body?.quantity, 1));
 
-    // 在庫クランプ
-    const s = await dbQuery(`SELECT stock FROM products WHERE id = $1`, [productId]);
-    const stock = toInt(s?.[0]?.stock, 0);
+    // 在庫クランプ（バリエーション対応）
+    let stock = 0;
+    if (variantId) {
+      const vs = await dbQuery(`SELECT stock FROM product_variants WHERE id = $1 AND active = true`, [variantId]);
+      stock = toInt(vs?.[0]?.stock, 0);
+    } else {
+      const s = await dbQuery(`SELECT stock FROM products WHERE id = $1`, [productId]);
+      stock = toInt(s?.[0]?.stock, 0);
+    }
     if (stock > 0) qty = Math.min(qty, stock);
 
     const uid = authedUserId(req);
     if (uid) {
-      await dbCartSetQty(uid, productId, qty);
+      await dbCartSetQty(uid, productId, qty, variantId);
       return res.status(204).end();
     }
 
     const cart = ensureCart(req);
-    const row = cart.items.find(i => i.productId === productId);
+    const row = cart.items.find(i => i.productId === productId && (i.variantId || null) === variantId);
     if (!row) return res.status(404).json({ ok: false, message: 'カートに見つかりません。' });
     row.quantity = qty;
     return res.status(204).end();
@@ -6930,13 +7342,14 @@ app.patch('/cart/:id', async (req, res, next) => {
 app.delete('/cart/:id', async (req, res, next) => {
   try {
     const productId = req.params.id;
+    const variantId = String(req.body?.variantId || req.query?.variantId || '').trim() || null;
     const uid = authedUserId(req);
     if (uid) {
-      await dbCartRemove(uid, productId);
+      await dbCartRemove(uid, productId, variantId);
       return res.status(204).end();
     }
     const cart = ensureCart(req);
-    cart.items = cart.items.filter(i => i.productId !== productId);
+    cart.items = cart.items.filter(i => !(i.productId === productId && (i.variantId || null) === variantId));
     return res.status(204).end();
   } catch (e) { next(e); }
 });
@@ -7461,6 +7874,38 @@ app.get('/checkout', async (req, res, next) => {
       return res.redirect('/cart');
     }
 
+    // ✅ B2B承認チェック: ワークフロー有効時は承認済みリクエストが必要
+    const buyerPidForApproval = req.session.user.partner_id || null;
+    // URLパラメータ or セッションに保存済みの承認リクエストID
+    const approvalRequestId = (req.query.approval_request_id || '').trim() || (req.session.approvalRequestId || '');
+    if (buyerPidForApproval) {
+      try {
+        const { isApprovalRequired, getApprovalRequestDetail } = require('./services/approvalService');
+        const needsApproval = await isApprovalRequired(buyerPidForApproval);
+        if (needsApproval) {
+          if (!approvalRequestId) {
+            req.session.flash = { type: 'error', message: '承認ワークフローが有効です。カートから承認申請を行い、承認後に注文に進んでください。' };
+            return res.redirect('/cart');
+          }
+          const arDetail = await getApprovalRequestDetail(approvalRequestId);
+          if (!arDetail || arDetail.requester_id !== req.session.user.id) {
+            req.session.flash = { type: 'error', message: '承認リクエストが見つかりません。' };
+            delete req.session.approvalRequestId;
+            return res.redirect('/my/approval-requests');
+          }
+          if (arDetail.status !== 'approved') {
+            req.session.flash = { type: 'error', message: 'この承認リクエストはまだ承認されていません。' };
+            delete req.session.approvalRequestId;
+            return res.redirect('/my/approval-requests');
+          }
+          // 承認済みリクエストIDをセッションに保存（POST /checkout/confirm で使用）
+          req.session.approvalRequestId = approvalRequestId;
+        }
+      } catch (e) {
+        logger.warn('Approval check failed in checkout', { error: e.message });
+      }
+    }
+
     // カート全体（{ productId, quantity, sellerPartnerId, ... } 想定）
     const allPairs = await loadCartItems(req);
 
@@ -7509,6 +7954,14 @@ app.get('/checkout', async (req, res, next) => {
       // 個人ユーザー（法人組織に未所属）→ invoiceを除外
       sellerConfig.allowedPaymentMethods = (sellerConfig.allowedPaymentMethods || [])
         .filter(m => m.code !== 'invoice');
+    } else {
+      // 法人ユーザーでも与信限度額0なら掛売不可
+      const { getCreditStatus } = require('./services/creditService');
+      const creditSt = await getCreditStatus(buyerPartnerId);
+      if (!creditSt || creditSt.limit <= 0) {
+        sellerConfig.allowedPaymentMethods = (sellerConfig.allowedPaymentMethods || [])
+          .filter(m => m.code !== 'invoice');
+      }
     }
 
     // ★ 追加: 決済方法が1つも許可されていない場合はエラー
@@ -7666,10 +8119,14 @@ app.post('/checkout', async (req, res, next) => {
       sellerConfig.allowedPaymentMethods = (sellerConfig.allowedPaymentMethods || [])
         .filter(m => m.code !== 'invoice');
     }
+    // ★ B2B: リダイレクト用URL（承認リクエストIDがある場合は維持）
+    const arIdForRedirect = req.session.approvalRequestId || '';
+    const checkoutRedirectUrl = `/checkout?seller=${encodeURIComponent(sellerId)}${arIdForRedirect ? `&approval_request_id=${encodeURIComponent(arIdForRedirect)}` : ''}`;
+
     // ★ B2B: 掛売は法人のみ — サーバー側でも再検証
     if (paymentMethod === 'invoice' && !buyerPartnerId) {
       req.session.flash = { type:'error', message:'掛売（請求書払い）は法人アカウントのみご利用いただけます。' };
-      return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
+      return res.redirect(checkoutRedirectUrl);
     }
 
     // ★ B2B: 掛売時の与信チェック
@@ -7684,7 +8141,7 @@ app.post('/checkout', async (req, res, next) => {
       const creditCheck = await checkCreditAvailable(buyerPartnerId, tempTotal);
       if (!creditCheck.available) {
         req.session.flash = { type:'error', message: creditCheck.reason + '　他のお支払い方法をご選択ください。' };
-        return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
+        return res.redirect(checkoutRedirectUrl);
       }
     }
 
@@ -7696,22 +8153,22 @@ app.post('/checkout', async (req, res, next) => {
     // バリデーション
     if (!agree) {
       req.session.flash = { type:'error', message:'利用規約に同意してください。' };
-      return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
+      return res.redirect(checkoutRedirectUrl);
     }
     if (!allowedShipsCodes.length || !allowedShipsCodes.includes(String(shipMethod || ''))) {
       req.session.flash = { type:'error', message:'受け取り方法が無効です。' };
-      return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
+      return res.redirect(checkoutRedirectUrl);
     }
     if (!allowedPaymentCodes.length || !allowedPaymentCodes.includes(String(paymentMethod || ''))) {
       req.session.flash = { type:'error', message:'この出品者では選択されたお支払い方法はご利用いただけません。' };
-      return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
+      return res.redirect(checkoutRedirectUrl);
     }
     // 住所バリデーションは受け取り方法で分岐
     if (shipMethod === 'delivery') {
       // 配送：配送先必須
       if (!shippingAddressId) {
         req.session.flash = { type:'error', message:'配送先住所を選択してください。' };
-        return res.redirect(`/checkout?seller=${encodeURIComponent(sellerId)}`);
+        return res.redirect(checkoutRedirectUrl);
       }
       // 請求先：同一でないなら必須
       if (!billSame && !billingAddressId) {
@@ -8576,7 +9033,7 @@ app.post('/checkout/confirm', async (req, res, next) => {
     const ids = targetPairs.map(p => p.productId);
     const ph  = ids.map((_,i)=>`$${i+1}`).join(',');
     const prows = await dbQuery(
-      `SELECT p.id, p.seller_id, p.title, p.price, p.unit, p.stock, p.slug
+      `SELECT p.id, p.seller_id, p.title, p.price, p.unit, p.stock, p.slug, p.has_variants
          FROM products p
         WHERE p.id IN (${ph})
           AND p.status = 'public'`,
@@ -8585,10 +9042,28 @@ app.post('/checkout/confirm', async (req, res, next) => {
 
     // マップ化
     const byId = new Map(prows.map(r => [r.id, r]));
+
+    // バリエーション情報を一括取得
+    const checkoutVariantIds = targetPairs.map(p => p.variantId).filter(Boolean);
+    let checkoutVariantMap = new Map();
+    if (checkoutVariantIds.length) {
+      const vph = checkoutVariantIds.map((_, i) => `$${i + 1}`).join(',');
+      const vrows = await dbQuery(
+        `SELECT id, product_id, label, price, unit, stock FROM product_variants WHERE id IN (${vph}) AND active = true`,
+        checkoutVariantIds
+      );
+      checkoutVariantMap = new Map(vrows.map(v => [v.id, v]));
+    }
+
     // 在庫チェック（足りなければ戻す）
     for (const p of targetPairs) {
       const prod = byId.get(p.productId);
-      if (!prod || (prod.stock|0) < (p.quantity|0)) {
+      if (!prod) {
+        req.session.flash = { type:'error', message:'商品が見つかりません。' };
+        return res.redirect('/cart');
+      }
+      const effectiveStock = p.variantId ? (checkoutVariantMap.get(p.variantId)?.stock || 0) : (prod.stock|0);
+      if (effectiveStock < (p.quantity|0)) {
         req.session.flash = { type:'error', message:'在庫不足の商品があります。数量を調整してください。' };
         return res.redirect('/cart');
       }
@@ -8609,10 +9084,11 @@ app.post('/checkout/confirm', async (req, res, next) => {
       }
     }
 
-    // 合計計算（サーバ側で最終確定）
+    // 合計計算（サーバ側で最終確定）- バリエーション価格対応
     const itemsForTotal = targetPairs.map(p => {
       const prod = byId.get(p.productId);
-      return { price: prod.price, quantity: p.quantity };
+      const variant = p.variantId ? checkoutVariantMap.get(p.variantId) : null;
+      return { price: variant ? variant.price : prod.price, quantity: p.quantity };
     });
     const coupon = req.session?.cart?.coupon || null;
 
@@ -8710,9 +9186,12 @@ app.post('/checkout/confirm', async (req, res, next) => {
 
     await client.query('BEGIN');
 
-    // ★ B2B: 承認ワークフローチェック
-    const { isApprovalRequired, createApprovalRequest } = require('./services/approvalService');
-    const needsApproval = buyerPartnerId ? await isApprovalRequired(buyerPartnerId) : false;
+    // ★ B2B: 新フローでは承認はリクエスト段階で完了済み
+    // approval_status は常に 'none' (承認リクエストで管理)
+
+    // カード決済の場合は決済完了まで "awaiting_payment" ステータスにする
+    const isCardPayment = safePaymentMethod === 'card';
+    const initialStatus = isCardPayment ? 'awaiting_payment' : 'pending';
 
     // orders
     const oins = await client.query(
@@ -8734,29 +9213,43 @@ app.post('/checkout/confirm', async (req, res, next) => {
         subtotal, discount, shipping_fee, total,
         safePaymentMethod, (draft.orderNote || '').slice(0,1000), etaAt,
         coupon?.code || null, draft.shipMethod, rawShipTimeCode,
-        needsApproval ? 'pending_approval' : 'pending',
+        initialStatus,
         buyerPartnerId,
         uid,
-        needsApproval ? 'pending' : 'none'
+        'none'
       ]
     );
     const orderId = oins.rows[0].id;
 
-    // order_items
+    // order_items（バリエーション対応）
     for (const p of targetPairs) {
       const prod = byId.get(p.productId);
+      const variant = p.variantId ? checkoutVariantMap.get(p.variantId) : null;
+      const effectivePrice = variant ? variant.price : prod.price;
+
       await client.query(
         `INSERT INTO order_items
-           (order_id, product_id, seller_id, quantity, price)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [orderId, prod.id, prod.seller_id, p.quantity, prod.price]
+           (order_id, product_id, seller_id, quantity, price, variant_id)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [orderId, prod.id, prod.seller_id, p.quantity, effectivePrice, p.variantId || null]
       );
-      // 在庫減算
-      await client.query(
-        `UPDATE products SET stock = stock - $1, updated_at = now()
-          WHERE id = $2::uuid`,
-        [p.quantity, prod.id]
-      );
+      // 在庫減算（バリエーション対応）
+      if (p.variantId) {
+        await client.query(
+          `UPDATE product_variants SET stock = stock - $1, updated_at = now()
+            WHERE id = $2::uuid`,
+          [p.quantity, p.variantId]
+        );
+        // 商品レベルの表示用stock も同期
+        const { syncProductDisplayValues } = require('./services/variantService');
+        await syncProductDisplayValues(client, prod.id);
+      } else {
+        await client.query(
+          `UPDATE products SET stock = stock - $1, updated_at = now()
+            WHERE id = $2::uuid`,
+          [p.quantity, prod.id]
+        );
+      }
     }
 
     // order_addresses（配送先/請求先を addresses からコピー）
@@ -8768,18 +9261,21 @@ app.post('/checkout/confirm', async (req, res, next) => {
       billSame: !!draft.billSame
     });
 
-    // カートから今回の注文対象を削除（DB & セッション）
+    // カートから今回の注文対象を削除（DB & セッション）- バリエーション対応
     if (req.session?.user?.id) {
       const cartRow = await getOrCreateUserCart(uid);
-      await client.query(
-        `DELETE FROM cart_items
-          WHERE cart_id = $1::uuid AND product_id = ANY($2::uuid[])`,
-        [cartRow.id, ids]
-      );
+      for (const p of targetPairs) {
+        await client.query(
+          `DELETE FROM cart_items
+            WHERE cart_id = $1::uuid AND product_id = $2::uuid AND variant_id IS NOT DISTINCT FROM $3`,
+          [cartRow.id, p.productId, p.variantId || null]
+        );
+      }
     }
     // セッション側
     if (req.session?.cart?.items?.length) {
-      req.session.cart.items = req.session.cart.items.filter(i => !ids.includes(i.productId));
+      const targetKeys = new Set(targetPairs.map(p => `${p.productId}|${p.variantId || ''}`));
+      req.session.cart.items = req.session.cart.items.filter(i => !targetKeys.has(`${i.productId}|${i.variantId || ''}`));
     }
 
     // 今回選択（出品者別）だけクリア
@@ -8796,13 +9292,15 @@ app.post('/checkout/confirm', async (req, res, next) => {
 
     await client.query('COMMIT');
 
-    // ★ B2B: 承認フロー開始（COMMIT後に実行）
-    if (needsApproval && buyerPartnerId) {
+    // ★ B2B: 承認リクエストを「注文済み」にマーク（COMMIT後に実行）
+    if (req.session.approvalRequestId) {
       try {
-        await createApprovalRequest(orderId, buyerPartnerId);
-        logger.info('Approval workflow started for order', { orderId, buyerPartnerId });
-      } catch (approvalErr) {
-        logger.error('Failed to create approval request', { orderId, error: approvalErr.message });
+        const { markApprovalRequestOrdered } = require('./services/approvalService');
+        await markApprovalRequestOrdered(req.session.approvalRequestId);
+        logger.info('Approval request marked as ordered', { approvalRequestId: req.session.approvalRequestId, orderId });
+        delete req.session.approvalRequestId;
+      } catch (arErr) {
+        logger.error('Failed to mark approval request as ordered', { error: arErr.message });
       }
     }
 
@@ -8904,11 +9402,17 @@ app.post('/checkout/confirm', async (req, res, next) => {
       }
     }
 
-    // —— メール送信：購入者 / 出品者（並列送信でもOK）
+    // —— メール送信：カード決済の場合はWebhookで決済成功確認後に送信
+    // カード決済以外（代引き・掛売など）は即時メール送信
     const tasks = [];
 
-    // 購入者へ（返信先は運営：不要なら消す）
-    try {
+    if (isCardPayment) {
+      // カード決済はメール送信をスキップ（Webhook checkout.session.completed で送信する）
+      logger.info('Card payment: deferring notification emails until payment confirmed', { orderId, orderNo });
+    }
+
+    // 購入者へ（カード決済以外）
+    if (!isCardPayment) try {
       const buyerMail = buildBuyerMail({
         orderNo, createdAt, buyer, items, totals,
         shippingAddress, billingAddress: mailBillingAddress,
@@ -8935,8 +9439,8 @@ app.post('/checkout/confirm', async (req, res, next) => {
       console.error('build buyer mail failed:', e?.message || e);
     }
 
-    // 出品者へ（replyTo を購入者に）
-    try {
+    // 出品者へ（カード決済以外 / replyTo を購入者に）
+    if (!isCardPayment) try {
       if (sellerTos.length){
         const sellerMail = buildSellerMail({
           orderNo, createdAt, seller, buyer, items, totals,
@@ -8969,6 +9473,22 @@ app.post('/checkout/confirm', async (req, res, next) => {
     // 送信は待たずに画面遷移してOKにしたい場合：await を外す（完全非同期）
     // 失敗ログを確実に出したい・Ethereal プレビューを見たいなら settle
     await Promise.allSettled(tasks);
+
+    // ========== 出品者へのお知らせ通知 ==========
+    try {
+      const { createNotification, getUserIdsByPartnerId } = require('./services/notificationService');
+      const sellerUserIds = await getUserIdsByPartnerId(sellerId);
+      await createNotification({
+        type: 'order',
+        title: '新しい注文が入りました',
+        body: `注文番号 ${orderNo}（¥${Number(total).toLocaleString()}）が入りました。`,
+        linkUrl: `/seller/trades/${orderId}`,
+        userIds: sellerUserIds,
+        excludeUserId: req.session.user.id
+      });
+    } catch (notifyErr) {
+      console.warn('Order notification failed:', notifyErr.message);
+    }
 
     // ========== Stripe決済の場合はCheckout Sessionを作成 ==========
     if (safePaymentMethod === 'card') {
@@ -9027,12 +9547,14 @@ app.post('/checkout/confirm', async (req, res, next) => {
         const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
 
         // Stripe Checkout Session を作成
+        // cancel_url は注文キャンセル処理へ（在庫復元 + 注文キャンセル）
         const session = await stripe.checkout.sessions.create({
           payment_method_types: ['card'],
           line_items: lineItems,
           mode: 'payment',
           success_url: `${appUrl}/checkout/complete?no=${encodeURIComponent(orderNo)}`,
-          cancel_url: `${appUrl}/checkout?seller=${encodeURIComponent(sellerId)}`,
+          cancel_url: `${appUrl}/checkout/cancel?no=${encodeURIComponent(orderNo)}`,
+          expires_at: Math.floor(Date.now() / 1000) + 1800, // 30分で期限切れ
           metadata: {
             order_id: String(orderId),
             order_number: orderNo,
@@ -9087,6 +9609,73 @@ app.post('/checkout/confirm', async (req, res, next) => {
 });
 
 /* ----------------------------
+ *  GET /checkout/cancel  Stripe決済キャンセル
+ *  Stripeの決済画面で「戻る」を押した場合のコールバック
+ *  awaiting_payment の注文をキャンセルし在庫を復元してカートへ戻す
+ * -------------------------- */
+app.get('/checkout/cancel', async (req, res, next) => {
+  try {
+    const key = String(req.query.no || '').trim();
+    if (!key) return res.redirect('/cart');
+
+    const uid = req.session?.user?.id || null;
+    if (!uid) return res.redirect('/cart');
+
+    // 注文を取得（本人のawaiting_paymentのみ対象）
+    const rows = await dbQuery(
+      `SELECT id, status FROM orders
+       WHERE (order_number = $1 OR id::text = $1)
+         AND buyer_id = $2::uuid
+       LIMIT 1`,
+      [key, uid]
+    );
+    const order = rows[0];
+
+    if (!order) {
+      req.session.flash = { type: 'warning', message: '該当する注文が見つかりません。' };
+      return res.redirect('/cart');
+    }
+
+    if (order.status === 'awaiting_payment') {
+      // 在庫復元（バリエーション対応）
+      const orderItems = await dbQuery(
+        `SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = $1::uuid`,
+        [order.id]
+      );
+      for (const oi of orderItems) {
+        if (oi.variant_id) {
+          await dbQuery(
+            `UPDATE product_variants SET stock = stock + $1, updated_at = now() WHERE id = $2::uuid`,
+            [oi.quantity, oi.variant_id]
+          );
+          const { syncProductDisplayValues } = require('./services/variantService');
+          await syncProductDisplayValues(null, oi.product_id);
+        } else {
+          await dbQuery(
+            `UPDATE products SET stock = stock + $1 WHERE id = $2::uuid`,
+            [oi.quantity, oi.product_id]
+          );
+        }
+      }
+
+      // 注文をキャンセル
+      await dbQuery(
+        `UPDATE orders SET status = 'cancelled', payment_status = 'cancelled', updated_at = now()
+         WHERE id = $1::uuid`,
+        [order.id]
+      );
+
+      logger.info('Order cancelled via Stripe cancel page', { orderId: order.id, orderNumber: key });
+      req.session.flash = { type: 'info', message: '決済がキャンセルされました。カートの内容はそのままです。' };
+    }
+
+    return res.redirect('/cart');
+  } catch (e) {
+    next(e);
+  }
+});
+
+/* ----------------------------
  *  GET /checkout/complete  注文完了
  *  クエリ: ?no=注文番号（ORD-...）またはオーダーID
  * -------------------------- */
@@ -9107,7 +9696,7 @@ app.get('/checkout/complete', async (req, res, next) => {
       `SELECT o.id, o.order_number AS order_no, o.buyer_id,
               o.status, o.subtotal, o.discount, o.shipping_fee, o.total, o.ship_time_code,
               o.created_at, o.eta_at, o.payment_method, o.ship_method, o.coupon_code,
-              o.payment_status
+              o.payment_status, o.approval_status
          FROM orders o
         WHERE (o.order_number = $1 OR o.id::text = $1)
           ${uid ? 'AND o.buyer_id = $2::uuid' : ''}
@@ -9289,13 +9878,17 @@ app.post('/orders/:no/reorder', requireAuth, async (req, res, next) => {
       return res.redirect('/orders/recent');
     }
 
-    // 注文アイテムを取得
+    // 注文アイテムを取得（バリエーション対応）
     const items = await dbQuery(
-      `SELECT oi.product_id, oi.quantity,
+      `SELECT oi.product_id, oi.variant_id, oi.quantity,
               p.title, p.stock, p.status AS product_status, p.price AS current_price,
-              oi.price AS ordered_price
+              p.has_variants,
+              oi.price AS ordered_price,
+              pv.label AS variant_label, pv.stock AS variant_stock, pv.price AS variant_price,
+              pv.active AS variant_active
        FROM order_items oi
        LEFT JOIN products p ON p.id = oi.product_id
+       LEFT JOIN product_variants pv ON pv.id = oi.variant_id
        WHERE oi.order_id = $1`,
       [orderRows[0].id]
     );
@@ -9304,29 +9897,46 @@ app.post('/orders/:no/reorder', requireAuth, async (req, res, next) => {
     const warnings = [];
 
     for (const item of items) {
+      const label = item.variant_label
+        ? `${item.title} (${item.variant_label})`
+        : (item.title || '商品');
+
       // 非公開・削除済み商品はスキップ
       if (!item.product_status || item.product_status !== 'public') {
-        warnings.push(`${item.title || '商品'} は現在取り扱いがありません。`);
+        warnings.push(`${label} は現在取り扱いがありません。`);
         continue;
       }
+      // バリエーションが無効になっている場合はスキップ
+      if (item.variant_id && item.variant_active === false) {
+        warnings.push(`${label} は現在取り扱いがありません。`);
+        continue;
+      }
+      // バリエーション商品の在庫はバリエーション在庫を優先
+      const effectiveStock = item.variant_id
+        ? (item.variant_stock ?? item.stock ?? 0)
+        : (item.stock ?? 0);
+      const effectivePrice = item.variant_id
+        ? (item.variant_price ?? item.current_price)
+        : item.current_price;
+
       // 在庫切れチェック
-      if ((item.stock || 0) <= 0) {
-        warnings.push(`${item.title} は在庫切れです。`);
+      if (effectiveStock <= 0) {
+        warnings.push(`${label} は在庫切れです。`);
         continue;
       }
       // 在庫不足の場合は利用可能な数量だけ追加
-      const qty = Math.min(item.quantity, item.stock || 0);
+      const qty = Math.min(item.quantity, effectiveStock);
 
-      // カートに追加
-      await dbCartAdd(uid, item.product_id, qty);
+      // カートに追加（バリエーションID付き）
+      await dbCartAdd(uid, item.product_id, qty, item.variant_id || null);
       addedCount++;
 
       // 価格変更通知
-      if (item.current_price !== item.ordered_price) {
-        warnings.push(`${item.title} の価格が ¥${Number(item.ordered_price).toLocaleString()} → ¥${Number(item.current_price).toLocaleString()} に変更されています。`);
+      if (effectivePrice !== item.ordered_price) {
+        warnings.push(`${label} の価格が ¥${Number(item.ordered_price).toLocaleString()} → ¥${Number(effectivePrice).toLocaleString()} に変更されています。`);
       }
       if (qty < item.quantity) {
-        warnings.push(`${item.title} は在庫が ${item.stock} 点のため、${qty} 点のみカートに追加しました。`);
+        warnings.push(`${label} は在庫が ${effectiveStock} 点のため、${qty} 点のみカートに追加しました。`);
       }
     }
 
@@ -9398,10 +10008,12 @@ app.get('/orders/:no', requireAuth, async (req, res, next) => {
         oi.product_id,
         oi.quantity,
         oi.price AS unit_price,
+        oi.variant_id,
         p.slug,
         p.title,
         p.unit,
         su.name AS seller_name,
+        pv.label AS variant_label,
         (
           SELECT url
           FROM product_images pi
@@ -9412,6 +10024,7 @@ app.get('/orders/:no', requireAuth, async (req, res, next) => {
       FROM order_items oi
       JOIN products p ON p.id = oi.product_id
       LEFT JOIN users su ON su.id = oi.seller_id
+      LEFT JOIN product_variants pv ON pv.id = oi.variant_id
       WHERE oi.order_id = $1
       ORDER BY oi.id ASC
       `,
@@ -9425,7 +10038,9 @@ app.get('/orders/:no', requireAuth, async (req, res, next) => {
       unit_price: Number(r.unit_price || 0),
       price: Number(r.unit_price || 0), // 後方互換
       image_url: r.image_url,
-      seller_name: r.seller_name || ''
+      seller_name: r.seller_name || '',
+      variant_id: r.variant_id || null,
+      variant_label: r.variant_label || ''
     }));
 
     // ─ 3) 住所（配送先／請求先）
@@ -9874,8 +10489,15 @@ async function resolveChromiumExecutable() {
     } catch (_) {}
   }
 
-  // 3) よくあるシステムパス
-  for (const p of ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable']) {
+  // 3) よくあるシステムパス（Linux + macOS）
+  for (const p of [
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable'
+  ]) {
     if (fs.existsSync(p)) return p;
   }
 
@@ -10861,7 +11483,11 @@ app.get(
            note, icon_url, icon_r2_key, pickup_address_id, created_at, updated_at,
            stripe_account_id, stripe_account_type, stripe_charges_enabled, stripe_payouts_enabled,
            stripe_details_submitted, charges_enabled, payouts_enabled, debt_cents, stop_reason,
-           requirements_due_by
+           requirements_due_by,
+           credit_limit, credit_used, payment_terms_days,
+           approval_workflow_enabled,
+           bank_name, bank_branch_name, bank_branch_code,
+           bank_account_type, bank_account_number, bank_account_holder
          FROM partners
          WHERE id = $1::uuid
          LIMIT 1`,
@@ -11070,6 +11696,14 @@ app.post(
       const icon_r2_key = String(req.body.icon_r2_key || '').trim() || null;
       const pickup_address_id = String(req.body.pickup_address_id || '').trim() || null;
 
+      // 銀行情報
+      const bank_name = String(req.body.bank_name || '').trim() || null;
+      const bank_branch_name = String(req.body.bank_branch_name || '').trim() || null;
+      const bank_branch_code = String(req.body.bank_branch_code || '').trim() || null;
+      const bank_account_type = String(req.body.bank_account_type || '').trim() || 'ordinary';
+      const bank_account_number = String(req.body.bank_account_number || '').trim() || null;
+      const bank_account_holder = String(req.body.bank_account_holder || '').trim() || null;
+
       // pickup_address_idのバリデーション（該当partnerのユーザーが登録した住所か確認）
       let validPickupAddressId = null;
       if (pickup_address_id && isUuid(pickup_address_id)) {
@@ -11114,10 +11748,16 @@ app.post(
            icon_url = $14,
            icon_r2_key = $15,
            pickup_address_id = $16,
+           bank_name = $17,
+           bank_branch_name = $18,
+           bank_branch_code = $19,
+           bank_account_type = $20,
+           bank_account_number = $21,
+           bank_account_holder = $22,
            updated_at = now()
-         WHERE id = $17::uuid
+         WHERE id = $23::uuid
          RETURNING id`,
-        [name, kana, type, email, phone, website, tax_id, postal_code, prefecture, city, address1, address2, note, icon_url, icon_r2_key, validPickupAddressId, id]
+        [name, kana, type, email, phone, website, tax_id, postal_code, prefecture, city, address1, address2, note, icon_url, icon_r2_key, validPickupAddressId, bank_name, bank_branch_name, bank_branch_code, bank_account_type, bank_account_number, bank_account_holder, id]
       );
 
       if (!result.length) {
@@ -11325,6 +11965,30 @@ app.post(
             message: errorMessage
           };
           return res.redirect(`/admin/partners/${partnerId}`);
+        }
+      }
+
+      // ★ 掛売り（請求書払い）を有効化する場合、銀行情報の登録を確認
+      if (methods.includes('invoice')) {
+        const bankRows = await dbQuery(
+          `SELECT bank_name, bank_account_number, bank_account_holder FROM partners WHERE id = $1::uuid`,
+          [partnerId]
+        );
+
+        if (bankRows.length) {
+          const bp = bankRows[0];
+          const hasBankInfo = bp.bank_name && bp.bank_account_number && bp.bank_account_holder;
+
+          if (!hasBankInfo) {
+            const errorMessage = '掛売り（請求書払い）を有効化するには、振込先口座情報（銀行名・口座番号・口座名義）の登録が必要です。店舗情報の編集から口座情報を登録してください。';
+
+            if (isAjax) {
+              return res.status(400).json({ ok: false, message: errorMessage });
+            }
+
+            req.session.flash = { type: 'error', message: errorMessage };
+            return res.redirect(`/admin/partners/${partnerId}`);
+          }
         }
       }
 
@@ -14469,17 +15133,6 @@ app.post('/admin/coupons/:id',
   }
 });
 
-// 開発支援：CSRFエラーの見やすい応答
-app.use((err, req, res, next) => {
-  if (err && err.code === 'EBADCSRFTOKEN') {
-    return res.status(403).render('errors/403', {
-      title: 'セキュリティエラー',
-      message: 'トークンが無効です。フォームを開き直して再度お試しください。'
-    });
-  }
-  next(err);
-});
-
 /* =========================================================
  *  404 / Error
  * =======================================================*/
@@ -14508,7 +15161,7 @@ const { registerAdminFinanceRoutes } = require('./routes-admin-finance');
 registerAdminFinanceRoutes(app, requireAuth, requireRole);
 
 const { registerAdminInvoiceRoutes } = require('./routes-admin-invoice');
-registerAdminInvoiceRoutes(app, requireAuth, requireRole);
+registerAdminInvoiceRoutes(app, requireAuth, requireRole, { htmlToPdfBuffer });
 
 // ============================================================
 // 注文テンプレートルート登録
@@ -14542,6 +15195,17 @@ registerWebAuthnRoutes(app, requireAuth);
 
 const { registerEditorRoutes } = require('./routes-editor');
 registerEditorRoutes(app, requireAuth);
+
+// CSRFエラーの見やすい応答（全ルート登録の後に配置）
+app.use((err, req, res, next) => {
+  if (err && err.code === 'EBADCSRFTOKEN') {
+    return res.status(403).render('errors/403', {
+      title: 'セキュリティエラー',
+      message: 'トークンが無効です。フォームを開き直して再度お試しください。'
+    });
+  }
+  next(err);
+});
 
 app.use((req, res) => {
   res.status(404).render('errors/404', { title: 'ページが見つかりません' });

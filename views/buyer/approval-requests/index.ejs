@@ -1,0 +1,71 @@
+<%- include('../../partials/header', { title: '承認申請一覧', extraCSS2: '',
+  extraCSS: '/styles/approval.css' }) %>
+
+<main class="appr-list">
+  <div class="appr-list__head">
+    <h1>承認申請一覧</h1>
+    <p class="muted">あなたが提出した承認申請の状況を確認できます。</p>
+  </div>
+
+  <% if (flash) { %>
+    <div class="alert alert--<%= flash.type === 'success' ? 'safe' : 'danger' %>">
+      <%= flash.message %>
+    </div>
+  <% } %>
+
+  <% if (!requests || !requests.length) { %>
+    <section class="appr-empty">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" style="margin-bottom: .75rem;">
+        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"/>
+      </svg>
+      <h3>承認申請はまだありません</h3>
+      <p>カートから承認申請を送信すると、ここに表示されます。</p>
+      <a href="/cart" class="btn btn--primary" style="margin-top: 1rem;">カートを確認する</a>
+    </section>
+  <% } else { %>
+    <section class="card">
+      <div class="card__head">
+        <h2>申請一覧（<%= requests.length %>件）</h2>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>申請日時</th>
+              <th class="num">金額</th>
+              <th>ステータス</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% requests.forEach(function(r) { %>
+              <%
+                const statusMap = {
+                  pending: { label: '承認待ち', cls: 'pending' },
+                  approved: { label: '承認済み', cls: 'approved' },
+                  rejected: { label: '却下', cls: 'rejected' },
+                  ordered: { label: '注文済み', cls: 'ordered' },
+                  cancelled: { label: 'キャンセル', cls: 'cancelled' }
+                };
+                const st = statusMap[r.status] || { label: r.status, cls: '' };
+              %>
+              <tr>
+                <td><%= new Date(r.created_at).toLocaleString('ja-JP') %></td>
+                <td class="num"><strong>&#165;<%= Number(r.total || 0).toLocaleString() %></strong></td>
+                <td><span class="pill pill--small pill--<%= st.cls %>"><%= st.label %></span></td>
+                <td>
+                  <a class="btn btn--ghost btn--sm" href="/my/approval-requests/<%= r.id %>">詳細</a>
+                  <% if (r.status === 'approved') { %>
+                    <a class="btn btn--primary btn--sm" href="/checkout?seller=<%= encodeURIComponent(r.seller_partner_id) %>&approval_request_id=<%= r.id %>">注文に進む</a>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  <% } %>
+</main>
+
+<%- include('../../partials/footer') %>

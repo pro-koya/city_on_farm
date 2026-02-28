@@ -144,7 +144,7 @@
               <div class="td-item__prod">
                 <img class="td-item__img" src="<%= it.image_url %>" alt="">
                 <div>
-                  <p class="td-item__title"><%= it.title %></p>
+                  <p class="td-item__title"><%= it.title %><% if (it.variant_label) { %> (<%= it.variant_label %>)<% } %></p>
                   <div class="td-item__meta">
                     出品者：<%= it.producer %> ／ 単位：<%= it.unit %>
                   </div>

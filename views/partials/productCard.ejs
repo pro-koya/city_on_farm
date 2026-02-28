@@ -59,7 +59,7 @@
     <div class="card__body">
       <h3 class="card__name"><%= p.title %></h3>
       <div class="card__meta">
-        <span>¥<%= p.price %></span>
+        <span>¥<%= p.price %><%= p.has_variants ? '〜' : '' %></span>
         <span><%= p.unit || '' %></span>
       </div>
 

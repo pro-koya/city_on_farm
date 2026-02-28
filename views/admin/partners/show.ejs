@@ -108,6 +108,20 @@
           </div>
           <div class="kv--full"><dt>メモ</dt><dd><%= partner.note || '—' %></dd></div>
         </dl>
+
+        <!-- 銀行情報（表示） -->
+        <% if (partner.bank_name || partner.bank_account_number) { %>
+        <h3 style="font-size: 0.95rem; margin: 1.5rem 0 0.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">振込先口座情報</h3>
+        <dl class="kv">
+          <div><dt>銀行名</dt><dd><%= partner.bank_name || '—' %></dd></div>
+          <div><dt>支店名</dt><dd><%= partner.bank_branch_name || '—' %><%= partner.bank_branch_code ? `（${partner.bank_branch_code}）` : '' %></dd></div>
+          <div><dt>口座種別</dt><dd><%= partner.bank_account_type === 'ordinary' ? '普通' : partner.bank_account_type === 'current' ? '当座' : partner.bank_account_type === 'savings' ? '貯蓄' : partner.bank_account_type || '—' %></dd></div>
+          <div><dt>口座番号</dt><dd><%= partner.bank_account_number || '—' %></dd></div>
+          <div><dt>口座名義</dt><dd><%= partner.bank_account_holder || '—' %></dd></div>
+        </dl>
+        <% } else { %>
+        <p class="muted small" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">振込先口座情報は未設定です。掛売り（請求書払い）を利用するには設定が必要です。</p>
+        <% } %>
       </div>
 
       <!-- 編集モード -->
@@ -246,6 +260,49 @@
           <div class="field">
             <label for="partner_note">メモ</label>
             <textarea id="partner_note" name="note" rows="4"><%= partner.note || '' %></textarea>
+          </div>
+
+          <!-- 銀行情報 -->
+          <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb;">
+            <h3 style="font-size: 0.95rem; margin: 0 0 1rem;">振込先口座情報</h3>
+            <p class="field-hint" style="font-size: 0.875rem; color: var(--muted); margin-bottom: 1rem;">
+              掛売り（請求書払い）を有効化するには、銀行口座情報の登録が必要です。
+            </p>
+
+            <div class="grid2">
+              <div class="field">
+                <label for="partner_bank_name">銀行名</label>
+                <input type="text" id="partner_bank_name" name="bank_name" value="<%= partner.bank_name || '' %>" placeholder="例：三菱UFJ銀行">
+              </div>
+              <div class="field">
+                <label for="partner_bank_branch_name">支店名</label>
+                <input type="text" id="partner_bank_branch_name" name="bank_branch_name" value="<%= partner.bank_branch_name || '' %>" placeholder="例：渋谷支店">
+              </div>
+            </div>
+
+            <div class="grid3">
+              <div class="field">
+                <label for="partner_bank_branch_code">支店コード</label>
+                <input type="text" id="partner_bank_branch_code" name="bank_branch_code" value="<%= partner.bank_branch_code || '' %>" placeholder="例：150" maxlength="4">
+              </div>
+              <div class="field">
+                <label for="partner_bank_account_type">口座種別</label>
+                <select id="partner_bank_account_type" name="bank_account_type" class="pulldown">
+                  <option value="ordinary" <%= (partner.bank_account_type || 'ordinary') === 'ordinary' ? 'selected' : '' %>>普通</option>
+                  <option value="current" <%= partner.bank_account_type === 'current' ? 'selected' : '' %>>当座</option>
+                  <option value="savings" <%= partner.bank_account_type === 'savings' ? 'selected' : '' %>>貯蓄</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="partner_bank_account_number">口座番号</label>
+                <input type="text" id="partner_bank_account_number" name="bank_account_number" value="<%= partner.bank_account_number || '' %>" placeholder="例：1234567" maxlength="8">
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="partner_bank_account_holder">口座名義</label>
+              <input type="text" id="partner_bank_account_holder" name="bank_account_holder" value="<%= partner.bank_account_holder || '' %>" placeholder="例：カ）セッツマルシェ">
+            </div>
           </div>
 
           <div class="row-right" style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px;">
@@ -600,20 +657,20 @@
             <% } %>
           </dl>
 
-          <div class="row-right" style="margin-top: 1rem; display: flex; gap: 8px; justify-content: flex-end;">
+          <div class="row-right" style="margin-top: 1rem; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;">
             <% if (!partner.stripe_details_submitted) { %>
               <button class="btn btn--warning" id="stripeContinueBtn">
                 本人確認を続ける
               </button>
             <% } else { %>
-              <button class="btn btn--secondary" id="stripeDashboardBtn">
+              <button class="btn btn--ghost" id="stripeDashboardBtn">
                 Stripe ダッシュボードを開く
               </button>
             <% } %>
             <button class="btn btn--ghost" id="stripeSyncBtn">
               情報を同期
             </button>
-            <a class="btn btn--ghost" href="/admin/partners/<%= partner.id %>/balance" target="_blank">
+            <a class="btn btn--primary" href="/admin/partners/<%= partner.id %>/balance" target="_blank">
               残高・台帳を確認
             </a>
           </div>
@@ -888,55 +945,80 @@
 
   <!-- 与信管理セクション -->
   <% if (user && user.roles && user.roles.includes('admin')) { %>
+  <%
+    const creditLimit = Number(partner.credit_limit || 0);
+    const creditUsed = Number(partner.credit_used || 0);
+    const creditRemaining = Math.max(0, creditLimit - creditUsed);
+    const creditPct = creditLimit > 0 ? Math.min(100, Math.round((creditUsed / creditLimit) * 100)) : 0;
+    const isOverLimit = creditLimit > 0 && creditUsed > creditLimit;
+  %>
   <section class="ps__section" id="credit">
-    <article class="card">
-      <div class="card__head"><h2>与信管理</h2></div>
-      <div class="ps__form-grid" style="padding: 1rem;">
-        <dl class="kv" style="margin-bottom: 1rem;">
-          <div style="display:flex; gap:1rem; margin-bottom:0.5rem;">
-            <dt style="min-width:120px; font-size:0.85rem; color:#6b7280;">与信限度額</dt>
-            <dd style="font-size:0.95rem;">
-              <% if (partner.credit_limit > 0) { %>
-                <strong>&#165;<%= Number(partner.credit_limit || 0).toLocaleString() %></strong>
-              <% } else { %>
-                <span class="muted">未設定（無制限）</span>
-              <% } %>
-            </dd>
-          </div>
-          <div style="display:flex; gap:1rem; margin-bottom:0.5rem;">
-            <dt style="min-width:120px; font-size:0.85rem; color:#6b7280;">利用中</dt>
-            <dd style="font-size:0.95rem;">&#165;<%= Number(partner.credit_used || 0).toLocaleString() %></dd>
-          </div>
-          <div style="display:flex; gap:1rem; margin-bottom:0.5rem;">
-            <dt style="min-width:120px; font-size:0.85rem; color:#6b7280;">残高</dt>
-            <dd style="font-size:0.95rem;">
-              <% if (partner.credit_limit > 0) { %>
-                <strong>&#165;<%= Number((partner.credit_limit || 0) - (partner.credit_used || 0)).toLocaleString() %></strong>
-              <% } else { %>
-                <span class="muted">無制限</span>
-              <% } %>
-            </dd>
-          </div>
-          <div style="display:flex; gap:1rem;">
-            <dt style="min-width:120px; font-size:0.85rem; color:#6b7280;">支払期限</dt>
-            <dd style="font-size:0.95rem;"><%= partner.payment_terms_days || 30 %> 日</dd>
-          </div>
-        </dl>
+    <article class="card credit-card">
+      <div class="card__head">
+        <h2 class="card__title">与信管理</h2>
+        <% if (creditLimit > 0) { %>
+          <span class="credit-badge credit-badge--<%= isOverLimit ? 'danger' : creditPct > 80 ? 'warn' : 'ok' %>">
+            <%= isOverLimit ? '超過' : creditPct > 80 ? '注意' : '正常' %>
+          </span>
+        <% } %>
+      </div>
 
-        <form method="POST" action="/admin/partners/<%= partner.id %>/credit" style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:flex-end;">
+      <!-- メーター表示 -->
+      <div class="credit-meter">
+        <div class="credit-stats">
+          <div class="credit-stat">
+            <span class="credit-stat__label">限度額</span>
+            <span class="credit-stat__value">
+              <% if (creditLimit > 0) { %>
+                &#165;<%= creditLimit.toLocaleString() %>
+              <% } else { %>
+                <span class="credit-stat__unlimited">無制限</span>
+              <% } %>
+            </span>
+          </div>
+          <div class="credit-stat">
+            <span class="credit-stat__label">利用中</span>
+            <span class="credit-stat__value credit-stat__value--used">&#165;<%= creditUsed.toLocaleString() %></span>
+          </div>
+          <div class="credit-stat">
+            <span class="credit-stat__label">残高</span>
+            <span class="credit-stat__value credit-stat__value--remain">
+              <% if (creditLimit > 0) { %>
+                &#165;<%= creditRemaining.toLocaleString() %>
+              <% } else { %>
+                <span class="credit-stat__unlimited">無制限</span>
+              <% } %>
+            </span>
+          </div>
+          <div class="credit-stat">
+            <span class="credit-stat__label">支払期限</span>
+            <span class="credit-stat__value"><%= partner.payment_terms_days || 30 %>日</span>
+          </div>
+        </div>
+
+        <% if (creditLimit > 0) { %>
+        <div class="credit-bar-wrap">
+          <div class="credit-bar">
+            <div class="credit-bar__fill credit-bar__fill--<%= isOverLimit ? 'danger' : creditPct > 80 ? 'warn' : 'ok' %>" style="width:<%= creditPct %>%"></div>
+          </div>
+          <span class="credit-bar__pct"><%= creditPct %>% 使用中</span>
+        </div>
+        <% } %>
+      </div>
+
+      <!-- 限度額更新フォーム -->
+      <div class="credit-form-wrap">
+        <form method="POST" action="/admin/partners/<%= partner.id %>/credit" class="credit-form">
           <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <% } %>
-          <div class="field" style="flex:1; min-width:140px;">
-            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.25rem;">与信限度額（円）</label>
-            <input type="number" name="creditLimit" value="<%= partner.credit_limit || 0 %>" min="0" step="1000"
-              style="width:100%; padding:0.5rem 0.75rem; border:1px solid var(--border, #e5e7eb); border-radius:8px; font-size:0.95rem;">
+          <div class="credit-form__field">
+            <label for="creditLimitInput" class="credit-form__label">与信限度額（円）</label>
+            <input type="number" id="creditLimitInput" name="creditLimit" value="<%= creditLimit %>" min="0" step="1000" class="credit-form__input">
           </div>
-          <div class="field" style="flex:0 0 auto;">
-            <button type="submit" class="btn btn--primary">更新</button>
-          </div>
+          <button type="submit" class="btn btn--toggle credit-form__btn">更新</button>
         </form>
-        <p style="font-size: 0.8rem; color: #6b7280; margin-top: 0.5rem;">0 に設定すると与信チェックが無効（無制限）になります。</p>
+        <p class="credit-form__hint">0 に設定すると与信チェックが無効（無制限）になります。</p>
       </div>
     </article>
   </section>

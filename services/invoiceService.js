@@ -3,6 +3,7 @@
 
 const { dbQuery } = require('./db');
 const logger = require('./logger');
+const { createNotification, getUserIdsByPartnerId } = require('./notificationService');
 
 /**
  * 請求書番号を生成
@@ -56,25 +57,66 @@ async function generateMonthlyInvoices(yearMonth) {
 
   const invoices = [];
   for (const row of aggregated) {
-    // 既に同じペア/月の請求書があればスキップ
+    const subtotal = parseInt(row.subtotal, 10) || 0;
+    const total = parseInt(row.total, 10) || 0;
+    const tax = total - subtotal;
+
+    // 既に同じペア/月の請求書があるか確認
     const existing = await dbQuery(
-      `SELECT id FROM monthly_invoices
+      `SELECT id, total, paid_amount, status FROM monthly_invoices
        WHERE buyer_partner_id = $1 AND seller_partner_id = $2 AND year_month = $3`,
       [row.buyer_partner_id, row.seller_partner_id, yearMonth]
     );
+
     if (existing.length) {
-      logger.info('Invoice already exists, skipping', {
+      const inv = existing[0];
+      const oldTotal = parseInt(inv.total, 10) || 0;
+
+      // 金額が変わっていなければスキップ
+      if (oldTotal === total) {
+        logger.info('Invoice already exists and amount unchanged, skipping', {
+          invoiceId: inv.id,
+          buyerPartnerId: row.buyer_partner_id,
+          yearMonth
+        });
+        invoices.push(inv);
+        continue;
+      }
+
+      // 金額が変わっている → 再計算してステータス更新
+      const paidAmount = parseInt(inv.paid_amount, 10) || 0;
+      let newStatus;
+      if (paidAmount >= total) {
+        newStatus = 'paid';
+      } else if (paidAmount > 0) {
+        newStatus = 'partial';
+      } else {
+        newStatus = 'unpaid';
+      }
+
+      const updated = await dbQuery(
+        `UPDATE monthly_invoices
+         SET subtotal = $1, tax = $2, total = $3, status = $4, updated_at = now()
+         WHERE id = $5::uuid
+         RETURNING *`,
+        [subtotal, tax, total, newStatus, inv.id]
+      );
+
+      invoices.push(updated[0]);
+      logger.info('Invoice updated (recalculated)', {
+        invoiceId: inv.id,
+        oldTotal,
+        newTotal: total,
+        paidAmount,
+        newStatus,
         buyerPartnerId: row.buyer_partner_id,
-        sellerPartnerId: row.seller_partner_id,
         yearMonth
       });
       continue;
     }
 
+    // 新規作成
     const invoiceNumber = await generateInvoiceNumber(yearMonth);
-    const subtotal = parseInt(row.subtotal, 10) || 0;
-    const total = parseInt(row.total, 10) || 0;
-    const tax = total - subtotal;
 
     const result = await dbQuery(
       `INSERT INTO monthly_invoices
@@ -86,12 +128,28 @@ async function generateMonthlyInvoices(yearMonth) {
        subtotal, tax, total, dueDate]
     );
 
-    invoices.push(result[0]);
+    const newInvoice = result[0];
+    invoices.push(newInvoice);
     logger.info('Monthly invoice created', {
       invoiceNumber,
       buyerPartnerId: row.buyer_partner_id,
       total
     });
+
+    // 購入者へ請求書発行通知
+    try {
+      const buyerUserIds = await getUserIdsByPartnerId(row.buyer_partner_id);
+      const [yyyy, mm] = yearMonth.split('-');
+      await createNotification({
+        type: 'invoice',
+        title: '請求書が発行されました',
+        body: `${yyyy}年${parseInt(mm, 10)}月分の請求書（¥${Number(total).toLocaleString()}）が発行されました。`,
+        linkUrl: `/my/invoices/${newInvoice.id}`,
+        userIds: buyerUserIds
+      });
+    } catch (notifyErr) {
+      logger.error('Invoice notification failed', { invoiceNumber, error: notifyErr.message });
+    }
   }
 
   return invoices;
@@ -200,6 +258,32 @@ async function getInvoiceDetail(invoiceId) {
     [invoice.buyer_partner_id, invoice.seller_partner_id, invoice.year_month]
   );
 
+  // 各注文の商品明細を一括取得
+  if (orders.length) {
+    const orderIds = orders.map(o => o.id);
+    const placeholders = orderIds.map((_, i) => `$${i + 1}`).join(',');
+    const items = await dbQuery(
+      `SELECT oi.order_id, oi.quantity, oi.price, p.title, p.unit,
+              oi.variant_id, pv.label AS variant_label
+       FROM order_items oi
+       JOIN products p ON p.id = oi.product_id
+       LEFT JOIN product_variants pv ON pv.id = oi.variant_id
+       WHERE oi.order_id IN (${placeholders})
+       ORDER BY oi.order_id, p.title`,
+      orderIds
+    );
+
+    // 注文IDごとにグルーピング
+    const itemsByOrder = {};
+    for (const item of items) {
+      if (!itemsByOrder[item.order_id]) itemsByOrder[item.order_id] = [];
+      itemsByOrder[item.order_id].push(item);
+    }
+    for (const order of orders) {
+      order.items = itemsByOrder[order.id] || [];
+    }
+  }
+
   // 入金履歴
   const payments = await dbQuery(
     `SELECT pr.*, u.name AS recorded_by_name
@@ -254,6 +338,27 @@ async function recordPayment(invoiceId, amount, method, userId, note) {
          WHERE id = $2::uuid`,
         [newStatus, invoiceId]
       );
+
+      // 請求書が全額入金になったら、対象注文の payment_status も paid に更新
+      if (newStatus === 'paid') {
+        await dbQuery(
+          `UPDATE orders
+           SET payment_status = 'paid',
+               updated_at = now()
+           WHERE payment_method = 'invoice'
+             AND buyer_partner_id = $1::uuid
+             AND seller_id = $2::uuid
+             AND TO_CHAR(created_at, 'YYYY-MM') = $3
+             AND status NOT IN ('canceled', 'cancelled')`,
+          [inv.buyer_partner_id, inv.seller_partner_id, inv.year_month]
+        );
+        logger.info('Updated order payment_status to paid', {
+          invoiceId,
+          buyerPartnerId: inv.buyer_partner_id,
+          sellerPartnerId: inv.seller_partner_id,
+          yearMonth: inv.year_month
+        });
+      }
     }
 
     // ★ 与信利用額を解放
@@ -262,6 +367,23 @@ async function recordPayment(invoiceId, amount, method, userId, note) {
       await releaseCreditUsage(inv.buyer_partner_id, amount);
     } catch (creditErr) {
       logger.error('Failed to release credit usage', { invoiceId, error: creditErr.message });
+    }
+
+    // ★ 全額入金完了時に購入者へ通知
+    if (newStatus === 'paid') {
+      try {
+        const buyerUserIds = await getUserIdsByPartnerId(inv.buyer_partner_id);
+        const [yyyy, mm] = inv.year_month.split('-');
+        await createNotification({
+          type: 'payment_update',
+          title: '入金が確認されました',
+          body: `${yyyy}年${parseInt(mm, 10)}月分の請求書（${inv.invoice_number}）の入金が確認されました。`,
+          linkUrl: `/my/invoices/${invoiceId}`,
+          userIds: buyerUserIds
+        });
+      } catch (notifyErr) {
+        logger.error('Payment notification failed', { invoiceId, error: notifyErr.message });
+      }
     }
 
     logger.info('Payment recorded', {

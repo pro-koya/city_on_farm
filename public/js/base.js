@@ -1,48 +1,96 @@
 // /public/js/base.js
 
 document.addEventListener('DOMContentLoaded', function () {
-    /* ====== ナビトグル ====== */
+    /* ====== ドロワーナビゲーション ====== */
     const toggle = document.getElementById('navbar-toggle');
-    const menu = document.getElementById('navbar-menu');
-    const icon = document.getElementById('toggle-icon');
-    if (toggle && menu && icon) {
+    const drawer = document.getElementById('navbar-drawer');
+    const overlay = document.getElementById('navbar-overlay');
+    let scrollY = 0;
+
+    function openDrawer() {
+        if (!drawer || !overlay) return;
+        scrollY = window.scrollY;
+        toggle?.classList.add('is-open');
+        drawer.classList.add('is-open');
+        overlay.classList.add('is-visible');
+        document.body.classList.add('drawer-open');
+        document.body.style.top = `-${scrollY}px`;
+        toggle?.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeDrawer() {
+        if (!drawer || !overlay) return;
+        toggle?.classList.remove('is-open');
+        drawer.classList.remove('is-open');
+        overlay.classList.remove('is-visible');
+        document.body.classList.remove('drawer-open');
+        document.body.style.top = '';
+        window.scrollTo(0, scrollY);
+        toggle?.setAttribute('aria-expanded', 'false');
+    }
+
+    if (toggle) {
         toggle.addEventListener('click', function () {
-            menu.classList.toggle('active');
-            toggle.classList.toggle('open');
-            icon.textContent = menu.classList.contains('active') ? '✕' : '☰';
+            drawer?.classList.contains('is-open') ? closeDrawer() : openDrawer();
+        });
+    }
+    if (overlay) {
+        overlay.addEventListener('click', closeDrawer);
+    }
+    const drawerClose = document.getElementById('drawer-close');
+    if (drawerClose) {
+        drawerClose.addEventListener('click', closeDrawer);
+    }
+
+    // ESCキーで閉じる
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && drawer?.classList.contains('is-open')) {
+            closeDrawer();
+        }
+    });
+
+    // ドロワー内リンククリックで閉じる
+    if (drawer) {
+        drawer.addEventListener('click', function (e) {
+            const link = e.target.closest('a');
+            if (link) closeDrawer();
         });
     }
 
     /* ====== 階層メニューのアコーディオン ====== */
-    document.querySelectorAll('.navbar-menu__header').forEach(header => {
+    document.querySelectorAll('.drawer-menu__header').forEach(header => {
         header.addEventListener('click', function(e) {
             e.stopPropagation();
-            const group = this.closest('.navbar-menu__group');
+            const group = this.closest('.drawer-menu__group');
             if (!group) return;
 
             const isOpen = group.classList.contains('is-open');
-
-            // 現在のグループをトグル
             group.classList.toggle('is-open');
-
-            // アクセシビリティ属性を更新
             this.setAttribute('aria-expanded', !isOpen);
         });
     });
 
-    /* メニュー外クリックで閉じる */
-    document.addEventListener('click', function(e) {
-        const menu = document.getElementById('navbar-menu');
-        const toggle = document.getElementById('navbar-toggle');
-        if (menu?.classList.contains('active') &&
-            !menu.contains(e.target) &&
-            !toggle?.contains(e.target)) {
-            menu.classList.remove('active');
-            toggle?.classList.remove('open');
-            const icon = document.getElementById('toggle-icon');
-            if (icon) icon.textContent = '☰';
-        }
-    });
+    /* ====== 現在のページに応じたメニューグループの自動展開 ====== */
+    (function() {
+        const path = window.location.pathname;
+        document.querySelectorAll('.drawer-menu__group').forEach(group => {
+            // 出品者グループは初期状態 is-open のままにする
+            if (group.classList.contains('drawer-menu__group--seller')) return;
+            const links = group.querySelectorAll('.drawer-menu__items a');
+            let match = false;
+            links.forEach(a => {
+                const href = a.getAttribute('href');
+                if (href && path.startsWith(href) && href !== '/') {
+                    match = true;
+                }
+            });
+            if (match) {
+                group.classList.add('is-open');
+                const hdr = group.querySelector('.drawer-menu__header');
+                if (hdr) hdr.setAttribute('aria-expanded', 'true');
+            }
+        });
+    })();
 
     /* ====== スライドショー ====== */
     const slides = document.querySelectorAll('.slide');

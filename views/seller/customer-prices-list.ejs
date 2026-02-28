@@ -15,32 +15,44 @@
 
   <% if (!buyers || !buyers.length) { %>
     <section class="cp-empty">
+      <div class="cp-empty__icon" aria-hidden="true">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      </div>
       <h3>取引先がまだありません</h3>
       <p>法人アカウントからの注文があると、ここに取引先が表示されます。</p>
     </section>
   <% } else { %>
-    <div class="table-wrap">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>取引先名</th>
-            <th class="num">設定済み価格数</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% buyers.forEach(function(b) { %>
+    <section class="card">
+      <div class="card__head">
+        <h2>取引先一覧（<%= buyers.length %>件）</h2>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
             <tr>
-              <td><strong><%= b.name %></strong></td>
-              <td class="num"><%= b.price_count || 0 %> 件</td>
-              <td>
-                <a class="btn btn--ghost btn--sm" href="/seller/partners/<%= b.id %>/prices">価格を管理</a>
-              </td>
+              <th>取引先名</th>
+              <th class="num">設定済み価格数</th>
+              <th>操作</th>
             </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            <% buyers.forEach(function(b) { %>
+              <tr>
+                <td><strong><%= b.name %></strong></td>
+                <td class="num"><%= b.price_count || 0 %> 件</td>
+                <td>
+                  <a class="btn btn--primary btn--sm" href="/seller/partners/<%= b.id %>/prices">価格を管理</a>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </section>
   <% } %>
 </main>
 

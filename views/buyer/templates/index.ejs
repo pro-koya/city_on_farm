@@ -24,7 +24,7 @@
       </div>
       <h3>テンプレートがまだありません</h3>
       <p>カートや注文詳細から「テンプレートとして保存」を押すと、ここに表示されます。</p>
-      <a class="btn" href="/products">商品を探す</a>
+      <a class="btn btn--primary" href="/products">商品を探す</a>
     </section>
   <% } else { %>
     <div class="tpl-grid">
@@ -46,7 +46,7 @@
               <% } %>
               <button type="submit" class="btn btn--primary btn--sm">カートに追加</button>
             </form>
-            <a class="btn btn--ghost btn--sm" href="/my/templates/<%= t.id %>">詳細・編集</a>
+            <a class="btn btn--sm" href="/my/templates/<%= t.id %>">詳細・編集</a>
             <form method="POST" action="/my/templates/<%= t.id %>/delete" class="inline"
                   onsubmit="return confirm('このテンプレートを削除しますか？')">
               <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>

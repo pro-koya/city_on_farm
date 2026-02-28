@@ -64,6 +64,92 @@
         <a class="rating__count" href="#reviews" id="goto-reviews">（<%= product.review_count || 0 %>件のレビュー）</a>
       </div>
 
+      <% if (typeof variants !== 'undefined' && variants.length) { %>
+      <!-- ★ バリエーションセレクタ -->
+      <div class="variant-selector" id="variantSelector">
+        <p class="variant-selector__label">規格を選択</p>
+        <div class="variant-pills" role="radiogroup" aria-label="商品規格">
+          <% variants.forEach(function(v, i) {
+            const vcp = (typeof variantCustomerPrices !== 'undefined' && variantCustomerPrices[v.id]) || null;
+          %>
+            <button type="button"
+                    class="variant-pill <%= i === 0 ? 'is-active' : '' %>"
+                    role="radio"
+                    aria-checked="<%= i === 0 ? 'true' : 'false' %>"
+                    data-variant-id="<%= v.id %>"
+                    data-variant-price="<%= vcp != null ? vcp : v.price %>"
+                    data-variant-standard-price="<%= v.price %>"
+                    data-variant-unit="<%= v.unit || '' %>"
+                    data-variant-stock="<%= v.stock %>"
+                    data-variant-has-cp="<%= vcp != null ? '1' : '0' %>">
+              <span class="variant-pill__label"><%= v.label %></span>
+              <span class="variant-pill__price">&#165;<%= (vcp != null ? vcp : v.price).toLocaleString() %></span>
+              <% if (v.unit) { %><span class="variant-pill__unit">/ <%= v.unit %></span><% } %>
+            </button>
+          <% }) %>
+        </div>
+      </div>
+
+      <div class="price-row" itemprop="offers" itemscope itemtype="https://schema.org/Offer" id="priceRow">
+        <%
+          const firstV = variants[0];
+          const firstVcp = (typeof variantCustomerPrices !== 'undefined' && variantCustomerPrices[firstV.id]) || null;
+          const displayPrice = firstVcp != null ? firstVcp : firstV.price;
+          const displayUnit = firstV.unit || '';
+          const displayStock = firstV.stock;
+        %>
+        <span class="price">&#165;<span itemprop="price" id="displayPrice"><%= displayPrice %></span></span>
+        <% if (displayUnit) { %><span class="unit" id="displayUnit">/ <%= displayUnit %></span><% } else { %><span class="unit" id="displayUnit"></span><% } %>
+        <% if (firstVcp != null) { %>
+        <div class="customer-price-badge" id="cpBadge">
+          <span>特別価格</span>
+          <span class="customer-price-badge__original">&#165;<span id="standardPrice"><%= firstV.price.toLocaleString() %></span></span>
+        </div>
+        <% } else { %>
+        <div class="customer-price-badge" id="cpBadge" style="display:none;">
+          <span>特別価格</span>
+          <span class="customer-price-badge__original">&#165;<span id="standardPrice"></span></span>
+        </div>
+        <% } %>
+        <link itemprop="priceCurrency" content="JPY">
+        <link itemprop="availability" href="https://schema.org/<%= displayStock>0?'InStock':'OutOfStock' %>">
+      </div>
+
+      <div class="stock" id="stockRow">
+        <span id="stockBadge">
+          <% if (displayStock > 10) { %>
+            <span class="badge">在庫あり</span>
+          <% } else if (displayStock > 0) { %>
+            <span class="badge badge--low">残り <%= displayStock %> 点</span>
+          <% } else { %>
+            <span class="badge badge--out">在庫切れ</span>
+          <% } %>
+        </span>
+        <span class="ship">2〜3日以内に発送</span>
+      </div>
+
+      <form class="buy" id="buyForm" action="/cart/add" method="POST" data-stock="<%= displayStock %>" novalidate>
+        <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <% } %>
+        <input type="hidden" name="productId" value="<%= product.id %>">
+        <input type="hidden" name="variantId" id="variantIdInput" value="<%= firstV.id %>">
+        <label class="qty" for="qty">
+          数量
+          <div class="stepper" role="group" aria-label="数量の増減">
+            <button type="button" class="stepper__btn" data-step="-1" aria-label="数量を減らす">−</button>
+            <input id="qty" name="qty" type="number" min="1" value="1" data-max="<%= displayStock %>" max="<%= displayStock %>" inputmode="numeric" pattern="[0-9]*">
+            <button type="button" class="stepper__btn" data-step="1" aria-label="数量を増やす">＋</button>
+          </div>
+        </label>
+
+        <div class="cta">
+          <button class="btn btn--buy" type="submit" id="buyBtn" <%= displayStock>0?'':'disabled' %>>カートに入れる</button>
+        </div>
+      </form>
+
+      <% } else { %>
+      <!-- 通常商品（バリエーションなし） -->
       <div class="price-row" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
         <% if (typeof customerPrice !== 'undefined' && customerPrice != null) { %>
           <span class="price">&#165;<span itemprop="price"><%= customerPrice %></span></span>
@@ -109,6 +195,7 @@
           <button class="btn btn--buy" type="submit" <%= product.stock>0?'':'disabled' %>>カートに入れる</button>
         </div>
       </form>
+      <% } %>
 
       <ul class="assurance">
         <% if (Array.isArray(tags) && tags.length) { %>
@@ -366,7 +453,7 @@
                 <tbody>
                   <% if (shippingSummary.globalRule) { %>
                     <tr>
-                      <td>全国（上記以外）</td>
+                      <td>全国（下記以外）</td>
                       <% if (shippingSummary.globalRule.can_ship) { %>
                         <td><%= shippingSummary.globalRule.shipping_fee != null ? shippingSummary.globalRule.shipping_fee + '円' : '要問い合わせ' %></td>
                         <td>都道府県・市区町村で個別設定されていない地域に適用</td>

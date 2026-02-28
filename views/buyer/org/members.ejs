@@ -3,7 +3,10 @@
 
 <main class="org-members">
   <div class="org-members__head">
-    <h1><%= orgName %> - メンバー管理</h1>
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem;">
+      <h1><%= orgName %> - メンバー管理</h1>
+      <a href="/my/org/workflow" class="btn btn--ghost btn--sm">承認フロー設定 &rarr;</a>
+    </div>
     <p class="muted">メンバーのロールを設定し、発注・承認・経理の権限を管理できます。</p>
   </div>
 

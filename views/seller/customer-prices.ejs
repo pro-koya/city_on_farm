@@ -3,10 +3,9 @@
 
 <main class="cp-show">
   <div class="cp-show__head">
-    <div>
-      <a href="/seller/customer-prices" class="btn btn--ghost btn--sm">&larr; 取引先一覧</a>
-      <h1><%= buyer.name %> の顧客別価格</h1>
-    </div>
+    <a href="/seller/customer-prices" class="btn btn--ghost btn--sm">&larr; 取引先一覧</a>
+    <h1><%= buyer.name %> の顧客別価格</h1>
+    <p class="muted">この取引先向けの特別価格を設定・管理します。</p>
   </div>
 
   <% if (flash) { %>
@@ -28,10 +27,16 @@
           <select id="cp_product" name="productId" required>
             <option value="">商品を選択...</option>
             <% products.forEach(function(p) { %>
-              <option value="<%= p.id %>" data-price="<%= p.price %>">
-                <%= p.title %> （標準価格: &#165;<%= Number(p.price).toLocaleString() %><%= p.unit ? ` / ${p.unit}` : '' %>）
+              <option value="<%= p.id %>" data-price="<%= p.price %>" data-has-variants="<%= p.has_variants ? '1' : '0' %>">
+                <%= p.title %> （標準: &#165;<%= Number(p.price).toLocaleString() %><%= p.unit ? ` / ${p.unit}` : '' %><%= p.has_variants ? ' ※バリエーションあり' : '' %>）
               </option>
             <% }) %>
+          </select>
+        </div>
+        <div class="field" id="cp_variant_field" style="display:none;">
+          <label for="cp_variant">バリエーション</label>
+          <select id="cp_variant" name="variantId">
+            <option value="">商品全体（バリエーション共通）</option>
           </select>
         </div>
         <div class="field">
@@ -50,6 +55,33 @@
           <button type="submit" class="btn btn--primary">設定</button>
         </div>
       </div>
+      <script>
+      (function(){
+        var productVariants = <%- JSON.stringify(typeof productVariantsMap !== 'undefined' ? productVariantsMap : {}) %>;
+        var sel = document.getElementById('cp_product');
+        var vField = document.getElementById('cp_variant_field');
+        var vSel = document.getElementById('cp_variant');
+        if (!sel || !vField || !vSel) return;
+        sel.addEventListener('change', function(){
+          var opt = sel.options[sel.selectedIndex];
+          var hasV = opt && opt.dataset.hasVariants === '1';
+          var pid = sel.value;
+          vSel.innerHTML = '<option value="">商品全体（バリエーション共通）</option>';
+          if (hasV && productVariants[pid]) {
+            productVariants[pid].forEach(function(v){
+              var o = document.createElement('option');
+              o.value = v.id;
+              o.textContent = v.label + ' （¥' + Number(v.price).toLocaleString() + (v.unit ? ' / ' + v.unit : '') + '）';
+              o.dataset.price = v.price;
+              vSel.appendChild(o);
+            });
+            vField.style.display = '';
+          } else {
+            vField.style.display = 'none';
+          }
+        });
+      })();
+      </script>
     </form>
   </section>
 
@@ -58,7 +90,7 @@
     <div class="card__head"><h2>設定済みの顧客別価格（<%= prices.length %>件）</h2></div>
 
     <% if (!prices.length) { %>
-      <p class="muted" style="padding: 1rem;">まだ顧客別価格が設定されていません。</p>
+      <p class="muted" style="padding: 1rem;">まだ顧客別価格が設定されていません。上記フォームから追加してください。</p>
     <% } else { %>
       <div class="table-wrap">
         <table class="table">
@@ -75,18 +107,19 @@
           <tbody>
             <% prices.forEach(function(cp) { %>
               <%
-                const discount = cp.standard_price > 0
-                  ? Math.round((1 - cp.price / cp.standard_price) * 100)
+                const stdPrice = cp.variant_standard_price != null ? cp.variant_standard_price : cp.standard_price;
+                const discount = stdPrice > 0
+                  ? Math.round((1 - cp.price / stdPrice) * 100)
                   : 0;
               %>
               <tr>
                 <td>
-                  <div style="display:flex; align-items:center; gap:0.5rem;">
-                    <img src="<%= cp.image_url || '/images/placeholder.png' %>" alt="" style="width:32px; height:32px; border-radius:6px; object-fit:cover;">
-                    <span><%= cp.product_title %></span>
+                  <div class="cp-product">
+                    <img src="<%= cp.image_url || '/images/placeholder.png' %>" alt="" class="cp-product__img">
+                    <span><%= cp.product_title %><% if (cp.variant_label) { %> <small style="color:#666;">(<%= cp.variant_label %>)</small><% } %></span>
                   </div>
                 </td>
-                <td class="num">&#165;<%= Number(cp.standard_price).toLocaleString() %></td>
+                <td class="num">&#165;<%= Number(stdPrice).toLocaleString() %></td>
                 <td class="num"><strong>&#165;<%= Number(cp.price).toLocaleString() %></strong></td>
                 <td class="num">
                   <% if (discount > 0) { %>

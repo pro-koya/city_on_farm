@@ -192,14 +192,14 @@ html, body {
 
 .amount-row.total-row {
   background-color: #f9fafb;
-  padding: 10px 8px;
+  padding: 8px;
   margin-top: 4px;
   border: 1px solid var(--border);
 }
 
 .amount-row.total-row dt {
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .amount-value {

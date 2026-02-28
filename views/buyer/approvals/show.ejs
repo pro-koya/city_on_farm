@@ -3,7 +3,7 @@
 
 <main class="appr-show">
   <div class="appr-show__head">
-    <a href="/my/approvals" class="btn btn--ghost btn--sm">&larr; 承認待ち一覧</a>
+    <a href="/my/approvals" class="btn btn--ghost btn--sm" style="margin-bottom:.5rem;">&larr; 承認待ち一覧に戻る</a>
     <h1>承認詳細</h1>
   </div>
 
@@ -13,27 +13,36 @@
     </div>
   <% } %>
 
-  <!-- 注文情報 -->
+  <%
+    const statusMap = {
+      pending: { label: '承認待ち', cls: 'pending' },
+      approved: { label: '承認済み', cls: 'approved' },
+      rejected: { label: '却下', cls: 'rejected' },
+      ordered: { label: '注文済み', cls: 'ordered' },
+      cancelled: { label: 'キャンセル', cls: 'cancelled' }
+    };
+    const st = statusMap[request.status] || { label: request.status, cls: '' };
+  %>
+
+  <!-- リクエスト情報 -->
   <section class="card">
-    <div class="card__head"><h2>注文情報</h2></div>
+    <div class="card__head"><h2>申請情報</h2></div>
     <dl class="kv">
-      <div><dt>発注者</dt><dd><%= order.submitted_by_name || '—' %></dd></div>
-      <div><dt>注文日時</dt><dd><%= new Date(order.created_at).toLocaleString('ja-JP') %></dd></div>
-      <div><dt>小計</dt><dd>&#165;<%= Number(order.subtotal || 0).toLocaleString() %></dd></div>
-      <div><dt>合計</dt><dd><strong>&#165;<%= Number(order.total || 0).toLocaleString() %></strong></dd></div>
+      <div><dt>申請者</dt><dd><%= request.requester_name || '—' %></dd></div>
+      <div><dt>申請日時</dt><dd><%= new Date(request.created_at).toLocaleString('ja-JP') %></dd></div>
+      <div><dt>小計</dt><dd>&#165;<%= Number(request.subtotal || 0).toLocaleString() %></dd></div>
+      <div><dt>合計</dt><dd><strong>&#165;<%= Number(request.total || 0).toLocaleString() %></strong></dd></div>
       <div><dt>承認状態</dt>
         <dd>
-          <span class="pill pill--small pill--<%= order.approval_status %>">
-            <%= order.approval_status === 'pending' ? '承認待ち' : order.approval_status === 'approved' ? '承認済み' : order.approval_status === 'rejected' ? '却下' : order.approval_status %>
-          </span>
+          <span class="pill pill--small pill--<%= st.cls %>"><%= st.label %></span>
         </dd>
       </div>
     </dl>
   </section>
 
-  <!-- 商品一覧 -->
+  <!-- 申請商品 -->
   <section class="card">
-    <div class="card__head"><h2>注文商品</h2></div>
+    <div class="card__head"><h2>申請商品</h2></div>
     <ul class="appr-items">
       <% items.forEach(function(it) { %>
         <li class="appr-item">
@@ -42,10 +51,10 @@
             <div class="appr-item__title"><%= it.title %></div>
             <div class="appr-item__meta">
               数量: <%= it.quantity %><%= it.unit || '点' %>
-              / 単価: &#165;<%= Number(it.unit_price || it.price || 0).toLocaleString() %>
+              / 単価: &#165;<%= Number(it.price || 0).toLocaleString() %>
             </div>
           </div>
-          <div class="appr-item__amount">&#165;<%= Number((it.unit_price || it.price || 0) * it.quantity).toLocaleString() %></div>
+          <div class="appr-item__amount">&#165;<%= Number((it.price || 0) * it.quantity).toLocaleString() %></div>
         </li>
       <% }) %>
     </ul>
@@ -54,9 +63,9 @@
   <!-- 承認履歴 -->
   <section class="card">
     <div class="card__head"><h2>承認履歴</h2></div>
-    <% if (approvals.length) { %>
+    <% if (approvalSteps.length) { %>
       <ul class="appr-history">
-        <% approvals.forEach(function(a) { %>
+        <% approvalSteps.forEach(function(a) { %>
           <li class="appr-history__item appr-history--<%= a.status %>">
             <div class="appr-history__step">ステップ <%= a.step_order %></div>
             <div class="appr-history__status">
@@ -82,23 +91,24 @@
   </section>
 
   <!-- 承認/却下アクション -->
-  <% if (order.approval_status === 'pending') { %>
-    <section class="card appr-actions-card">
-      <div class="card__head"><h2>アクション</h2></div>
+  <% if (request.status === 'pending') { %>
+    <section class="card appr-actions-card" style="border-left: 4px solid #059669;">
+      <div class="card__head"><h2>承認する / 却下する</h2></div>
+      <p class="muted" style="padding: 0 1rem 0.5rem;">この申請に対して承認または却下の操作を行ってください。</p>
       <div class="appr-comment">
         <label for="appr_comment">コメント（任意）</label>
         <textarea id="appr_comment" rows="3" placeholder="承認・却下の理由やメモ..."></textarea>
       </div>
       <div class="appr-action-btns">
-        <form method="POST" action="/my/approvals/<%= order.id %>/approve" class="inline" id="approveForm">
+        <form method="POST" action="/my/approvals/requests/<%= request.id %>/approve" class="inline" id="approveForm">
           <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <% } %>
           <input type="hidden" name="comment" class="js-comment-input">
           <button type="submit" class="btn btn--primary btn--lg">承認する</button>
         </form>
-        <form method="POST" action="/my/approvals/<%= order.id %>/reject" class="inline" id="rejectForm"
-              onsubmit="return confirm('この注文を却下しますか？')">
+        <form method="POST" action="/my/approvals/requests/<%= request.id %>/reject" class="inline" id="rejectForm"
+              onsubmit="return confirm('この承認リクエストを却下しますか？')">
           <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <% } %>

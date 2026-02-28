@@ -17,7 +17,7 @@ async function getCreditStatus(partnerId) {
   return {
     limit: credit_limit || 0,
     used: credit_used || 0,
-    remaining: (credit_limit || 0) - (credit_used || 0),
+    remaining: Math.max(0, (credit_limit || 0) - (credit_used || 0)),
     paymentTermsDays: payment_terms_days || 30
   };
 }
@@ -26,9 +26,13 @@ async function getCreditStatus(partnerId) {
  * 注文額が与信枠内か確認
  */
 async function checkCreditAvailable(partnerId, amount) {
+  if (!partnerId) return { available: true, reason: null };
   const status = await getCreditStatus(partnerId);
-  if (!status) return { available: true, reason: null };
-  if (status.limit <= 0) return { available: true, reason: null }; // 与信限度なし = 無制限
+  if (!status) {
+    logger.warn('Partner not found for credit check', { partnerId });
+    return { available: true, reason: null }; // パートナー未設定は無制限扱い
+  }
+  if (status.limit <= 0) return { available: false, reason: '与信限度額が設定されていないため、掛売（請求書払い）はご利用いただけません。' };
   if (status.remaining >= amount) return { available: true, reason: null };
   return {
     available: false,
@@ -40,6 +44,10 @@ async function checkCreditAvailable(partnerId, amount) {
  * 与信利用額を加算（注文確定時）
  */
 async function addCreditUsage(partnerId, amount) {
+  if (!partnerId || !amount || amount <= 0) {
+    logger.warn('Invalid addCreditUsage call', { partnerId, amount });
+    return;
+  }
   await dbQuery(
     `UPDATE partners SET credit_used = COALESCE(credit_used, 0) + $1 WHERE id = $2`,
     [amount, partnerId]
@@ -51,6 +59,10 @@ async function addCreditUsage(partnerId, amount) {
  * 与信利用額を減算（入金消込時）
  */
 async function releaseCreditUsage(partnerId, amount) {
+  if (!partnerId || !amount || amount <= 0) {
+    logger.warn('Invalid releaseCreditUsage call', { partnerId, amount });
+    return;
+  }
   await dbQuery(
     `UPDATE partners SET credit_used = GREATEST(0, COALESCE(credit_used, 0) - $1) WHERE id = $2`,
     [amount, partnerId]
@@ -62,11 +74,15 @@ async function releaseCreditUsage(partnerId, amount) {
  * 管理者が与信限度額を変更
  */
 async function updateCreditLimit(partnerId, limit) {
+  const parsedLimit = parseInt(limit, 10);
+  if (isNaN(parsedLimit) || parsedLimit < 0) {
+    throw new Error('与信限度額は0以上の整数を指定してください。');
+  }
   await dbQuery(
     `UPDATE partners SET credit_limit = $1 WHERE id = $2`,
-    [limit, partnerId]
+    [parsedLimit, partnerId]
   );
-  logger.info('Credit limit updated', { partnerId, limit });
+  logger.info('Credit limit updated', { partnerId, limit: parsedLimit });
 }
 
 module.exports = {

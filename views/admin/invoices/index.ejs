@@ -8,6 +8,7 @@
 
   <!-- 請求書生成 -->
   <section class="card inv-generate">
+    <div class="card__head"><h2>請求書を一括生成</h2></div>
     <form method="POST" action="/admin/invoices/generate" class="inv-generate__form">
       <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -16,7 +17,7 @@
         <label for="yearMonth">対象年月</label>
         <input type="month" id="yearMonth" name="yearMonth" required>
       </div>
-      <button type="submit" class="btn">請求書を一括生成</button>
+      <button type="submit" class="btn btn--primary">生成する</button>
     </form>
     <% if (req.session?.flash) { %>
       <p class="alert alert--<%= req.session.flash.type === 'success' ? 'safe' : 'danger' %>">
@@ -28,6 +29,7 @@
 
   <!-- フィルタ -->
   <section class="card">
+    <div class="card__head"><h2>絞り込み</h2></div>
     <form class="inv-filters" method="GET" action="/admin/invoices">
       <div class="inv-filters__row">
         <input type="search" name="q" placeholder="請求番号・取引先名で検索" value="<%= filters.q %>" class="inv-filters__search">
@@ -39,7 +41,7 @@
           <option value="overdue" <%= filters.status === 'overdue' ? 'selected' : '' %>>期限超過</option>
         </select>
         <input type="month" name="ym" value="<%= filters.ym %>" placeholder="対象月">
-        <button type="submit" class="btn btn--ghost">絞り込む</button>
+        <button type="submit" class="btn">絞り込む</button>
       </div>
     </form>
   </section>
@@ -47,8 +49,12 @@
   <!-- 一覧テーブル -->
   <section class="card">
     <% if (!items || !items.length) { %>
-      <p class="muted" style="padding: 2rem; text-align: center;">請求書はまだありません。</p>
+      <div class="inv-empty">
+        <h3>請求書はまだありません</h3>
+        <p>対象年月を指定して請求書を一括生成してください。</p>
+      </div>
     <% } else { %>
+      <div class="card__head"><h2>請求書一覧（<%= items.length %>件）</h2></div>
       <div class="table-wrap">
         <table class="table">
           <thead>
@@ -67,13 +73,13 @@
           <tbody>
             <% items.forEach(inv => { %>
               <tr>
-                <td class="mono"><%= inv.invoice_number %></td>
-                <td><%= inv.buyer_name || '-' %></td>
-                <td><%= inv.seller_name || '-' %></td>
-                <td><%= inv.year_month %></td>
-                <td class="num">¥<%= Number(inv.total).toLocaleString() %></td>
-                <td class="num">¥<%= Number(inv.paid_amount).toLocaleString() %></td>
-                <td>
+                <td data-label="請求番号" class="mono"><%= inv.invoice_number %></td>
+                <td data-label="購入者"><%= inv.buyer_name || '-' %></td>
+                <td data-label="出品者"><%= inv.seller_name || '-' %></td>
+                <td data-label="対象月"><%= inv.year_month %></td>
+                <td data-label="合計" class="num">¥<%= Number(inv.total).toLocaleString() %></td>
+                <td data-label="入金済" class="num">¥<%= Number(inv.paid_amount).toLocaleString() %></td>
+                <td data-label="ステータス">
                   <span class="status status--<%= inv.status %>">
                     <%= inv.status === 'unpaid' ? '未入金' :
                        inv.status === 'partial' ? '一部入金' :
@@ -82,8 +88,8 @@
                        inv.status === 'void' ? '無効' : inv.status %>
                   </span>
                 </td>
-                <td><%= inv.due_date ? new Date(inv.due_date).toLocaleDateString('ja-JP') : '-' %></td>
-                <td><a href="/admin/invoices/<%= inv.id %>" class="btn btn--ghost btn--sm">詳細</a></td>
+                <td data-label="期限"><%= inv.due_date ? new Date(inv.due_date).toLocaleDateString('ja-JP') : '-' %></td>
+                <td data-label=""><a href="/admin/invoices/<%= inv.id %>" class="btn btn--sm">詳細</a></td>
               </tr>
             <% }) %>
           </tbody>

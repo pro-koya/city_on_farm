@@ -3,9 +3,9 @@
 
 <main class="wf-settings">
   <div class="wf-settings__head">
-    <a href="/my/org/members" class="btn btn--ghost btn--sm">&larr; 組織管理</a>
+    <a href="/my/org/members" class="btn btn--ghost btn--sm" style="margin-bottom:.5rem;">&larr; 組織管理に戻る</a>
     <h1>承認ワークフロー設定</h1>
-    <p class="muted">発注時に承認フローを経由するかどうかを設定できます。有効にすると、発注者が注文を作成した後、指定されたロールの承認者による承認が必要になります。</p>
+    <p class="muted">有効にすると、発注者の注文は指定されたロールの承認者による承認を経て確定されます。</p>
   </div>
 
   <% if (flash) { %>
@@ -31,8 +31,8 @@
       </p>
     </section>
 
-    <!-- ステップ設定 -->
-    <section class="card" id="stepsSection">
+    <!-- ステップ設定（ワークフロー有効時のみ表示） -->
+    <section class="card" id="stepsSection" style="<%= workflowEnabled ? '' : 'display:none;' %>">
       <div class="card__head">
         <h2>承認ステップ</h2>
         <button type="button" class="btn btn--ghost btn--sm" id="addStepBtn">+ ステップ追加</button>
@@ -81,6 +81,15 @@
 (function() {
   var container = document.getElementById('stepsContainer');
   var addBtn = document.getElementById('addStepBtn');
+  var stepsSection = document.getElementById('stepsSection');
+  var wfCheckbox = document.getElementById('wfEnabled');
+
+  // ワークフロー有効/無効に応じてステップセクションを表示切替
+  if (wfCheckbox && stepsSection) {
+    wfCheckbox.addEventListener('change', function() {
+      stepsSection.style.display = this.checked ? '' : 'none';
+    });
+  }
 
   addBtn.addEventListener('click', function() {
     var steps = container.querySelectorAll('.wf-step');

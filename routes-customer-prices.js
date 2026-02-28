@@ -37,14 +37,34 @@ function registerCustomerPriceRoutes(app, requireAuth) {
       const prices = await getCustomerPricesForPartner(buyerPartnerId, sellerPartnerId);
 
       // 出品者の全商品（価格未設定のものも含む）
+      // products.seller_id は user_id なので users 経由で partner_id と照合
       const products = await dbQuery(
-        `SELECT p.id, p.title, p.price, p.unit, p.is_active,
+        `SELECT p.id, p.title, p.price, p.unit, p.has_variants,
+                (p.status = 'public') AS is_active,
                 (SELECT url FROM product_images pi WHERE pi.product_id = p.id ORDER BY position LIMIT 1) AS image_url
          FROM products p
-         WHERE p.seller_id = $1 AND p.is_active = true
+         JOIN users u ON u.id = p.seller_id
+         WHERE u.partner_id = $1 AND p.status = 'public'
          ORDER BY p.title ASC`,
         [sellerPartnerId]
       );
+
+      // バリエーション商品のバリエーション一覧マップ
+      const variantProductIds = products.filter(p => p.has_variants).map(p => p.id);
+      const productVariantsMap = {};
+      if (variantProductIds.length) {
+        const ph = variantProductIds.map((_, i) => `$${i + 1}`).join(',');
+        const variantRows = await dbQuery(
+          `SELECT id, product_id, label, price, unit, stock FROM product_variants
+           WHERE product_id IN (${ph}) AND active = true
+           ORDER BY product_id, position ASC`,
+          variantProductIds
+        );
+        for (const v of variantRows) {
+          if (!productVariantsMap[v.product_id]) productVariantsMap[v.product_id] = [];
+          productVariantsMap[v.product_id].push(v);
+        }
+      }
 
       const flash = req.session.flash || null;
       req.session.flash = null;
@@ -54,6 +74,7 @@ function registerCustomerPriceRoutes(app, requireAuth) {
         buyer: buyerRows[0],
         prices,
         products,
+        productVariantsMap,
         flash,
         req
       });
@@ -71,16 +92,17 @@ function registerCustomerPriceRoutes(app, requireAuth) {
         return res.redirect('/');
       }
 
-      const { productId, price, startsAt, expiresAt } = req.body;
+      const { productId, variantId, price, startsAt, expiresAt } = req.body;
       const parsedPrice = parseInt(price, 10);
-      if (!productId || !parsedPrice || parsedPrice <= 0) {
+      if (!productId || isNaN(parsedPrice) || parsedPrice <= 0) {
         req.session.flash = { type: 'error', message: '商品と価格を正しく入力してください。' };
         return res.redirect(`/seller/partners/${req.params.buyerId}/prices`);
       }
 
-      // 商品が出品者のものか確認
+      // 商品が出品者のものか確認（seller_idはuser_idなのでusers経由）
       const productCheck = await dbQuery(
-        `SELECT id FROM products WHERE id = $1 AND seller_id = $2`,
+        `SELECT p.id FROM products p JOIN users u ON u.id = p.seller_id
+         WHERE p.id = $1 AND u.partner_id = $2`,
         [productId, sellerPartnerId]
       );
       if (!productCheck.length) {
@@ -94,7 +116,8 @@ function registerCustomerPriceRoutes(app, requireAuth) {
         parsedPrice,
         req.session.user.id,
         startsAt || null,
-        expiresAt || null
+        expiresAt || null,
+        variantId || null
       );
 
       req.session.flash = { type: 'success', message: '顧客別価格を設定しました。' };
@@ -107,6 +130,25 @@ function registerCustomerPriceRoutes(app, requireAuth) {
   // ============================================================
   app.post('/seller/partners/:buyerId/prices/:priceId/delete', requireAuth, async (req, res, next) => {
     try {
+      const sellerPartnerId = req.session.user.partner_id;
+      if (!sellerPartnerId) {
+        req.session.flash = { type: 'error', message: '出品者アカウントが必要です。' };
+        return res.redirect('/');
+      }
+
+      // 価格が出品者の商品に紐づいているか確認（seller_idはuser_idなのでusers経由）
+      const priceCheck = await dbQuery(
+        `SELECT cp.id FROM customer_prices cp
+         JOIN products p ON p.id = cp.product_id
+         JOIN users u ON u.id = p.seller_id
+         WHERE cp.id = $1 AND u.partner_id = $2`,
+        [req.params.priceId, sellerPartnerId]
+      );
+      if (!priceCheck.length) {
+        req.session.flash = { type: 'error', message: '指定された価格設定が見つかりません。' };
+        return res.redirect(`/seller/partners/${req.params.buyerId}/prices`);
+      }
+
       await deleteCustomerPrice(req.params.priceId);
       req.session.flash = { type: 'success', message: '顧客別価格を削除しました。' };
       return res.redirect(`/seller/partners/${req.params.buyerId}/prices`);
@@ -129,7 +171,8 @@ function registerCustomerPriceRoutes(app, requireAuth) {
         `SELECT DISTINCT p.id, p.name,
            (SELECT COUNT(*) FROM customer_prices cp
             JOIN products pr ON pr.id = cp.product_id
-            WHERE cp.buyer_partner_id = p.id AND pr.seller_id = $1) AS price_count
+            JOIN users su ON su.id = pr.seller_id
+            WHERE cp.buyer_partner_id = p.id AND su.partner_id = $1) AS price_count
          FROM partners p
          JOIN orders o ON o.buyer_partner_id = p.id
          WHERE o.seller_id = $1

@@ -13,6 +13,7 @@
         <p>掛売（請求書払い）でご注文いただくと、月末締めで請求書が発行されます。</p>
       </div>
     <% } else { %>
+      <div class="card__head"><h2>全 <%= items.length %> 件</h2></div>
       <div class="table-wrap">
         <table class="table">
           <thead>
@@ -24,17 +25,18 @@
               <th class="num">入金済</th>
               <th>ステータス</th>
               <th>支払期限</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             <% items.forEach(inv => { %>
               <tr>
-                <td class="mono"><%= inv.invoice_number %></td>
-                <td><%= inv.seller_name || '-' %></td>
-                <td><%= inv.year_month %></td>
-                <td class="num">¥<%= Number(inv.total).toLocaleString() %></td>
-                <td class="num">¥<%= Number(inv.paid_amount).toLocaleString() %></td>
-                <td>
+                <td data-label="請求番号" class="mono"><%= inv.invoice_number %></td>
+                <td data-label="出品者"><%= inv.seller_name || '-' %></td>
+                <td data-label="対象月"><%= inv.year_month %></td>
+                <td data-label="合計" class="num">¥<%= Number(inv.total).toLocaleString() %></td>
+                <td data-label="入金済" class="num">¥<%= Number(inv.paid_amount).toLocaleString() %></td>
+                <td data-label="ステータス">
                   <span class="status status--<%= inv.status %>">
                     <%= inv.status === 'unpaid' ? '未入金' :
                        inv.status === 'partial' ? '一部入金' :
@@ -43,7 +45,8 @@
                        inv.status === 'void' ? '無効' : inv.status %>
                   </span>
                 </td>
-                <td><%= inv.due_date ? new Date(inv.due_date).toLocaleDateString('ja-JP') : '-' %></td>
+                <td data-label="支払期限"><%= inv.due_date ? new Date(inv.due_date).toLocaleDateString('ja-JP') : '-' %></td>
+                <td data-label=""><a href="/my/invoices/<%= inv.id %>" class="btn btn--sm">詳細</a></td>
               </tr>
             <% }) %>
           </tbody>

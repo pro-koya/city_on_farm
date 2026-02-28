@@ -96,6 +96,19 @@ function registerOrgMemberRoutes(app, requireAuth) {
         ? req.body.roles
         : (req.body.roles ? [req.body.roles] : []);
 
+      // 最後のorg_adminを削除しないよう保護
+      if (!roles.includes('org_admin')) {
+        const adminCount = await dbQuery(
+          `SELECT COUNT(*) AS cnt FROM partner_member_roles
+           WHERE partner_id = $1 AND role = 'org_admin' AND user_id != $2`,
+          [partnerId, targetUserId]
+        );
+        if (parseInt(adminCount[0]?.cnt || 0, 10) === 0) {
+          req.session.flash = { type: 'error', message: '最後の組織管理者を削除することはできません。' };
+          return res.redirect('/my/org/members');
+        }
+      }
+
       await setMemberRoles(partnerId, targetUserId, roles);
 
       req.session.flash = { type: 'success', message: 'ロールを更新しました。' };

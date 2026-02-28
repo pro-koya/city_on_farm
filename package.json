@@ -11,7 +11,9 @@
     "schema:prod:md": "node table-info-production/generate_schema_md.mjs",
     "schema:prod:all": "npm run schema:prod:csv && npm run schema:prod:md",
     "schema:all": "npm run schema:csv && npm run schema:md",
-    "build:editor": "node scripts/build-editor.mjs"
+    "build:editor": "node scripts/build-editor.mjs",
+    "test": "jest tests/",
+    "test:b2b": "jest tests/b2b-"
   },
   "keywords": [],
   "author": "",
@@ -70,6 +72,7 @@
   "devDependencies": {
     "csv-parse": "^6.1.0",
     "esbuild": "^0.27.3",
+    "jest": "^30.2.0",
     "nodemon": "^3.1.10"
   }
 }

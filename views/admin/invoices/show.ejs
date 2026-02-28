@@ -8,6 +8,7 @@
       <span class="mono"><%= invoice.invoice_number %></span>
     </div>
     <div class="inv-show__actions">
+      <a href="/invoices/<%= invoice.id %>/pdf" class="btn btn--primary" target="_blank" rel="noopener">PDF ダウンロード</a>
       <a href="/admin/invoices" class="btn btn--ghost">一覧へ戻る</a>
     </div>
   </header>
@@ -79,7 +80,7 @@
           </div>
           <div class="field">
             <label for="method">入金方法</label>
-            <select id="method" name="method" class="pulldown">
+            <select id="method" name="method">
               <option value="bank_transfer">銀行振込</option>
               <option value="cash">現金</option>
               <option value="other">その他</option>
@@ -89,7 +90,7 @@
             <label for="note">メモ（任意）</label>
             <input type="text" id="note" name="note" placeholder="入金メモ">
           </div>
-          <button type="submit" class="btn">入金を記録</button>
+          <button type="submit" class="btn btn--primary">入金を記録</button>
         </form>
       <% } else { %>
         <p class="muted"><%= invoice.status === 'paid' ? '入金完了済みです。' : 'この請求書は無効です。' %></p>
@@ -97,7 +98,7 @@
 
       <!-- 入金履歴 -->
       <% if (payments && payments.length) { %>
-        <h3 style="margin-top: 1.5rem;">入金履歴</h3>
+        <h3>入金履歴</h3>
         <div class="table-wrap">
           <table class="table">
             <thead>
@@ -112,11 +113,11 @@
             <tbody>
               <% payments.forEach(p => { %>
                 <tr>
-                  <td><%= new Date(p.created_at).toLocaleString('ja-JP') %></td>
-                  <td><%= p.method === 'bank_transfer' ? '銀行振込' : p.method === 'cash' ? '現金' : p.method %></td>
-                  <td class="num">¥<%= Number(p.amount).toLocaleString() %></td>
-                  <td><%= p.recorded_by_name || '-' %></td>
-                  <td><%= p.note || '-' %></td>
+                  <td data-label="日時"><%= new Date(p.created_at).toLocaleString('ja-JP') %></td>
+                  <td data-label="方法"><%= p.method === 'bank_transfer' ? '銀行振込' : p.method === 'cash' ? '現金' : p.method %></td>
+                  <td data-label="金額" class="num">¥<%= Number(p.amount).toLocaleString() %></td>
+                  <td data-label="記録者"><%= p.recorded_by_name || '-' %></td>
+                  <td data-label="メモ"><%= p.note || '-' %></td>
                 </tr>
               <% }) %>
             </tbody>
@@ -125,6 +126,20 @@
       <% } %>
     </section>
   </div>
+
+  <!-- 振込先情報 -->
+  <% if (typeof sellerBankInfo !== 'undefined' && sellerBankInfo) { %>
+  <section class="card">
+    <div class="card__head"><h2>振込先口座</h2></div>
+    <dl class="kv">
+      <div><dt>銀行名</dt><dd><%= sellerBankInfo.bank_name %></dd></div>
+      <div><dt>支店名</dt><dd><%= sellerBankInfo.bank_branch_name || '-' %><%= sellerBankInfo.bank_branch_code ? `（${sellerBankInfo.bank_branch_code}）` : '' %></dd></div>
+      <div><dt>口座種別</dt><dd><%= sellerBankInfo.bank_account_type === 'ordinary' ? '普通' : sellerBankInfo.bank_account_type === 'current' ? '当座' : sellerBankInfo.bank_account_type === 'savings' ? '貯蓄' : '普通' %></dd></div>
+      <div><dt>口座番号</dt><dd><%= sellerBankInfo.bank_account_number %></dd></div>
+      <div><dt>口座名義</dt><dd><%= sellerBankInfo.bank_account_holder || '-' %></dd></div>
+    </dl>
+  </section>
+  <% } %>
 
   <!-- 対象注文一覧 -->
   <section class="card">
@@ -148,13 +163,23 @@
           <tbody>
             <% orders.forEach(o => { %>
               <tr>
-                <td><a href="/orders/<%= o.order_number %>" class="mono"><%= o.order_number %></a></td>
-                <td><%= new Date(o.created_at).toLocaleDateString('ja-JP') %></td>
-                <td class="num">¥<%= Number(o.subtotal).toLocaleString() %></td>
-                <td class="num">¥<%= Number(o.shipping_fee || 0).toLocaleString() %></td>
-                <td class="num">-¥<%= Number(o.discount || 0).toLocaleString() %></td>
-                <td class="num">¥<%= Number(o.total).toLocaleString() %></td>
-                <td><span class="status status--<%= o.status %>"><%= o.status %></span></td>
+                <td data-label="注文番号"><a href="/seller/trades/<%= o.id %>" class="mono"><%= o.order_number %></a></td>
+                <td data-label="注文日"><%= new Date(o.created_at).toLocaleDateString('ja-JP') %></td>
+                <td data-label="小計" class="num">¥<%= Number(o.subtotal).toLocaleString() %></td>
+                <td data-label="送料" class="num">¥<%= Number(o.shipping_fee || 0).toLocaleString() %></td>
+                <td data-label="割引" class="num">-¥<%= Number(o.discount || 0).toLocaleString() %></td>
+                <td data-label="合計" class="num">¥<%= Number(o.total).toLocaleString() %></td>
+                <td data-label="ステータス"><span class="status status--<%= o.status %>"><%=
+                  o.status === 'pending' ? '処理中' :
+                  o.status === 'processing' ? '処理中' :
+                  o.status === 'awaiting_payment' ? '決済待ち' :
+                  o.status === 'confirmed' ? '確定' :
+                  o.status === 'shipped' ? '出荷完了' :
+                  o.status === 'delivered' ? '配達完了' :
+                  o.status === 'cancelled' || o.status === 'canceled' ? 'キャンセル' :
+                  o.status === 'refunded' ? '返金済' :
+                  o.status === 'paid' ? '支払い済み' :
+                  o.status %></span></td>
               </tr>
             <% }) %>
           </tbody>
