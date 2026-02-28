@@ -5,6 +5,10 @@
 
   <!-- ボタン群 -->
   <div class="btn-grid">
+    <a class="btn" href="/admin/users/<%= (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : '' %>">アカウント情報</a>
+    <% if (typeof currentUser !== 'undefined' && currentUser && currentUser.partner_id) { %>
+    <a class="btn" href="/admin/partners/<%= currentUser.partner_id %>">所属店舗</a>
+    <% } %>
     <a class="btn" href="/my/contacts">私の問い合わせ</a>
   </div>
 

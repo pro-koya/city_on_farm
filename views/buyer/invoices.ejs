@@ -1,0 +1,68 @@
+<%- include('../partials/header', { title: '請求書', extraCSS2: '',
+  extraCSS: '/styles/admin-invoices.css' }) %>
+
+<main class="inv-list">
+  <header class="inv-list__head">
+    <h1>請求書一覧</h1>
+  </header>
+
+  <section class="card">
+    <% if (!items || !items.length) { %>
+      <div class="inv-empty">
+        <h3>請求書はまだありません</h3>
+        <p>掛売（請求書払い）でご注文いただくと、月末締めで請求書が発行されます。</p>
+      </div>
+    <% } else { %>
+      <div class="card__head"><h2>全 <%= items.length %> 件</h2></div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>請求番号</th>
+              <th>出品者</th>
+              <th>対象月</th>
+              <th class="num">合計</th>
+              <th class="num">入金済</th>
+              <th>ステータス</th>
+              <th>支払期限</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% items.forEach(inv => { %>
+              <tr>
+                <td data-label="請求番号" class="mono"><%= inv.invoice_number %></td>
+                <td data-label="出品者"><%= inv.seller_name || '-' %></td>
+                <td data-label="対象月"><%= inv.year_month %></td>
+                <td data-label="合計" class="num">¥<%= Number(inv.total).toLocaleString() %></td>
+                <td data-label="入金済" class="num">¥<%= Number(inv.paid_amount).toLocaleString() %></td>
+                <td data-label="ステータス">
+                  <span class="status status--<%= inv.status %>">
+                    <%= inv.status === 'unpaid' ? '未入金' :
+                       inv.status === 'partial' ? '一部入金' :
+                       inv.status === 'paid' ? '入金済' :
+                       inv.status === 'overdue' ? '期限超過' :
+                       inv.status === 'void' ? '無効' : inv.status %>
+                  </span>
+                </td>
+                <td data-label="支払期限"><%= inv.due_date ? new Date(inv.due_date).toLocaleDateString('ja-JP') : '-' %></td>
+                <td data-label=""><a href="/my/invoices/<%= inv.id %>" class="btn btn--sm">詳細</a></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+
+      <% if (pagination && pagination.pageCount > 1) { %>
+        <nav class="pagination">
+          <% for (let i = 1; i <= pagination.pageCount; i++) { %>
+            <a class="page <%= i === pagination.page ? 'is-active' : '' %>"
+               href="/my/invoices?page=<%= i %>"><%= i %></a>
+          <% } %>
+        </nav>
+      <% } %>
+    <% } %>
+  </section>
+</main>
+
+<%- include('../partials/footer') %>

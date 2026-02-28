@@ -1,0 +1,160 @@
+<%- include('../partials/header', { title: `${buyer.name} - 顧客別価格`, extraCSS2: '',
+  extraCSS: '/styles/customer-prices.css' }) %>
+
+<main class="cp-show">
+  <div class="cp-show__head">
+    <a href="/seller/customer-prices" class="btn btn--ghost btn--sm">&larr; 取引先一覧</a>
+    <h1><%= buyer.name %> の顧客別価格</h1>
+    <p class="muted">この取引先向けの特別価格を設定・管理します。</p>
+  </div>
+
+  <% if (flash) { %>
+    <div class="alert alert--<%= flash.type === 'success' ? 'safe' : 'danger' %>">
+      <%= flash.message %>
+    </div>
+  <% } %>
+
+  <!-- 新規価格設定フォーム -->
+  <section class="card">
+    <div class="card__head"><h2>価格を追加</h2></div>
+    <form method="POST" action="/seller/partners/<%= buyer.id %>/prices" class="cp-form">
+      <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <% } %>
+      <div class="cp-form__row">
+        <div class="field">
+          <label for="cp_product">商品</label>
+          <select id="cp_product" name="productId" required>
+            <option value="">商品を選択...</option>
+            <% products.forEach(function(p) { %>
+              <option value="<%= p.id %>" data-price="<%= p.price %>" data-has-variants="<%= p.has_variants ? '1' : '0' %>">
+                <%= p.title %> （標準: &#165;<%= Number(p.price).toLocaleString() %><%= p.unit ? ` / ${p.unit}` : '' %><%= p.has_variants ? ' ※バリエーションあり' : '' %>）
+              </option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="field" id="cp_variant_field" style="display:none;">
+          <label for="cp_variant">バリエーション</label>
+          <select id="cp_variant" name="variantId">
+            <option value="">商品全体（バリエーション共通）</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="cp_price">特別価格（円）</label>
+          <input type="number" id="cp_price" name="price" min="1" required placeholder="例: 800">
+        </div>
+        <div class="field">
+          <label for="cp_starts">開始日（任意）</label>
+          <input type="date" id="cp_starts" name="startsAt">
+        </div>
+        <div class="field">
+          <label for="cp_expires">終了日（任意）</label>
+          <input type="date" id="cp_expires" name="expiresAt">
+        </div>
+        <div class="field field--btn">
+          <button type="submit" class="btn btn--primary">設定</button>
+        </div>
+      </div>
+      <script>
+      (function(){
+        var productVariants = <%- JSON.stringify(typeof productVariantsMap !== 'undefined' ? productVariantsMap : {}) %>;
+        var sel = document.getElementById('cp_product');
+        var vField = document.getElementById('cp_variant_field');
+        var vSel = document.getElementById('cp_variant');
+        if (!sel || !vField || !vSel) return;
+        sel.addEventListener('change', function(){
+          var opt = sel.options[sel.selectedIndex];
+          var hasV = opt && opt.dataset.hasVariants === '1';
+          var pid = sel.value;
+          vSel.innerHTML = '<option value="">商品全体（バリエーション共通）</option>';
+          if (hasV && productVariants[pid]) {
+            productVariants[pid].forEach(function(v){
+              var o = document.createElement('option');
+              o.value = v.id;
+              o.textContent = v.label + ' （¥' + Number(v.price).toLocaleString() + (v.unit ? ' / ' + v.unit : '') + '）';
+              o.dataset.price = v.price;
+              vSel.appendChild(o);
+            });
+            vField.style.display = '';
+          } else {
+            vField.style.display = 'none';
+          }
+        });
+      })();
+      </script>
+    </form>
+  </section>
+
+  <!-- 設定済み価格一覧 -->
+  <section class="card">
+    <div class="card__head"><h2>設定済みの顧客別価格（<%= prices.length %>件）</h2></div>
+
+    <% if (!prices.length) { %>
+      <p class="muted" style="padding: 1rem;">まだ顧客別価格が設定されていません。上記フォームから追加してください。</p>
+    <% } else { %>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>商品</th>
+              <th class="num">標準価格</th>
+              <th class="num">特別価格</th>
+              <th class="num">割引率</th>
+              <th>期間</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% prices.forEach(function(cp) { %>
+              <%
+                const stdPrice = cp.variant_standard_price != null ? cp.variant_standard_price : cp.standard_price;
+                const discount = stdPrice > 0
+                  ? Math.round((1 - cp.price / stdPrice) * 100)
+                  : 0;
+              %>
+              <tr>
+                <td>
+                  <div class="cp-product">
+                    <img src="<%= cp.image_url || '/images/placeholder.png' %>" alt="" class="cp-product__img">
+                    <span><%= cp.product_title %><% if (cp.variant_label) { %> <small style="color:#666;">(<%= cp.variant_label %>)</small><% } %></span>
+                  </div>
+                </td>
+                <td class="num">&#165;<%= Number(stdPrice).toLocaleString() %></td>
+                <td class="num"><strong>&#165;<%= Number(cp.price).toLocaleString() %></strong></td>
+                <td class="num">
+                  <% if (discount > 0) { %>
+                    <span class="badge badge--discount">-<%= discount %>%</span>
+                  <% } else if (discount < 0) { %>
+                    <span class="badge badge--up">+<%= Math.abs(discount) %>%</span>
+                  <% } else { %>
+                    —
+                  <% } %>
+                </td>
+                <td>
+                  <% if (cp.starts_at || cp.expires_at) { %>
+                    <%= cp.starts_at ? new Date(cp.starts_at).toLocaleDateString('ja-JP') : '—' %>
+                    〜
+                    <%= cp.expires_at ? new Date(cp.expires_at).toLocaleDateString('ja-JP') : '無期限' %>
+                  <% } else { %>
+                    常時
+                  <% } %>
+                </td>
+                <td>
+                  <form method="POST" action="/seller/partners/<%= buyer.id %>/prices/<%= cp.id %>/delete" class="inline"
+                        onsubmit="return confirm('この顧客別価格を削除しますか？')">
+                    <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <% } %>
+                    <button type="submit" class="btn btn--ghost btn--sm btn--danger">削除</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+</main>
+
+<%- include('../partials/footer') %>

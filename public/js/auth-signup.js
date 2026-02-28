@@ -335,6 +335,9 @@
     btn.textContent = '送信中…';
   });
 
-  // 初期状態
+  // 初期状態: サーバーから返されたエラーメッセージを表示
+  document.querySelectorAll('.error[data-for]').forEach(function(p) {
+    if (p.textContent.trim()) p.classList.add('is-visible');
+  });
   updateSubmitState();
 })();

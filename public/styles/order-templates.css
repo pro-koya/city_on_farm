@@ -1,0 +1,898 @@
+/* ============================================================
+   order-templates.css — 注文テンプレート 一覧 & 詳細
+   ============================================================ */
+
+/* ---- レイアウト共通 ---- */
+.tpl-list,
+.tpl-show {
+  max-width: 960px;
+  margin: 80px auto 0;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+/* ---- ページヘッダー ---- */
+.tpl-list__head,
+.tpl-show__head {
+  margin-bottom: 1.5rem;
+}
+
+.tpl-list__head h1,
+.tpl-show__head h1 {
+  font-size: clamp(1.3rem, 4vw, 1.7rem);
+  color: var(--color-text, #2B2B2B);
+  margin: 0 0 0.25rem;
+  font-weight: 700;
+}
+
+.tpl-list__head .muted {
+  font-size: 0.88rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* 詳細ヘッダー: 2カラム */
+.tpl-show__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.tpl-show__head-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.tpl-show__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.tpl-show__head-right {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+/* ---- アラート ---- */
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.alert--safe {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.alert--danger {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+/* ---- 空状態 ---- */
+.tpl-empty {
+  text-align: center;
+  padding: 4rem 1rem;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+}
+
+.tpl-empty__icon {
+  margin-bottom: 1rem;
+  color: var(--color-main, #4C6B5C);
+  opacity: 0.45;
+}
+
+.tpl-empty h3 {
+  font-size: 1.1rem;
+  color: var(--color-text, #2B2B2B);
+  margin: 0 0 0.5rem;
+}
+
+.tpl-empty p {
+  font-size: 0.88rem;
+  color: #6b7280;
+  margin: 0 0 1.25rem;
+}
+
+/* ---- グリッド（一覧） ---- */
+.tpl-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+/* ---- カード（一覧） ---- */
+.tpl-card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .06);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: box-shadow 0.2s, transform 0.2s;
+  border-left: 4px solid var(--color-accent, #A3C9A8);
+}
+
+.tpl-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .1);
+  transform: translateY(-2px);
+}
+
+.tpl-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tpl-card__name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text, #2B2B2B);
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tpl-card__meta {
+  font-size: 0.82rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tpl-card__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 0.5rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* ---- カード（詳細セクション） ---- */
+.tpl-show .card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+  padding: 0;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.tpl-show .card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.tpl-show .card__head h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text, #2B2B2B);
+  margin: 0;
+}
+
+/* ---- テンプレート名編集 ---- */
+.tpl-edit-name {
+  margin-bottom: 1rem;
+}
+
+.tpl-name-form {
+  padding: 1rem 1.25rem;
+}
+
+.tpl-name-form .field--inline {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.tpl-name-form .field--inline label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text, #2B2B2B);
+  white-space: nowrap;
+}
+
+.tpl-name-form .field--inline input {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.tpl-name-form .field--inline input:focus {
+  outline: none;
+  border-color: var(--color-main, #4C6B5C);
+  box-shadow: 0 0 0 3px rgba(76, 107, 92, .15);
+}
+
+/* ---- アイテム一覧 ---- */
+.tpl-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tpl-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.15s;
+}
+
+.tpl-item:last-child {
+  border-bottom: none;
+}
+
+.tpl-item:hover {
+  background: #fafcfb;
+}
+
+.tpl-item--unavailable {
+  opacity: 0.5;
+}
+
+.tpl-item__thumb {
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f3f4f6;
+}
+
+.tpl-item__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tpl-item__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.tpl-item__title {
+  font-weight: 600;
+  color: var(--color-text, #2B2B2B);
+  text-decoration: none;
+  font-size: 0.95rem;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.15s;
+}
+
+.tpl-item__title:hover {
+  color: var(--color-main, #4C6B5C);
+}
+
+.tpl-item__meta {
+  font-size: 0.82rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+  flex-wrap: wrap;
+}
+
+/* ---- 数量ステッパー ---- */
+.tpl-item__qty {
+  flex: 0 0 auto;
+}
+
+.qty {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.qty__btn {
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: var(--color-highlight, #D6EADF);
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  color: var(--color-main, #4C6B5C);
+  font-weight: 600;
+}
+
+.qty__btn:hover {
+  background: var(--color-accent, #A3C9A8);
+}
+
+.qty__input {
+  width: 48px;
+  text-align: center;
+  border: none;
+  font-size: 0.9rem;
+  padding: 0.25rem 0;
+  -moz-appearance: textfield;
+  background: transparent;
+}
+
+.qty__input::-webkit-inner-spin-button,
+.qty__input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ---- アイテム操作 ---- */
+.tpl-item__actions {
+  flex: 0 0 auto;
+}
+
+.tpl-item__actions .btn--danger svg {
+  stroke: #dc2626;
+  transition: stroke 0.15s;
+}
+
+.tpl-item__actions .btn--danger:hover svg {
+  stroke: #b91c1c;
+}
+
+/* ---- 保存バー ---- */
+.tpl-save-bar {
+  padding: 1rem 1.25rem;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 2px solid #f1f5f9;
+}
+
+/* ---- 削除ゾーン ---- */
+.tpl-danger-zone {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .04);
+  border: 1px dashed #fecaca;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.tpl-danger-zone::before {
+  content: 'テンプレートを削除すると元に戻せません。';
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+/* ---- ピル (pill) ---- */
+.pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.pill--small {
+  background: var(--color-highlight, #D6EADF);
+  color: var(--color-main, #4C6B5C);
+}
+
+/* ---- バッジ ---- */
+.badge--danger {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid #fecaca;
+}
+
+.badge--warn {
+  background: #fffbeb;
+  color: #d97706;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid #fde68a;
+}
+
+/* ---- ボタン ---- */
+.tpl-list .btn,
+.tpl-show .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.55rem 1.2rem;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid var(--color-main, #4C6B5C);
+  background: #fff;
+  color: var(--color-main, #4C6B5C);
+  text-decoration: none;
+  transition: all 0.2s;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.tpl-list .btn:hover,
+.tpl-show .btn:hover {
+  background: var(--color-highlight, #D6EADF);
+}
+
+.tpl-list .btn--primary,
+.tpl-show .btn--primary {
+  background: var(--color-main, #4C6B5C);
+  color: #fff;
+  border-color: var(--color-main, #4C6B5C);
+}
+
+.tpl-list .btn--primary:hover,
+.tpl-show .btn--primary:hover {
+  background: #3d5a4b;
+  border-color: #3d5a4b;
+}
+
+.tpl-list .btn--ghost,
+.tpl-show .btn--ghost {
+  background: transparent;
+  border-color: #d1d5db;
+  color: #6b7280;
+}
+
+.tpl-list .btn--ghost:hover,
+.tpl-show .btn--ghost:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: var(--color-text, #2B2B2B);
+}
+
+.tpl-list .btn--danger,
+.tpl-show .btn--danger {
+  color: #dc2626 !important;
+  border-color: #fecaca !important;
+}
+
+.tpl-list .btn--danger:hover,
+.tpl-show .btn--danger:hover {
+  background: #fef2f2 !important;
+}
+
+.tpl-list .btn--sm,
+.tpl-show .btn--sm {
+  padding: 0.35rem 0.85rem;
+  font-size: 0.82rem;
+}
+
+.tpl-list .btn:disabled,
+.tpl-show .btn:disabled,
+.modal .btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ---- モーダル内ボタン ---- */
+.modal .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.55rem 1.2rem;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid var(--color-main, #4C6B5C);
+  background: #fff;
+  color: var(--color-main, #4C6B5C);
+  text-decoration: none;
+  transition: all 0.2s;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.modal .btn:hover {
+  background: var(--color-highlight, #D6EADF);
+}
+
+.modal .btn--primary {
+  background: var(--color-main, #4C6B5C);
+  color: #fff;
+  border-color: var(--color-main, #4C6B5C);
+}
+
+.modal .btn--primary:hover {
+  background: #3d5a4b;
+  border-color: #3d5a4b;
+}
+
+.modal .btn--ghost {
+  background: transparent;
+  border-color: #d1d5db;
+  color: #6b7280;
+}
+
+.modal .btn--ghost:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: var(--color-text, #2B2B2B);
+}
+
+/* ---- モーダル（商品追加） ---- */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .45);
+  backdrop-filter: blur(4px);
+}
+
+.modal__content {
+  position: relative;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, .15);
+  width: 100%;
+  max-width: 560px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.modal__header h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-text, #2B2B2B);
+}
+
+.modal__close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: #f3f4f6;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  transition: all 0.15s;
+}
+
+.modal__close:hover {
+  background: #e5e7eb;
+  color: var(--color-text, #2B2B2B);
+}
+
+.modal__body {
+  padding: 1rem 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* 検索入力 */
+.search-box {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.search-box__input {
+  width: 100%;
+  padding: 0.65rem 0.85rem 0.65rem 2.5rem;
+  border: 1.5px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.search-box__input:focus {
+  outline: none;
+  border-color: var(--color-main, #4C6B5C);
+  box-shadow: 0 0 0 3px rgba(76, 107, 92, .15);
+}
+
+.search-box__icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+/* 検索結果リスト */
+.search-results {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.search-results__empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+.search-results__item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.5rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.search-results__item:hover {
+  background: var(--color-highlight, #D6EADF);
+}
+
+.search-results__item.is-selected {
+  background: var(--color-highlight, #D6EADF);
+  outline: 2px solid var(--color-main, #4C6B5C);
+}
+
+.search-results__thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex: 0 0 44px;
+  background: #f3f4f6;
+}
+
+.search-results__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.search-results__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-results__title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text, #2B2B2B);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-results__price {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-top: 0.1rem;
+}
+
+.search-results__stock {
+  font-size: 0.75rem;
+  color: var(--color-main, #4C6B5C);
+}
+
+/* モーダル下部 */
+.modal__footer {
+  padding: 0.75rem 1.25rem;
+  border-top: 2px solid #f1f5f9;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* スピナー */
+.search-spinner {
+  text-align: center;
+  padding: 1.5rem;
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+/* ---- ユーティリティ ---- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.inline {
+  display: inline;
+}
+
+.dot {
+  color: #d1d5db;
+}
+
+.muted {
+  color: #6b7280;
+  font-size: 0.88rem;
+}
+
+/* ---- レスポンシブ ---- */
+@media (max-width: 768px) {
+  .tpl-list,
+  .tpl-show {
+    margin-top: 70px;
+  }
+
+  .tpl-show__head {
+    flex-direction: column;
+  }
+
+  .tpl-show__head-right {
+    width: 100%;
+  }
+
+  .tpl-show__head-right .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .tpl-list,
+  .tpl-show {
+    margin-top: 65px;
+    padding: 1rem;
+  }
+
+  .tpl-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tpl-item {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .tpl-item__thumb {
+    flex: 0 0 48px;
+    width: 48px;
+    height: 48px;
+  }
+
+  .tpl-item__main {
+    flex: 1 1 calc(100% - 64px);
+  }
+
+  .tpl-item__qty {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
+  .tpl-item__actions {
+    flex: 0 0 auto;
+  }
+
+  .tpl-name-form .field--inline {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tpl-name-form .field--inline input {
+    min-width: 0;
+  }
+
+  .tpl-name-form .field--inline .btn {
+    align-self: flex-end;
+  }
+
+  .tpl-danger-zone {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .tpl-danger-zone::before {
+    font-size: 0.82rem;
+  }
+
+  /* モーダル全画面化 */
+  .modal__content {
+    max-height: 90vh;
+    border-radius: 14px 14px 0 0;
+    max-width: 100%;
+  }
+
+  .modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  /* iOS ズーム防止 */
+  .search-box__input,
+  .qty__input,
+  .tpl-name-form .field--inline input {
+    font-size: 16px;
+  }
+}
+
+/* ---- iOS Safe Area ---- */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .tpl-list,
+  .tpl-show {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* ---- タッチターゲット最適化 ---- */
+@media (pointer: coarse) {
+  .qty__btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .tpl-card__actions .btn,
+  .tpl-item__actions .btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}

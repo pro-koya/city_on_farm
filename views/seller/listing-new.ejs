@@ -48,7 +48,7 @@
           </div>
         </div>
 
-        <div class="field field--row">
+        <div class="field field--row" id="singlePriceRow">
           <div>
             <label for="price">価格（税抜/円） *</label>
             <input id="price" name="price" type="number" min="1" step="1" required placeholder="例）480" value="<%= values?.price || '' %>">
@@ -63,6 +63,25 @@
             <label for="stock">在庫数 *</label>
             <input id="stock" name="stock" type="number" min="0" step="1" required placeholder="例）50" value="<%= values?.stock || '' %>">
             <p class="error" data-for="stock"></p>
+          </div>
+        </div>
+
+        <!-- ★ バリエーション設定 -->
+        <div class="field">
+          <label class="check">
+            <input type="checkbox" id="hasVariantsCheck" name="hasVariants" value="1">
+            バリエーション（複数規格）を設定する
+          </label>
+          <p class="help">1個/10個/50個ケースなどロット違いの価格・在庫を個別管理できます</p>
+        </div>
+
+        <div id="variantsSection" style="display:none;">
+          <div class="field">
+            <label>バリエーション一覧</label>
+            <div id="variantRows">
+              <!-- JSで行を追加 -->
+            </div>
+            <button type="button" class="btn btn--ghost" id="addVariantRow">バリエーションを追加</button>
           </div>
         </div>
 
@@ -196,5 +215,6 @@
 </main>
 
 <script src="/js/uploader-r2.js"></script>
+<script src="/js/listing-variants.js"></script>
 <script src="/js/listing-new.js"></script>
 <%- include('../partials/footer') %>

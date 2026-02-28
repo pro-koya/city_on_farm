@@ -1,0 +1,511 @@
+/* approval.css — 承認ワークフロー・承認待ち・承認詳細 */
+
+/* ===== 共通レイアウト ===== */
+.wf-settings,
+.appr-list,
+.appr-show {
+  max-width: 960px;
+  margin: 80px auto 0;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.wf-settings__head,
+.appr-list__head,
+.appr-show__head {
+  margin-bottom: 1.5rem;
+}
+
+.wf-settings__head h1,
+.appr-list__head h1,
+.appr-show__head h1 {
+  font-size: clamp(1.3rem, 4vw, 1.7rem);
+  color: var(--color-text, #2B2B2B);
+  margin: 0.25rem 0 0;
+}
+
+/* ===== カード ===== */
+.wf-settings .card,
+.appr-list .card,
+.appr-show .card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.08);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: .75rem;
+}
+
+.card__head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--color-text, #2B2B2B);
+}
+
+/* ===== ワークフロー設定: トグル ===== */
+.wf-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.6rem 0;
+}
+
+.wf-toggle input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border: 2px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.wf-toggle input::after {
+  content: '';
+  width: 6px;
+  height: 10px;
+  border: solid #fff;
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.15s ease;
+}
+
+.wf-toggle input:checked {
+  background: var(--color-main, #4C6B5C);
+  border-color: var(--color-main, #4C6B5C);
+}
+
+.wf-toggle input:checked::after {
+  transform: rotate(45deg) scale(1);
+}
+
+.wf-toggle__label {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* ===== ワークフロー設定: ステップ ===== */
+.wf-step {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  margin-bottom: 0.5rem;
+  background: #fff;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.wf-step:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,.06);
+  border-color: var(--color-accent, #A3C9A8);
+}
+
+.wf-step__order {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--color-main, #4C6B5C);
+  min-width: 80px;
+  background: var(--color-highlight, #D6EADF);
+  padding: 0.3rem 0.6rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.wf-step__role {
+  flex: 1;
+}
+
+.wf-step__role select {
+  padding: 0.45rem 0.75rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.wf-step__role select:focus {
+  border-color: var(--color-main, #4C6B5C);
+  outline: none;
+}
+
+.wf-actions {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ===== 承認待ち一覧: テーブル ===== */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th,
+.table td {
+  padding: 0.7rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.table th {
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #fafbfa;
+}
+
+.table th:first-child { border-radius: 8px 0 0 0; }
+.table th:last-child  { border-radius: 0 8px 0 0; }
+
+.table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.table tbody tr {
+  transition: background 0.12s ease;
+}
+
+.table tbody tr:hover {
+  background: var(--color-highlight, #D6EADF);
+}
+
+/* ===== 空状態 ===== */
+.appr-empty {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.08);
+}
+
+.appr-empty h3 {
+  font-size: 1.1rem;
+  color: var(--color-text, #2B2B2B);
+  margin-bottom: 0.5rem;
+}
+
+.appr-empty p {
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+/* ===== 承認詳細: KV ===== */
+.kv {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.kv > div {
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+}
+
+.kv dt {
+  flex: 0 0 auto;
+  min-width: 80px;
+  font-size: 0.83rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.kv dd {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+/* ===== 承認詳細: 商品一覧 ===== */
+.appr-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.appr-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 0.5rem;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.12s;
+}
+
+.appr-item:last-child {
+  border-bottom: none;
+}
+
+.appr-item:hover {
+  background: #fafbfa;
+}
+
+.appr-item__img {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.appr-item__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.appr-item__title {
+  font-weight: 600;
+  font-size: 0.93rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.appr-item__meta {
+  font-size: 0.82rem;
+  color: #9ca3af;
+  margin-top: 0.1rem;
+}
+
+.appr-item__amount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ===== 承認詳細: 承認履歴 ===== */
+.appr-history {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.appr-history__item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.5rem;
+  border-bottom: 1px solid #f0f0f0;
+  flex-wrap: wrap;
+  transition: background 0.12s;
+}
+
+.appr-history__item:last-child {
+  border-bottom: none;
+}
+
+.appr-history__item:hover {
+  background: #fafbfa;
+}
+
+.appr-history__step {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--color-main, #4C6B5C);
+  background: var(--color-highlight, #D6EADF);
+  padding: 0.2rem 0.6rem;
+  border-radius: 8px;
+  min-width: 80px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.appr-history__who,
+.appr-history__when {
+  font-size: 0.83rem;
+  color: #6b7280;
+}
+
+.appr-history__comment {
+  width: 100%;
+  font-size: 0.85rem;
+  color: #6b7280;
+  font-style: italic;
+  padding-left: 0.5rem;
+  border-left: 2px solid var(--color-accent, #A3C9A8);
+  margin-top: 0.25rem;
+}
+
+/* ===== ステータスピル ===== */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pill--small {
+  padding: 0.15rem 0.45rem;
+  font-size: 0.73rem;
+}
+
+.pill--pending  { background: #fffbeb; color: #d97706; }
+.pill--approved { background: #ecfdf5; color: #059669; }
+.pill--rejected { background: #fef2f2; color: #dc2626; }
+.pill--none     { background: #f3f4f6; color: #6b7280; }
+
+/* ===== 承認アクション ===== */
+.appr-actions-card {
+  margin-top: 1rem;
+}
+
+.appr-comment {
+  margin-bottom: 1rem;
+}
+
+.appr-comment label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  color: var(--color-text, #2B2B2B);
+}
+
+.appr-comment textarea {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  resize: vertical;
+  transition: border-color 0.15s;
+  font-family: inherit;
+}
+
+.appr-comment textarea:focus {
+  border-color: var(--color-main, #4C6B5C);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(76, 107, 92, .1);
+}
+
+.appr-action-btns {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.btn--lg {
+  padding: 0.65rem 1.6rem;
+  font-size: 0.95rem;
+}
+
+.inline {
+  display: inline;
+}
+
+/* ===== アラート ===== */
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.alert--safe {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.alert--danger {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+/* ===== レスポンシブ ===== */
+@media (max-width: 768px) {
+  .wf-settings,
+  .appr-list,
+  .appr-show {
+    margin-top: 70px;
+  }
+}
+
+@media (max-width: 640px) {
+  .wf-settings,
+  .appr-list,
+  .appr-show {
+    margin-top: 65px;
+    padding: 1rem 0.75rem;
+  }
+
+  .wf-settings .card,
+  .appr-list .card,
+  .appr-show .card {
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+  }
+
+  .appr-action-btns {
+    flex-direction: column;
+  }
+
+  .appr-action-btns .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .wf-step {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .wf-step__order {
+    min-width: auto;
+  }
+
+  .appr-item {
+    gap: 0.65rem;
+    padding: 0.65rem 0.25rem;
+  }
+
+  .appr-item__img {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* テーブルのモバイル対応 */
+  .table thead { display: none; }
+  .table tbody tr {
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .table tbody td {
+    padding: 0.2rem 0;
+    border-bottom: none;
+  }
+  .table tbody td:last-child {
+    margin-top: 0.35rem;
+  }
+}

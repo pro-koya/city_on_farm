@@ -1,0 +1,127 @@
+<%- include('../../partials/header', { title: '承認申請詳細', extraCSS2: '',
+  extraCSS: '/styles/approval.css' }) %>
+
+<main class="appr-show">
+  <div class="appr-show__head">
+    <a href="/my/approval-requests" class="btn btn--ghost btn--sm" style="margin-bottom:.5rem;">&larr; 承認申請一覧に戻る</a>
+    <h1>承認申請詳細</h1>
+  </div>
+
+  <% if (flash) { %>
+    <div class="alert alert--<%= flash.type === 'success' ? 'safe' : 'danger' %>">
+      <%= flash.message %>
+    </div>
+  <% } %>
+
+  <%
+    const statusMap = {
+      pending: { label: '承認待ち', cls: 'pending' },
+      approved: { label: '承認済み', cls: 'approved' },
+      rejected: { label: '却下', cls: 'rejected' },
+      ordered: { label: '注文済み', cls: 'ordered' },
+      cancelled: { label: 'キャンセル', cls: 'cancelled' }
+    };
+    const st = statusMap[request.status] || { label: request.status, cls: '' };
+  %>
+
+  <!-- 申請情報 -->
+  <section class="card">
+    <div class="card__head"><h2>申請情報</h2></div>
+    <dl class="kv">
+      <div><dt>申請日時</dt><dd><%= new Date(request.created_at).toLocaleString('ja-JP') %></dd></div>
+      <div><dt>小計</dt><dd>&#165;<%= Number(request.subtotal || 0).toLocaleString() %></dd></div>
+      <div><dt>合計</dt><dd><strong>&#165;<%= Number(request.total || 0).toLocaleString() %></strong></dd></div>
+      <div><dt>ステータス</dt>
+        <dd>
+          <span class="pill pill--small pill--<%= st.cls %>"><%= st.label %></span>
+        </dd>
+      </div>
+    </dl>
+  </section>
+
+  <!-- 申請商品 -->
+  <section class="card">
+    <div class="card__head"><h2>申請商品</h2></div>
+    <ul class="appr-items">
+      <% items.forEach(function(it) { %>
+        <li class="appr-item">
+          <img src="<%= it.image_url || '/images/placeholder.png' %>" alt="" class="appr-item__img">
+          <div class="appr-item__main">
+            <div class="appr-item__title"><%= it.title %></div>
+            <div class="appr-item__meta">
+              数量: <%= it.quantity %><%= it.unit || '点' %>
+              / 単価: &#165;<%= Number(it.price || 0).toLocaleString() %>
+            </div>
+          </div>
+          <div class="appr-item__amount">&#165;<%= Number((it.price || 0) * it.quantity).toLocaleString() %></div>
+        </li>
+      <% }) %>
+    </ul>
+  </section>
+
+  <!-- 承認履歴 -->
+  <section class="card">
+    <div class="card__head"><h2>承認履歴</h2></div>
+    <% if (approvalSteps.length) { %>
+      <ul class="appr-history">
+        <% approvalSteps.forEach(function(a) { %>
+          <li class="appr-history__item appr-history--<%= a.status %>">
+            <div class="appr-history__step">ステップ <%= a.step_order %></div>
+            <div class="appr-history__status">
+              <span class="pill pill--small pill--<%= a.status %>">
+                <%= a.status === 'pending' ? '待ち' : a.status === 'approved' ? '承認' : '却下' %>
+              </span>
+            </div>
+            <% if (a.approver_name) { %>
+              <div class="appr-history__who"><%= a.approver_name %></div>
+            <% } %>
+            <% if (a.decided_at) { %>
+              <div class="appr-history__when"><%= new Date(a.decided_at).toLocaleString('ja-JP') %></div>
+            <% } %>
+            <% if (a.comment) { %>
+              <div class="appr-history__comment"><%= a.comment %></div>
+            <% } %>
+          </li>
+        <% }) %>
+      </ul>
+    <% } else { %>
+      <p class="muted" style="padding: 1rem;">承認履歴はまだありません。</p>
+    <% } %>
+  </section>
+
+  <!-- 承認待ちの場合: 承認者向け操作の案内 -->
+  <% if (request.status === 'pending') { %>
+    <section class="card appr-actions-card" style="border-left: 3px solid #059669;">
+      <div class="card__head"><h2>承認する</h2></div>
+      <p style="padding: 0 1rem 0.5rem;">承認者としてこの申請を承認・却下する場合は、承認待ちページから操作できます。</p>
+      <div class="appr-action-btns" style="padding: 0 1rem 1rem;">
+        <a href="/my/approvals/requests/<%= request.id %>" class="btn btn--primary btn--lg">承認待ちページで承認する</a>
+        <a href="/my/approvals" class="btn btn--ghost btn--sm">承認待ち一覧を見る</a>
+      </div>
+    </section>
+  <% } %>
+
+  <!-- 承認済みの場合: 注文に進むボタン -->
+  <% if (request.status === 'approved') { %>
+    <section class="card appr-actions-card">
+      <div class="card__head"><h2>注文に進む</h2></div>
+      <p style="padding: 0 1rem; color: #059669; font-weight: 600;">承認されました。注文手続きに進めます。</p>
+      <div class="appr-action-btns" style="padding: 1rem;">
+        <a href="/checkout?seller=<%= encodeURIComponent(request.seller_partner_id) %>&approval_request_id=<%= request.id %>"
+           class="btn btn--primary btn--lg">注文手続きに進む</a>
+      </div>
+    </section>
+  <% } %>
+
+  <!-- 却下された場合 -->
+  <% if (request.status === 'rejected') { %>
+    <section class="card" style="border-left: 3px solid #dc2626;">
+      <div class="card__head"><h2>却下されました</h2></div>
+      <p style="padding: 0 1rem 1rem; color: #dc2626;">
+        この承認申請は却下されました。内容を修正して再度カートから申請してください。
+      </p>
+    </section>
+  <% } %>
+</main>
+
+<%- include('../../partials/footer') %>

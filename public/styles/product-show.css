@@ -216,6 +216,58 @@ body {
   text-decoration: underline
 }
 
+/* ★ バリエーションセレクタ */
+.variant-selector {
+  margin: .6rem 0 .8rem;
+}
+.variant-selector__label {
+  font-size: .9rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 .4rem;
+}
+.variant-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+.variant-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: .5rem .9rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  transition: all .15s ease;
+  min-width: 80px;
+  text-align: center;
+}
+.variant-pill:hover {
+  border-color: var(--main, #4caf50);
+  background: #f0fdf4;
+}
+.variant-pill.is-active {
+  border-color: var(--main, #4caf50);
+  background: #f0fdf4;
+  box-shadow: 0 0 0 1px var(--main, #4caf50);
+}
+.variant-pill__label {
+  font-weight: 700;
+  font-size: .95rem;
+  color: #1a1a1a;
+}
+.variant-pill__price {
+  font-size: .85rem;
+  color: var(--main, #4caf50);
+  font-weight: 600;
+}
+.variant-pill__unit {
+  font-size: .75rem;
+  color: #666;
+}
+
 .price-row {
   display: flex;
   align-items: baseline;
@@ -237,6 +289,12 @@ body {
   align-items: center;
   gap: .6rem;
   margin: .2rem 0 .8rem
+}
+
+/* バリエーション切替後も在庫行が消えないようにする */
+#stockRow.stock {
+  visibility: visible;
+  display: flex;
 }
 
 .badge {
@@ -963,19 +1021,6 @@ body {
   font-size: .9rem;
   color: #555;
 }
-
-.badge--low {
-  position: absolute;
-  top: .5rem;
-  right: .5rem;
-  background: #f59e0b;
-  color: #fff;
-  font-weight: 700;
-  font-size: .75rem;
-  padding: .15rem .4rem;
-  border-radius: 6px
-}
-
 
 /* モバイル最適化：カード幅を少し広めにしてスワイプを心地よく */
 @media (max-width: 768px) {

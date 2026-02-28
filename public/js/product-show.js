@@ -9,7 +9,7 @@
   const badge = document.querySelector('.cart-badge');
 
   // 在庫（フォームの data-stock または input[data-max]/max から）
-  const maxStock =
+  let maxStock =
     Number(form.dataset.stock) ||
     Number(qtyInput.dataset.max) ||
     Number(qtyInput.max) ||
@@ -27,6 +27,93 @@
     const max = Math.max(1, maxStock); // 0在庫は上で処理済み
     return Math.min(max, Math.max(min, n));
   }
+
+  // ★ バリエーション切替
+  (function initVariantSelector() {
+    const pills = document.querySelectorAll('.variant-pill');
+    if (!pills.length) return;
+
+    const priceEl = document.getElementById('displayPrice');
+    const unitEl = document.getElementById('displayUnit');
+    const stockRow = document.getElementById('stockRow');
+    const stockBadge = document.getElementById('stockBadge');
+    const cpBadge = document.getElementById('cpBadge');
+    const standardPriceEl = document.getElementById('standardPrice');
+    const variantIdInput = document.getElementById('variantIdInput');
+    const buyBtn = document.getElementById('buyBtn');
+
+    pills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        // アクティブ切替
+        pills.forEach(p => {
+          p.classList.remove('is-active');
+          p.setAttribute('aria-checked', 'false');
+        });
+        pill.classList.add('is-active');
+        pill.setAttribute('aria-checked', 'true');
+
+        const vid = pill.dataset.variantId;
+        const price = Number(pill.dataset.variantPrice);
+        const stdPrice = Number(pill.dataset.variantStandardPrice);
+        const unit = pill.dataset.variantUnit || '';
+        const stock = Number(pill.dataset.variantStock);
+        const hasCp = pill.dataset.variantHasCp === '1';
+
+        // hidden input更新
+        if (variantIdInput) variantIdInput.value = vid;
+
+        // 価格表示更新
+        if (priceEl) priceEl.textContent = price.toLocaleString();
+
+        // 単位表示更新
+        if (unitEl) unitEl.textContent = unit ? '/ ' + unit : '';
+
+        // 顧客別価格バッジ
+        if (cpBadge) {
+          if (hasCp) {
+            cpBadge.style.display = '';
+            if (standardPriceEl) standardPriceEl.textContent = stdPrice.toLocaleString();
+          } else {
+            cpBadge.style.display = 'none';
+          }
+        }
+
+        // 在庫表示更新（stockRow を明示的に表示して、切替で消えないようにする）
+        if (stockRow) {
+          stockRow.style.display = '';
+          stockRow.style.visibility = '';
+          stockRow.hidden = false;
+        }
+        if (stockBadge) {
+          if (stock > 10) {
+            stockBadge.innerHTML = '<span class="badge">在庫あり</span>';
+          } else if (stock > 0) {
+            stockBadge.innerHTML = '<span class="badge badge--low">残り ' + stock + ' 点</span>';
+          } else {
+            stockBadge.innerHTML = '<span class="badge badge--out">在庫切れ</span>';
+          }
+        }
+
+        // 在庫・数量・ボタン状態更新
+        maxStock = stock;
+        form.dataset.stock = stock;
+        qtyInput.max = stock;
+        qtyInput.dataset.max = stock;
+
+        if (stock <= 0) {
+          qtyInput.value = 0;
+          qtyInput.disabled = true;
+          if (buyBtn) buyBtn.disabled = true;
+        } else {
+          qtyInput.disabled = false;
+          if (buyBtn) buyBtn.disabled = false;
+          const cur = parseInt(qtyInput.value, 10) || 1;
+          qtyInput.value = Math.min(cur, stock) || 1;
+        }
+        updateButtons();
+      });
+    });
+  })();
 
   function updateButtons() {
     const v = parseInt(qtyInput.value, 10) || 1;
@@ -119,7 +206,7 @@
     } catch {
       toast('通信に失敗しました。', false);
     } finally {
-      submitBtn.disabled = (maxStock <= 0) ? true : false;
+      submitBtn.disabled = maxStock <= 0;
     }
   });
 

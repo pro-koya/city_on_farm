@@ -95,173 +95,213 @@
 <body>
   <header class="navbar">
     <div class="navbar-container">
-      <!-- 左：ロゴ -->
       <a href="/" class="navbar-logo"><img src="/images/setsumaru-logo.png" alt="セッツマルシェ"></a>
 
-      <!-- 右：PCもモバイルもトグル＋（PCのみ）ログインピル -->
       <div class="navbar-right">
         <% if (typeof currentUser !== 'undefined' && currentUser) { %>
-          <!-- PC専用のログインピル（モバイルでは非表示） -->
           <span class="nav-loginstatus__pill nav-loginstatus--desktop" aria-live="polite">
-            <strong>
-              <%= currentUser.name %>
-            </strong> さんとしてログイン中
+            <strong><%= currentUser.name %></strong> さん
           </span>
-
-          <!-- ✅ お知らせベル -->
           <% const unread = (typeof unreadNoticeCount !== 'undefined' ? unreadNoticeCount : 0); %>
-            <a href="/my/notifications" class="navbar-notice" aria-label="お知らせ">
-              <!-- ベルアイコン（シンプルなSVG） -->
-              <svg class="notice-icon" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-                <path fill="currentColor"
-                  d="M12 2a4 4 0 0 0-4 4v1.1C6.3 8.3 5 10.1 5 12v4l-1 1v1h16v-1l-1-1v-4c0-1.9-1.3-3.7-3-4.9V6a4 4 0 0 0-4-4zm0 2a2 2 0 0 1 2 2v1h-4V6a2 2 0 0 1 2-2zm0 16a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 20z" />
-              </svg>
-              <% if (unread > 0) { %>
-                <span class="notice-badge" aria-live="polite">
-                  <%= unread > 99 ? '99+' : unread %>
-                </span>
-              <% } else { %>
-                <!-- 未読0のときは小さなドットだけ（任意） -->
-                <span class="notice-dot" aria-hidden="true"></span>
-              <% } %>
-            </a>
-          <% } %>
+          <a href="/my/notifications" class="navbar-notice" aria-label="お知らせ">
+            <svg class="notice-icon" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M12 2a4 4 0 0 0-4 4v1.1C6.3 8.3 5 10.1 5 12v4l-1 1v1h16v-1l-1-1v-4c0-1.9-1.3-3.7-3-4.9V6a4 4 0 0 0-4-4zm0 2a2 2 0 0 1 2 2v1h-4V6a2 2 0 0 1 2-2zm0 16a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 20z"/>
+            </svg>
+            <% if (unread > 0) { %>
+              <span class="notice-badge" aria-live="polite"><%= unread > 99 ? '99+' : unread %></span>
+            <% } else { %>
+              <span class="notice-dot" aria-hidden="true"></span>
+            <% } %>
+          </a>
+        <% } %>
 
-            <!-- ✅ カートボタン -->
-            <a href="/cart" class="navbar-cart" aria-label="カートへ">
-              <!-- ショッピングカートの簡易SVGアイコン -->
-              <svg class="cart-icon" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-                <path fill="currentColor"
-                  d="M7 18a2 2 0 1 0 0 4a2 2 0 0 0 0-4m10 0a2 2 0 1 0 0 4a2 2 0 0 0 0-4M7.2 14h9.9c.8 0 1.5-.5 1.7-1.3l1.7-6.3c.1-.5-.2-1-.8-1H6.2L5.7 3H3v2h1.2l2.3 9c.2.7.9 1.2 1.7 1.2Z" />
-              </svg>
-              <span class="cart-badge" aria-live="polite">
-                <%= (typeof cartCount!=='undefined' ? cartCount : 0) %>
-              </span>
-            </a>
+        <a href="/cart" class="navbar-cart" aria-label="カートへ">
+          <svg class="cart-icon" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M7 18a2 2 0 1 0 0 4a2 2 0 0 0 0-4m10 0a2 2 0 1 0 0 4a2 2 0 0 0 0-4M7.2 14h9.9c.8 0 1.5-.5 1.7-1.3l1.7-6.3c.1-.5-.2-1-.8-1H6.2L5.7 3H3v2h1.2l2.3 9c.2.7.9 1.2 1.7 1.2Z"/>
+          </svg>
+          <span class="cart-badge" aria-live="polite"><%= (typeof cartCount!=='undefined' ? cartCount : 0) %></span>
+        </a>
 
-            <button class="navbar-toggle" id="navbar-toggle" aria-label="メニューを開閉" aria-controls="navbar-menu"
-              aria-expanded="false">
-              <span id="toggle-icon">☰</span>
-            </button>
+        <button class="navbar-toggle" id="navbar-toggle" aria-label="メニューを開閉" aria-controls="navbar-drawer" aria-expanded="false">
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+        </button>
       </div>
     </div>
 
-    <!-- 共通：ハンバーガーメニュー（PC/モバイル同一UI・階層化） -->
-    <ul class="navbar-menu" id="navbar-menu" role="menu">
-      <!-- ホーム（単独） -->
-      <li class="navbar-menu__single" role="none">
-        <a role="menuitem" href="/">ホーム</a>
-      </li>
+    <!-- オーバーレイ -->
+    <div class="navbar-overlay" id="navbar-overlay"></div>
 
-      <% if (typeof currentUser !== 'undefined' && currentUser && currentUser.roles?.includes('seller') && currentUser.partner_id) { %>
-      <!-- 出品者メニュー（出品者のみ表示・初期展開） -->
-      <li class="navbar-menu__group navbar-menu__group--seller is-open" role="none">
-        <div class="navbar-menu__header" role="button" aria-expanded="true">
-          <span>出品者メニュー</span>
-          <span class="navbar-menu__toggle-icon"></span>
+    <!-- ドロワー -->
+    <nav class="navbar-drawer" id="navbar-drawer" role="menu">
+
+      <!-- ドロワーヘッダー（閉じるボタン） -->
+      <div class="drawer-header">
+        <span class="drawer-header__title">メニュー</span>
+        <button class="drawer-header__close" id="drawer-close" type="button" aria-label="メニューを閉じる">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <!-- ユーザーセクション -->
+      <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+      <div class="drawer-user">
+        <div class="drawer-user__avatar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         </div>
-        <ul class="navbar-menu__items" role="menu">
-          <li role="none"><a role="menuitem" href="/admin/partners/<%= currentUser.partner_id %>">マイショップ</a></li>
-          <li role="none">
-            <a role="menuitem" href="/admin/partners/<%= currentUser.partner_id %>/shipping">
-              配送設定<span class="navbar-menu__quick">Quick</span>
-            </a>
-          </li>
-          <li role="none">
-            <a role="menuitem" href="/admin/partners/<%= currentUser.partner_id %>/availability">
-              受け渡し日設定<span class="navbar-menu__quick">Quick</span>
-            </a>
-          </li>
-          <li role="none"><a role="menuitem" href="/seller/listings">出品一覧</a></li>
-        </ul>
-      </li>
+        <div class="drawer-user__info">
+          <span class="drawer-user__name"><%= currentUser.name %></span>
+          <span class="drawer-user__role">
+            <%= currentUser.roles?.includes('admin') ? '管理者' : currentUser.roles?.includes('seller') ? '出品者' : '購入者' %>
+          </span>
+        </div>
+      </div>
       <% } %>
 
-      <!-- ショップ -->
-      <li class="navbar-menu__group" role="none">
-        <div class="navbar-menu__header" role="button" aria-expanded="false">
-          <span>ショップ</span>
-          <span class="navbar-menu__toggle-icon"></span>
-        </div>
-        <ul class="navbar-menu__items" role="menu">
-          <li role="none"><a role="menuitem" href="/products">農作物一覧</a></li>
-          <li role="none">
-            <a role="menuitem" href="/cart">カート（<%= (typeof cartCount!=='undefined' ? cartCount : 0) %>）</a>
-          </li>
-        </ul>
-      </li>
+      <!-- メニュー本体 -->
+      <ul class="drawer-menu" id="drawer-menu">
+        <!-- ホーム -->
+        <li class="drawer-menu__single" role="none">
+          <a role="menuitem" href="/">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            ホーム
+          </a>
+        </li>
+
+        <% if (typeof currentUser !== 'undefined' && currentUser && currentUser.roles?.includes('seller') && currentUser.partner_id) { %>
+        <!-- 出品者メニュー -->
+        <li class="drawer-menu__group drawer-menu__group--seller is-open" role="none">
+          <div class="drawer-menu__header" role="button" aria-expanded="true">
+            <span class="drawer-menu__header-label">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+              出品者メニュー
+            </span>
+            <span class="drawer-menu__chevron"></span>
+          </div>
+          <ul class="drawer-menu__items" role="menu">
+            <li role="none"><a role="menuitem" href="/admin/partners/<%= currentUser.partner_id %>">マイショップ</a></li>
+            <li role="none"><a role="menuitem" href="/admin/partners/<%= currentUser.partner_id %>/shipping">配送設定</a></li>
+            <li role="none"><a role="menuitem" href="/admin/partners/<%= currentUser.partner_id %>/availability">受け渡し日設定</a></li>
+            <li role="none"><a role="menuitem" href="/seller/listings">出品一覧</a></li>
+            <li role="none"><a role="menuitem" href="/seller/customer-prices">顧客別価格</a></li>
+            <li role="none"><a role="menuitem" href="/seller/invoices">請求書管理</a></li>
+          </ul>
+        </li>
+        <% } %>
+
+        <!-- ショップ -->
+        <li class="drawer-menu__group" role="none">
+          <div class="drawer-menu__header" role="button" aria-expanded="false">
+            <span class="drawer-menu__header-label">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+              ショップ
+            </span>
+            <span class="drawer-menu__chevron"></span>
+          </div>
+          <ul class="drawer-menu__items" role="menu">
+            <li role="none"><a role="menuitem" href="/products">農作物一覧</a></li>
+            <li role="none"><a role="menuitem" href="/cart">カート（<%= (typeof cartCount!=='undefined' ? cartCount : 0) %>）</a></li>
+          </ul>
+        </li>
+
+        <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+        <% const menuUnread = (typeof unreadNoticeCount !== 'undefined' ? unreadNoticeCount : 0); %>
+        <!-- マイページ -->
+        <li class="drawer-menu__group" role="none">
+          <div class="drawer-menu__header" role="button" aria-expanded="false">
+            <span class="drawer-menu__header-label">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              マイページ
+            </span>
+            <span class="drawer-menu__chevron"></span>
+          </div>
+          <ul class="drawer-menu__items" role="menu">
+            <li role="none">
+              <a role="menuitem" href="/dashboard/<%= (currentUser.roles?.includes('seller') ? 'seller' : 'buyer') %>">ダッシュボード</a>
+            </li>
+            <li role="none">
+              <a role="menuitem" href="/my/notifications">
+                お知らせ<% if (menuUnread > 0) { %><span class="drawer-menu__badge"><%= menuUnread > 99 ? '99+' : menuUnread %></span><% } %>
+              </a>
+            </li>
+            <li role="none"><a role="menuitem" href="/orders/recent">注文履歴</a></li>
+            <li role="none"><a role="menuitem" href="/my/templates">注文テンプレート</a></li>
+            <li role="none"><a role="menuitem" href="/admin/users/<%= currentUser.id %>">アカウント情報</a></li>
+            <% if (currentUser.partner_id) { %>
+            <li class="drawer-menu__divider" role="separator"><span>B2B</span></li>
+            <li role="none"><a role="menuitem" href="/admin/partners/<%= currentUser.partner_id %>">所属店舗</a></li>
+            <li role="none"><a role="menuitem" href="/my/invoices">請求書</a></li>
+            <li role="none"><a role="menuitem" href="/my/approval-requests">承認申請一覧</a></li>
+            <li role="none"><a role="menuitem" href="/my/approvals">承認待ち</a></li>
+            <% if (typeof isOrgAdmin !== 'undefined' && isOrgAdmin) { %>
+            <li role="none"><a role="menuitem" href="/my/org/members">組織管理</a></li>
+            <li role="none"><a role="menuitem" href="/my/org/workflow">承認フロー設定</a></li>
+            <% } %>
+            <% } %>
+            <% if (currentUser.roles?.includes('admin')) { %>
+            <li class="drawer-menu__divider" role="separator"><span>管理者</span></li>
+            <li role="none"><a role="menuitem" href="/admin/invoices">請求書管理</a></li>
+            <% } %>
+          </ul>
+        </li>
+        <% } %>
+
+        <!-- 情報 -->
+        <li class="drawer-menu__group" role="none">
+          <div class="drawer-menu__header" role="button" aria-expanded="false">
+            <span class="drawer-menu__header-label">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              情報
+            </span>
+            <span class="drawer-menu__chevron"></span>
+          </div>
+          <ul class="drawer-menu__items" role="menu">
+            <li role="none"><a role="menuitem" href="/blog">ブログ</a></li>
+            <li role="none"><a role="menuitem" href="/help">ヘルプ</a></li>
+          </ul>
+        </li>
+
+        <!-- お問い合わせ -->
+        <li class="drawer-menu__single" role="none">
+          <a role="menuitem" href="/contact">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            お問い合わせ
+          </a>
+        </li>
+
+        <% if (typeof currentUser === 'undefined' || !currentUser) { %>
+        <!-- 非ログイン -->
+        <li class="drawer-menu__single" role="none">
+          <a role="menuitem" href="/login">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            ログイン
+          </a>
+        </li>
+        <li class="drawer-menu__single" role="none">
+          <a role="menuitem" href="/signup">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+            サインアップ
+          </a>
+        </li>
+        <% } %>
+      </ul>
 
       <% if (typeof currentUser !== 'undefined' && currentUser) { %>
-      <% const unread = (typeof unreadNoticeCount !== 'undefined' ? unreadNoticeCount : 0); %>
-      <!-- マイページ（ログイン時） -->
-      <li class="navbar-menu__group" role="none">
-        <div class="navbar-menu__header" role="button" aria-expanded="false">
-          <span>マイページ</span>
-          <span class="navbar-menu__toggle-icon"></span>
-        </div>
-        <ul class="navbar-menu__items" role="menu">
-          <li role="none">
-            <a role="menuitem" href="/dashboard/<%= (currentUser.roles?.includes('seller') ? 'seller' : 'buyer') %>">
-              ダッシュボード
-            </a>
-          </li>
-          <li role="none">
-            <a role="menuitem" href="/my/notifications">
-              お知らせ<% if (unread > 0) { %>（<%= unread > 99 ? '99+' : unread %>）<% } %>
-            </a>
-          </li>
-          <% if (currentUser.roles?.includes('seller') && currentUser.partner_id) { %>
-          <li role="none"><a role="menuitem" href="/admin/partners/<%= currentUser.partner_id %>">出品者情報</a></li>
-          <% } %>
-          <li role="none"><a role="menuitem" href="/admin/users/<%= currentUser.id %>">アカウント情報</a></li>
-        </ul>
-      </li>
-      <% } %>
-
-      <!-- 情報 -->
-      <li class="navbar-menu__group" role="none">
-        <div class="navbar-menu__header" role="button" aria-expanded="false">
-          <span>情報</span>
-          <span class="navbar-menu__toggle-icon"></span>
-        </div>
-        <ul class="navbar-menu__items" role="menu">
-          <li role="none"><a role="menuitem" href="/blog">ブログ</a></li>
-          <li role="none"><a role="menuitem" href="/help">ヘルプ</a></li>
-        </ul>
-      </li>
-
-      <!-- お問い合わせ（単独） -->
-      <li class="navbar-menu__single" role="none">
-        <a role="menuitem" href="/contact">お問い合わせ</a>
-      </li>
-
-      <% if (typeof currentUser !== 'undefined' && currentUser) { %>
-      <!-- ログアウト -->
-      <li class="nav-logout navbar-menu__single" role="none">
+      <!-- ドロワーフッター：ログアウト -->
+      <div class="drawer-footer">
         <form method="POST" action="/logout">
           <% if (typeof csrfToken !=='undefined' && csrfToken) { %>
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <button type="submit" class="linklike" role="menuitem">ログアウト</button>
           <% } %>
+          <button type="submit" class="drawer-footer__logout" role="menuitem">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            ログアウト
+          </button>
         </form>
-      </li>
-
-      <!-- モバイル専用：メニュー最下部にログインピル（PCでは非表示） -->
-      <li class="nav-loginstatus" aria-live="polite">
-        <span class="nav-loginstatus__pill">
-          <strong><%= currentUser.name %></strong> さんとしてログイン中
-        </span>
-      </li>
-      <% } else { %>
-      <!-- 非ログイン時 -->
-      <li class="navbar-menu__single" role="none">
-        <a role="menuitem" href="/login">ログイン</a>
-      </li>
-      <li class="navbar-menu__single" role="none">
-        <a role="menuitem" href="/signup">サインアップ</a>
-      </li>
+      </div>
       <% } %>
-    </ul>
+    </nav>
   </header>
 
   <main>
