@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2026-02-28T18:33:48.364Z
+> Generated at: 2026-03-01T18:34:23.125Z
 
 ---
 
@@ -58,6 +58,101 @@
   
   ```sql
   CREATE UNIQUE INDEX ux_user_default_address ON public.addresses USING btree (user_id, address_type) WHERE ((scope = 'user'::text) AND (is_default = true))
+  ```
+
+---
+
+### `public.approval_request_steps`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `request_id` | `uuid` | NO |  |  |
+| 3 | `step_order` | `integer` | NO |  |  |
+| 4 | `approver_id` | `uuid` | YES |  |  |
+| 5 | `status` | `text` | NO | 'pending'::text |  |
+| 6 | `comment` | `text` | YES |  |  |
+| 7 | `decided_at` | `timestamp with time zone` | YES |  |  |
+| 8 | `created_at` | `timestamp with time zone` | YES | now() |  |
+
+**Constraints**
+
+- **CHECK**: `approval_request_steps_id_not_null`, `approval_request_steps_request_id_not_null`, `approval_request_steps_status_check`, `approval_request_steps_status_not_null`, `approval_request_steps_step_order_not_null`
+- **FOREIGN KEY**: `approval_request_steps_approver_id_fkey`, `approval_request_steps_request_id_fkey`
+- **PRIMARY KEY**: `approval_request_steps_pkey`
+
+**Indexes**
+
+- `approval_request_steps_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX approval_request_steps_pkey ON public.approval_request_steps USING btree (id)
+  ```
+- `idx_approval_request_steps_approver`
+  
+  ```sql
+  CREATE INDEX idx_approval_request_steps_approver ON public.approval_request_steps USING btree (approver_id)
+  ```
+- `idx_approval_request_steps_request`
+  
+  ```sql
+  CREATE INDEX idx_approval_request_steps_request ON public.approval_request_steps USING btree (request_id)
+  ```
+- `idx_approval_request_steps_status`
+  
+  ```sql
+  CREATE INDEX idx_approval_request_steps_status ON public.approval_request_steps USING btree (status)
+  ```
+
+---
+
+### `public.approval_requests`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `buyer_partner_id` | `uuid` | NO |  |  |
+| 3 | `seller_partner_id` | `uuid` | YES |  |  |
+| 4 | `requester_id` | `uuid` | NO |  |  |
+| 5 | `status` | `text` | NO | 'pending'::text |  |
+| 6 | `current_approval_step` | `integer` | YES | 1 |  |
+| 7 | `cart_items` | `jsonb` | NO |  |  |
+| 8 | `subtotal` | `integer` | YES | 0 |  |
+| 9 | `total` | `integer` | YES | 0 |  |
+| 10 | `created_at` | `timestamp with time zone` | YES | now() |  |
+| 11 | `updated_at` | `timestamp with time zone` | YES | now() |  |
+
+**Constraints**
+
+- **CHECK**: `approval_requests_buyer_partner_id_not_null`, `approval_requests_cart_items_not_null`, `approval_requests_id_not_null`, `approval_requests_requester_id_not_null`, `approval_requests_status_check`, `approval_requests_status_not_null`
+- **FOREIGN KEY**: `approval_requests_buyer_partner_id_fkey`, `approval_requests_requester_id_fkey`
+- **PRIMARY KEY**: `approval_requests_pkey`
+
+**Indexes**
+
+- `approval_requests_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX approval_requests_pkey ON public.approval_requests USING btree (id)
+  ```
+- `idx_approval_requests_buyer`
+  
+  ```sql
+  CREATE INDEX idx_approval_requests_buyer ON public.approval_requests USING btree (buyer_partner_id)
+  ```
+- `idx_approval_requests_requester`
+  
+  ```sql
+  CREATE INDEX idx_approval_requests_requester ON public.approval_requests USING btree (requester_id)
+  ```
+- `idx_approval_requests_status`
+  
+  ```sql
+  CREATE INDEX idx_approval_requests_status ON public.approval_requests USING btree (status)
   ```
 
 ---
@@ -168,20 +263,20 @@
 | 8 | `user_id` | `uuid` | YES |  |  |
 | 9 | `seller_id` | `uuid` | YES |  |  |
 | 10 | `seller_name` | `text` | YES |  |  |
+| 11 | `variant_id` | `uuid` | YES |  |  |
 
 **Constraints**
 
 - **CHECK**: `cart_items_cart_id_not_null`, `cart_items_created_at_not_null`, `cart_items_id_not_null`, `cart_items_product_id_not_null`, `cart_items_quantity_check`, `cart_items_quantity_not_null`, `cart_items_saved_for_later_not_null`, `cart_items_updated_at_not_null`
-- **FOREIGN KEY**: `cart_items_cart_id_fkey`, `cart_items_product_id_fkey`, `cart_items_user_id_fkey`
+- **FOREIGN KEY**: `cart_items_cart_id_fkey`, `cart_items_product_id_fkey`, `cart_items_user_id_fkey`, `cart_items_variant_id_fkey`
 - **PRIMARY KEY**: `cart_items_pkey`
-- **UNIQUE**: `cart_items_cart_id_product_id_key`
 
 **Indexes**
 
-- `cart_items_cart_id_product_id_key`
+- `cart_items_cart_product_variant_uniq`
   
   ```sql
-  CREATE UNIQUE INDEX cart_items_cart_id_product_id_key ON public.cart_items USING btree (cart_id, product_id)
+  CREATE UNIQUE INDEX cart_items_cart_product_variant_uniq ON public.cart_items USING btree (cart_id, product_id, COALESCE(variant_id, '00000000-0000-0000-0000-000000000000'::uuid))
   ```
 - `cart_items_pkey`
   
@@ -468,20 +563,20 @@
 | 7 | `expires_at` | `timestamp with time zone` | YES |  |  |
 | 8 | `created_at` | `timestamp with time zone` | YES | now() |  |
 | 9 | `updated_at` | `timestamp with time zone` | YES | now() |  |
+| 10 | `variant_id` | `uuid` | YES |  |  |
 
 **Constraints**
 
 - **CHECK**: `customer_prices_buyer_partner_id_not_null`, `customer_prices_id_not_null`, `customer_prices_price_not_null`, `customer_prices_product_id_not_null`
-- **FOREIGN KEY**: `customer_prices_buyer_partner_id_fkey`, `customer_prices_created_by_fkey`, `customer_prices_product_id_fkey`
+- **FOREIGN KEY**: `customer_prices_buyer_partner_id_fkey`, `customer_prices_created_by_fkey`, `customer_prices_product_id_fkey`, `customer_prices_variant_id_fkey`
 - **PRIMARY KEY**: `customer_prices_pkey`
-- **UNIQUE**: `customer_prices_buyer_partner_id_product_id_key`
 
 **Indexes**
 
-- `customer_prices_buyer_partner_id_product_id_key`
+- `customer_prices_buyer_product_variant_uniq`
   
   ```sql
-  CREATE UNIQUE INDEX customer_prices_buyer_partner_id_product_id_key ON public.customer_prices USING btree (buyer_partner_id, product_id)
+  CREATE UNIQUE INDEX customer_prices_buyer_product_variant_uniq ON public.customer_prices USING btree (buyer_partner_id, product_id, COALESCE(variant_id, '00000000-0000-0000-0000-000000000000'::uuid))
   ```
 - `customer_prices_pkey`
   
@@ -836,6 +931,11 @@
 
 **Indexes**
 
+- `idx_monthly_invoices_buyer`
+  
+  ```sql
+  CREATE INDEX idx_monthly_invoices_buyer ON public.monthly_invoices USING btree (buyer_partner_id)
+  ```
 - `idx_monthly_invoices_seller`
   
   ```sql
@@ -1215,11 +1315,12 @@
 | 6 | `seller_id` | `uuid` | YES |  |  |
 | 7 | `product_title` | `text` | YES |  |  |
 | 8 | `unit` | `text` | YES |  |  |
+| 9 | `variant_id` | `uuid` | YES |  |  |
 
 **Constraints**
 
 - **CHECK**: `order_items_id_not_null`, `order_items_order_id_not_null`, `order_items_price_check`, `order_items_price_not_null`, `order_items_product_id_not_null`, `order_items_quantity_check`, `order_items_quantity_not_null`
-- **FOREIGN KEY**: `order_items_order_id_fkey`, `order_items_product_id_fkey`, `order_items_seller_id_fkey`
+- **FOREIGN KEY**: `order_items_order_id_fkey`, `order_items_product_id_fkey`, `order_items_seller_id_fkey`, `order_items_variant_id_fkey`
 - **PRIMARY KEY**: `order_items_pkey`
 
 **Indexes**
@@ -1263,11 +1364,12 @@
 | 3 | `product_id` | `uuid` | NO |  |  |
 | 4 | `quantity` | `integer` | NO | 1 |  |
 | 5 | `sort_order` | `integer` | YES | 0 |  |
+| 6 | `variant_id` | `uuid` | YES |  |  |
 
 **Constraints**
 
 - **CHECK**: `order_template_items_id_not_null`, `order_template_items_product_id_not_null`, `order_template_items_quantity_not_null`, `order_template_items_template_id_not_null`
-- **FOREIGN KEY**: `order_template_items_product_id_fkey`, `order_template_items_template_id_fkey`
+- **FOREIGN KEY**: `order_template_items_product_id_fkey`, `order_template_items_template_id_fkey`, `order_template_items_variant_id_fkey`
 - **PRIMARY KEY**: `order_template_items_pkey`
 
 **Indexes**
@@ -1374,17 +1476,19 @@
 | 41 | `stripe_refund_id` | `text` | YES |  |  |
 | 42 | `approval_status` | `text` | YES | 'none'::text |  |
 | 43 | `submitted_by` | `uuid` | YES |  |  |
+| 44 | `buyer_partner_id` | `uuid` | YES |  |  |
+| 45 | `current_approval_step` | `integer` | YES | 0 |  |
 
-> **Enum `order_status` values**: `pending`, `paid`, `shipped`, `cancelled`, `confirmed`, `processing`, `delivered`, `canceled`, `refunded`, `fulfilled`
+> **Enum `order_status` values**: `pending`, `paid`, `shipped`, `cancelled`, `confirmed`, `processing`, `delivered`, `canceled`, `refunded`, `fulfilled`, `awaiting_payment`
 > **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`, `invoice`
-> **Enum `payment_status` values**: `pending`, `completed`, `failed`, `authorized`, `paid`, `canceled`, `refunded`, `unpaid`, `cancelled`
+> **Enum `payment_status` values**: `pending`, `completed`, `failed`, `authorized`, `paid`, `canceled`, `refunded`, `unpaid`, `cancelled`, `expired`
 > **Enum `ship_method` values**: `pickup`, `delivery`
 > **Enum `shipment_status` values**: `pending`, `preparing`, `shipped`, `delivered`, `cancelled`, `returned`, `lost`, `canceled`, `in_transit`
 
 **Constraints**
 
 - **CHECK**: `orders_amounts_check`, `orders_approval_status_check`, `orders_bill_same_not_null`, `orders_buyer_id_not_null`, `orders_coupon_discount_not_null`, `orders_created_at_not_null`, `orders_discount_not_null`, `orders_id_not_null`, `orders_payment_status_not_null`, `orders_receipt_name_length_check`, `orders_shipment_status_not_null`, `orders_shipping_fee_not_null`, `orders_status_not_null`, `orders_subtotal_not_null`, `orders_tax_not_null`, `orders_total_not_null`, `orders_updated_at_not_null`
-- **FOREIGN KEY**: `orders_buyer_id_fkey`, `orders_group_id_fkey`, `orders_seller_id_fkey`, `orders_submitted_by_fkey`, `orders_transfer_id_fkey`
+- **FOREIGN KEY**: `orders_buyer_id_fkey`, `orders_buyer_partner_id_fkey`, `orders_group_id_fkey`, `orders_seller_id_fkey`, `orders_submitted_by_fkey`, `orders_transfer_id_fkey`
 - **PRIMARY KEY**: `orders_pkey`
 - **UNIQUE**: `orders_order_number_key`, `uq_orders_order_number`
 
@@ -1404,6 +1508,11 @@
   
   ```sql
   CREATE INDEX idx_orders_buyer_created_at ON public.orders USING btree (buyer_id, created_at DESC)
+  ```
+- `idx_orders_buyer_partner_id`
+  
+  ```sql
+  CREATE INDEX idx_orders_buyer_partner_id ON public.orders USING btree (buyer_partner_id)
   ```
 - `idx_orders_created`
   
@@ -1560,7 +1669,7 @@
 | 39 | `billing_address1` | `text` | YES |  |  |
 | 40 | `billing_address2` | `text` | YES |  |  |
 
-> **Enum `order_status` values**: `pending`, `paid`, `shipped`, `cancelled`, `confirmed`, `processing`, `delivered`, `canceled`, `refunded`, `fulfilled`
+> **Enum `order_status` values**: `pending`, `paid`, `shipped`, `cancelled`, `confirmed`, `processing`, `delivered`, `canceled`, `refunded`, `fulfilled`, `awaiting_payment`
 
 **Constraints**
 
@@ -1742,6 +1851,50 @@ _No indexes_
 
 ---
 
+### `public.partner_member_roles`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `partner_id` | `uuid` | NO |  |  |
+| 3 | `user_id` | `uuid` | NO |  |  |
+| 4 | `role` | `text` | NO | 'orderer'::text |  |
+| 5 | `created_at` | `timestamp with time zone` | YES | now() |  |
+
+**Constraints**
+
+- **CHECK**: `partner_member_roles_id_not_null`, `partner_member_roles_partner_id_not_null`, `partner_member_roles_role_check`, `partner_member_roles_role_not_null`, `partner_member_roles_user_id_not_null`
+- **FOREIGN KEY**: `partner_member_roles_partner_id_fkey`, `partner_member_roles_user_id_fkey`
+- **PRIMARY KEY**: `partner_member_roles_pkey`
+- **UNIQUE**: `partner_member_roles_partner_id_user_id_role_key`
+
+**Indexes**
+
+- `idx_partner_member_roles_partner`
+  
+  ```sql
+  CREATE INDEX idx_partner_member_roles_partner ON public.partner_member_roles USING btree (partner_id)
+  ```
+- `idx_partner_member_roles_user`
+  
+  ```sql
+  CREATE INDEX idx_partner_member_roles_user ON public.partner_member_roles USING btree (user_id)
+  ```
+- `partner_member_roles_partner_id_user_id_role_key`
+  
+  ```sql
+  CREATE UNIQUE INDEX partner_member_roles_partner_id_user_id_role_key ON public.partner_member_roles USING btree (partner_id, user_id, role)
+  ```
+- `partner_member_roles_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX partner_member_roles_pkey ON public.partner_member_roles USING btree (id)
+  ```
+
+---
+
 ### `public.partner_transfers`
 
 取引先への送金履歴（手動送金の記録）
@@ -1904,6 +2057,14 @@ _No indexes_
 | 44 | `requirements_due_by` | `timestamp without time zone` | YES |  |  |
 | 45 | `credit_limit` | `integer` | YES | 0 |  |
 | 46 | `credit_used` | `integer` | YES | 0 |  |
+| 47 | `approval_workflow_enabled` | `boolean` | YES | false |  |
+| 48 | `payment_terms_days` | `integer` | YES | 30 |  |
+| 49 | `bank_name` | `text` | YES |  |  |
+| 50 | `bank_branch_name` | `text` | YES |  |  |
+| 51 | `bank_branch_code` | `text` | YES |  |  |
+| 52 | `bank_account_type` | `text` | YES | 'ordinary'::text |  |
+| 53 | `bank_account_number` | `text` | YES |  |  |
+| 54 | `bank_account_holder` | `text` | YES |  |  |
 
 > **Enum `partner_type` values**: `restaurant`, `retailer`, `wholesale`, `corporate`, `individual`, `other`
 > **Enum `partner_status` values**: `active`, `inactive`, `prospect`, `suspended`
@@ -2079,7 +2240,7 @@ _No indexes_
 | 8 | `updated_at` | `timestamp with time zone` | NO | now() |  |
 
 > **Enum `payment_method` values**: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`, `invoice`
-> **Enum `payment_status` values**: `pending`, `completed`, `failed`, `authorized`, `paid`, `canceled`, `refunded`, `unpaid`, `cancelled`
+> **Enum `payment_status` values**: `pending`, `completed`, `failed`, `authorized`, `paid`, `canceled`, `refunded`, `unpaid`, `cancelled`, `expired`
 
 **Constraints**
 
@@ -2425,6 +2586,49 @@ _No indexes_
 
 ---
 
+### `public.product_variants`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `product_id` | `uuid` | NO |  |  |
+| 3 | `label` | `text` | NO |  |  |
+| 4 | `price` | `integer` | NO |  |  |
+| 5 | `unit` | `text` | NO | ''::text |  |
+| 6 | `stock` | `integer` | NO | 0 |  |
+| 7 | `position` | `integer` | NO | 0 |  |
+| 8 | `active` | `boolean` | NO | true |  |
+| 9 | `created_at` | `timestamp with time zone` | NO | now() |  |
+| 10 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+
+**Constraints**
+
+- **CHECK**: `product_variants_active_not_null`, `product_variants_created_at_not_null`, `product_variants_id_not_null`, `product_variants_label_not_null`, `product_variants_position_not_null`, `product_variants_price_not_null`, `product_variants_product_id_not_null`, `product_variants_stock_not_null`, `product_variants_unit_not_null`, `product_variants_updated_at_not_null`
+- **FOREIGN KEY**: `product_variants_product_id_fkey`
+- **PRIMARY KEY**: `product_variants_pkey`
+
+**Indexes**
+
+- `idx_pv_product`
+  
+  ```sql
+  CREATE INDEX idx_pv_product ON public.product_variants USING btree (product_id)
+  ```
+- `idx_pv_product_active`
+  
+  ```sql
+  CREATE INDEX idx_pv_product_active ON public.product_variants USING btree (product_id, active)
+  ```
+- `product_variants_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX product_variants_pkey ON public.product_variants USING btree (id)
+  ```
+
+---
+
 ### `public.products`
 
 **Columns**
@@ -2451,12 +2655,13 @@ _No indexes_
 | 18 | `updated_at` | `timestamp with time zone` | NO | now() |  |
 | 19 | `description_raw` | `text` | YES |  |  |
 | 20 | `favorite_count` | `integer` | NO | 0 |  |
+| 21 | `has_variants` | `boolean` | NO | false |  |
 
 > **Enum `product_status` values**: `draft`, `private`, `public`
 
 **Constraints**
 
-- **CHECK**: `products_created_at_not_null`, `products_favorite_count_not_null`, `products_id_not_null`, `products_is_organic_not_null`, `products_is_seasonal_not_null`, `products_price_check`, `products_price_not_null`, `products_seller_id_not_null`, `products_ship_days_check`, `products_ship_days_not_null`, `products_ship_method_check`, `products_ship_method_not_null`, `products_slug_not_null`, `products_status_not_null`, `products_stock_check`, `products_stock_not_null`, `products_title_not_null`, `products_unit_not_null`, `products_updated_at_not_null`
+- **CHECK**: `products_created_at_not_null`, `products_favorite_count_not_null`, `products_has_variants_not_null`, `products_id_not_null`, `products_is_organic_not_null`, `products_is_seasonal_not_null`, `products_price_check`, `products_price_not_null`, `products_seller_id_not_null`, `products_ship_days_check`, `products_ship_days_not_null`, `products_ship_method_check`, `products_ship_method_not_null`, `products_slug_not_null`, `products_status_not_null`, `products_stock_check`, `products_stock_not_null`, `products_title_not_null`, `products_unit_not_null`, `products_updated_at_not_null`
 - **FOREIGN KEY**: `products_category_id_fkey`, `products_seller_id_fkey`
 - **PRIMARY KEY**: `products_pkey`
 - **UNIQUE**: `products_slug_key`
@@ -3162,11 +3367,11 @@ WebAuthn認証器（生体認証・セキュリティキー）情報
 
 - `public.contact_category_enum`: `listing_registration`, `ordering_trading`, `site_bug`, `site_request`, `press_partnership`, `other`
 - `public.order_address_type`: `shipping`, `billing`
-- `public.order_status`: `pending`, `paid`, `shipped`, `cancelled`, `confirmed`, `processing`, `delivered`, `canceled`, `refunded`, `fulfilled`
+- `public.order_status`: `pending`, `paid`, `shipped`, `cancelled`, `confirmed`, `processing`, `delivered`, `canceled`, `refunded`, `fulfilled`, `awaiting_payment`
 - `public.partner_status`: `active`, `inactive`, `prospect`, `suspended`
 - `public.partner_type`: `restaurant`, `retailer`, `wholesale`, `corporate`, `individual`, `other`
 - `public.payment_method`: `card`, `bank_transfer`, `convenience_store`, `cod`, `bank`, `paypay`, `invoice`
-- `public.payment_status`: `pending`, `completed`, `failed`, `authorized`, `paid`, `canceled`, `refunded`, `unpaid`, `cancelled`
+- `public.payment_status`: `pending`, `completed`, `failed`, `authorized`, `paid`, `canceled`, `refunded`, `unpaid`, `cancelled`, `expired`
 - `public.product_status`: `draft`, `private`, `public`
 - `public.review_status`: `published`, `pending`, `hidden`
 - `public.ship_method`: `pickup`, `delivery`

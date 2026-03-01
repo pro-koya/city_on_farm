@@ -17,6 +17,7 @@ public,order_status,delivered,7
 public,order_status,canceled,8
 public,order_status,refunded,9
 public,order_status,fulfilled,10
+public,order_status,awaiting_payment,11
 public,partner_status,active,1
 public,partner_status,inactive,2
 public,partner_status,prospect,3
@@ -43,6 +44,7 @@ public,payment_status,canceled,6
 public,payment_status,refunded,7
 public,payment_status,unpaid,8
 public,payment_status,cancelled,9
+public,payment_status,expired,10
 public,product_status,draft,1
 public,product_status,private,2
 public,product_status,public,3
