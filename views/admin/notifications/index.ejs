@@ -77,7 +77,14 @@
                   <%= new Date(it.created_at).toLocaleString('ja-JP', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) %>
                 </time>
               </td>
-              <td><span class="pill"><%= it.type %></span></td>
+              <td><span class="pill"><%=
+                it.type === 'info' ? 'お知らせ' :
+                it.type === 'warning' ? '警告' :
+                it.type === 'success' ? '完了' :
+                it.type === 'error' ? 'エラー' :
+                it.type === 'campaign' ? 'キャンペーン' :
+                it.type === 'system' ? 'システム' : it.type
+              %></span></td>
               <td><%= it.title %></td>
               <td>
                 <% if (it.for_all) { %>
@@ -85,7 +92,12 @@
                 <% } %>
                 <% if (it.roles && it.roles.length) { %>
                   <% it.roles.forEach(function(r){ %>
-                    <span class="pill pill--role"><%= r %></span>
+                    <span class="pill pill--role"><%=
+                      r === 'admin' ? '管理者' :
+                      r === 'seller' ? '出品者' :
+                      r === 'buyer' ? '購入者' :
+                      r === 'partner' ? 'パートナー' : r
+                    %></span>
                   <% }) %>
                 <% } %>
                 <% if (!it.for_all && (!it.roles || !it.roles.length) && (it.user_target_count > 0)) { %>
@@ -97,10 +109,10 @@
                   常に表示
                 <% } else { %>
                   <% if (it.visible_from) { %>
-                    <div>From: <%= new Date(it.visible_from).toLocaleString('ja-JP') %></div>
+                    <div>開始: <%= new Date(it.visible_from).toLocaleString('ja-JP') %></div>
                   <% } %>
                   <% if (it.visible_to) { %>
-                    <div>To:&nbsp;&nbsp;<%= new Date(it.visible_to).toLocaleString('ja-JP') %></div>
+                    <div>終了: <%= new Date(it.visible_to).toLocaleString('ja-JP') %></div>
                   <% } %>
                 <% } %>
               </td>
@@ -118,7 +130,14 @@
       <% items.forEach(function(it){ %>
         <article class="card">
           <header class="card__head">
-            <span class="pill"><%= it.type %></span>
+            <span class="pill"><%=
+              it.type === 'info' ? 'お知らせ' :
+              it.type === 'warning' ? '警告' :
+              it.type === 'success' ? '完了' :
+              it.type === 'error' ? 'エラー' :
+              it.type === 'campaign' ? 'キャンペーン' :
+              it.type === 'system' ? 'システム' : it.type
+            %></span>
             <time datetime="<%= new Date(it.created_at).toISOString() %>">
               <%= new Date(it.created_at).toLocaleString('ja-JP', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) %>
             </time>
@@ -131,7 +150,12 @@
               <% } %>
               <% if (it.roles && it.roles.length) { %>
                 <% it.roles.forEach(function(r){ %>
-                  <span class="pill pill--role"><%= r %></span>
+                  <span class="pill pill--role"><%=
+                    r === 'admin' ? '管理者' :
+                    r === 'seller' ? '出品者' :
+                    r === 'buyer' ? '購入者' :
+                    r === 'partner' ? 'パートナー' : r
+                  %></span>
                 <% }) %>
               <% } %>
               <% if (!it.for_all && (!it.roles || !it.roles.length) && (it.user_target_count > 0)) { %>

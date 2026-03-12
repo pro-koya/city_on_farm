@@ -39,7 +39,12 @@
           </form>
         <% } %>
         <% if (currentRoles.includes('admin')) { %>
-        <div><dt>ロール</dt><dd><%= (user.roles||[]).join(', ') %></dd></div>
+        <div><dt>ロール</dt><dd><%= (user.roles||[]).map(function(r){
+          return r === 'admin' ? '管理者' :
+                 r === 'seller' ? '出品者' :
+                 r === 'buyer' ? '購入者' :
+                 r === 'partner' ? 'パートナー' : r;
+        }).join(', ') %></dd></div>
         <% } %>
         <!-- <% if (user.phone) { %><div><dt>電話</dt><dd><%= user.phone %></dd></div><% } %> -->
         <% if (emailError !== '') { %>
@@ -204,7 +209,13 @@
                 <%= partner.status==='active'?'有効':'無効' %>
               </span>
               <strong><%= partner.name %></strong>
-              <span class="partner__type"><%= partner.type %></span>
+              <span class="partner__type"><%=
+                partner.type === 'farm' ? '農家' :
+                partner.type === 'producer' ? '生産者' :
+                partner.type === 'shop' ? '店舗' :
+                partner.type === 'wholesale' ? '卸業者' :
+                partner.type === 'other' ? 'その他' : partner.type
+              %></span>
             </div>
             <div class="partner__addr">
               〒<%= partner.postal_code || '—' %>　

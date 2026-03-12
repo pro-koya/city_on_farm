@@ -368,7 +368,15 @@ body {
 .btn--buy {
   background: var(--main);
   color: #fff;
-  font-weight: 800
+  font-weight: 800;
+  transition: background .15s, transform .1s
+}
+.btn--buy:hover:not(:disabled) {
+  background: #3d5a4b;
+  transform: translateY(-1px)
+}
+.btn--buy:active:not(:disabled) {
+  transform: translateY(0)
 }
 
 .btn--buy:disabled {
@@ -378,7 +386,11 @@ body {
 
 .btn--wish {
   background: #f3f4f6;
-  color: #111827
+  color: #111827;
+  transition: background .15s
+}
+.btn--wish:hover {
+  background: #e5e7eb
 }
 
 /* 安心表記 */

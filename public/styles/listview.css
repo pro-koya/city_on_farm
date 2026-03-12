@@ -102,12 +102,21 @@
     padding: .55rem .9rem;
     cursor: pointer;
     font-weight: 700;
+    transition: background .15s, border-color .15s;
+}
+.btn:hover {
+    background: #3d5a4b;
+    border-color: #3d5a4b;
 }
 
 .btn--ghost {
     background: #fff;
     color: #4C6B5C;
     border: 1px solid var(--border);
+}
+.btn--ghost:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
 }
 
 @media (max-width: 821px) {

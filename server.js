@@ -3671,7 +3671,7 @@ async function fetchRecentProducts(req, limit = 8) {
         FROM user_recent_products urp
         JOIN products p ON p.id = urp.product_id
        WHERE urp.user_id = $1
-       AND p.status = 'public'
+       AND p.status IN ('public', 'private')
        ORDER BY urp.viewed_at DESC
        LIMIT $2
       `,
@@ -4164,6 +4164,14 @@ app.get('/products/:id', async (req, res, next) => {
     const product = rows[0];
     if (!product) return next();
 
+    // draft は出品者本人 or 管理者のみ閲覧可
+    if (product.status === 'draft') {
+      const currentUser = req.session?.user;
+      const isOwner = currentUser && currentUser.id === product.seller_id;
+      const isAdmin = currentUser && currentUser.roles?.includes('admin');
+      if (!isOwner && !isAdmin) return next();
+    }
+
     // 画像（R2に保存されているURLを取得）
     const imageRows = await dbQuery(
       `SELECT url, alt FROM product_images WHERE product_id = $1 ORDER BY position ASC`, [product.id]
@@ -4332,8 +4340,8 @@ app.post(
         return res.status(404).json({ ok: false, message: '商品が見つかりません' });
       }
 
-      // 非公開商品はお気に入り登録不可
-      if (productRows[0].status !== 'public') {
+      // 下書き商品はお気に入り登録不可
+      if (productRows[0].status === 'draft') {
         return res.status(403).json({ ok: false, message: 'この商品はお気に入りに登録できません' });
       }
 
@@ -4457,16 +4465,15 @@ const { renderDescHtml, htmlToRaw } = require('./services/desc');
 app.post(
   '/seller/listing-new',
   requireAuth,
-  requireRole(['seller']),
+  requireRole(['seller', 'admin']),
   uploadLimiter,
   upload.array('images', 8),
   [
     body('title').trim().isLength({ min: 1, max: 80 }).withMessage('商品名を入力してください（80文字以内）。'),
-    body('price').isInt({ min: 0 }).withMessage('価格は0以上の整数で入力してください。'),
-    body('stock').isInt({ min: 0 }).withMessage('在庫は0以上の整数で入力してください。'),
+    body('price').optional({ checkFalsy: true }).isInt({ min: 0 }).withMessage('価格は0以上の整数で入力してください。'),
+    body('stock').optional({ checkFalsy: true }).isInt({ min: 0 }).withMessage('在庫は0以上の整数で入力してください。'),
     body('categoryId').isInt().withMessage('カテゴリを選択してください。'),
-    body('unit').trim().isLength({ min: 1, max: 16 }).withMessage('単位を入力してください。'),
-    body('shipMethod').isIn(['normal','cool']).withMessage('配送方法を選択してください。'),
+    body('unit').optional({ checkFalsy: true }).trim().isLength({ min: 1, max: 16 }).withMessage('単位を入力してください。'),
     body('shipDays').isIn(['1-2','2-3','4-7']).withMessage('発送目安を選択してください。'),
     body('status').isIn(['draft','private','public']).withMessage('ステータスを選択してください。'),
     body('description').trim().optional(),
@@ -4484,7 +4491,6 @@ app.post(
       stock: req.body.stock || '',
       categoryId: req.body.categoryId || '',
       unit: req.body.unit || '',
-      shipMethod: req.body.shipMethod || '',
       shipDays: req.body.shipDays || '',
       status: req.body.status || 'public',
       isOrganic: !!req.body.isOrganic,
@@ -4552,7 +4558,7 @@ app.post(
       // eslint-disable-next-line no-constant-condition
       while (true) {
         const dup = await client.query(`SELECT 1 FROM products WHERE slug = $1 LIMIT 1`, [slug]);
-        if (!dup.length) break;
+        if (!dup.rows.length) break;
         n += 1; slug = `${baseSlug}-${n}`;
       }
 
@@ -4573,12 +4579,12 @@ app.post(
         req.body.title,
         descriptionHtml,
         descriptionRaw,
-        Number(req.body.price),
-        req.body.unit,
-        Number(req.body.stock),
+        Number(req.body.price || 0),
+        req.body.unit || '',
+        Number(req.body.stock || 0),
         !!req.body.isOrganic,
         !!req.body.isSeasonal,
-        req.body.shipMethod,
+        'normal',
         req.body.shipDays,
         req.body.status,
         isPublic ? new Date() : null
@@ -4852,11 +4858,10 @@ app.post(
   upload.fields([{ name: 'images', maxCount: 8 }]),
   [
     body('title').trim().isLength({ min: 1, max: 80 }).withMessage('商品名を入力してください（80文字以内）。'),
-    body('price').isInt({ min: 0 }).withMessage('価格は0以上の整数で入力してください。'),
-    body('stock').isInt({ min: 0 }).withMessage('在庫は0以上の整数で入力してください。'),
+    body('price').optional({ checkFalsy: true }).isInt({ min: 0 }).withMessage('価格は0以上の整数で入力してください。'),
+    body('stock').optional({ checkFalsy: true }).isInt({ min: 0 }).withMessage('在庫は0以上の整数で入力してください。'),
     body('categoryId').isInt().withMessage('カテゴリを選択してください。'),
-    body('unit').trim().isLength({ min: 1, max: 16 }).withMessage('単位を入力してください。'),
-    body('shipMethod').isIn(['normal','cool']).withMessage('配送方法を選択してください。'),
+    body('unit').optional({ checkFalsy: true }).trim().isLength({ min: 1, max: 16 }).withMessage('単位を入力してください。'),
     body('shipDays').isIn(['1-2','2-3','4-7']).withMessage('発送目安を選択してください。'),
     body('status').isIn(['draft','private','public']).withMessage('ステータスを選択してください。'),
     body('description').trim().optional(),
@@ -4872,18 +4877,13 @@ app.post(
     // バリデーション
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      // 再描画用データ
-      let productRows;
+      let productRowsArr;
       if (currentRoles.includes('admin')) {
-        productRows = await Promise.all([
-          dbQuery(`SELECT * FROM products WHERE id = $1::uuid LIMIT 1`, [id]),
-        ]);
+        productRowsArr = await dbQuery(`SELECT * FROM products WHERE id = $1::uuid LIMIT 1`, [id]);
       } else {
-        productRows = await Promise.all([
-          dbQuery(`SELECT * FROM products WHERE id = $1::uuid AND seller_id = $2::uuid LIMIT 1`, [id, sellerId]),
-        ]);
+        productRowsArr = await dbQuery(`SELECT * FROM products WHERE id = $1::uuid AND seller_id = $2::uuid LIMIT 1`, [id, sellerId]);
       }
-      const [categories, images, specs, tags] = await Promise.all([
+      const [categories, images, specs, tags, variants] = await Promise.all([
         dbQuery(`SELECT id, name FROM categories ORDER BY sort_order NULLS LAST, name ASC`),
         dbQuery(`SELECT id, url, alt, position FROM product_images WHERE product_id = $1::uuid ORDER BY position ASC`, [id]),
         dbQuery(`SELECT id, label, value, position FROM product_specs  WHERE product_id = $1::uuid ORDER BY position ASC`, [id]),
@@ -4895,25 +4895,25 @@ app.post(
            ORDER BY t.name ASC`,
           [id]
         ),
+        dbQuery(`SELECT id, label, price, unit, stock, position FROM product_variants WHERE product_id = $1::uuid AND active = true ORDER BY position ASC`, [id]),
       ]);
-      const product = productRows[0];
+      const product = productRowsArr[0];
 
       const fieldErrors = {};
       for (const e of errors.array()) if (!fieldErrors[e.path]) fieldErrors[e.path] = e.msg;
       return res.status(422).render('seller/listing-edit', {
         title: '出品を編集',
-        product, categories, images, specs, tags,
+        product, categories, images, specs, tags, variants,
         fieldErrors
       });
     }
 
     // 入力取り出し
     const title       = req.body.title;
-    const price       = Number(req.body.price);
-    const stock       = Number(req.body.stock);
+    const price       = Number(req.body.price || 0);
+    const stock       = Number(req.body.stock || 0);
     const categoryId  = Number(req.body.categoryId);
-    const unit        = req.body.unit;
-    const shipMethod  = req.body.shipMethod;
+    const unit        = req.body.unit || '';
     const shipDays    = req.body.shipDays;
     const status      = req.body.status;
     const isOrganic   = !!req.body.isOrganic;
@@ -5013,12 +5013,15 @@ app.post(
             stock = $7,
             is_organic = $8,
             is_seasonal = $9,
-            ship_method = $10,
-            ship_days = $11,
-            status = $12,
+            ship_days = $10,
+            status = $11,
+            published_at = CASE
+              WHEN $11 = 'public' AND published_at IS NULL THEN now()
+              ELSE published_at
+            END,
             updated_at = now()
-         WHERE id = $13::uuid`,
-        [categoryId, title, descriptionHtml, descriptionRaw, price, unit, stock, isOrganic, isSeasonal, shipMethod, shipDays, status, id]
+         WHERE id = $12::uuid`,
+        [categoryId, title, descriptionHtml, descriptionRaw, price, unit, stock, isOrganic, isSeasonal, shipDays, status, id]
       );
 
       /* ===== 画像 ===== */
@@ -5892,7 +5895,7 @@ app.get('/dashboard/buyer', requireAuth, async (req, res, next) => {
          FROM favorites f
          JOIN products p ON p.id = f.product_id
          WHERE f.user_id = $1::uuid
-           AND p.status = 'public'
+           AND p.status IN ('public', 'private')
          ORDER BY f.created_at DESC
          LIMIT 12`,
         [uid]
@@ -7241,7 +7244,7 @@ app.post('/cart/add', upload.none(), async (req, res, next) => {
         p.id, p.title AS name, p.price, p.unit, p.stock, p.has_variants,
         (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY position ASC LIMIT 1) AS image
       FROM products p
-      WHERE p.id = $1 AND p.status = 'public'
+      WHERE p.id = $1 AND p.status IN ('public', 'private')
       LIMIT 1
     `, [productId]);
 
@@ -7619,8 +7622,14 @@ app.post('/seller/listings/bulk',
         } else if (['publish','privatize','draft'].includes(action)) {
           const next = action === 'publish' ? 'public' : action === 'privatize' ? 'private' : 'draft';
           await client.query(
-            `UPDATE products SET status = $1, updated_at = now()
-               WHERE seller_id = $2::uuid AND id = ANY($3::uuid[])`,
+            `UPDATE products SET
+               status = $1,
+               published_at = CASE
+                 WHEN $1 = 'public' AND published_at IS NULL THEN now()
+                 ELSE published_at
+               END,
+               updated_at = now()
+             WHERE seller_id = $2::uuid AND id = ANY($3::uuid[])`,
             [next, sellerId, ids]
           );
         }
@@ -7655,9 +7664,15 @@ app.post('/seller/listings/:id/status',
         return res.status(400).json({ ok:false, message:'パラメータが不正です。' });
       }
       const rows = await dbQuery(
-        `UPDATE products SET status = $1, updated_at = now()
-           WHERE id = $2::uuid AND seller_id = $3::uuid
-           RETURNING id`,
+        `UPDATE products SET
+           status = $1,
+           published_at = CASE
+             WHEN $1 = 'public' AND published_at IS NULL THEN now()
+             ELSE published_at
+           END,
+           updated_at = now()
+         WHERE id = $2::uuid AND seller_id = $3::uuid
+         RETURNING id`,
         [next, id, sellerId]
       );
       if (!rows.length) return res.status(404).json({ ok:false, message:'見つかりません。' });
@@ -9036,7 +9051,7 @@ app.post('/checkout/confirm', async (req, res, next) => {
       `SELECT p.id, p.seller_id, p.title, p.price, p.unit, p.stock, p.slug, p.has_variants
          FROM products p
         WHERE p.id IN (${ph})
-          AND p.status = 'public'`,
+          AND p.status IN ('public', 'private')`,
       ids
     );
 
@@ -9901,8 +9916,8 @@ app.post('/orders/:no/reorder', requireAuth, async (req, res, next) => {
         ? `${item.title} (${item.variant_label})`
         : (item.title || '商品');
 
-      // 非公開・削除済み商品はスキップ
-      if (!item.product_status || item.product_status !== 'public') {
+      // 下書き・削除済み商品はスキップ
+      if (!item.product_status || item.product_status === 'draft') {
         warnings.push(`${label} は現在取り扱いがありません。`);
         continue;
       }
@@ -13794,7 +13809,7 @@ app.get('/my/favorites', requireAuth, async (req, res, next) => {
     const perPage = 20;
     const offset = (page - 1) * perPage;
 
-    // お気に入り商品を取得（非公開商品は除外）
+    // お気に入り商品を取得（下書き商品は除外）
     const favorites = await dbQuery(
       `SELECT 
          f.id AS favorite_id,
@@ -13810,7 +13825,7 @@ app.get('/my/favorites', requireAuth, async (req, res, next) => {
        FROM favorites f
        JOIN products p ON p.id = f.product_id
        WHERE f.user_id = $1::uuid
-         AND p.status = 'public'
+         AND p.status IN ('public', 'private')
        ORDER BY f.created_at DESC
        LIMIT $2 OFFSET $3`,
       [userId, perPage, offset]
@@ -13822,7 +13837,7 @@ app.get('/my/favorites', requireAuth, async (req, res, next) => {
        FROM favorites f
        JOIN products p ON p.id = f.product_id
        WHERE f.user_id = $1::uuid
-         AND p.status = 'public'`,
+         AND p.status IN ('public', 'private')`,
       [userId]
     );
     const total = countRows[0]?.cnt || 0;

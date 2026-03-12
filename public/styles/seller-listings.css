@@ -122,13 +122,23 @@
   border: 1px solid var(--main);
   background: var(--main);
   color: #fff;
-  cursor: pointer
+  cursor: pointer;
+  transition: background .15s, border-color .15s
+}
+.btn:hover {
+  background: #3d5a4b;
+  border-color: #3d5a4b
 }
 
 .btn--ghost {
   background: #fff;
   color: var(--main);
   border-color: var(--border)
+}
+.btn--ghost:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: var(--main)
 }
 
 .btn:disabled {
@@ -352,8 +362,14 @@
 }
 
 .btn.danger {
-  background: var(--bg);
-  border-color: #b91c1c
+  background: #fff;
+  border-color: #b91c1c;
+  color: #b91c1c
+}
+.btn.danger:hover {
+  background: #fef2f2;
+  border-color: #ef4444;
+  color: #991b1b
 }
 
 /* 空表示 */

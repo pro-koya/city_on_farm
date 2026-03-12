@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>セッツマルシェ — ご紹介資料</title>
+<style>
+/* ============================================================
+   BASE / RESET
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;scroll-behavior:smooth}
+
+/* ============================================================
+   DESIGN TOKENS  (セッツマルシェ brand)
+   ============================================================ */
+:root{
+  --main:#4C6B5C;
+  --main-dark:#355D4A;
+  --accent:#A3C9A8;
+  --highlight:#D6EADF;
+  --soft:#F2F7F4;
+  --bg:#F9F9F6;
+  --white:#ffffff;
+  --text:#2B2B2B;
+  --muted:#6b7280;
+  --border:#e5e7eb;
+  --slide-w:960px;
+  --slide-h:540px;
+  --font-sans:'Noto Sans JP','Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;
+  --font-display:'Noto Serif JP',serif;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Serif+JP:wght@400;700&display=swap');
+
+body{
+  font-family:var(--font-sans);
+  background:#1a1a1a;
+  color:var(--text);
+  display:flex;flex-direction:column;align-items:center;
+  padding:0;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ============================================================
+   SLIDE CONTAINER
+   ============================================================ */
+.deck{
+  width:var(--slide-w);
+  position:relative;
+}
+.slide{
+  width:var(--slide-w);height:var(--slide-h);
+  background:var(--white);
+  border-radius:6px;
+  overflow:hidden;
+  display:none;
+  flex-direction:column;
+  position:relative;
+  box-shadow:0 8px 40px rgba(0,0,0,.35);
+}
+.slide.active{display:flex}
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+.nav-bar{
+  width:var(--slide-w);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 0;color:#ccc;font-size:13px;
+  user-select:none;
+}
+.nav-bar button{
+  background:var(--main);color:var(--white);border:none;
+  padding:8px 20px;border-radius:4px;cursor:pointer;font-size:13px;
+  font-family:var(--font-sans);
+  transition:opacity .2s;
+}
+.nav-bar button:hover{opacity:.85}
+.nav-bar button:disabled{opacity:.3;cursor:default}
+
+/* ============================================================
+   COMMON SLIDE LAYOUTS
+   ============================================================ */
+
+/* -- Title Slide -- */
+.slide--title{
+  background:linear-gradient(135deg,var(--main) 0%,var(--main-dark) 100%);
+  color:var(--white);
+  justify-content:center;align-items:center;text-align:center;
+  padding:60px;
+}
+.slide--title .eyebrow{
+  font-size:14px;letter-spacing:.15em;opacity:.75;
+  text-transform:uppercase;margin-bottom:12px;
+}
+.slide--title h1{
+  font-family:var(--font-display);font-size:38px;font-weight:700;
+  line-height:1.4;margin-bottom:16px;
+}
+.slide--title .lead{font-size:16px;opacity:.85;line-height:1.7;max-width:600px}
+.slide--title .meta{font-size:13px;opacity:.6;margin-top:32px}
+
+/* -- Section Divider -- */
+.slide--section{
+  background:var(--soft);
+  justify-content:center;align-items:center;text-align:center;
+  padding:60px;
+}
+.slide--section .part-label{
+  display:inline-block;
+  background:var(--main);color:var(--white);
+  font-size:12px;letter-spacing:.12em;
+  padding:6px 18px;border-radius:20px;margin-bottom:20px;
+}
+.slide--section h2{
+  font-family:var(--font-display);font-size:32px;color:var(--main-dark);
+  line-height:1.4;
+}
+.slide--section .sub{font-size:15px;color:var(--muted);margin-top:12px}
+
+/* -- Content Slide (standard) -- */
+.slide--content{padding:48px 56px 40px}
+.slide--content .slide-header{margin-bottom:28px}
+.slide--content .slide-header .step-num{
+  display:inline-block;background:var(--main);color:var(--white);
+  font-size:11px;font-weight:700;padding:4px 12px;border-radius:12px;
+  margin-bottom:8px;letter-spacing:.05em;
+}
+.slide--content .slide-header h2{
+  font-size:26px;font-weight:700;color:var(--main-dark);line-height:1.3;
+}
+.slide--content .slide-header .desc{
+  font-size:14px;color:var(--muted);margin-top:6px;line-height:1.6;
+}
+
+/* -- Two Column -- */
+.two-col{display:flex;gap:32px;flex:1;min-height:0}
+.two-col .col{flex:1;display:flex;flex-direction:column}
+
+/* -- Three Column -- */
+.three-col{display:flex;gap:24px;flex:1;min-height:0}
+.three-col .col{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center}
+
+/* -- Screenshot Placeholder -- */
+.screenshot{
+  flex:1;min-height:0;
+  background:var(--soft);
+  border:2px dashed var(--accent);
+  border-radius:8px;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  color:var(--muted);font-size:13px;
+  position:relative;overflow:hidden;
+}
+.screenshot img{
+  width:100%;height:100%;object-fit:contain;
+  border-radius:6px;
+}
+.screenshot .placeholder-icon{font-size:36px;margin-bottom:8px;opacity:.4}
+.screenshot .placeholder-label{
+  font-size:12px;background:var(--highlight);
+  padding:4px 12px;border-radius:10px;margin-top:8px;
+  color:var(--main-dark);font-weight:500;
+}
+
+/* -- Pillar Card -- */
+.pillar-card{
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:24px 20px;
+  flex:1;
+  transition:box-shadow .2s;
+}
+.pillar-card:hover{box-shadow:0 4px 16px rgba(76,107,92,.12)}
+.pillar-card .icon{font-size:32px;margin-bottom:12px}
+.pillar-card h3{font-size:16px;font-weight:700;color:var(--main-dark);margin-bottom:8px}
+.pillar-card p{font-size:13px;color:var(--muted);line-height:1.6}
+
+/* -- Flow Step (horizontal) -- */
+.flow-row{display:flex;align-items:center;gap:8px;justify-content:center}
+.flow-step{
+  display:flex;flex-direction:column;align-items:center;
+  background:var(--white);border:1px solid var(--border);
+  border-radius:12px;padding:16px 14px;width:120px;
+  text-align:center;
+}
+.flow-step .f-icon{font-size:28px;margin-bottom:6px}
+.flow-step .f-label{font-size:12px;font-weight:500;color:var(--main-dark)}
+.flow-arrow{font-size:20px;color:var(--accent);font-weight:700}
+
+/* -- Big number -- */
+.big-num{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:44px;height:44px;border-radius:50%;
+  background:var(--main);color:var(--white);
+  font-size:18px;font-weight:700;
+  margin-bottom:12px;flex-shrink:0;
+}
+
+/* -- Tag -- */
+.tag{
+  display:inline-block;
+  background:var(--highlight);color:var(--main-dark);
+  font-size:11px;font-weight:500;padding:3px 10px;
+  border-radius:8px;margin:2px 2px;
+}
+
+/* -- List minimal -- */
+.list-mini{list-style:none;padding:0}
+.list-mini li{
+  font-size:13px;color:var(--text);
+  padding:6px 0;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;
+}
+.list-mini li:last-child{border-bottom:none}
+.list-mini .li-icon{color:var(--main);font-size:16px;flex-shrink:0}
+
+/* -- Comparison cards -- */
+.compare{display:flex;gap:20px;flex:1;min-height:0}
+.compare-card{
+  flex:1;background:var(--soft);border-radius:12px;
+  padding:24px;display:flex;flex-direction:column;
+}
+.compare-card h3{
+  font-size:16px;font-weight:700;color:var(--main-dark);
+  margin-bottom:6px;display:flex;align-items:center;gap:8px;
+}
+.compare-card p{font-size:13px;color:var(--muted);line-height:1.6}
+.compare-card .badge{
+  display:inline-block;font-size:11px;font-weight:700;
+  background:var(--main);color:var(--white);
+  padding:3px 10px;border-radius:8px;margin-top:auto;
+  align-self:flex-start;margin-top:12px;
+}
+
+/* -- Concept visual -- */
+.concept-visual{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  position:relative;
+}
+.concept-circle{
+  width:200px;height:200px;border-radius:50%;
+  border:3px solid var(--accent);
+  display:flex;align-items:center;justify-content:center;
+  position:relative;
+}
+.concept-circle::before{
+  content:'';position:absolute;inset:-16px;
+  border:2px dashed var(--highlight);border-radius:50%;
+}
+.concept-circle-inner{
+  text-align:center;
+}
+.concept-circle-inner .c-icon{font-size:36px;margin-bottom:6px}
+.concept-circle-inner .c-label{font-size:14px;font-weight:700;color:var(--main-dark)}
+.orbit{position:absolute}
+.orbit-item{
+  background:var(--white);border:1px solid var(--border);
+  border-radius:10px;padding:10px 14px;
+  font-size:12px;font-weight:500;color:var(--main-dark);
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+  white-space:nowrap;
+  display:flex;align-items:center;gap:6px;
+}
+.orbit-item .o-icon{font-size:18px}
+
+/* -- Closing slide -- */
+.slide--closing{
+  background:linear-gradient(135deg,var(--main) 0%,var(--main-dark) 100%);
+  color:var(--white);
+  justify-content:center;align-items:center;text-align:center;
+  padding:60px;
+}
+.slide--closing h2{
+  font-family:var(--font-display);font-size:30px;line-height:1.5;
+  margin-bottom:20px;
+}
+.slide--closing p{font-size:15px;opacity:.8;line-height:1.7}
+.slide--closing .contact-info{
+  margin-top:32px;padding:20px 32px;
+  background:rgba(255,255,255,.12);border-radius:12px;
+  font-size:14px;line-height:1.8;
+}
+
+/* -- Bottom stripe decoration -- */
+.stripe-bottom{
+  position:absolute;bottom:0;left:0;right:0;height:4px;
+  background:linear-gradient(90deg,var(--main),var(--accent),var(--highlight));
+}
+
+/* -- Slide number -- */
+.slide-num{
+  position:absolute;bottom:12px;right:20px;
+  font-size:11px;color:var(--muted);opacity:.6;
+}
+
+/* -- Highlight box -- */
+.highlight-box{
+  background:var(--highlight);border-radius:10px;
+  padding:16px 20px;margin-top:12px;
+  font-size:13px;color:var(--main-dark);line-height:1.6;
+}
+.highlight-box strong{color:var(--main)}
+
+/* -- Status table -- */
+.status-table{
+  width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;
+}
+.status-table th,.status-table td{
+  padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);
+}
+.status-table th{
+  background:var(--soft);color:var(--main-dark);font-weight:600;
+  font-size:11px;letter-spacing:.04em;
+}
+.status-table td{color:var(--text)}
+
+/* -- Agenda list -- */
+.agenda{list-style:none;padding:0;max-width:520px;margin:0 auto}
+.agenda li{
+  display:flex;align-items:center;gap:16px;
+  padding:14px 0;border-bottom:1px solid var(--border);
+  font-size:15px;color:var(--text);
+}
+.agenda li:last-child{border-bottom:none}
+.agenda .a-num{
+  width:32px;height:32px;border-radius:50%;
+  background:var(--main);color:var(--white);
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;flex-shrink:0;
+}
+.agenda .a-label{font-weight:500}
+.agenda .a-sub{font-size:12px;color:var(--muted);margin-top:2px}
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+<!-- ============================================================
+     SLIDE 1 — タイトル
+     ============================================================ -->
+<div class="slide slide--title active" id="s1">
+  <p class="eyebrow">2026.03.24 ご紹介資料</p>
+  <h1>セッツマルシェ</h1>
+  <p class="lead">まちと畑を、ひとつの食卓につなぐ。</p>
+  <p class="meta">渡辺ファーム ／ 摂津市商工会</p>
+</div>
+
+<!-- ============================================================
+     SLIDE 2 — アジェンダ
+     ============================================================ -->
+<div class="slide slide--content" id="s2">
+  <div class="slide-header" style="text-align:center;margin-bottom:32px">
+    <h2>本日の内容</h2>
+  </div>
+  <ol class="agenda">
+    <li>
+      <span class="a-num">1</span>
+      <div>
+        <div class="a-label">セッツマルシェとは</div>
+        <div class="a-sub">背景・コンセプト・目指す姿</div>
+      </div>
+    </li>
+    <li>
+      <span class="a-num">2</span>
+      <div>
+        <div class="a-label">3つの柱</div>
+        <div class="a-sub">小さな声を拾う ／ まちの食を支える ／ やさしい流通</div>
+      </div>
+    </li>
+    <li>
+      <span class="a-num">3</span>
+      <div>
+        <div class="a-label">仕組みと野菜の出どころ</div>
+        <div class="a-sub">集まる → 仕分ける → 届ける</div>
+      </div>
+    </li>
+    <li>
+      <span class="a-num">4</span>
+      <div>
+        <div class="a-label">購入フローのご紹介</div>
+        <div class="a-sub">購入手順・決済・配送・畑受け取り</div>
+      </div>
+    </li>
+    <li>
+      <span class="a-num">5</span>
+      <div>
+        <div class="a-label">便利な機能と今後について</div>
+        <div class="a-sub">リピート注文・テンプレート・掛売</div>
+      </div>
+    </li>
+  </ol>
+  <div class="stripe-bottom"></div>
+  <span class="slide-num">2 / 21</span>
+</div>
+
+<!-- ============================================================
+     SLIDE 3 — 背景・課題
+     ============================================================ -->
+<div class="slide slide--content" id="s3">
+  <div class="slide-header" style="text-align:center">
+    <h2>地域の「もったいない」を、<br>「おいしい」に変えたい</h2>
+  </div>
+
+  <div class="three-col" style="margin-top:24px">
+    <div class="col">
+      <div class="big-num" style="background:#E8927C">!</div>
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:8px;color:var(--main-dark)">小規模農家の課題</h3>
+      <p style="font-size:13px;color:var(--muted);line-height:1.6">採れすぎた野菜、小さな畑の収穫が販路に乗らず廃棄されてしまう</p>
+    </div>
+    <div class="col">
+      <div class="big-num" style="background:#E8927C">!</div>
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:8px;color:var(--main-dark)">飲食店の課題</h3>
+      <p style="font-size:13px;color:var(--muted);line-height:1.6">新鮮な地場野菜を安定的に仕入れるルートが限られている</p>
+    </div>
+    <div class="col">
+      <div class="big-num" style="background:#E8927C">!</div>
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:8px;color:var(--main-dark)">地域の課題</h3>
+      <p style="font-size:13px;color:var(--muted);line-height:1.6">作る人・届ける人・味わう人のつながりが見えにくくなっている</p>
+    </div>
+  </div>
+
+  <div class="highlight-box" style="text-align:center;margin-top:auto">
+    <strong>セッツマルシェ</strong>は、これらの課題をやさしく解決する<strong>地産地消の仕組み</strong>です。
+  </div>
+  <div class="stripe-bottom"></div>
+  <span class="slide-num">3 / 21</span>
+</div>
+
+<!-- ============================================================
+     SLIDE 4 — セッツマルシェとは
+     ============================================================ -->
+<div class="slide slide--content" id="s4">
+  <div class="slide-header" style="text-align:center">
+    <h2>セッツマルシェとは</h2>
+    <p class="desc" style="text-align:center">市民農園・小規模農家の野菜を、地域の飲食店へ届けるオンラインマルシェ</p>
+  </div>
+
+  <div class="concept-visual">
+    <div style="position:absolute;top:10px;left:60px" class="orbit-item"><span class="o-icon">🌱</span>市民農園</div>
+    <div style="position:absolute;top:10px;right:60px" class="orbit-item"><span class="o-icon">🧑‍🌾</span>小規模農家</div>
+    <div style="position:absolute;bottom:20px;left:40px" class="orbit-item"><span class="o-icon">🍽️</span>飲食店</div>
+    <div style="position:absolute;bottom:20px;right:40px" class="orbit-item"><span class="o-icon">🏠</span>ご家庭</div>
+
+    <div class="concept-circle">
+      <div class="concept-circle-inner">
+        <div class="c-icon">🥬</div>
+        <div class="c-label">セッツマルシェ</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">つなぐ・届ける</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stripe-bottom"></div>
+  <span class="slide-num">4 / 21</span>
+</div>
+
+<!-- ============================================================
+     SLIDE 5 — 3つの柱
+     ============================================================ -->
+<div class="slide slide--content" id="s5">
+  <div class="slide-header" style="text-align:center">
+    <h2>わたしたちの 3つの柱</h2>
+  </div>
+
+  <div class="three-col" style="gap:20px;margin-top:8px">
+    <div class="pillar-card">
+      <div class="icon">🌿</div>
+      <h3>小さな声を拾う</h3>
+      <p>家庭菜園や小規模農家の収穫を活かし、持続可能な販売機会に変えます。</p>
+    </div>
+    <div class="pillar-card">
+      <div class="icon">🍳</div>
+      <h3>まちの食を支える</h3>
+      <p>地域の飲食店や家庭に、新鮮で確かな食材を安定して届けます。</p>
+    </div>
+    <div class="pillar-card">
+      <div class="icon">🚚</div>
+      <h3>やさしい流通</h3>
+      <p>ムリ・ムダを生まない集荷と配送。人にも環境にもやさしい循環を。</p>
+    </div>
+  </div>
+
+  <div class="stripe-bottom"></div>
+  <span class="slide-num">5 / 21</span>
+</div>
+
+<!-- ============================================================
+     SLIDE 6 — 仕組み
+     ============================================================ -->
+<div class="slide slide--content" id="s6">
+  <div class="slide-header" style="text-align:center">
+    <h2>わたしたちの仕組み</h2>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:center;flex:1">
+    <div class="flow-row">
+      <div class="flow-step">
+        <div class="f-icon">🌾</div>
+        <div class="f-label">1. 集まる</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">少量でも集荷</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="f-icon">📦</div>
+        <div class="f-label">2. 仕分ける</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">用途に最適化</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="f-icon">🚛</div>
+        <div class="f-label">3. 届ける</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">地域内で迅速に</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="highlight-box" style="text-align:center">
+    地域内での配送に限定し、<strong>無理なく迅速に</strong>、安心なお届けを実現しています。
+  </div>
+  <div class="stripe-bottom"></div>
+  <span class="slide-num">6 / 21</span>
+</div>
+
+<!-- ============================================================
+     SLIDE 7 — 野菜の出どころ
+     ============================================================ -->
+<div class="slide slide--content" id="s7">
+  <div class="slide-header" style="text-align:center">
+    <h2>取り扱う野菜の出どころ</h2>
+  </div>
+
+  <div class="three-col" style="gap:20px;margin-top:8px">
+    <div class="pillar-card" style="border-left:4px solid var(--main)">
+      <div class="icon">🏡</div>
+      <h3>渡辺ファーム</h3>
+      <p>運営元の農場。安心・安全な栽培で、主力となる野菜を安定供給します。</p>
+    </div>
+    <div class="pillar-card" style="border-left:4px solid var(--accent)">
+      <div class="icon">🧑‍🌾</div>
+      <h3>小規模農家さん</h3>
+      <p>地域で丁寧に野菜を育てる農家さん。販路を共有し、収穫を無駄にしません。</p>
+    </div>
+    <div class="pillar-card" style="border-left:4px solid var(--highlight)">
+      <div class="icon">🌱</div>
+      <h3>市民農園の方々</h3>
+      <p>家庭菜園の余剰も、飲食店の一皿に。小さな生産にも価値を見出します。</p>
+    </div>
+  </div>
+
+  <div class="stripe-bottom"></div>
+  <span class="slide-num">7 / 21</span>
+</div>
+
+<!-- ============================================================
+     SLIDE 8 — 目指す姿
+     ============================================================ -->
+<div class="slide slide--section" id="s8">
+  <div style="max-width:600px">
+    <h2 style="font-size:28px;line-height:1.6">
+      地域でつくり、<br>
+      地域で味わい、<br>
+      地域でつながる。
+    </h2>
+    <p class="sub" style="margin-top:20px;line-height:1.8">
+      この循環の輪が、まちの豊かさを育んでいく。<br>
+      それが、私たち「セッツマルシェ」の願いです。
+    </p>
+  </div>
+  <div class="stripe-bottom"></div>
+  <span class="slide-num">8 / 21</span>
+</div>
+
+<!-- ============================================================
+     SLIDE 9 — Part 2 セクション表紙
+     ============================================================ -->
+<div class="slide slide--section" id="s9">
+  <span class="part-label">PART 2</span>
+  <h2>ご利用方法のご紹介</h2>
+  <p class="sub">飲食店さま向け — 購入フローと便利な機能</p>
+  <div class="stripe-bottom"></div>
+  <span class="slide-num">9 / 21</span>
+</div>
+
+<!-- ============================================================
+     SLIDE 10 — 購入フロー全体像
+     ============================================================ -->
+<div class="slide slide--content" id="s10">
+  <div class="slide-header" style="text-align:center">
+    <h2>購入の流れ — 全体像</h2>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:center;flex:1">
+    <div class="flow-row">
+      <div class="flow-step" style="border-color:var(--main)">
+        <div class="f-icon">🔍</div>
+        <div class="f-label">商品を探す</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="border-color:var(--main)">
+        <div class="f-icon">🛒</div>
+        <div class="f-label">カートに入れる</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="border-color:var(--main)">
+        <div class="f-icon">📝</div>
+        <div class="f-label">購入手続き</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="border-color:var(--main)">
+        <div class="f-icon">💳</div>
+        <div class="f-label">決済</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="border-color:var(--main)">
+        <div class="f-icon">✅</div>
+        <div class="f-label">注文確定</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:12px;justify-content:center;margin-top:auto;margin-bottom:8px">
+    <span class="tag">クレジットカード</span>
+    <span class="tag">代金引換</span>
+    <span class="tag">掛売（請求書払い）</span>
+    <span class="tag">配送</span>
+    <span class="tag">畑で受け取り</span>
+  </div>
+  <div class="stripe-bottom"></div>
+  <span class="slide-num">10 / 21</span>
+</div>
+
+<!-- ============================================================
+     SLIDE 11 — STEP 1: 商品を探す
+     ============================================================ -->
+<div class="slide slide--content" id="s11">
+  <div class="slide-header">
+    <span class="step-num">STEP 1</span>
+    <h2>商品を探す</h2>
+    <p class="desc">トップページや商品一覧から、旬の野菜を探せます</p>
+  </div>
+  <div class="two-col">
+    <div class="col screenshot">
+      <!-- ★ ここにスクリーンショットを挿入 ★ -->
+      <div class="placeholder-icon">📸</div>
+      <div>商品一覧ページ</div>
+      <span class="placeholder-label">screenshots/products-list.png</span>
+    </div>
+    <div class="col screenshot">
+      <!-- ★ ここにスクリーンショットを挿入 ★ -->
+      <div class="placeholder-icon">📸</div>
+      <div>商品詳細ページ</div>
+      <span class="placeholder-label">screenshots/product-detail.png</span>
+    </div>
+  </div>
+  <div class="stripe-bottom"></div>
+  <span class="slide-num">11 / 21</span>
+</div>
+
+<!-- ============================================================
+     SLIDE 12 — STEP 2: カートに入れる
+     ============================================================ -->
+<div class="slide slide--content" id="s12">
+  <div class="slide-header">
+    <span class="step-num">STEP 2</span>
+    <h2>カートに入れる</h2>
+    <p class="desc">数量を選んで「カートに追加」。複数の商品をまとめて購入できます</p>
+  </div>
+  <div class="two-col">
+    <div class="col">
+      <ul class="list-mini" style="margin-top:8px">
+        <li><span class="li-icon">●</span>数量を選んで「カートに追加」</li>
+        <li><span class="li-icon">●</span>カートアイコンで中身を確認</li>
+        <li><span class="li-icon">●</span>数量の変更・削除もカート内で</li>
+        <li><span class="li-icon">●</span>規格（バリエーション）がある場合は選択</li>
+      </ul>
+      <div class="highlight-box" style="margin-top:auto">
+        複数の出品者の商品もまとめてカートに入れられます
+      </div>
+    </div>
+    <div class="col screenshot">
+      <!-- ★ ここにスクリーンショットを挿入 ★ -->
+      <div class="placeholder-icon">📸</div>
+      <div>カート画面</div>
+      <span class="placeholder-label">screenshots/cart.png</span>
+    </div>
+  </div>
+  <div class="stripe-bottom"></div>
+  <span class="slide-num">12 / 21</span>
+</div>
+
+<!-- ============================================================
+     SLIDE 13 — STEP 3: 購入手続き
+     ============================================================ -->
+<div class="slide slide--content" id="s13">
+  <div class="slide-header">
+    <span class="step-num">STEP 3</span>
+    <h2>購入手続き</h2>
+    <p class="desc">受け取り方法・配送先・お届け日時・支払い方法を選択</p>
+  </div>
+  <div class="two-col">
+    <div class="col screenshot">
+      <!-- ★ ここにスクリーンショットを挿入 ★ -->
+      <div class="placeholder-icon">📸</div>
+      <div>チェックアウト画面</div>
+      <span class="placeholder-label">screenshots/checkout.png</span>
+    </div>
+    <div class="col">
+      <ul class="list-mini" style="margin-top:8px">
+        <li><span class="li-icon">❶</span>受け取り方法を選ぶ（配送 or 畑受け取り）</li>
+        <li><span class="li-icon">❷</span>配送先の住所を入力 or 選択</li>
+        <li><span class="li-icon">❸</span>お届け日時を選ぶ</li>
+        <li><span class="li-icon">❹</span>支払い方法を選ぶ</li>
+        <li><span class="li-icon">❺</span>内容を確認して「注文確定」</li>
+      </ul>
+    </div>
+  </div>
+  <div class="stripe-bottom"></div>
+  <span class="slide-num">13 / 21</span>
+</div>
+
+<!-- ============================================================
+     SLIDE 14 — STEP 4: 注文確定
+     ============================================================ -->
+<div class="slide slide--content" id="s14">
+  <div class="slide-header">
+    <span class="step-num">STEP 4</span>
+    <h2>注文確定・確認メール</h2>
+    <p class="desc">注文完了画面が表示され、メールで注文確認が届きます</p>
+  </div>
+  <div class="two-col">
+    <div class="col screenshot">
+      <!-- ★ ここにスクリーンショットを挿入 ★ -->
+      <div class="placeholder-icon">📸</div>
+      <div>注文確認画面</div>
+      <span class="placeholder-label">screenshots/checkout-confirm.png</span>
+    </div>
+    <div class="col screenshot">
+      <!-- ★ ここにスクリーンショットを挿入 ★ -->
+      <div class="placeholder-icon">📸</div>
+      <div>注文完了画面</div>
+      <span class="placeholder-label">screenshots/checkout-complete.png</span>
+    </div>
+  </div>
+  <div class="stripe-bottom"></div>
+  <span class="slide-num">14 / 21</span>
+</div>
+
+<!-- ============================================================
+     SLIDE 15 — 決済方法の選択肢
+     ============================================================ -->
+<div class="slide slide--content" id="s15">
+  <div class="slide-header" style="text-align:center">
+    <h2>選べる決済方法</h2>
+  </div>
+
+  <div class="compare">
+    <div class="compare-card">
+      <h3>💳 クレジットカード</h3>
+      <p>注文時にカード情報を入力。<br>Stripe社の安全な決済基盤を利用。</p>
+      <div class="badge">個人・法人 どちらも利用可</div>
+    </div>
+    <div class="compare-card" style="border:2px solid var(--main)">
+      <h3>📄 掛売（請求書払い）</h3>
+      <p><strong>月末締め・翌月末払い</strong><br>飲食店の実務に合った決済です。</p>
+      <div class="badge" style="background:var(--accent);color:var(--main-dark)">法人のお客様向け</div>
+    </div>
+    <div class="compare-card">
+      <h3>🤝 代金引換</h3>
+      <p>商品のお届け時に<br>配送員へお支払い。</p>
+      <div class="badge">個人・法人 どちらも利用可</div>
+    </div>
+  </div>
+  <div class="stripe-bottom"></div>
+  <span class="slide-num">15 / 21</span>
+</div>
+
+<!-- ============================================================
+     SLIDE 16 — 掛売（請求書払い）詳細
+     ============================================================ -->
+<div class="slide slide--content" id="s16">
+  <div class="slide-header">
+    <span class="step-num">法人向け</span>
+    <h2>掛売（請求書払い）の流れ</h2>
+  </div>
+  <div class="two-col">
+    <div class="col" style="justify-content:center">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="big-num" style="width:36px;height:36px;font-size:14px">1</div>
+          <div style="font-size:14px">支払方法で<strong>「掛売」</strong>を選択して注文</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="big-num" style="width:36px;height:36px;font-size:14px">2</div>
+          <div style="font-size:14px">月中に複数回の注文もOK</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="big-num" style="width:36px;height:36px;font-size:14px">3</div>
+          <div style="font-size:14px"><strong>月末締め</strong>で請求書が発行される</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="big-num" style="width:36px;height:36px;font-size:14px">4</div>
+          <div style="font-size:14px">請求書一覧から<strong>PDF確認</strong>・ダウンロード</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="big-num" style="width:36px;height:36px;font-size:14px">5</div>
+          <div style="font-size:14px"><strong>翌月末まで</strong>に銀行振込でお支払い</div>
+        </div>
+      </div>
+    </div>
+    <div class="col screenshot">
+      <!-- ★ ここにスクリーンショットを挿入 ★ -->
+      <div class="placeholder-icon">📸</div>
+      <div>請求書一覧画面</div>
+      <span class="placeholder-label">screenshots/invoices.png</span>
+    </div>
+  </div>
+  <div class="stripe-bottom"></div>
+  <span class="slide-num">16 / 21</span>
+</div>
+
+<!-- ============================================================
+     SLIDE 17 — 配送状況の確認
+     ============================================================ -->
+<div class="slide slide--content" id="s17">
+  <div class="slide-header">
+    <span class="step-num">注文後</span>
+    <h2>配送状況の確認</h2>
+    <p class="desc">ダッシュボードから注文のステータスをリアルタイムで確認できます</p>
+  </div>
+  <div class="two-col">
+    <div class="col screenshot">
+      <!-- ★ ここにスクリーンショットを挿入 ★ -->
+      <div class="placeholder-icon">📸</div>
+      <div>注文詳細 / 配送ステータス画面</div>
+      <span class="placeholder-label">screenshots/order-status.png</span>
+    </div>
+    <div class="col">
+      <table class="status-table" style="margin-top:8px">
+        <tr><th colspan="2">配送ステータスの見方</th></tr>
+        <tr><td>📦 出荷準備中</td><td>商品を準備しています</td></tr>
+        <tr><td>🚚 お届け中</td><td>配送業者に渡しました</td></tr>
+        <tr><td>✅ 配達完了</td><td>お届けが完了しました</td></tr>
+      </table>
+      <div class="highlight-box" style="margin-top:auto">
+        注文が入ると<strong>メール通知</strong>が届き、ダッシュボードからもいつでも確認できます。
+      </div>
+    </div>
+  </div>
+  <div class="stripe-bottom"></div>
+  <span class="slide-num">17 / 21</span>
+</div>
+
+<!-- ============================================================
+     SLIDE 18 — 畑での受け取り
+     ============================================================ -->
+<div class="slide slide--content" id="s18">
+  <div class="slide-header" style="text-align:center">
+    <span class="step-num">セッツマルシェならでは</span>
+    <h2>畑での受け取り</h2>
+  </div>
+
+  <div class="two-col" style="margin-top:8px">
+    <div class="col" style="justify-content:center">
+      <div style="text-align:center;margin-bottom:20px">
+        <span style="font-size:64px">🌾</span>
+      </div>
+      <div class="highlight-box" style="text-align:center;background:var(--soft)">
+        出品者の<strong>畑まで直接</strong>受け取りに行くことで、<br>
+        <strong>送料なし</strong>で新鮮な野菜を手に入れられます。
+      </div>
+    </div>
+    <div class="col">
+      <div style="display:flex;flex-direction:column;gap:14px;margin-top:8px">
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          <div class="big-num" style="width:32px;height:32px;font-size:13px;flex-shrink:0">1</div>
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--main-dark)">チェックアウトで「畑で受け取り」を選択</div>
+            <div style="font-size:12px;color:var(--muted)">配送先の入力は不要</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          <div class="big-num" style="width:32px;height:32px;font-size:13px;flex-shrink:0">2</div>
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--main-dark)">出品者から準備完了の連絡</div>
+            <div style="font-size:12px;color:var(--muted)">受け取り日時を調整</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          <div class="big-num" style="width:32px;height:32px;font-size:13px;flex-shrink:0">3</div>
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--main-dark)">畑で受け取り</div>
+            <div style="font-size:12px;color:var(--muted)">生産者と直接会える体験</div>
+          </div>
+        </div>
+      </div>
+      <div class="highlight-box" style="margin-top:auto">
+        生産者の顔が見える<strong>安心感</strong>と、<br>配送コストゼロの<strong>お得さ</strong>。
+      </div>
+    </div>
+  </div>
+  <div class="stripe-bottom"></div>
+  <span class="slide-num">18 / 21</span>
+</div>
+
+<!-- ============================================================
+     SLIDE 19 — 便利機能（リピート注文・テンプレート）
+     ============================================================ -->
+<div class="slide slide--content" id="s19">
+  <div class="slide-header" style="text-align:center">
+    <h2>便利な機能</h2>
+    <p class="desc">毎日の仕入れをもっとラクに</p>
+  </div>
+
+  <div class="compare" style="margin-top:4px">
+    <div class="compare-card">
+      <h3>🔄 リピート注文</h3>
+      <p>過去の注文から<strong>「この注文をもう一度」</strong>ボタンひとつで、同じ商品をカートに追加。毎回探す手間がありません。</p>
+      <div class="badge" style="background:var(--highlight);color:var(--main-dark)">注文履歴から1クリック</div>
+    </div>
+    <div class="compare-card">
+      <h3>📋 注文テンプレート</h3>
+      <p>よく注文する商品の組み合わせを<strong>テンプレート保存</strong>。「いつもの」をワンクリックで注文できます。</p>
+      <div class="badge" style="background:var(--highlight);color:var(--main-dark)">カートから保存も可能</div>
+    </div>
+  </div>
+
+  <div class="two-col" style="flex:0 0 auto;height:130px;margin-top:12px;gap:20px">
+    <div class="screenshot" style="flex:1">
+      <!-- ★ ここにスクリーンショットを挿入 ★ -->
+      <div class="placeholder-icon" style="font-size:24px">📸</div>
+      <div style="font-size:12px">リピート注文ボタン</div>
+      <span class="placeholder-label">screenshots/reorder.png</span>
+    </div>
+    <div class="screenshot" style="flex:1">
+      <!-- ★ ここにスクリーンショットを挿入 ★ -->
+      <div class="placeholder-icon" style="font-size:24px">📸</div>
+      <div style="font-size:12px">注文テンプレート一覧</div>
+      <span class="placeholder-label">screenshots/templates.png</span>
+    </div>
+  </div>
+  <div class="stripe-bottom"></div>
+  <span class="slide-num">19 / 21</span>
+</div>
+
+<!-- ============================================================
+     SLIDE 20 — 顧客別価格・承認フロー
+     ============================================================ -->
+<div class="slide slide--content" id="s20">
+  <div class="slide-header" style="text-align:center">
+    <h2>法人向けの安心機能</h2>
+    <p class="desc">組織での利用に対応した仕組みをご用意しています</p>
+  </div>
+
+  <div class="three-col" style="gap:20px;margin-top:4px">
+    <div class="pillar-card" style="border-top:3px solid var(--main)">
+      <div class="icon">💰</div>
+      <h3>顧客別価格</h3>
+      <p>お取引状況に応じた特別価格を設定。ログインすると自動で適用されます。</p>
+    </div>
+    <div class="pillar-card" style="border-top:3px solid var(--accent)">
+      <div class="icon">✋</div>
+      <h3>購買承認フロー</h3>
+      <p>担当者が注文 → 店長が承認。組織に合わせた承認ステップを設定できます。</p>
+    </div>
+    <div class="pillar-card" style="border-top:3px solid var(--highlight)">
+      <div class="icon">👥</div>
+      <h3>組織メンバー管理</h3>
+      <p>注文担当・承認者・経理など、メンバーごとに権限を設定できます。</p>
+    </div>
+  </div>
+
+  <div class="stripe-bottom"></div>
+  <span class="slide-num">20 / 21</span>
+</div>
+
+<!-- ============================================================
+     SLIDE 21 — クロージング
+     ============================================================ -->
+<div class="slide slide--closing" id="s21">
+  <h2>地域でつくり、地域で食べる。<br>その循環を、ごいっしょに。</h2>
+  <p>セッツマルシェは、飲食店のみなさまと一緒に育てていくサービスです。<br>ご意見・ご要望をぜひお聞かせください。</p>
+  <div class="contact-info">
+    <strong>セッツマルシェ</strong>（渡辺ファーム）<br>
+    お問い合わせ：サイト内「お問い合わせフォーム」より
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<!-- ============================================================
+   NAVIGATION BAR
+   ============================================================ -->
+<div class="nav-bar">
+  <button id="prev" disabled>← 前へ</button>
+  <span id="counter">1 / 21</span>
+  <button id="next">次へ →</button>
+</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+let current = 0;
+const total = slides.length;
+const counter = document.getElementById('counter');
+const prevBtn = document.getElementById('prev');
+const nextBtn = document.getElementById('next');
+
+function go(idx) {
+  slides[current].classList.remove('active');
+  current = Math.max(0, Math.min(total - 1, idx));
+  slides[current].classList.add('active');
+  counter.textContent = (current + 1) + ' / ' + total;
+  prevBtn.disabled = current === 0;
+  nextBtn.disabled = current === total - 1;
+}
+
+prevBtn.addEventListener('click', () => go(current - 1));
+nextBtn.addEventListener('click', () => go(current + 1));
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); go(current + 1); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); go(current - 1); }
+  if (e.key === 'Home') { e.preventDefault(); go(0); }
+  if (e.key === 'End') { e.preventDefault(); go(total - 1); }
+});
+</script>
+
+</body>
+</html>

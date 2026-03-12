@@ -28,6 +28,11 @@
           <span class="help-toc__label">出品される方へ</span>
           <span class="help-toc__desc">商品登録、配送設定、取引管理</span>
         </a>
+        <a href="#b2b" class="help-toc__card">
+          <span class="help-toc__icon">🏢</span>
+          <span class="help-toc__label">法人向け機能</span>
+          <span class="help-toc__desc">掛売・請求書、承認ワークフロー、組織管理</span>
+        </a>
         <a href="#security" class="help-toc__card">
           <span class="help-toc__icon">🔐</span>
           <span class="help-toc__label">セキュリティ設定</span>
@@ -150,6 +155,9 @@
               <div class="help-step__body">
                 <h4>カートに入れる</h4>
                 <p>商品詳細ページで数量を選び、「<strong>カートに追加</strong>」ボタンを押します。</p>
+                <div class="help-note">
+                  <strong>規格（バリエーション）がある商品の場合</strong>：商品によっては「1個」「10個ケース」など複数の規格が用意されています。購入したい規格のボタンを選んでからカートに追加してください。規格ごとに価格・在庫が異なります。
+                </div>
               </div>
             </div>
             <div class="help-step">
@@ -208,6 +216,7 @@
                 <ul class="help-list">
                   <li><strong>クレジットカード</strong>：カード情報を入力して決済します（Stripe社の安全な決済システムを使用）</li>
                   <li><strong>代金引換</strong>：商品到着時に配送員にお支払いください</li>
+                  <li><strong>掛売（請求書払い）</strong>：法人のお客様向け。月末締め翌月末払いで、まとめてお支払いいただけます（<a href="#b2b-invoice">詳しくはこちら</a>）</li>
                 </ul>
               </div>
             </div>
@@ -260,6 +269,81 @@
               <li>注文の一覧が表示されます</li>
             </ol>
             <p>各注文をクリックすると、詳細や配送状況を確認できます。請求書のダウンロードも可能です。</p>
+          </div>
+        </div>
+      </article>
+
+      <!-- 再注文（リピート注文） -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">6</span>
+          <span class="help-accordion__title">再注文（リピート注文）の方法</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <p>以前と同じ商品をもう一度購入したいときは、注文詳細画面から簡単に再注文できます。</p>
+            <ol class="help-list help-list--ordered">
+              <li>注文履歴から過去の注文を開く</li>
+              <li>「<strong>この注文をもう一度</strong>」ボタンを押す</li>
+              <li>注文に含まれていた商品が自動的にカートに追加されます</li>
+              <li>カート画面に移動するので、数量を確認して購入手続きへ進みます</li>
+            </ol>
+            <div class="help-note">
+              <strong>ご注意ください</strong>
+              <ul class="help-list">
+                <li>再注文時の価格は<strong>現在の販売価格</strong>が適用されます（以前の価格と異なる場合があります）</li>
+                <li>在庫切れや販売終了の商品はスキップされます</li>
+                <li>在庫が注文数量に満たない場合は、在庫数に合わせて数量が調整されます</li>
+                <li>変更があった場合は、カート追加時にメッセージでお知らせします</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- 注文テンプレート -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">7</span>
+          <span class="help-accordion__title">注文テンプレートの使い方</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <p>定期的に同じ商品を注文する場合、<strong>注文テンプレート</strong>を作成しておくと便利です。テンプレートに登録した商品をワンクリックでカートに追加できます。</p>
+
+            <h4>テンプレートの作り方</h4>
+            <div class="help-choice">
+              <div class="help-choice__item">
+                <strong>カートから作成</strong>
+                <p>カート画面で「<strong>テンプレートとして保存</strong>」ボタンを押すと、現在のカートの内容がテンプレートとして保存されます。</p>
+              </div>
+              <div class="help-choice__item">
+                <strong>注文履歴から作成</strong>
+                <p>注文詳細画面で「<strong>テンプレートとして保存</strong>」を選ぶと、その注文の内容がテンプレートになります。</p>
+              </div>
+            </div>
+
+            <h4>テンプレートの使い方</h4>
+            <ol class="help-list help-list--ordered">
+              <li>メニューから「<strong>注文テンプレート</strong>」を開く</li>
+              <li>使いたいテンプレートの「<strong>カートに追加</strong>」ボタンを押す</li>
+              <li>テンプレート内の全商品がカートに追加されます</li>
+              <li>カート画面で内容を確認して購入手続きへ進みます</li>
+            </ol>
+
+            <h4>テンプレートの編集</h4>
+            <p>テンプレート詳細画面では、以下の操作ができます。</p>
+            <ul class="help-list">
+              <li>テンプレート名の変更</li>
+              <li>各商品の<strong>数量を変更</strong></li>
+              <li>不要な商品を<strong>削除</strong></li>
+              <li>新しい商品を<strong>追加</strong>（同じ出品者の商品のみ）</li>
+            </ul>
+            <div class="help-note">
+              在庫切れや販売終了の商品は、カート追加時に自動的にスキップされます。
+            </div>
           </div>
         </div>
       </article>
@@ -515,10 +599,78 @@
         </div>
       </article>
 
-      <!-- 売上の確認 -->
+      <!-- 商品バリエーション -->
       <article class="help-accordion" data-accordion>
         <button class="help-accordion__trigger" aria-expanded="false">
           <span class="help-accordion__num">5</span>
+          <span class="help-accordion__title">商品バリエーション（複数規格）の設定</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <p>1つの商品に対して、異なる価格・単位・在庫を持つ<strong>複数の規格（バリエーション）</strong>を設定できます。たとえば「白菜」を「1個」「10個ケース」「50個ケース」といった単位で販売したい場合に便利です。</p>
+
+            <h4>設定手順</h4>
+            <ol class="help-list help-list--ordered">
+              <li>商品の新規登録または編集画面を開く</li>
+              <li>「<strong>バリエーション（複数規格）を設定する</strong>」にチェックを入れる</li>
+              <li>バリエーションごとに以下を入力する
+                <table class="help-table">
+                  <tr><th>規格名</th><td>お客様に表示される名前（例：1個、10個ケース）</td></tr>
+                  <tr><th>価格</th><td>この規格の販売価格</td></tr>
+                  <tr><th>単位</th><td>数え方（例：個、ケース、袋）</td></tr>
+                  <tr><th>在庫数</th><td>この規格の販売可能数量</td></tr>
+                </table>
+              </li>
+              <li>必要に応じて「<strong>バリエーションを追加</strong>」ボタンで行を追加</li>
+              <li>不要な行は「<strong>✕</strong>」ボタンで削除</li>
+            </ol>
+
+            <div class="help-note">
+              <strong>バリエーション設定時のポイント</strong>
+              <ul class="help-list">
+                <li>商品一覧では、最も安いバリエーションの価格に「<strong>〜</strong>」が付いて表示されます（例：¥100〜）</li>
+                <li>在庫はバリエーションごとに個別に管理されます</li>
+                <li>バリエーションのチェックを外すと、通常の単一商品に戻ります</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- 顧客別価格 -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">6</span>
+          <span class="help-accordion__title">顧客別価格の設定</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <p>特定の取引先（法人のお客様）に対して、商品ごとに<strong>特別価格</strong>を設定できます。取引量が多いお客様へのボリュームディスカウントなどに活用できます。</p>
+
+            <h4>設定手順</h4>
+            <ol class="help-list help-list--ordered">
+              <li>出品者メニューから「<strong>顧客別価格</strong>」を開く</li>
+              <li>取引先の一覧から、価格を設定したいお客様を選ぶ</li>
+              <li>商品を選び、特別価格を入力して登録する</li>
+            </ol>
+
+            <h4>顧客別価格の仕組み</h4>
+            <ul class="help-list">
+              <li>設定した取引先がその商品を見ると、通常価格の代わりに「<strong>特別価格</strong>」バッジ付きで特別価格が表示されます</li>
+              <li>カートや注文でも特別価格が自動的に適用されます</li>
+              <li>バリエーションがある商品は、バリエーションごとに個別の特別価格を設定できます</li>
+              <li>設定していない商品や取引先には、通常価格が適用されます</li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- 売上の確認 -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">7</span>
           <span class="help-accordion__title">売上の確認と入金について</span>
           <span class="help-accordion__arrow">▼</span>
         </button>
@@ -530,6 +682,180 @@
             <p>クレジットカードでの売上は、Stripe社を通じて登録いただいた<strong>銀行口座</strong>に振り込まれます。</p>
             <div class="help-note">
               入金のタイミングや詳細については、運営までお問い合わせください。
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ========================================
+         法人向け機能
+    ========================================= -->
+    <section class="help-section" id="b2b" aria-labelledby="b2b-title">
+      <h2 id="b2b-title" class="help-section__title">
+        <span class="help-section__icon">🏢</span>
+        法人向け機能
+      </h2>
+      <p class="help-section__lead">法人（飲食店・事業者）アカウントでご利用いただける機能をご説明します。</p>
+
+      <div class="help-note help-note--info">
+        <strong>法人向け機能を利用するには</strong>：会員登録時に「法人（飲食店・事業者）」を選んで登録する必要があります。個人アカウントから法人への切替をご希望の場合は、<a href="/contact">お問い合わせフォーム</a>よりご連絡ください。
+      </div>
+
+      <!-- 掛売（請求書払い） -->
+      <article class="help-accordion" data-accordion id="b2b-invoice">
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">1</span>
+          <span class="help-accordion__title">掛売（請求書払い）について</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <p>法人のお客様は、注文ごとの支払いではなく<strong>月末締め・翌月末払い</strong>の掛売（請求書払い）をご利用いただけます。</p>
+
+            <h4>掛売での注文方法</h4>
+            <ol class="help-list help-list--ordered">
+              <li>通常通りカートに商品を入れ、購入手続きへ進む</li>
+              <li>支払い方法で「<strong>掛売（請求書払い）</strong>」を選ぶ</li>
+              <li>注文を確定する</li>
+            </ol>
+
+            <h4>請求書の確認方法</h4>
+            <ol class="help-list help-list--ordered">
+              <li>メニューから「<strong>請求書一覧</strong>」を開く</li>
+              <li>月ごとの請求書が一覧で表示されます</li>
+              <li>請求書をクリックすると、含まれる注文の内訳を確認できます</li>
+              <li>PDFでのダウンロードも可能です</li>
+            </ol>
+
+            <h4>お支払い方法</h4>
+            <p>請求書に記載されている出品者の<strong>銀行口座</strong>へお振込みください。支払期限は翌月末日です。</p>
+
+            <h4>請求書のステータス</h4>
+            <table class="help-table">
+              <tr><th>未入金</th><td>まだお支払いがされていない状態</td></tr>
+              <tr><th>一部入金</th><td>一部の金額のみ入金された状態</td></tr>
+              <tr><th>入金済</th><td>全額のお支払いが確認された状態</td></tr>
+              <tr><th>期限超過</th><td>支払期限を過ぎている状態</td></tr>
+            </table>
+
+            <div class="help-note help-note--warning">
+              <strong>与信限度額について</strong><br>
+              掛売には<strong>与信限度額</strong>（利用上限額）が設定されています。未払い残高が与信限度額に達すると、新たな掛売での注文ができなくなります。お支払いが完了すると、再び利用可能になります。与信限度額の変更をご希望の場合は、出品者または運営にご相談ください。
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- 購買承認ワークフロー -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">2</span>
+          <span class="help-accordion__title">購買承認ワークフロー</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <p>組織内での注文に<strong>上長の承認</strong>を必須にできる機能です。担当者が勝手に注文を確定できないようにし、注文前に内容を確認するプロセスを設けられます。</p>
+
+            <h4>注文者（承認を申請する方）</h4>
+            <ol class="help-list help-list--ordered">
+              <li>通常通りカートに商品を入れる</li>
+              <li>「<strong>承認申請を送信</strong>」ボタンを押す</li>
+              <li>承認者に通知が届きます</li>
+              <li>承認されるまで待ちます</li>
+              <li>承認されたら注文を確定できます</li>
+            </ol>
+
+            <h4>承認者（承認する方）</h4>
+            <ol class="help-list help-list--ordered">
+              <li>メニューから「<strong>承認待ち</strong>」を開く</li>
+              <li>申請の内容（商品・数量・金額）を確認する</li>
+              <li>問題なければ「<strong>承認</strong>」、問題があれば「<strong>却下</strong>」を選ぶ</li>
+            </ol>
+
+            <h4>承認申請のステータス</h4>
+            <table class="help-table">
+              <tr><th>承認待ち</th><td>承認者の確認を待っている状態</td></tr>
+              <tr><th>承認済み</th><td>すべての承認が完了し、注文可能な状態</td></tr>
+              <tr><th>却下</th><td>承認者により却下された状態（新たに申請し直す必要があります）</td></tr>
+              <tr><th>注文済み</th><td>承認後に注文が確定した状態</td></tr>
+            </table>
+
+            <div class="help-note">
+              <strong>複数段階の承認</strong>：組織の設定によっては、複数の承認者が順番に承認する仕組みになっている場合があります。すべての段階で承認されると注文が可能になります。
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- 組織管理 -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">3</span>
+          <span class="help-accordion__title">組織管理（管理者向け）</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <p>組織の管理者は、メンバーの権限設定や承認ワークフローの設定を行えます。</p>
+
+            <h4>メンバーの権限管理</h4>
+            <ol class="help-list help-list--ordered">
+              <li>メニューから「<strong>組織管理</strong>」→「<strong>メンバー管理</strong>」を開く</li>
+              <li>メンバーの一覧が表示されます</li>
+              <li>各メンバーに対して、以下の権限を付与・変更できます</li>
+            </ol>
+
+            <table class="help-table">
+              <tr><th>注文担当</th><td>商品をカートに入れて承認申請を送信できます</td></tr>
+              <tr><th>承認者</th><td>承認申請を確認し、承認・却下を行えます</td></tr>
+              <tr><th>経理担当</th><td>請求書の確認や入金管理ができます</td></tr>
+              <tr><th>組織管理者</th><td>メンバーの権限変更や承認フローの設定ができます</td></tr>
+            </table>
+
+            <h4>承認ワークフローの設定</h4>
+            <ol class="help-list help-list--ordered">
+              <li>「<strong>組織管理</strong>」→「<strong>承認設定</strong>」を開く</li>
+              <li>承認ワークフローを<strong>有効</strong>にする</li>
+              <li>承認ステップを設定する（どの権限の人が何番目に承認するか）</li>
+            </ol>
+
+            <div class="help-note help-note--warning">
+              <strong>ご注意</strong>：組織管理者の権限を持つメンバーが最低1名は必要です。全員から組織管理者の権限を外すことはできません。
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- 掛売の請求書管理（出品者向け） -->
+      <article class="help-accordion" data-accordion>
+        <button class="help-accordion__trigger" aria-expanded="false">
+          <span class="help-accordion__num">4</span>
+          <span class="help-accordion__title">請求書の発行と入金管理（出品者向け）</span>
+          <span class="help-accordion__arrow">▼</span>
+        </button>
+        <div class="help-accordion__content">
+          <div class="help-content">
+            <p>掛売での注文がある出品者は、月次の請求書を発行し、入金を管理できます。</p>
+
+            <h4>請求書の発行</h4>
+            <ol class="help-list help-list--ordered">
+              <li>出品者メニューから「<strong>請求書管理</strong>」を開く</li>
+              <li>「<strong>請求書を発行</strong>」ボタンを押す</li>
+              <li>対象月を選択する</li>
+              <li>その月の掛売注文が取引先ごとにまとめられた請求書が作成されます</li>
+            </ol>
+
+            <h4>入金の記録</h4>
+            <ol class="help-list help-list--ordered">
+              <li>請求書一覧から対象の請求書を開く</li>
+              <li>入金があったら<strong>入金額</strong>を入力して記録する</li>
+              <li>全額入金されると、請求書のステータスが自動的に「<strong>入金済</strong>」に変わります</li>
+            </ol>
+
+            <div class="help-note">
+              <strong>一部入金にも対応</strong>：分割払いの場合、入金があるたびに記録できます。入金額に応じてステータスが「一部入金」→「入金済」と自動で変わります。
             </div>
           </div>
         </div>
