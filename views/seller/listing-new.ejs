@@ -2,6 +2,21 @@
   extraCSS: '/styles/listing-new.css' }) %>
 
 <main class="listing">
+  <% if (typeof fieldErrors !== 'undefined' && fieldErrors && Object.keys(fieldErrors).length) { %>
+    <div class="alert alert--error" style="background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;padding:.8rem 1rem;margin-bottom:1rem;color:#991b1b;">
+      <strong>入力内容にエラーがあります：</strong>
+      <ul style="margin:.4rem 0 0 1.2rem;list-style:disc;">
+        <% Object.values(fieldErrors).forEach(function(msg) { %>
+          <li><%= msg %></li>
+        <% }) %>
+      </ul>
+    </div>
+  <% } %>
+  <% if (typeof globalError !== 'undefined' && globalError) { %>
+    <div class="alert alert--error" style="background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;padding:.8rem 1rem;margin-bottom:1rem;color:#991b1b;">
+      <%= globalError %>
+    </div>
+  <% } %>
   <form id="listing-form" class="listing__form" method="POST" action="/seller/listing-new">
     <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -92,15 +107,122 @@
             <p class="hint">リッチテキスト（見出し・画像・表など）で編集できます。</p>
             <button type="button" class="btn btn--ghost" id="openEditorBtn" data-context="product" data-return-url="/seller/listing-new" data-subject-name="新規出品">説明をリッチテキストで編集</button>
           </div>
+          <div id="descPreview" style="display:none;margin-top:.5rem;padding:.6rem;border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;font-size:.9rem;max-height:200px;overflow:auto;"></div>
           <script>
             (function(){ var h = <%- JSON.stringify(values?.description_html || '') %>;
               document.getElementById('description_html').value = h;
+              if (h) {
+                var prev = document.getElementById('descPreview');
+                prev.innerHTML = h; prev.style.display = '';
+              }
             })();
             (function(){
+              var STORAGE_KEY = 'listing_new_draft';
+
+              function saveFormToStorage() {
+                var form = document.getElementById('listing-form');
+                if (!form) return;
+                var data = {};
+                var fields = ['title', 'categoryId', 'tags', 'price', 'unit', 'stock', 'shipDays', 'status', 'description_html'];
+                fields.forEach(function(name) {
+                  var el = form.querySelector('[name="' + name + '"]');
+                  if (el) data[name] = el.value;
+                });
+                data.isOrganic = form.querySelector('[name="isOrganic"]')?.checked || false;
+                data.isSeasonal = form.querySelector('[name="isSeasonal"]')?.checked || false;
+                data.hasVariants = form.querySelector('[name="hasVariants"]')?.checked || false;
+                var specRows = form.querySelectorAll('#specs .kv__row');
+                data.specs = [];
+                specRows.forEach(function(row) {
+                  var inputs = row.querySelectorAll('input[type="text"]');
+                  if (inputs.length >= 2) data.specs.push({ label: inputs[0].value, value: inputs[1].value });
+                });
+                var variantRows = form.querySelectorAll('#variantRows .variant-row');
+                data.variants = [];
+                variantRows.forEach(function(row) {
+                  var label = row.querySelector('[name*="[label]"]');
+                  var price = row.querySelector('[name*="[price]"]');
+                  var unit = row.querySelector('[name*="[unit]"]');
+                  var stock = row.querySelector('[name*="[stock]"]');
+                  data.variants.push({
+                    label: label?.value || '', price: price?.value || '',
+                    unit: unit?.value || '', stock: stock?.value || ''
+                  });
+                });
+                try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+              }
+
+              function restoreFormFromStorage() {
+                var raw;
+                try { raw = sessionStorage.getItem(STORAGE_KEY); } catch(e) { return; }
+                if (!raw) return;
+                var data;
+                try { data = JSON.parse(raw); } catch(e) { return; }
+                sessionStorage.removeItem(STORAGE_KEY);
+
+                var form = document.getElementById('listing-form');
+                if (!form) return;
+                ['title', 'categoryId', 'tags', 'price', 'unit', 'stock', 'shipDays', 'status'].forEach(function(name) {
+                  if (data[name] !== undefined && data[name] !== '') {
+                    var el = form.querySelector('[name="' + name + '"]');
+                    if (el) el.value = data[name];
+                  }
+                });
+                if (data.description_html) {
+                  var dh = document.getElementById('description_html');
+                  if (dh && !dh.value) {
+                    dh.value = data.description_html;
+                    var prev = document.getElementById('descPreview');
+                    if (prev) { prev.innerHTML = data.description_html; prev.style.display = ''; }
+                  }
+                }
+                if (data.isOrganic) { var c = form.querySelector('[name="isOrganic"]'); if (c) c.checked = true; }
+                if (data.isSeasonal) { var c = form.querySelector('[name="isSeasonal"]'); if (c) c.checked = true; }
+                if (data.specs && data.specs.length) {
+                  var specsEl = document.getElementById('specs');
+                  var existingRows = specsEl ? specsEl.querySelectorAll('.kv__row') : [];
+                  data.specs.forEach(function(s, i) {
+                    if (existingRows[i]) {
+                      var inputs = existingRows[i].querySelectorAll('input[type="text"]');
+                      if (inputs[0]) inputs[0].value = s.label;
+                      if (inputs[1]) inputs[1].value = s.value;
+                    }
+                  });
+                }
+                if (data.hasVariants) {
+                  var chk = document.getElementById('hasVariantsCheck');
+                  if (chk) { chk.checked = true; chk.dispatchEvent(new Event('change')); }
+                  if (data.variants && data.variants.length) {
+                    setTimeout(function() {
+                      var variantRows = document.querySelectorAll('#variantRows .variant-row');
+                      data.variants.forEach(function(v, i) {
+                        if (!variantRows[i] && document.getElementById('addVariantRow')) {
+                          document.getElementById('addVariantRow').click();
+                          variantRows = document.querySelectorAll('#variantRows .variant-row');
+                        }
+                        if (variantRows[i]) {
+                          var label = variantRows[i].querySelector('[name*="[label]"]');
+                          var price = variantRows[i].querySelector('[name*="[price]"]');
+                          var unit = variantRows[i].querySelector('[name*="[unit]"]');
+                          var stock = variantRows[i].querySelector('[name*="[stock]"]');
+                          if (label) label.value = v.label;
+                          if (price) price.value = v.price;
+                          if (unit) unit.value = v.unit;
+                          if (stock) stock.value = v.stock;
+                        }
+                      });
+                    }, 50);
+                  }
+                }
+              }
+
+              restoreFormFromStorage();
+
               var btn = document.getElementById('openEditorBtn');
               var htmlEl = document.getElementById('description_html');
               if (!btn || !htmlEl) return;
               btn.addEventListener('click', function(){
+                saveFormToStorage();
                 var form = document.createElement('form');
                 form.method = 'POST'; form.action = '/editor';
                 var csrf = <%- JSON.stringify(typeof csrfToken !== 'undefined' ? csrfToken : '') %>;
@@ -113,6 +235,13 @@
                 document.body.appendChild(form);
                 form.submit();
               });
+
+              var listingForm = document.getElementById('listing-form');
+              if (listingForm) {
+                listingForm.addEventListener('submit', function() {
+                  try { sessionStorage.removeItem(STORAGE_KEY); } catch(e) {}
+                });
+              }
             })();
           </script>
           <p class="error" data-for="description"></p>
@@ -166,15 +295,6 @@
         <!-- 出荷/配送 -->
         <section class="card">
           <h2 class="card__title">出荷・配送</h2>
-          <div class="field">
-            <label for="shipMethod">配送方法 *</label>
-            <select id="shipMethod" class="pulldown" name="shipMethod" required>
-              <option value="">選択してください</option>
-              <option value="normal" <%= values?.shipMethod==='normal'?'selected':'' %>>常温便</option>
-              <option value="cool"   <%= values?.shipMethod==='cool'?'selected':'' %>>クール便</option>
-            </select>
-            <p class="error" data-for="shipMethod"></p>
-          </div>
           <div class="field">
             <label for="shipDays">発送目安 *</label>
             <select id="shipDays" class="pulldown" name="shipDays" required>

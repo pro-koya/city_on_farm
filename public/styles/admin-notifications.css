@@ -245,8 +245,14 @@ select.pulldown {
 }
 
 .btn--danger {
-  background: var(--danger);
-  border-color: var(--danger);
+  background: #fff;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+.btn--danger:hover {
+  background: #fef2f2;
+  border-color: #f87171;
+  color: #b91c1c;
 }
 
 /* pager */

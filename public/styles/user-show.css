@@ -65,6 +65,10 @@ a {
     font-weight: 700;
     cursor: pointer;
     background: #e5e7eb;
+    transition: background .15s, color .15s;
+}
+.btn:hover {
+    background: #d1d5db;
 }
 
 .btn--ghost {
@@ -72,15 +76,28 @@ a {
     border: 1px solid #e5e7eb;
     color: var(--main);
 }
+.btn--ghost:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
 
 .btn--primary {
     background: var(--main);
-    color: #fff
+    color: #fff;
+}
+.btn--primary:hover {
+    background: #3d5a4b;
 }
 
 .btn--danger {
-    background: var(--danger);
-    color: #fff;
+    background: transparent;
+    border: 1px solid #fca5a5;
+    color: #dc2626;
+}
+.btn--danger:hover {
+    background: #fef2f2;
+    border-color: #f87171;
+    color: #b91c1c;
 }
 
 .us__grid {

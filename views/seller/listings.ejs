@@ -139,7 +139,7 @@
                         </td>
                         <td class="col-status">
                           <span class="status status--<%= it.status %>">
-                            <%= it.status %>
+                            <%= it.status === 'public' ? '公開' : it.status === 'private' ? '限定公開' : '下書き' %>
                           </span>
                         </td>
                         <td class="col-updated">
@@ -153,8 +153,8 @@
                                 title="削除">削除</button>
                             </div>
                             <button type="button" class="icon-btn js-quick-toggle" data-id="<%= it.id %>"
-                              data-next="<%= it.status==='public'?'private':'public' %>" title="公開状態を切替">
-                              <%= it.status==='public' ? '非公開に' : '公開に' %>
+                              data-next="<%= it.status==='public' ? 'private' : 'public' %>" title="公開状態を切替">
+                              <%= it.status==='public' ? '限定公開に' : '公開する' %>
                             </button>
                           </div>
                         </td>
@@ -199,7 +199,7 @@
                         <div class="row">
                           <span>状態</span>
                           <span class="status status--<%= it.status %>">
-                            <%= it.status %>
+                            <%= it.status === 'public' ? '公開' : it.status === 'private' ? '限定公開' : '下書き' %>
                           </span>
                         </div>
                       </div>
@@ -207,8 +207,8 @@
                     <div class="actions">
                       <a class="btn btn--ghost" href="/seller/listing-edit/<%= it.id %>">編集</a>
                       <button type="button" class="btn js-quick-toggle" data-id="<%= it.id %>"
-                        data-next="<%= it.status==='public'?'private':'public' %>">
-                        <%= it.status==='public' ? '非公開に' : '公開に' %>
+                        data-next="<%= it.status==='public' ? 'private' : 'public' %>">
+                        <%= it.status==='public' ? '限定公開に' : '公開する' %>
                       </button>
                       <button type="button" class="btn danger js-delete" data-id="<%= it.id %>">削除</button>
                     </div>

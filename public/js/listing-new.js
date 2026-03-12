@@ -33,7 +33,7 @@
     clearError(id); return true;
   }
 
-  ['title','category','unit','description','shipMethod','shipDays','status'].forEach(id=>{
+  ['title','category','unit','description','shipDays','status'].forEach(id=>{
     const el = document.getElementById(id);
     el && el.addEventListener('input', ()=> clearError(id));
     el && el.addEventListener('blur',  ()=> required(id, el.previousElementSibling?.textContent?.replace('*','').trim() || id));

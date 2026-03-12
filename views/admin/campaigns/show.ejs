@@ -14,7 +14,12 @@
         <h1><%= campaign.title %></h1>
       </div>
       <div class="card__head-actions">
-        <span class="badge badge--<%= campaign.status %>"><%= campaign.status %></span>
+        <span class="badge badge--<%= campaign.status %>"><%=
+          campaign.status === 'draft' ? '下書き' :
+          campaign.status === 'published' ? '公開中' :
+          campaign.status === 'archived' ? 'アーカイブ' :
+          campaign.status === 'scheduled' ? '予約済み' : campaign.status
+        %></span>
         <a class="btn" href="/admin/campaigns/edit/<%= campaign.id %>">編集</a>
       </div>
     </div>
@@ -22,7 +27,12 @@
     <dl class="kv">
       <div>
         <dt>ステータス</dt>
-        <dd><%= campaign.status %></dd>
+        <dd><%=
+          campaign.status === 'draft' ? '下書き' :
+          campaign.status === 'published' ? '公開中' :
+          campaign.status === 'archived' ? 'アーカイブ' :
+          campaign.status === 'scheduled' ? '予約済み' : campaign.status
+        %></dd>
       </div>
       <div>
         <dt>公開日</dt>

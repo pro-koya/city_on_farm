@@ -450,6 +450,44 @@ section {
   font-size: 0.95rem;
 }
 
+.btn--block {
+  display: flex;
+  width: 100%;
+}
+
+.btn--secondary {
+  background: transparent;
+  border-color: #d1d5db;
+  color: #374151;
+}
+.btn--secondary:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: #111827;
+}
+
+.btn--warning {
+  background: transparent;
+  border-color: #fcd34d;
+  color: #92400e;
+}
+.btn--warning:hover {
+  background: #fffbeb;
+  border-color: #fbbf24;
+  color: #78350f;
+}
+
+.btn--success {
+  background: transparent;
+  border-color: #6ee7b7;
+  color: #065f46;
+}
+.btn--success:hover {
+  background: #ecfdf5;
+  border-color: #34d399;
+  color: #064e3b;
+}
+
 .btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;

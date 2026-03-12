@@ -164,7 +164,15 @@
               <td><%= new Date(o.created_at).toLocaleString('ja-JP') %></td>
               <td>¥<%= Number(o.total || 0).toLocaleString() %></td>
               <td>¥<%= Number(o.coupon_discount || 0).toLocaleString() %></td>
-              <td><%= o.status %></td>
+              <td><%=
+                o.status === 'pending' ? '注文確認中' :
+                o.status === 'confirmed' ? '注文確定' :
+                o.status === 'preparing' ? '準備中' :
+                o.status === 'shipped' ? '発送済み' :
+                o.status === 'delivered' ? '配達済み' :
+                o.status === 'cancelled' ? 'キャンセル' :
+                o.status === 'refunded' ? '返金済み' : o.status
+              %></td>
             </tr>
           <% }) %>
         </tbody>
