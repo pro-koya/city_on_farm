@@ -74,7 +74,13 @@
 
           <div><dt>名称</dt><dd><%= partner.name %></dd></div>
           <% if (partner.kana) { %><div><dt>カナ</dt><dd><%= partner.kana %></dd></div><% } %>
-          <div><dt>種別</dt><dd><%= partner.type %></dd></div>
+          <div><dt>種別</dt><dd><%=
+            partner.type === 'farm' ? '農家' :
+            partner.type === 'producer' ? '生産者' :
+            partner.type === 'shop' ? '店舗' :
+            partner.type === 'wholesale' ? '卸業者' :
+            partner.type === 'other' ? 'その他' : partner.type
+          %></dd></div>
           <div><dt>メール</dt><dd><%= partner.email || '—' %></dd></div>
           <div><dt>電話</dt><dd><%= partner.phone || '—' %></dd></div>
           <div><dt>Web</dt><dd>

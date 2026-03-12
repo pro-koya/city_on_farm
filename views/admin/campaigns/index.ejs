@@ -35,7 +35,12 @@
                   <div class="eyebrow"><%= c.eyebrow %></div>
                 <% } %>
               </td>
-              <td><span class="badge badge--<%= c.status %>"><%= c.status %></span></td>
+              <td><span class="badge badge--<%= c.status %>"><%=
+                c.status === 'draft' ? '下書き' :
+                c.status === 'published' ? '公開中' :
+                c.status === 'archived' ? 'アーカイブ' :
+                c.status === 'scheduled' ? '予約済み' : c.status
+              %></span></td>
               <td>
                 <%= c.published_at
                     ? new Date(c.published_at).toLocaleString('ja-JP')

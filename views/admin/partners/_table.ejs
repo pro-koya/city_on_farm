@@ -24,11 +24,19 @@
                   <a class="lv__link" href="/admin/partners/<%= p.id %>"><%= p.name %></a>
                   <% if (p.kana) { %><div class="muted small"><%= p.kana %></div><% } %>
                 </td>
-                <td data-label="種別"><span class="badge"><%= p.type %></span></td>
+                <td data-label="種別"><span class="badge"><%=
+                  p.type === 'farm' ? '農家' :
+                  p.type === 'producer' ? '生産者' :
+                  p.type === 'shop' ? '店舗' :
+                  p.type === 'wholesale' ? '卸業者' :
+                  p.type === 'other' ? 'その他' : p.type
+                %></span></td>
                 <td data-label="ステータス">
-                  <span class="badge <%= p.status==='active'?'is-ok': (p.status==='prospect'?'is-warn':'is-off') %>">
-                    <%= p.status %>
-                  </span>
+                  <span class="badge <%= p.status==='active'?'is-ok': (p.status==='prospect'?'is-warn':'is-off') %>"><%=
+                    p.status === 'active' ? '契約中' :
+                    p.status === 'prospect' ? '候補' :
+                    p.status === 'inactive' ? '契約終了' : p.status
+                  %></span>
                 </td>
                 <td data-label="店舗情報">
                   <% if (p.email) { %><div><a href="mailto:<%= p.email %>"><%= p.email %></a></div><% } %>

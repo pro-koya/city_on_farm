@@ -18,14 +18,21 @@
     section.style.display = on ? '' : 'none';
     if (singleRow) singleRow.style.display = on ? 'none' : '';
 
-    // バリエーションON時は単品の価格等のrequiredを外す
     if (priceInput) priceInput.required = !on;
     if (unitInput) unitInput.required = !on;
     if (stockInput) stockInput.required = !on;
 
-    // バリエーションONで行が0なら自動追加
     if (on && rows.children.length === 0) {
-      addRow();
+      const existingPrice = priceInput?.value || '';
+      const existingUnit = unitInput?.value || '';
+      const existingStock = stockInput?.value || '';
+      const hasExisting = existingPrice || existingUnit || existingStock;
+      addRow(hasExisting ? {
+        label: existingUnit || '',
+        price: existingPrice,
+        unit: existingUnit,
+        stock: existingStock
+      } : undefined);
     }
   }
 

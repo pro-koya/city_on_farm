@@ -67,7 +67,11 @@
             <td><%= it.name %></td>
             <td class="break"><a href="mailto:<%= it.email %>"><%= it.email %></a></td>
             <td>
-              <span class="status status--<%= it.status %>"><%= it.status %></span>
+              <span class="status status--<%= it.status %>"><%=
+                it.status === 'open' ? '未対応' :
+                it.status === 'in_progress' ? '対応中' :
+                it.status === 'closed' ? '完了' : it.status
+              %></span>
               <% if (it.handled_name) { %><span class="muted"> / <%= it.handled_name %></span><% } %>
             </td>
             <td><a class="link" href="/admin/contacts/<%= it.id %>">詳細 →</a></td>
@@ -82,7 +86,11 @@
       <% items.forEach(function(it){ %>
         <article class="card" data-status="<%= it.status %>">
           <header class="card__head">
-            <span class="status status--<%= it.status %>"><%= it.status %></span>
+            <span class="status status--<%= it.status %>"><%=
+              it.status === 'open' ? '未対応' :
+              it.status === 'in_progress' ? '対応中' :
+              it.status === 'closed' ? '完了' : it.status
+            %></span>
             <span class="pill"><%= it.category_ja %></span>
             <time datetime="<%= new Date(it.created_at).toISOString() %>"><%= new Date(it.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }) %></time>
           </header>
