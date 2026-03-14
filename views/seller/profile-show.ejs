@@ -22,7 +22,7 @@
 <% } %>
 
 <main class="seller-page <%= isEmbed ? 'seller-profile--embed' : '' %>">
-  <a href="/products" class="seller-back <%= isEmbed ? 'embed-none' : '' %>">← 農作物一覧へ戻る</a>
+  <a href="/products" class="seller-back <%= isEmbed ? 'embed-none' : '' %>"><i data-lucide="arrow-left"></i> 農作物一覧へ戻る</a>
 
   <!-- ===== HERO（出品者の顔） ===== -->
   <section class="seller-hero">
@@ -113,7 +113,7 @@
             <a
               class="seller-products__link link"
               href="/products/list?seller=<%= encodeURIComponent(seller.name) %>">
-              すべての商品を一覧で見る →
+              すべての商品を一覧で見る <i data-lucide="chevron-right"></i>
             </a>
           </div>
 

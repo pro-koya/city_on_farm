@@ -327,28 +327,28 @@
   <!-- ヘッダー -->
   <div class="webauthn-card">
     <div class="webauthn-header">
-      <h1>🔐 生体認証・パスキー</h1>
+      <h1><i data-lucide="shield-check" style="width:28px;height:28px;vertical-align:middle;margin-right:6px;"></i> 生体認証・パスキー</h1>
       <p>FaceID、指紋認証、セキュリティキーでワンタッチログイン</p>
     </div>
 
     <!-- 特徴紹介 -->
     <div class="feature-list">
       <div class="feature-item">
-        <div class="feature-icon">⚡</div>
+        <div class="feature-icon"><i data-lucide="zap"></i></div>
         <div class="feature-content">
           <h3>高速認証</h3>
           <p>ワンタッチで数秒で完了</p>
         </div>
       </div>
       <div class="feature-item">
-        <div class="feature-icon">🛡️</div>
+        <div class="feature-icon"><i data-lucide="shield"></i></div>
         <div class="feature-content">
           <h3>高セキュリティ</h3>
           <p>フィッシング耐性あり</p>
         </div>
       </div>
       <div class="feature-item">
-        <div class="feature-icon">📱</div>
+        <div class="feature-icon"><i data-lucide="smartphone"></i></div>
         <div class="feature-content">
           <h3>デバイス対応</h3>
           <p>iPhone/Android/PC対応</p>
@@ -359,7 +359,7 @@
     <!-- 情報ボックス -->
     <div class="info-box">
       <p>
-        <span class="info-box-icon">💡</span>
+        <span class="info-box-icon"><i data-lucide="lightbulb" style="width:16px;height:16px;vertical-align:middle;"></i></span>
         <strong>ヒント:</strong> 複数のデバイスを登録しておくことで、デバイスを紛失した際も安心です。
       </p>
     </div>
@@ -385,7 +385,7 @@
   <!-- 戻るリンク -->
   <div style="text-align: center; margin-top: 32px;">
     <a href="/account/2fa/setup" style="color: #4C6B5C; text-decoration: none; font-weight: 600;">
-      ← アカウント設定に戻る
+      <i data-lucide="arrow-left" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i> アカウント設定に戻る
     </a>
   </div>
 </main>
@@ -465,7 +465,7 @@ function renderDeviceList() {
   if (credentials.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
-        <div class="empty-state-icon">🔐</div>
+        <div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></div>
         <h3>デバイスが登録されていません</h3>
         <p>下のボタンから最初のデバイスを追加しましょう</p>
       </div>
@@ -491,10 +491,10 @@ function renderDeviceList() {
         </div>
         <div class="device-actions">
           <button class="btn btn-ghost" data-action="rename" data-id="${cred.id}" data-name="${escapeHtml(cred.device_name)}">
-            ✏️ 名前変更
+            <i data-lucide="pencil" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i> 名前変更
           </button>
           <button class="btn btn-danger" data-action="delete" data-id="${cred.id}" data-name="${escapeHtml(cred.device_name)}">
-            🗑️ 削除
+            <i data-lucide="trash-2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i> 削除
           </button>
         </div>
       </div>
@@ -667,13 +667,17 @@ document.getElementById('addDeviceModal').addEventListener('click', (e) => {
 
 // ユーティリティ関数
 function getDeviceIcon(deviceType) {
+  const svgMobile = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>';
+  const svgDesktop = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
+  const svgKey = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>';
+  const svgShield = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>';
   const icons = {
-    'mobile': '📱',
-    'desktop': '💻',
-    'tablet': '📱',
-    'security_key': '🔑'
+    'mobile': svgMobile,
+    'desktop': svgDesktop,
+    'tablet': svgMobile,
+    'security_key': svgKey
   };
-  return icons[deviceType] || '🔐';
+  return icons[deviceType] || svgShield;
 }
 
 function formatRelativeTime(date) {

@@ -110,8 +110,6 @@
 
 /* キー・バリュー行（ドラッグ用の余白を少し） */
 .kv__row {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
   gap: .5rem;
   align-items: center;
   margin-bottom: .5rem

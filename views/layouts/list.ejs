@@ -20,7 +20,7 @@
 
         <!-- 検索ボックス（アイコン付き、モバイルは全幅） -->
         <div class="lv__search">
-          <span class="lv__icon" aria-hidden="true">🔍</span>
+          <span class="lv__icon" aria-hidden="true"><i data-lucide="search"></i></span>
           <input class="lv__input" type="search" name="q" value="<%= q || '' %>" placeholder="番号・商品名・出品者で検索">
           <% if (q) { %><a class="lv__clear" href="<%= (request?.path || '') %>">×</a><% } %>
         </div>

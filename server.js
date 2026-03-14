@@ -5014,9 +5014,9 @@ app.post(
             is_organic = $8,
             is_seasonal = $9,
             ship_days = $10,
-            status = $11,
+            status = $11::product_status,
             published_at = CASE
-              WHEN $11 = 'public' AND published_at IS NULL THEN now()
+              WHEN $11::text = 'public' AND published_at IS NULL THEN now()
               ELSE published_at
             END,
             updated_at = now()
@@ -5478,15 +5478,22 @@ app.get('/orders/recent', requireAuth, async (req, res, next) => {
 // タイムゾーン（売上集計を日本時間で統一）
 const JST_TZ = 'Asia/Tokyo';
 
-// 売上集計のWHERE句の共通フィルタを作る
-function buildSellerFilters({ sellerId, q, categoryId, paymentMethod, paidOnly = true, owner }) {
+// 売上集計のWHERE句の共通フィルタを作る（出品者＝パートナー単位で集計）
+function buildSellerFilters({ sellerId, partnerId, q, categoryId, paymentMethod, paidOnly = true, owner }) {
   let where;
   let params = [];
   if (!owner || owner !== 'owner_all') {
-    where = [
-      `EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $1)`
-    ];
-    params = [sellerId];
+    if (partnerId) {
+      where = [
+        `EXISTS (SELECT 1 FROM order_items oi JOIN users u ON u.id = oi.seller_id WHERE oi.order_id = o.id AND u.partner_id = $1)`
+      ];
+      params = [partnerId];
+    } else {
+      where = [
+        `EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $1)`
+      ];
+      params = [sellerId];
+    }
   } else {
     where = [
       `EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id)`
@@ -5537,8 +5544,14 @@ const SUM_REVENUE_SQL  = `COALESCE(SUM(oi.price * oi.quantity),0)`;
  * カード用：今月=週単位、今週=日単位、全期間=月単位
  * 返却: { month: Bucket[], week: Bucket[], all: Bucket[] }
  * Bucket = { label, revenue, orders }
+ * 集計軸: partnerId があれば出品者（パートナー）単位、なければ uid 単位
  */
-async function getRevenueCardData(dbQuery, sellerId) {
+async function getRevenueCardData(dbQuery, uid, partnerId) {
+  const byPartner = !!partnerId;
+  const sellerParam = byPartner ? partnerId : uid;
+  const joinSeller = byPartner ? ' JOIN users oi_user ON oi_user.id = oi.seller_id' : '';
+  const whereSeller = byPartner ? ' oi_user.partner_id = $2' : ' oi.seller_id = $2';
+
   // 今週（日単位：当週の月曜〜日曜）
   const weekRows = await dbQuery(`
     WITH span AS (
@@ -5550,14 +5563,15 @@ async function getRevenueCardData(dbQuery, sellerId) {
       ${COUNT_ORDERS_SQL}     AS orders
     FROM orders o
     JOIN order_items oi ON oi.order_id = o.id
+    ${joinSeller}
     CROSS JOIN span
-    WHERE oi.seller_id = $2
+    WHERE ${whereSeller}
       AND o.payment_status IN ('paid','refunded')
       AND (o.created_at AT TIME ZONE $1) >= span.wstart
       AND (o.created_at AT TIME ZONE $1) <  span.wstart + interval '7 days'
     GROUP BY label
     ORDER BY MIN(date_trunc('day', o.created_at AT TIME ZONE $1)) ASC
-  `, [JST_TZ, sellerId]);
+  `, [JST_TZ, sellerParam]);
 
   // 今月（週単位：週の開始日でバケット）
   const monthRows = await dbQuery(`
@@ -5571,14 +5585,15 @@ async function getRevenueCardData(dbQuery, sellerId) {
       MIN(date_trunc('week', o.created_at AT TIME ZONE $1)) AS w
     FROM orders o
     JOIN order_items oi ON oi.order_id = o.id
+    ${joinSeller}
     CROSS JOIN span
-    WHERE oi.seller_id = $2
+    WHERE ${whereSeller}
       AND o.payment_status IN ('paid','refunded')
       AND (o.created_at AT TIME ZONE $1) >= span.mstart
       AND (o.created_at AT TIME ZONE $1) <  span.mstart + interval '1 month'
     GROUP BY label
     ORDER BY w ASC
-  `, [JST_TZ, sellerId]);
+  `, [JST_TZ, sellerParam]);
 
   // 全期間（月単位）
   const allRows = await dbQuery(`
@@ -5588,11 +5603,12 @@ async function getRevenueCardData(dbQuery, sellerId) {
       ${COUNT_ORDERS_SQL}     AS orders
     FROM orders o
     JOIN order_items oi ON oi.order_id = o.id
-    WHERE oi.seller_id = $2
+    ${joinSeller}
+    WHERE ${whereSeller}
       AND o.payment_status IN ('paid','refunded')
     GROUP BY label
     ORDER BY MIN(date_trunc('month', o.created_at AT TIME ZONE $1)) ASC
-  `, [JST_TZ, sellerId]);
+  `, [JST_TZ, sellerParam]);
 
   // 今月のラベルを「第n週」表示にしたい場合はここで置換（UIはMM/DDでもOK）
   const month = monthRows.map((r, i) => ({ label: `第${i+1}週`, revenue: r.revenue, orders: r.orders }));
@@ -5683,10 +5699,11 @@ function parseRangeFromQuery(q) {
   return { g, dateFrom, dateTo, week, ym, year };
 }
 
-// 汎用フィルタ（既存の buildSellerFilters をそのまま活用）
-async function getAnalyticsBucketsV2(dbQuery, sellerId, owner, { g, q, categoryId, paymentMethod, dateFrom, dateTo, week, ym, year }) {
+// 汎用フィルタ（buildSellerFilters で出品者＝パートナー単位に集計）
+async function getAnalyticsBucketsV2(dbQuery, sellerId, partnerId, owner, { g, q, categoryId, paymentMethod, dateFrom, dateTo, week, ym, year }) {
   const { where, params } = buildSellerFilters({
     sellerId,
+    partnerId,
     q,
     categoryId,
     paymentMethod,
@@ -5944,45 +5961,76 @@ app.get('/dashboard/seller', requireAuth, requireRole(['seller']), async (req, r
          LIMIT 12
       `, [uid, partner_id]),
 
-      // 直近6件
-      dbQuery(`
-        SELECT
-          o.id,
-          COALESCE(o.order_number, o.id::text) AS order_no,
-          o.status AS order_status, o.ship_method, o.eta_at, o.ship_time_code,
-          o.created_at,
-          o.buyer_id,
-          o.seller_id,
-          SUM(oi.price * oi.quantity)::int AS amount,
-          bu.name AS buyer_name
-        FROM orders o
-        JOIN order_items oi ON oi.order_id = o.id
-        LEFT JOIN users bu ON bu.id = o.buyer_id
-       WHERE oi.seller_id = $1
-        OR o.seller_id = $2
-       GROUP BY o.id, bu.name
-       ORDER BY o.created_at DESC
-       LIMIT 6
-      `, [uid, partner_id]),
+      // 直近6件（出品者＝パートナー単位）
+      (partner_id
+        ? dbQuery(`
+            SELECT
+              o.id,
+              COALESCE(o.order_number, o.id::text) AS order_no,
+              o.status AS order_status, o.ship_method, o.eta_at, o.ship_time_code,
+              o.created_at, o.buyer_id, o.seller_id,
+              SUM(oi.price * oi.quantity)::int AS amount,
+              bu.name AS buyer_name
+            FROM orders o
+            JOIN order_items oi ON oi.order_id = o.id
+            JOIN users oi_user ON oi_user.id = oi.seller_id
+            LEFT JOIN users bu ON bu.id = o.buyer_id
+            WHERE oi_user.partner_id = $1
+            GROUP BY o.id, bu.name
+            ORDER BY o.created_at DESC
+            LIMIT 6
+          `, [partner_id])
+        : dbQuery(`
+            SELECT
+              o.id,
+              COALESCE(o.order_number, o.id::text) AS order_no,
+              o.status AS order_status, o.ship_method, o.eta_at, o.ship_time_code,
+              o.created_at, o.buyer_id, o.seller_id,
+              SUM(oi.price * oi.quantity)::int AS amount,
+              bu.name AS buyer_name
+            FROM orders o
+            JOIN order_items oi ON oi.order_id = o.id
+            LEFT JOIN users bu ON bu.id = o.buyer_id
+            WHERE oi.seller_id = $1
+            GROUP BY o.id, bu.name
+            ORDER BY o.created_at DESC
+            LIMIT 6
+          `, [uid])
+      ),
 
-      // 総件数
-      dbQuery(`
-        SELECT COUNT(DISTINCT o.id)::int AS cnt
-          FROM orders o
-          JOIN order_items oi ON oi.order_id = o.id
-         WHERE oi.seller_id = $1
-          OR o.seller_id = $2
-      `, [uid, partner_id]),
+      // 総件数（出品者＝パートナー単位）
+      (partner_id
+        ? dbQuery(`
+            SELECT COUNT(DISTINCT o.id)::int AS cnt
+            FROM orders o
+            JOIN order_items oi ON oi.order_id = o.id
+            JOIN users oi_user ON oi_user.id = oi.seller_id
+            WHERE oi_user.partner_id = $1
+          `, [partner_id])
+        : dbQuery(`
+            SELECT COUNT(DISTINCT o.id)::int AS cnt
+            FROM orders o
+            JOIN order_items oi ON oi.order_id = o.id
+            WHERE oi.seller_id = $1
+          `, [uid])
+      ),
 
-      // 売上合計（入金確定ベース）
-      dbQuery(`
-        SELECT COALESCE(SUM(oi.price * oi.quantity),0)::int AS total
-          FROM order_items oi
-          JOIN orders o ON o.id = oi.order_id
-         WHERE (oi.seller_id = $1
-          OR o.seller_id = $2)
-           AND o.payment_status IN ('paid','refunded')
-      `, [uid, partner_id]),
+      // 売上合計（入金確定ベース・出品者＝パートナー単位）
+      (partner_id
+        ? dbQuery(`
+            SELECT COALESCE(SUM(oi.price * oi.quantity),0)::int AS total
+            FROM order_items oi
+            JOIN orders o ON o.id = oi.order_id
+            JOIN users oi_user ON oi_user.id = oi.seller_id
+            WHERE oi_user.partner_id = $1 AND o.payment_status IN ('paid','refunded')
+          `, [partner_id])
+        : dbQuery(`
+            SELECT COALESCE(SUM(oi.price * oi.quantity),0)::int AS total
+            FROM order_items oi
+            JOIN orders o ON o.id = oi.order_id
+            WHERE oi.seller_id = $1 AND o.payment_status IN ('paid','refunded')
+          `, [uid])
+      ),
 
       // カード用：今月/今週/全期間のバケット
       getRevenueCardData(dbQuery, uid, partner_id),
@@ -6146,13 +6194,20 @@ app.get('/seller/trades', requireAuth, requireRole(['seller', 'admin']), async (
   try {
     const uid = req.session.user.id;
     const currentRoles = req.session.user.roles;
+    const u = await dbQuery('SELECT id, partner_id FROM users WHERE id = $1', [uid]);
+    const partnerId = u[0]?.partner_id || null;
     const { q = '', status = 'all', payment = 'all', ship = 'all', owner, page = 1 } = req.query;
 
     let where = [];
     let params = [];
     if (!owner || owner !== 'owner_all') {
-      where = ['EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $1)'];
-      params = [uid];
+      if (partnerId) {
+        where = ['EXISTS (SELECT 1 FROM order_items oi JOIN users u ON u.id = oi.seller_id WHERE oi.order_id = o.id AND u.partner_id = $1)'];
+        params = [partnerId];
+      } else {
+        where = ['EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.seller_id = $1)'];
+        params = [uid];
+      }
     } else if (owner === 'owner_all') {
       where = ['EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id)'];
     }
@@ -6666,6 +6721,8 @@ app.get('/seller/analytics', requireAuth, requireRole(['seller', 'admin']), asyn
   try {
     const uid = req.session.user.id;
     const currentRoles = req.session.user.roles;
+    const u = await dbQuery('SELECT id, partner_id FROM users WHERE id = $1', [uid]);
+    const partnerId = u[0]?.partner_id || null;
     const { g, dateFrom, dateTo, week, ym, year } = parseRangeFromQuery(req.query);
     const q        = req.query.q || '';
     const category = req.query.category || '';
@@ -6677,7 +6734,7 @@ app.get('/seller/analytics', requireAuth, requireRole(['seller', 'admin']), asyn
       dbQuery(`SELECT value, label_ja FROM option_labels WHERE category='payment_method' AND active=true ORDER BY sort ASC, label_ja ASC`)
     ]);
 
-    const analyticsData = await getAnalyticsBucketsV2(dbQuery, uid, owner, {
+    const analyticsData = await getAnalyticsBucketsV2(dbQuery, uid, partnerId, owner, {
       g, q, categoryId: category, paymentMethod: payment,
       dateFrom, dateTo, week, ym, year
     });
@@ -7623,9 +7680,9 @@ app.post('/seller/listings/bulk',
           const next = action === 'publish' ? 'public' : action === 'privatize' ? 'private' : 'draft';
           await client.query(
             `UPDATE products SET
-               status = $1,
+               status = $1::product_status,
                published_at = CASE
-                 WHEN $1 = 'public' AND published_at IS NULL THEN now()
+                 WHEN $1::text = 'public' AND published_at IS NULL THEN now()
                  ELSE published_at
                END,
                updated_at = now()
@@ -7659,21 +7716,21 @@ app.post('/seller/listings/:id/status',
       const sellerId = req.session.user.id;
       const id = String(req.params.id || '').trim();
       if (!isUuid(id)) return res.status(400).json({ ok:false, message:'不正なIDです。' });
-      const next = String(req.body.status || '');
-      if (!['public','private','draft'].includes(next)) {
+      const newStatus = String(req.body.status || '');
+      if (!['public','private','draft'].includes(newStatus)) {
         return res.status(400).json({ ok:false, message:'パラメータが不正です。' });
       }
       const rows = await dbQuery(
         `UPDATE products SET
-           status = $1,
+           status = $1::product_status,
            published_at = CASE
-             WHEN $1 = 'public' AND published_at IS NULL THEN now()
+             WHEN $1::text = 'public' AND published_at IS NULL THEN now()
              ELSE published_at
            END,
            updated_at = now()
          WHERE id = $2::uuid AND seller_id = $3::uuid
          RETURNING id`,
-        [next, id, sellerId]
+        [newStatus, id, sellerId]
       );
       if (!rows.length) return res.status(404).json({ ok:false, message:'見つかりません。' });
       res.json({ ok:true });

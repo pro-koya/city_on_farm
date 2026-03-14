@@ -12,6 +12,11 @@
   --shadow: 0 8px 24px rgba(0, 0, 0, .08);
 }
 
+/* 星評価 SVG アイコン */
+.star-svg { vertical-align: middle; }
+.star-svg--filled { color: #f59e0b; }
+.star-svg--empty { color: #d1d5db; }
+
 html,
 body {
   background: var(--bg);
