@@ -1,7 +1,7 @@
-<%- include('../partials/header', { title: product.title, extraCSS: '/styles/product-show.css', extraCSS2: '/styles/prose-tables.css' }) %>
+<%- include('../partials/header', { title: product.title, extraCSS: '/styles/product-show.css', extraCSS2: '/styles/prose-tables.css', extraCSS3: '/styles/garden-members.css' }) %>
 
 <main class="product-page" itemscope itemtype="https://schema.org/Product">
-  <a href="/products">←商品一覧へ</a>
+  <a href="/products"><i data-lucide="arrow-left"></i>商品一覧へ</a>
   <!-- ===== ファーストビュー ===== -->
   <section class="top">
     <!-- PC: 左＝ギャラリー / 右＝情報、SP: 1カラム -->
@@ -59,7 +59,11 @@
       </div>
 
       <div class="rating">
-        <span class="stars" aria-hidden="true"><%= '★'.repeat(Math.round(product.rating||0)) %><%= '☆'.repeat(5-Math.round(product.rating||0)) %></span>
+        <span class="stars" aria-hidden="true">
+          <% for(let _i=0;_i<5;_i++){ %>
+            <svg class="star-svg <%= _i < Math.round(product.rating||0) ? 'star-svg--filled' : 'star-svg--empty' %>" width="16" height="16" viewBox="0 0 24 24" fill="<%= _i < Math.round(product.rating||0) ? 'currentColor' : 'none' %>" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <% } %>
+        </span>
         <span class="rating__num"><%= product.rating||0 %></span>
         <a class="rating__count" href="#reviews" id="goto-reviews">（<%= product.review_count || 0 %>件のレビュー）</a>
       </div>
@@ -395,6 +399,9 @@
       <button class="tab tab2" role="tab" data-tab="specs">サイズ・選定基準</button>
       <button class="tab tab3" role="tab" data-tab="shipping">配送・送料</button>
       <button class="tab tab4" role="tab" data-tab="reviews">レビュー</button>
+      <% if (typeof gardenMembers !== 'undefined' && gardenMembers && gardenMembers.length) { %>
+        <button class="tab tab5" role="tab" data-tab="garden-members">届ける人たち</button>
+      <% } %>
     </div>
 
     <div class="panes">
@@ -523,7 +530,11 @@
                 <li class="review" id="rev-<%= r.id %>">
                   <% const isMine = !currentUser ? false : r.user_id === currentUser.id; %>
                   <div class="review__meta">
-                    <span class="review__stars" aria-label="<%= r.stars %>点"><%= '★'.repeat(r.stars) %><%= '☆'.repeat(5-r.stars) %></span>
+                    <span class="review__stars" aria-label="<%= r.stars %>点">
+                      <% for(let _j=0;_j<5;_j++){ %>
+                        <svg class="star-svg <%= _j < r.stars ? 'star-svg--filled' : 'star-svg--empty' %>" width="14" height="14" viewBox="0 0 24 24" fill="<%= _j < r.stars ? 'currentColor' : 'none' %>" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                      <% } %>
+                    </span>
                     <span class="review__author <%= isMine ? 'badge mine' : '' %>"><%= isMine ? 'あなた' : r.author %></span>
                     <span class="review__date"><%= new Date(r.created_at).toLocaleDateString('ja-JP') %></span>
                   </div>
@@ -534,7 +545,7 @@
               <% }) %>
             </ul>
             <% if ((product.review_count||0) > reviews.length) { %>
-              <a class="link" href="/products/<%= product.slug || product.id %>/reviews">すべてのレビューを見る →</a>
+              <a class="link" href="/products/<%= product.slug || product.id %>/reviews">すべてのレビューを見る <i data-lucide="chevron-right"></i></a>
             <% } %>
           <% } else { %>
             <p class="muted">まだレビューはありません。</p>
@@ -542,12 +553,38 @@
         </div>
       </article>
 
+      <!-- ▼ 市民農園メンバー -->
+      <% if (typeof gardenMembers !== 'undefined' && gardenMembers && gardenMembers.length) { %>
+        <article id="pane-garden-members" class="pane" role="tabpanel">
+          <h3 class="gm-tab__heading">この野菜を届けてくれる市民農園の皆さん</h3>
+          <p class="gm-tab__lead">市民農園で丹精込めて育てられた野菜が、この商品として届きます。</p>
+          <div class="garden-members-grid">
+            <% gardenMembers.forEach(function(m) { %>
+              <a href="/garden-members/<%= m.id %>" class="garden-member-card">
+                <% if (m.icon_url) { %>
+                  <img src="<%= m.icon_url %>" alt="<%= m.name %>" class="garden-member-card__icon">
+                <% } else { %>
+                  <div class="garden-member-card__icon garden-member-card__icon--placeholder">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                  </div>
+                <% } %>
+                <h4 class="garden-member-card__name"><%= m.name %></h4>
+                <p class="garden-member-card__meta">農園歴 <%= m.farming_years %>年</p>
+              </a>
+            <% }) %>
+          </div>
+        </article>
+      <% } %>
+
       <!-- ▼ レビュー投稿/編集モーダル -->
       <div class="modal" id="reviewModal" role="dialog" aria-modal="true" aria-hidden="true">
         <div class="modal__content" role="document">
           <div class="modal__head">
             <h3 id="reviewModalTitle">レビューを書く</h3>
-            <button type="button" class="icon-btn" id="closeReviewModal" aria-label="閉じる">✕</button>
+            <button type="button" class="icon-btn" id="closeReviewModal" aria-label="閉じる"><i data-lucide="x"></i></button>
           </div>
 
           <form id="reviewForm" action="/products/<%= product.id %>/reviews" method="POST" novalidate>
@@ -557,11 +594,11 @@
               <legend>評価</legend>
               <div class="stars__row" id="starsRow" data-value="5" aria-label="星で評価">
                 <!-- JSで .is-active を付け替え -->
-                <button type="button" class="star" data-v="1" aria-label="1点">★</button>
-                <button type="button" class="star" data-v="2" aria-label="2点">★</button>
-                <button type="button" class="star" data-v="3" aria-label="3点">★</button>
-                <button type="button" class="star" data-v="4" aria-label="4点">★</button>
-                <button type="button" class="star" data-v="5" aria-label="5点">★</button>
+                <button type="button" class="star" data-v="1" aria-label="1点"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+                <button type="button" class="star" data-v="2" aria-label="2点"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+                <button type="button" class="star" data-v="3" aria-label="3点"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+                <button type="button" class="star" data-v="4" aria-label="4点"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+                <button type="button" class="star" data-v="5" aria-label="5点"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
               </div>
               <input type="hidden" name="rating" id="rv_stars">
             </fieldset>
@@ -611,7 +648,7 @@
               </ul>
             </div>
           <% } %>
-          <a class="seller-highlight__more link js-seller-modal-link" href="/sellers/<%= sellerHighlight.user_id %>?embed=1">生産者の詳しい紹介を見る→</a>
+          <a class="seller-highlight__more link js-seller-modal-link" href="/sellers/<%= sellerHighlight.user_id %>?embed=1">生産者の詳しい紹介を見る <i data-lucide="chevron-right"></i></a>
         </div>
       </div>
     </div>
@@ -635,7 +672,7 @@
   <section class="rail">
     <div class="rail__head">
       <h2>関連商品</h2>
-      <a class="link" href="/products/list?category=<%= encodeURIComponent(product.category_name||'') %>">同カテゴリをもっと見る →</a>
+      <a class="link" href="/products/list?category=<%= encodeURIComponent(product.category_name||'') %>">同カテゴリをもっと見る <i data-lucide="chevron-right"></i></a>
     </div>
     <div class="rail__track">
       <% related.forEach(function(p){ %>
@@ -661,7 +698,7 @@
         class="icon-btn seller-modal__close"
         data-seller-modal-close
         aria-label="閉じる">
-        ✕
+        <i data-lucide="x"></i>
       </button>
     </div>
     <div class="seller-modal__body">

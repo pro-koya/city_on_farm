@@ -15,7 +15,7 @@
     <div class="toolbar__row toolbar__filters">
       <div class="search">
         <input type="search" name="q" value="<%= q||'' %>" placeholder="氏名・メール・本文で検索" aria-label="検索">
-        <button class="icon-btn" type="submit" aria-label="検索">🔍</button>
+        <button class="icon-btn" type="submit" aria-label="検索"><i data-lucide="search"></i></button>
         <% if (q) { %><a class="clear" href="<%= (buildQuery ? buildQuery({q:''}) : '?') %>" aria-label="条件クリア">×</a><% } %>
       </div>
 
@@ -46,7 +46,7 @@
 
   <% if (!items || !items.length) { %>
     <section class="empty">
-      <div class="empty__icon">📭</div>
+      <div class="empty__icon"><i data-lucide="inbox" style="width:40px;height:40px;color:#9ca3af;"></i></div>
       <h2>該当データがありません</h2>
     </section>
   <% } else { %>
@@ -74,7 +74,7 @@
               %></span>
               <% if (it.handled_name) { %><span class="muted"> / <%= it.handled_name %></span><% } %>
             </td>
-            <td><a class="link" href="/admin/contacts/<%= it.id %>">詳細 →</a></td>
+            <td><a class="link" href="/admin/contacts/<%= it.id %>">詳細 <i data-lucide="chevron-right"></i></a></td>
           </tr>
         <% }) %>
         </tbody>

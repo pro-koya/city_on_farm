@@ -1,0 +1,763 @@
+/* ============================================================
+   garden-members.css — 市民農園メンバー管理・詳細・商品タブ
+   デザイントークン: listing-new.css / product-show.css と統一
+   ============================================================ */
+
+:root {
+  --gm-main: var(--color-main, #4C6B5C);
+  --gm-accent: var(--color-highlight, #D6EADF);
+  --gm-text: var(--color-text, #2B2B2B);
+  --gm-muted: #6b7280;
+  --gm-border: #e5e7eb;
+  --gm-bg: #F9F9F6;
+  --gm-white: #fff;
+  --gm-radius: 16px;
+  --gm-shadow: 0 10px 30px rgba(0,0,0,.08);
+}
+
+/* ============================================================
+   1. セラー管理: 一覧ページ
+   ============================================================ */
+.gm-list,
+.gm-form-page,
+.gm-detail {
+  max-width: 960px;
+  margin: 80px auto 40px;
+  padding: 0 16px;
+}
+
+.gm-list__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.gm-list__head h1 {
+  font-size: clamp(1.3rem, 4vw, 1.7rem);
+  color: var(--gm-text);
+  margin: 0;
+  font-weight: 700;
+  flex: 1;
+}
+
+.gm-list__head .muted {
+  font-size: 0.88rem;
+  color: var(--gm-muted);
+  margin: 0;
+  width: 100%;
+}
+
+/* 空状態 */
+.gm-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  background: var(--gm-white);
+  border-radius: var(--gm-radius);
+  box-shadow: var(--gm-shadow);
+}
+.gm-empty__icon {
+  margin-bottom: 1rem;
+  color: #d1d5db;
+}
+.gm-empty h3 {
+  font-size: 1.1rem;
+  color: var(--gm-text);
+  margin: 0 0 0.5rem;
+}
+.gm-empty p {
+  font-size: 0.9rem;
+  color: var(--gm-muted);
+}
+
+/* カードグリッド */
+.gm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.gm-card {
+  background: var(--gm-white);
+  border-radius: var(--gm-radius);
+  box-shadow: var(--gm-shadow);
+  padding: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+
+.gm-card:hover {
+  box-shadow: 0 12px 36px rgba(0,0,0,.12);
+  transform: translateY(-1px);
+}
+
+.gm-card__icon-wrap {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+}
+
+.gm-card__icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--gm-accent);
+}
+
+.gm-card__icon--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gm-accent);
+  color: var(--gm-main);
+  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+}
+
+.gm-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.gm-card__name {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 0.2rem;
+  color: var(--gm-text);
+}
+
+.gm-card__meta {
+  font-size: 0.85rem;
+  color: var(--gm-muted);
+  margin: 0;
+}
+
+.gm-card__actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   2. セラー管理: 作成/編集フォーム
+   ============================================================ */
+.gm-form-page__head {
+  margin-bottom: 1.5rem;
+}
+
+.gm-form-page__head .back-link,
+.gm-detail .back-link {
+  font-size: 0.9rem;
+  color: var(--gm-muted);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.75rem;
+  transition: color 0.15s;
+}
+
+.gm-form-page__head .back-link:hover,
+.gm-detail .back-link:hover {
+  color: var(--gm-main);
+}
+
+.gm-form-page__head h1 {
+  font-size: clamp(1.3rem, 4vw, 1.7rem);
+  color: var(--gm-text);
+  margin: 0;
+  font-weight: 700;
+}
+
+.gm-form {
+  max-width: 640px;
+}
+
+.gm-form .card {
+  background: var(--gm-white);
+  border-radius: var(--gm-radius);
+  box-shadow: var(--gm-shadow);
+  overflow: hidden;
+}
+
+.gm-form .card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 1.2rem;
+}
+
+.gm-form .card__footer {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem 1.2rem;
+  border-top: 1px solid var(--gm-border);
+  background: #fafaf8;
+}
+
+.gm-form .field {
+  margin: 0.6rem 0;
+}
+
+.gm-form .field__label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+  font-size: 0.95rem;
+  color: var(--gm-text);
+}
+
+.gm-form .field__label .required {
+  color: #ef4444;
+  font-size: 0.8rem;
+}
+
+.gm-form .field__input,
+.gm-form .field__textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.6rem 0.7rem;
+  border-radius: 12px;
+  border: 1px solid var(--gm-border);
+  background: var(--gm-white);
+  outline: none;
+  font-size: 0.95rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gm-form .field__textarea {
+  min-height: 120px;
+  line-height: 1.7;
+  resize: vertical;
+}
+
+.gm-form .field__input:focus,
+.gm-form .field__textarea:focus {
+  border-color: #A3C9A8;
+  box-shadow: 0 0 0 3px rgba(163,201,168,.25);
+}
+
+.gm-form .field__input--short {
+  max-width: 120px;
+}
+
+/* アイコンピッカー */
+.gm-icon-picker {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.gm-icon-picker__preview {
+  flex-shrink: 0;
+}
+
+.gm-icon-picker__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.gm-icon-picker__msg {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.gm-form__icon-img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--gm-accent);
+}
+
+.gm-form__icon-img--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gm-accent);
+  color: var(--gm-main);
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+}
+
+.btn--danger-text {
+  color: #ef4444;
+}
+.btn--danger-text:hover {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.gm-form .muted {
+  font-size: 0.85rem;
+  color: var(--gm-muted);
+  margin: 0.25rem 0 0;
+}
+
+/* ============================================================
+   3. 商品フォーム: メンバー選択チェックボックス
+   ============================================================ */
+.gm-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0 1rem 0.5rem;
+}
+
+.gm-check-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  transition: background 0.12s;
+  cursor: pointer;
+}
+
+.gm-check-item:hover {
+  background: var(--gm-accent);
+}
+
+.gm-check-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--gm-border);
+}
+
+/* ============================================================
+   4. 商品詳細ページ: 市民農園メンバータブ（「届ける人たち」）
+   ============================================================ */
+.gm-tab__heading {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--gm-text);
+  margin: 0 0 0.3rem;
+  padding-left: 0.7rem;
+  position: relative;
+}
+.gm-tab__heading::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: .15rem;
+  width: 4px;
+  height: 1.1em;
+  background: linear-gradient(180deg, var(--gm-accent), var(--gm-main));
+  border-radius: 4px;
+}
+.gm-tab__lead {
+  font-size: 0.88rem;
+  color: var(--gm-muted);
+  margin: 0 0 1.2rem;
+  line-height: 1.6;
+}
+
+.garden-members-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-top: 0;
+}
+
+.garden-member-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.4rem 0.75rem 1.1rem;
+  background: var(--gm-white);
+  border: 1px solid var(--gm-border);
+  border-radius: var(--gm-radius);
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.25s, border-color 0.25s, transform 0.15s;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.garden-member-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--gm-accent), var(--gm-main));
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.garden-member-card:hover {
+  border-color: var(--gm-main);
+  box-shadow: 0 8px 24px rgba(76,107,92,.14);
+  transform: translateY(-3px);
+}
+.garden-member-card:hover::before {
+  opacity: 1;
+}
+
+.garden-member-card__icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 0.7rem;
+  border: 2.5px solid var(--gm-accent);
+  transition: border-color 0.2s;
+}
+.garden-member-card:hover .garden-member-card__icon {
+  border-color: var(--gm-main);
+}
+
+.garden-member-card__icon--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--gm-accent) 0%, #e8f5ec 100%);
+  color: var(--gm-main);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  margin-bottom: 0.7rem;
+}
+
+.garden-member-card__name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  margin: 0 0 0.2rem;
+  color: var(--gm-text);
+}
+
+.garden-member-card__meta {
+  font-size: 0.78rem;
+  color: var(--gm-muted);
+  margin: 0;
+}
+
+/* ============================================================
+   5. 公開: メンバー詳細ページ（リニューアル）
+   ============================================================ */
+
+/* --- ページ全体 --- */
+.gm-show {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 80px 16px 40px;
+}
+
+/* --- ヒーロー: プロフィール --- */
+.gm-show__hero {
+  position: relative;
+  background: linear-gradient(135deg, #f0f4f1 0%, var(--gm-accent) 50%, #f9f9f6 100%);
+  border-radius: var(--gm-radius);
+  padding: 2.5rem 2rem 2rem;
+  margin-bottom: 2rem;
+  overflow: hidden;
+}
+.gm-show__hero::before {
+  content: '';
+  position: absolute;
+  top: -40%;
+  right: -10%;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: rgba(76,107,92,.06);
+  pointer-events: none;
+}
+.gm-show__hero::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  left: -5%;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: rgba(163,201,168,.1);
+  pointer-events: none;
+}
+
+.gm-show__hero-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+/* アバター */
+.gm-show__avatar-wrap {
+  flex-shrink: 0;
+}
+.gm-show__avatar {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid var(--gm-white);
+  box-shadow: 0 6px 20px rgba(0,0,0,.10);
+}
+.gm-show__avatar--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--gm-white) 0%, var(--gm-accent) 100%);
+  color: var(--gm-main);
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  border: 4px solid var(--gm-white);
+  box-shadow: 0 6px 20px rgba(0,0,0,.10);
+}
+
+/* 名前・所属 */
+.gm-show__identity {
+  min-width: 0;
+}
+.gm-show__name {
+  font-size: clamp(1.4rem, 4vw, 1.8rem);
+  font-weight: 800;
+  color: var(--gm-text);
+  margin: 0 0 0.3rem;
+  letter-spacing: .01em;
+}
+.gm-show__partner {
+  font-size: 0.9rem;
+  color: var(--gm-muted);
+  margin: 0 0 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.gm-show__partner svg {
+  color: var(--gm-main);
+  flex-shrink: 0;
+}
+
+/* バッジ */
+.gm-show__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.gm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.gm-badge svg {
+  flex-shrink: 0;
+}
+.gm-badge--years {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #bbf7d0;
+}
+.gm-badge--member {
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+/* --- セクション共通 --- */
+.gm-show__section {
+  background: var(--gm-white);
+  border-radius: var(--gm-radius);
+  box-shadow: var(--gm-shadow);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  animation: gmFadeUp .4s ease both;
+}
+.gm-show__section--intro  { animation-delay: .05s; }
+.gm-show__section--products { animation-delay: .1s; }
+
+@keyframes gmFadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.gm-show__section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--gm-border);
+}
+.gm-show__section-head svg {
+  color: var(--gm-main);
+  flex-shrink: 0;
+}
+.gm-show__section-head h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--gm-text);
+  margin: 0;
+}
+
+/* --- 紹介文 --- */
+.gm-show__intro-body p {
+  white-space: pre-wrap;
+  line-height: 1.9;
+  margin: 0;
+  color: var(--gm-text);
+  font-size: 0.95rem;
+}
+
+/* --- 商品グリッド --- */
+.gm-show__products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.gm-pcard {
+  display: block;
+  background: var(--gm-white);
+  border: 1px solid var(--gm-border);
+  border-radius: 12px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.25s, transform 0.15s, border-color 0.25s;
+}
+.gm-pcard:hover {
+  border-color: var(--gm-main);
+  box-shadow: 0 10px 30px rgba(76,107,92,.12);
+  transform: translateY(-3px);
+}
+
+.gm-pcard__img-wrap {
+  overflow: hidden;
+}
+.gm-pcard__img {
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s ease;
+}
+.gm-pcard:hover .gm-pcard__img {
+  transform: scale(1.04);
+}
+.gm-pcard__img--placeholder {
+  width: 100%;
+  aspect-ratio: 4/3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--gm-accent) 0%, #f3f4f6 100%);
+  color: var(--gm-muted);
+}
+
+.gm-pcard__body {
+  padding: 0.75rem 0.85rem;
+}
+.gm-pcard__title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+  color: var(--gm-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.gm-pcard__price {
+  font-size: 0.85rem;
+  color: var(--gm-main);
+  font-weight: 600;
+  margin: 0;
+}
+
+/* --- 戻るリンク --- */
+.gm-show__back {
+  text-align: center;
+  margin-top: 0.5rem;
+  padding-bottom: 1rem;
+}
+
+/* ============================================================
+   6. アラート（フラッシュメッセージ）
+   ============================================================ */
+.gm-list .alert,
+.gm-form-page .alert {
+  border-radius: 12px;
+  padding: 0.8rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.alert--safe {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #166534;
+}
+
+.alert--danger {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+}
+
+/* ============================================================
+   7. レスポンシブ
+   ============================================================ */
+@media (max-width: 720px) {
+  .gm-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gm-card {
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 600px) {
+  /* セラー管理 */
+  .gm-list__head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  /* 商品詳細タブ */
+  .garden-members-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  /* メンバー詳細ページ */
+  .gm-show__hero {
+    padding: 1.5rem 1.2rem 1.2rem;
+  }
+  .gm-show__hero-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+  .gm-show__partner {
+    justify-content: center;
+  }
+  .gm-show__badges {
+    justify-content: center;
+  }
+  .gm-show__section {
+    padding: 1.2rem;
+  }
+  .gm-show__products-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+}

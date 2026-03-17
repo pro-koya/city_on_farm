@@ -1,0 +1,92 @@
+<%- include('../partials/header', { title: title, extraCSS2: '',
+  extraCSS: '/styles/garden-members.css' }) %>
+
+<main class="gm-show">
+  <!-- ヒーロー: プロフィール -->
+  <section class="gm-show__hero">
+    <div class="gm-show__hero-inner">
+      <div class="gm-show__avatar-wrap">
+        <% if (member.icon_url) { %>
+          <img src="<%= member.icon_url %>" alt="<%= member.name %>" class="gm-show__avatar">
+        <% } else { %>
+          <div class="gm-show__avatar gm-show__avatar--placeholder">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/>
+              <path d="M4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/>
+            </svg>
+          </div>
+        <% } %>
+      </div>
+
+      <div class="gm-show__identity">
+        <h1 class="gm-show__name"><%= member.name %></h1>
+        <% if (partnerName) { %>
+          <p class="gm-show__partner">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <%= partnerName %>
+          </p>
+        <% } %>
+        <div class="gm-show__badges">
+          <% if (member.farming_years > 0) { %>
+            <span class="gm-badge gm-badge--years">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M12 6v6l4 2"/></svg>
+              農園歴 <%= member.farming_years %>年
+            </span>
+          <% } %>
+          <span class="gm-badge gm-badge--member">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            市民農園メンバー
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 紹介文 -->
+  <% if (member.intro) { %>
+    <section class="gm-show__section gm-show__section--intro">
+      <div class="gm-show__section-head">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <h2>自己紹介</h2>
+      </div>
+      <div class="gm-show__intro-body">
+        <p><%= member.intro %></p>
+      </div>
+    </section>
+  <% } %>
+
+  <!-- 関わっている商品 -->
+  <% if (products && products.length) { %>
+    <section class="gm-show__section gm-show__section--products">
+      <div class="gm-show__section-head">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        <h2><%= member.name %>さんが届ける野菜</h2>
+      </div>
+      <div class="gm-show__products-grid">
+        <% products.forEach(function(p) { %>
+          <a href="/products/<%= p.id %>" class="gm-pcard">
+            <div class="gm-pcard__img-wrap">
+              <% if (p.image_url) { %>
+                <img src="<%= p.image_url %>" alt="<%= p.title %>" class="gm-pcard__img">
+              <% } else { %>
+                <div class="gm-pcard__img gm-pcard__img--placeholder">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                </div>
+              <% } %>
+            </div>
+            <div class="gm-pcard__body">
+              <h3 class="gm-pcard__title"><%= p.title %></h3>
+              <p class="gm-pcard__price">&yen;<%= Number(p.price).toLocaleString() %><%= p.has_variants ? '〜' : '' %><% if (p.unit) { %> / <%= p.unit %><% } %></p>
+            </div>
+          </a>
+        <% }) %>
+      </div>
+    </section>
+  <% } %>
+
+  <div class="gm-show__back">
+    <a href="javascript:history.back()" class="btn btn--outline btn--sm">&larr; 前のページに戻る</a>
+  </div>
+</main>
+
+<%- include('../partials/footer') %>
