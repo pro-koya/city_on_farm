@@ -6,7 +6,7 @@
 
 <main class="editor-page">
   <header class="editor-header">
-    <a href="<%= returnUrl %>" class="editor-back">← 戻る</a>
+    <a href="<%= returnUrl %>" class="editor-back"><i data-lucide="arrow-left"></i> 戻る</a>
     <div class="editor-title-area">
       <h1 class="editor-title"><%= pageTitle %></h1>
       <% if (typeof subjectName !== 'undefined' && subjectName) { %>
@@ -35,7 +35,7 @@
         <button type="button" data-action="blockquote" title="引用">"</button>
       </div>
       <div class="toolbar-group">
-        <button type="button" data-action="image" title="画像を挿入">🖼</button>
+        <button type="button" data-action="image" title="画像を挿入"><i data-lucide="image"></i></button>
       </div>
       <div class="toolbar-group">
         <button type="button" data-action="table" title="表を挿入">表</button>
@@ -51,7 +51,7 @@
       <div class="editor-image-modal__panel">
         <header class="editor-image-modal__header">
           <h2 id="imageInsertModalTitle" class="editor-image-modal__title">画像を挿入</h2>
-          <button type="button" class="editor-image-modal__close" aria-label="閉じる">×</button>
+          <button type="button" class="editor-image-modal__close" aria-label="閉じる"><i data-lucide="x"></i></button>
         </header>
         <div class="editor-image-modal__tabs" role="tablist">
           <button type="button" class="editor-image-modal__tab is-active" role="tab" aria-selected="true" data-tab="upload">新規アップロード</button>

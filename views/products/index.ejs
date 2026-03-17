@@ -8,7 +8,7 @@
   </div>
   <div class="toast__actions">
     <button id="toast-open" class="btn btn--ghost" type="button">詳しく</button>
-    <button id="toast-close" class="btn btn--ghost" type="button" aria-label="閉じる">✕</button>
+    <button id="toast-close" class="btn btn--ghost" type="button" aria-label="閉じる"><i data-lucide="x"></i></button>
   </div>
 </div> -->
 
@@ -44,7 +44,7 @@
   <section class="rail">
     <div class="rail__head">
       <h2>新着</h2>
-      <a class="link" href="/products/list">すべて見る →</a>
+      <a class="link" href="/products/list">すべて見る <i data-lucide="chevron-right"></i></a>
     </div>
     <div class="rail__track">
       <% newArrivals.forEach(function(p){ %>
@@ -77,7 +77,7 @@
           <button type="button" class="ranking-tab" data-range="30d">月間</button>
         </div>
       </div>
-      <a class="link" href="/ranking/popular">すべて見る →</a>
+      <a class="link" href="/ranking/popular">すべて見る <i data-lucide="chevron-right"></i></a>
     </div>
     <div class="rail__track" id="popularRankingTrack">
       <!-- 週間ランキング -->
@@ -107,7 +107,7 @@
   <section class="rail">
     <div class="rail__head">
       <h2>みんなのお気に入り</h2>
-      <a class="link" href="/ranking/favorites">すべて見る →</a>
+      <a class="link" href="/ranking/favorites">すべて見る <i data-lucide="chevron-right"></i></a>
     </div>
     <div class="rail__track">
       <% topFavorites.forEach(function(p){ %>
@@ -167,7 +167,7 @@
 
       <div style="text-align:center; margin-top:1rem;">
         <a class="btn" href="/products/list">
-          すべての商品（全 <%= previewTotal %> 件）を見る →
+          すべての商品（全 <%= previewTotal %> 件）を見る <i data-lucide="chevron-right"></i>
         </a>
       </div>
     <% } %>

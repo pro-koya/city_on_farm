@@ -1,4 +1,4 @@
-<%- include('../partials/header', { title: '新規出品', extraCSS2: '',
+<%- include('../partials/header', { title: '新規出品', extraCSS2: '/styles/garden-members.css',
   extraCSS: '/styles/listing-new.css' }) %>
 
 <main class="listing">
@@ -255,7 +255,7 @@
               <div class="kv__row">
                 <input type="text" name="specs[<%= i %>][label]" placeholder="項目名（例：サイズ）" value="<%= row.label %>">
                 <input type="text" name="specs[<%= i %>][value]" placeholder="値（例：M〜L）" value="<%= row.value %>">
-                <button type="button" class="icon-btn kv__del" title="削除">✕</button>
+                <button type="button" class="icon-btn kv__del" title="削除"><i data-lucide="x"></i></button>
               </div>
             <% }) %>
           </div>
@@ -309,6 +309,33 @@
             <label class="check"><input type="checkbox" name="isOrganic" value="1" <%= values?.isOrganic?'checked':'' %>> 有機/JAS</label>
             <label class="check"><input type="checkbox" name="isSeasonal" value="1" <%= values?.isSeasonal?'checked':'' %>> 旬</label>
           </div>
+        </section>
+
+        <!-- 市民農園メンバー -->
+        <section class="card">
+          <h2 class="card__title">関係する市民農園メンバー</h2>
+          <% if (typeof gardenMembers !== 'undefined' && gardenMembers && gardenMembers.length) { %>
+            <p class="help">この商品に関わっている市民農園メンバーを選択してください</p>
+            <div class="field gm-checkboxes">
+              <% gardenMembers.forEach(function(m) { %>
+                <label class="check gm-check-item">
+                  <input type="checkbox" name="gardenMemberIds" value="<%= m.id %>">
+                  <% if (m.icon_url) { %>
+                    <img src="<%= m.icon_url %>" alt="" class="gm-check-icon">
+                  <% } %>
+                  <span><%= m.name %></span>
+                </label>
+              <% }) %>
+            </div>
+            <div style="padding:.6rem 1rem 0;">
+              <a href="/seller/garden-members" class="btn btn--ghost btn--sm">メンバーを管理</a>
+            </div>
+          <% } else { %>
+            <p class="help">市民農園メンバーが未登録です。メンバーを登録すると、商品に紐付けることができます。</p>
+            <div style="padding:0 1rem .8rem;">
+              <a href="/seller/garden-members/new" class="btn btn--primary btn--sm">メンバーを登録する</a>
+            </div>
+          <% } %>
         </section>
 
         <!-- 公開設定 -->

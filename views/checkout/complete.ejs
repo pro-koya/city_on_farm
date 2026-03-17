@@ -14,7 +14,7 @@
   <!-- ヒーロー：完了メッセージ -->
   <section class="complete-hero" aria-labelledby="completeTitle">
     <% if (isAwaitingPayment) { %>
-      <div class="complete-hero__icon" aria-hidden="true">⏳</div>
+      <div class="complete-hero__icon" aria-hidden="true"><i data-lucide="loader" style="width:56px;height:56px;color:#4C6B5C;"></i></div>
 
       <h1 id="completeTitle" class="complete-hero__title">
         決済処理中です
@@ -25,7 +25,7 @@
         通常数秒〜数分で完了します。完了後、確認メールをお送りします。
       </p>
     <% } else { %>
-      <div class="complete-hero__icon" aria-hidden="true">✔</div>
+      <div class="complete-hero__icon" aria-hidden="true"><i data-lucide="check-circle" style="width:56px;height:56px;color:#4C6B5C;"></i></div>
 
       <h1 id="completeTitle" class="complete-hero__title">
         ご注文ありがとうございます
@@ -67,7 +67,7 @@
     <% if (order?.payment_method === 'invoice') { %>
       <div class="complete-payment-notice complete-payment-notice--paid">
         <div class="complete-payment-notice__title">
-          <span class="payment-icon payment-icon--paid">📄</span>
+          <span class="payment-icon payment-icon--paid"><i data-lucide="file-text" style="width:18px;height:18px;vertical-align:middle;"></i></span>
           掛売（請求書払い）でご注文を受け付けました
         </div>
         <p class="complete-payment-notice__message">
@@ -86,12 +86,12 @@
       <div class="complete-payment-notice complete-payment-notice--<%= statusClass %>">
         <% if (order.payment_status === 'paid') { %>
           <div class="complete-payment-notice__title">
-            <span class="payment-icon payment-icon--paid">✓</span>
+            <span class="payment-icon payment-icon--paid"><i data-lucide="check-circle" style="width:18px;height:18px;vertical-align:middle;"></i></span>
             クレジットカード決済が完了しました
           </div>
         <% } else if (order.payment_status === 'failed') { %>
           <div class="complete-payment-notice__title">
-            <span class="payment-icon payment-icon--failed">⚠</span>
+            <span class="payment-icon payment-icon--failed"><i data-lucide="alert-triangle" style="width:18px;height:18px;vertical-align:middle;color:#dc2626;"></i></span>
             決済に失敗しました
           </div>
           <p class="complete-payment-notice__message">
@@ -99,7 +99,7 @@
           </p>
         <% } else { %>
           <div class="complete-payment-notice__title">
-            <span class="payment-icon payment-icon--pending">⏳</span>
+            <span class="payment-icon payment-icon--pending"><i data-lucide="clock" style="width:18px;height:18px;vertical-align:middle;color:#92400e;"></i></span>
             決済確認中です
           </div>
           <p class="complete-payment-notice__message">

@@ -423,45 +423,64 @@ main.page {
 /* 順位バッジ */
 .badge--rank {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: 10px;
+  left: 10px;
   z-index: 9;
-  background: rgba(255, 255, 255, 0.95);
   border: 2px solid;
   border-radius: 50%;
-  width: 44px;
-  height: 44px;
+  width: 52px;
+  height: 52px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1px;
   font-weight: 800;
-  font-size: 0.9rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  font-size: 0.7rem;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+  line-height: 1;
+}
+
+.badge--rank__icon {
+  flex-shrink: 0;
 }
 
 .badge--rank--1 {
-  border-color: #fbbf24;
-  color: #f59e0b;
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-color: #f59e0b;
+  color: #b45309;
+  background: linear-gradient(145deg, #fffbeb 0%, #fef3c7 50%, #fde68a 100%);
+}
+
+.badge--rank--1 .badge--rank__icon {
+  stroke: #d97706;
 }
 
 .badge--rank--2 {
   border-color: #94a3b8;
-  color: #64748b;
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  color: #475569;
+  background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
+}
+
+.badge--rank--2 .badge--rank__icon {
+  stroke: #64748b;
 }
 
 .badge--rank--3 {
-  border-color: #f97316;
-  color: #ea580c;
-  background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+  border-color: #cd7c2f;
+  color: #9a3412;
+  background: linear-gradient(145deg, #fff7ed 0%, #fed7aa 50%, #fdba74 100%);
+}
+
+.badge--rank--3 .badge--rank__icon {
+  stroke: #c2410c;
 }
 
 .badge--rank--other {
   border-color: var(--muted);
   color: var(--text);
   background: var(--white);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
+  flex-direction: row;
 }
 
 /* ランキングタブ */

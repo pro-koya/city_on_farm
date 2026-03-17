@@ -21,7 +21,7 @@
           value="<%= q || '' %>"
           placeholder="タイトル・本文で検索"
           aria-label="検索">
-        <button class="icon-btn" type="submit" aria-label="検索">🔍</button>
+        <button class="icon-btn" type="submit" aria-label="検索"><i data-lucide="search"></i></button>
         <% if (q) { %>
           <a class="clear" href="<%= buildQuery ? buildQuery({ q:'', page:1 }) : '?q=' %>" aria-label="条件クリア">×</a>
         <% } %>
@@ -51,7 +51,7 @@
 
   <% if (!items || !items.length) { %>
     <section class="empty">
-      <div class="empty__icon">🔔</div>
+      <div class="empty__icon"><i data-lucide="bell" style="width:40px;height:40px;color:#9ca3af;"></i></div>
       <h2>該当するお知らせはありません</h2>
     </section>
   <% } else { %>
@@ -117,7 +117,7 @@
                 <% } %>
               </td>
               <td>
-                <a class="link" href="/admin/notifications/<%= it.id %>">詳細・編集 →</a>
+                <a class="link" href="/admin/notifications/<%= it.id %>">詳細・編集 <i data-lucide="chevron-right"></i></a>
               </td>
             </tr>
           <% }) %>

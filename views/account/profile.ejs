@@ -104,7 +104,7 @@
               <div class="addr-body">
                 <% if (a.postal_code) { %><div>〒<%= a.postal_code %></div><% } %>
                 <div><%= [a.prefecture, a.city, a.address1, a.address2].filter(Boolean).join(' ') %></div>
-                <% if (a.phone) { %><div>☎ <%= a.phone %></div><% } %>
+                <% if (a.phone) { %><div><i data-lucide="phone" style="width:14px;height:14px;vertical-align:middle;margin-right:2px;"></i> <%= a.phone %></div><% } %>
                 <% if (a.note)  { %><div class="muted"><%= a.note %></div><% } %>
               </div>
             </div>
