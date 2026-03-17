@@ -130,6 +130,8 @@
                 });
                 data.isOrganic = form.querySelector('[name="isOrganic"]')?.checked || false;
                 data.isSeasonal = form.querySelector('[name="isSeasonal"]')?.checked || false;
+                data.forIndividual = form.querySelector('[name="forIndividual"]')?.checked || false;
+                data.forCorporate = form.querySelector('[name="forCorporate"]')?.checked || false;
                 data.hasVariants = form.querySelector('[name="hasVariants"]')?.checked || false;
                 var specRows = form.querySelectorAll('#specs .kv__row');
                 data.specs = [];
@@ -178,6 +180,8 @@
                 }
                 if (data.isOrganic) { var c = form.querySelector('[name="isOrganic"]'); if (c) c.checked = true; }
                 if (data.isSeasonal) { var c = form.querySelector('[name="isSeasonal"]'); if (c) c.checked = true; }
+                if (data.forIndividual === false) { var c = form.querySelector('[name="forIndividual"]'); if (c) c.checked = false; }
+                if (data.forCorporate === false) { var c = form.querySelector('[name="forCorporate"]'); if (c) c.checked = false; }
                 if (data.specs && data.specs.length) {
                   var specsEl = document.getElementById('specs');
                   var existingRows = specsEl ? specsEl.querySelectorAll('.kv__row') : [];
@@ -308,6 +312,12 @@
           <div class="field">
             <label class="check"><input type="checkbox" name="isOrganic" value="1" <%= values?.isOrganic?'checked':'' %>> 有機/JAS</label>
             <label class="check"><input type="checkbox" name="isSeasonal" value="1" <%= values?.isSeasonal?'checked':'' %>> 旬</label>
+          </div>
+          <div class="field">
+            <label class="label">対象ユーザー</label>
+            <label class="check"><input type="checkbox" name="forIndividual" value="1" <%= values?.forIndividual !== false ? 'checked' : '' %>> 個人向け</label>
+            <label class="check"><input type="checkbox" name="forCorporate" value="1" <%= values?.forCorporate !== false ? 'checked' : '' %>> 法人向け</label>
+            <p class="error" data-for="targetAudience"></p>
           </div>
         </section>
 

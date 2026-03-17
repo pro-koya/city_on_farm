@@ -3727,7 +3727,7 @@ async function mergeSessionRecentToDb(req) {
 /* =========================================================
  * 人気商品ランキング取得
  * =======================================================*/
-async function getPopularProducts(dbQuery, { range = '7d', limit = 12, sellerId = null } = {}) {
+async function getPopularProducts(dbQuery, { range = '7d', limit = 12, sellerId = null, buyerPartnerId } = {}) {
   // 期間条件の設定
   let dateCondition = '';
   const params = [];
@@ -3779,6 +3779,7 @@ async function getPopularProducts(dbQuery, { range = '7d', limit = 12, sellerId 
      WHERE p.status = 'public'
        AND o.status NOT IN ('canceled', 'cancelled', 'refunded')
        AND o.payment_status IN ('paid', 'completed')
+       ${buyerPartnerId ? 'AND p.for_corporate = true' : buyerPartnerId === null ? 'AND p.for_individual = true' : ''}
        ${dateCondition}
        ${sellerCondition}
      GROUP BY p.id, p.title, p.price, p.unit, p.stock, p.favorite_count, u.name, pa.name, pa.icon_url
@@ -3798,7 +3799,10 @@ async function getPopularProducts(dbQuery, { range = '7d', limit = 12, sellerId 
 /* =========================================================
  * みんなのお気に入り取得
  * =======================================================*/
-async function getTopFavorites(dbQuery, { limit = 12 } = {}) {
+async function getTopFavorites(dbQuery, { limit = 12, buyerPartnerId } = {}) {
+  const audienceFilter = buyerPartnerId !== undefined
+    ? (buyerPartnerId ? 'AND p.for_corporate = true' : 'AND p.for_individual = true')
+    : '';
   const rows = await dbQuery(
     `SELECT
        p.id,
@@ -3816,6 +3820,7 @@ async function getTopFavorites(dbQuery, { limit = 12 } = {}) {
      LEFT JOIN partners pa ON pa.id = u.partner_id
      WHERE p.status = 'public'
        AND p.favorite_count > 0
+       ${audienceFilter}
      ORDER BY
        p.favorite_count DESC,
        p.created_at DESC
@@ -3905,17 +3910,18 @@ app.get('/products', async (req, res, next) => {
     const categories = await fetchCategories(dbQuery);
     const categoriesChips = categories.map(c => c.name);
 
+    const buyerPartnerId = req.session?.user ? (req.session.user.partner_id || null) : undefined;
     const { items, total, pageNum } = await fetchProductsWithCount(dbQuery, {
-      q, category, sort, page, flags, visible: 'public', pageSize: 20
+      q, category, sort, page, flags, visible: 'public', pageSize: 20, buyerPartnerId
     });
 
     const buildQuery = buildQueryPath('/products', { q, category, sort });
 
     // 人気商品ランキング（週間・月間）とみんなのお気に入りを取得
     const [popularWeekly, popularMonthly, topFavorites] = await Promise.all([
-      getPopularProducts(dbQuery, { range: '7d', limit: 12 }),
-      getPopularProducts(dbQuery, { range: '30d', limit: 12 }),
-      getTopFavorites(dbQuery, { limit: 12 })
+      getPopularProducts(dbQuery, { range: '7d', limit: 12, buyerPartnerId }),
+      getPopularProducts(dbQuery, { range: '30d', limit: 12, buyerPartnerId }),
+      getTopFavorites(dbQuery, { limit: 12, buyerPartnerId })
     ]);
 
     // お気に入り状態の取得（全商品用：通常商品 + ランキング商品）
@@ -3982,8 +3988,9 @@ app.get('/products/list', async (req, res, next) => {
     const categories = await fetchCategories(dbQuery);
     const categoriesChips = categories.map(c => c.name);
 
+    const buyerPartnerId = req.session?.user ? (req.session.user.partner_id || null) : undefined;
     const { items, total, pageNum, pageSize } = await fetchProductsWithCount(dbQuery, {
-      q, category, sort, page, flags, visible: 'public', pageSize: 20
+      q, category, sort, page, flags, visible: 'public', pageSize: 20, buyerPartnerId
     });
 
     // お気に入り状態の取得（ログインユーザーのみ）
@@ -4035,7 +4042,8 @@ app.get('/ranking/popular', async (req, res, next) => {
     const offset = (page - 1) * perPage;
 
     // ランキング取得
-    const allProducts = await getPopularProducts(dbQuery, { range, limit: 1000 });
+    const buyerPartnerId = req.session?.user ? (req.session.user.partner_id || null) : undefined;
+    const allProducts = await getPopularProducts(dbQuery, { range, limit: 1000, buyerPartnerId });
     const total = allProducts.length;
     const pageCount = Math.ceil(total / perPage);
     const products = allProducts.slice(offset, offset + perPage);
@@ -4081,18 +4089,21 @@ app.get('/ranking/favorites', async (req, res, next) => {
     const perPage = 20;
     const offset = (page - 1) * perPage;
 
+    const buyerPartnerId = req.session?.user ? (req.session.user.partner_id || null) : undefined;
+    const audienceFilter = buyerPartnerId ? 'AND p.for_corporate = true' : 'AND p.for_individual = true';
+
     // 総件数
     const countRows = await dbQuery(
       `SELECT COUNT(*)::int AS cnt
-       FROM products
-       WHERE status = 'public' AND favorite_count > 0`
+       FROM products p
+       WHERE status = 'public' AND favorite_count > 0 ${audienceFilter}`
     );
     const total = countRows[0]?.cnt || 0;
     const pageCount = Math.ceil(total / perPage);
 
     // お気に入り数順で取得
     const products = await dbQuery(
-      `SELECT 
+      `SELECT
          p.id,
          p.title,
          p.price,
@@ -4103,7 +4114,8 @@ app.get('/ranking/favorites', async (req, res, next) => {
        FROM products p
        WHERE p.status = 'public'
          AND p.favorite_count > 0
-       ORDER BY 
+         ${audienceFilter}
+       ORDER BY
          p.favorite_count DESC,
          p.created_at DESC
        LIMIT $1::int OFFSET $2::int`,
@@ -4170,6 +4182,20 @@ app.get('/products/:id', async (req, res, next) => {
       const isOwner = currentUser && currentUser.id === product.seller_id;
       const isAdmin = currentUser && currentUser.roles?.includes('admin');
       if (!isOwner && !isAdmin) return next();
+    }
+
+    // 対象ユーザーチェック（未ログイン・出品者本人・管理者は除く）
+    {
+      const currentUser = req.session?.user;
+      if (currentUser) {
+        const isOwner = currentUser.id === product.seller_id;
+        const isAdmin = currentUser.roles?.includes('admin');
+        if (!isOwner && !isAdmin) {
+          const hasPid = !!currentUser.partner_id;
+          if (hasPid && !product.for_corporate) return next();
+          if (!hasPid && !product.for_individual) return next();
+        }
+      }
     }
 
     // 画像（R2に保存されているURLを取得）
@@ -4502,6 +4528,8 @@ app.post(
       status: req.body.status || 'public',
       isOrganic: !!req.body.isOrganic,
       isSeasonal: !!req.body.isSeasonal,
+      forIndividual: !!req.body.forIndividual,
+      forCorporate: !!req.body.forCorporate,
       description: descRaw,
       description_html: descHtmlRaw,
       imageUrls: req.body.imageUrls || '',
@@ -4514,6 +4542,18 @@ app.post(
       dbQuery(`SELECT id, name, slug FROM tags ORDER BY name ASC`),
       getGMForPartner(req.session.user.partner_id)
     ]);
+
+    // 対象ユーザー: 少なくとも一方を選択
+    if (!req.body.forIndividual && !req.body.forCorporate) {
+      const fieldErrors = {};
+      for (const e of errors.array()) if (!fieldErrors[e.path]) fieldErrors[e.path] = e.msg;
+      fieldErrors.targetAudience = '個人向け・法人向けのいずれかを選択してください。';
+      return res.status(422).render('seller/listing-new', {
+        title: '新規出品',
+        values, categories, tags: tagsMaster,
+        fieldErrors, gardenMembers
+      });
+    }
 
     if (!descHtmlRaw && !descRaw) {
       const fieldErrors = {};
@@ -4576,9 +4616,10 @@ app.post(
         INSERT INTO products
           (seller_id, category_id, slug, title, description_html, description_raw,
            price, unit, stock, is_organic, is_seasonal,
+           for_individual, for_corporate,
            ship_method, ship_days, status, published_at)
         VALUES
-          ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+          ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
         RETURNING id
       `;
       const pr = await client.query(insertProduct, [
@@ -4593,6 +4634,8 @@ app.post(
         Number(req.body.stock || 0),
         !!req.body.isOrganic,
         !!req.body.isSeasonal,
+        !!req.body.forIndividual,
+        !!req.body.forCorporate,
         'normal',
         req.body.shipDays,
         req.body.status,
@@ -4938,10 +4981,32 @@ app.post(
     const unit        = req.body.unit || '';
     const shipDays    = req.body.shipDays;
     const status      = req.body.status;
-    const isOrganic   = !!req.body.isOrganic;
-    const isSeasonal  = !!req.body.isSeasonal;
+    const isOrganic     = !!req.body.isOrganic;
+    const isSeasonal    = !!req.body.isSeasonal;
+    const forIndividual = !!req.body.forIndividual;
+    const forCorporate  = !!req.body.forCorporate;
     const descHtmlRaw = String(req.body.description_html || '').trim();
     const descRaw     = String(req.body.description || '').trim();
+
+    // 対象ユーザー: 少なくとも一方を選択
+    if (!forIndividual && !forCorporate) {
+      const fieldErrors = { targetAudience: '個人向け・法人向けのいずれかを選択してください。' };
+      const [catRows, imgRows, specRows, tagRows] = await Promise.all([
+        dbQuery('SELECT id, name FROM categories ORDER BY sort_order NULLS LAST, name ASC'),
+        dbQuery('SELECT id, url, alt, position FROM product_images WHERE product_id = $1::uuid ORDER BY position ASC', [id]),
+        dbQuery('SELECT id, label, value, position FROM product_specs WHERE product_id = $1::uuid ORDER BY position ASC', [id]),
+        dbQuery(`SELECT t.id, t.name, t.slug FROM product_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.product_id = $1::uuid ORDER BY t.name ASC`, [id])
+      ]);
+      const prodRow = await dbQuery('SELECT * FROM products WHERE id = $1::uuid LIMIT 1', [id]);
+      const prod = prodRow[0] || {};
+      return res.status(422).render('seller/listing-edit', {
+        title: '出品を編集',
+        product: { ...prod, ...req.body, for_individual: forIndividual, for_corporate: forCorporate },
+        categories: catRows, images: imgRows, specs: specRows, tags: tagRows,
+        fieldErrors
+      });
+    }
+
     if (!descHtmlRaw && !descRaw) {
       const fieldErrors = { description: '商品の詳細説明を入力するか、リッチテキストで編集してください。' };
       const [catRows, imgRows, specRows, tagRows] = await Promise.all([
@@ -5035,15 +5100,17 @@ app.post(
             stock = $7,
             is_organic = $8,
             is_seasonal = $9,
-            ship_days = $10,
-            status = $11::product_status,
+            for_individual = $10,
+            for_corporate = $11,
+            ship_days = $12,
+            status = $13::product_status,
             published_at = CASE
-              WHEN $11::text = 'public' AND published_at IS NULL THEN now()
+              WHEN $13::text = 'public' AND published_at IS NULL THEN now()
               ELSE published_at
             END,
             updated_at = now()
-         WHERE id = $12::uuid`,
-        [categoryId, title, descriptionHtml, descriptionRaw, price, unit, stock, isOrganic, isSeasonal, shipDays, status, id]
+         WHERE id = $14::uuid`,
+        [categoryId, title, descriptionHtml, descriptionRaw, price, unit, stock, isOrganic, isSeasonal, forIndividual, forCorporate, shipDays, status, id]
       );
 
       /* ===== 画像 ===== */
@@ -7330,6 +7397,7 @@ app.post('/cart/add', upload.none(), async (req, res, next) => {
     const rows = await dbQuery(`
       SELECT
         p.id, p.title AS name, p.price, p.unit, p.stock, p.has_variants,
+        p.for_individual, p.for_corporate,
         (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY position ASC LIMIT 1) AS image
       FROM products p
       WHERE p.id = $1 AND p.status IN ('public', 'private')
@@ -7338,6 +7406,13 @@ app.post('/cart/add', upload.none(), async (req, res, next) => {
 
     const prod = rows[0];
     if (!prod) return res.status(404).json({ ok:false, message:'商品が見つかりません。' });
+
+    // 対象ユーザーチェック（ログイン済みの場合のみ）
+    if (req.session?.user) {
+      const hasPid = !!req.session.user.partner_id;
+      if (hasPid && !prod.for_corporate) return res.status(403).json({ ok:false, message:'この商品は法人向けではありません。' });
+      if (!hasPid && !prod.for_individual) return res.status(403).json({ ok:false, message:'この商品は個人向けではありません。' });
+    }
 
     // バリエーション対応: 価格・在庫・単位の決定
     let effectivePrice = prod.price;
