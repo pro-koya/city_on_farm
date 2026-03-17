@@ -112,7 +112,9 @@
 .kv__row {
   gap: .5rem;
   align-items: center;
-  margin-bottom: .5rem
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
 }
 
 .kv__row .kv__del {

@@ -420,6 +420,27 @@ main.page {
   background-color: var(--danger);
 }
 
+/* 対象ユーザーバッジ（商品カード：タイトル下インライン） */
+.badge--audience {
+  display: inline-block;
+  font-weight: 700;
+  font-size: .65rem;
+  padding: .15rem .4rem;
+  border-radius: 4px;
+  color: #fff;
+  line-height: 1;
+  margin-top: .2rem;
+}
+.badge--all {
+  background: #10b981;
+}
+.badge--individual {
+  background: #3b82f6;
+}
+.badge--corporate {
+  background: #8b5cf6;
+}
+
 /* 順位バッジ */
 .badge--rank {
   position: absolute;

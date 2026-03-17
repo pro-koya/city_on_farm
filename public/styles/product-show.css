@@ -195,6 +195,26 @@ body {
   line-height: 1.3
 }
 
+/* 対象ユーザーバッジ（商品詳細） */
+.badge--audience {
+  display: inline-block;
+  font-weight: 700;
+  font-size: .8rem;
+  padding: .2rem .6rem;
+  border-radius: 6px;
+  color: #fff;
+  margin-bottom: .4rem;
+}
+.badge--all {
+  background: #10b981;
+}
+.badge--individual {
+  background: #3b82f6;
+}
+.badge--corporate {
+  background: #8b5cf6;
+}
+
 .rating {
   display: flex;
   align-items: center;
