@@ -7,6 +7,7 @@ public,campaigns,,17
 public,cart_items,,11
 public,carts,,5
 public,categories,,6
+public,community_garden_members,,11
 public,contact_messages,,8
 public,contacts,,13
 public,coupons,,17
@@ -41,6 +42,7 @@ public,password_reset_tokens,,6
 public,payment_records,,7
 public,payments,,8
 public,payout_runs,送金バッチ実行履歴テーブル。冪等性と監査のため、全実行を記録,15
+public,product_garden_members,,3
 public,product_images,,12
 public,product_popularity_stats,,10
 public,product_reviews,,9

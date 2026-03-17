@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2026-03-16T19:01:52.108Z
+> Generated at: 2026-03-17T19:02:24.601Z
 
 ---
 
@@ -375,6 +375,50 @@
   
   ```sql
   CREATE UNIQUE INDEX categories_slug_key ON public.categories USING btree (slug)
+  ```
+
+---
+
+### `public.community_garden_members`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `id` | `uuid` | NO | gen_random_uuid() |  |
+| 2 | `partner_id` | `uuid` | NO |  |  |
+| 3 | `name` | `text` | NO |  |  |
+| 4 | `intro` | `text` | NO | ''::text |  |
+| 5 | `icon_url` | `text` | YES |  |  |
+| 6 | `icon_r2_key` | `text` | YES |  |  |
+| 7 | `farming_years` | `integer` | NO | 0 |  |
+| 8 | `position` | `integer` | NO | 0 |  |
+| 9 | `active` | `boolean` | NO | true |  |
+| 10 | `created_at` | `timestamp with time zone` | NO | now() |  |
+| 11 | `updated_at` | `timestamp with time zone` | NO | now() |  |
+
+**Constraints**
+
+- **CHECK**: `community_garden_members_active_not_null`, `community_garden_members_created_at_not_null`, `community_garden_members_farming_years_not_null`, `community_garden_members_id_not_null`, `community_garden_members_intro_not_null`, `community_garden_members_name_not_null`, `community_garden_members_partner_id_not_null`, `community_garden_members_position_not_null`, `community_garden_members_updated_at_not_null`
+- **FOREIGN KEY**: `community_garden_members_partner_id_fkey`
+- **PRIMARY KEY**: `community_garden_members_pkey`
+
+**Indexes**
+
+- `community_garden_members_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX community_garden_members_pkey ON public.community_garden_members USING btree (id)
+  ```
+- `idx_cgm_partner`
+  
+  ```sql
+  CREATE INDEX idx_cgm_partner ON public.community_garden_members USING btree (partner_id)
+  ```
+- `idx_cgm_partner_active`
+  
+  ```sql
+  CREATE INDEX idx_cgm_partner_active ON public.community_garden_members USING btree (partner_id, active)
   ```
 
 ---
@@ -2350,6 +2394,42 @@ _No indexes_
   
   ```sql
   CREATE UNIQUE INDEX payout_runs_run_date_key ON public.payout_runs USING btree (run_date)
+  ```
+
+---
+
+### `public.product_garden_members`
+
+**Columns**
+
+| # | Column | Type | NULL | Default | Comment |
+|---:|---|---|:---:|---|---|
+| 1 | `product_id` | `uuid` | NO |  |  |
+| 2 | `member_id` | `uuid` | NO |  |  |
+| 3 | `position` | `integer` | NO | 0 |  |
+
+**Constraints**
+
+- **CHECK**: `product_garden_members_member_id_not_null`, `product_garden_members_position_not_null`, `product_garden_members_product_id_not_null`
+- **FOREIGN KEY**: `product_garden_members_member_id_fkey`, `product_garden_members_product_id_fkey`
+- **PRIMARY KEY**: `product_garden_members_pkey`
+
+**Indexes**
+
+- `idx_pgm_member`
+  
+  ```sql
+  CREATE INDEX idx_pgm_member ON public.product_garden_members USING btree (member_id)
+  ```
+- `idx_pgm_product`
+  
+  ```sql
+  CREATE INDEX idx_pgm_product ON public.product_garden_members USING btree (product_id)
+  ```
+- `product_garden_members_pkey`
+  
+  ```sql
+  CREATE UNIQUE INDEX product_garden_members_pkey ON public.product_garden_members USING btree (product_id, member_id)
   ```
 
 ---
