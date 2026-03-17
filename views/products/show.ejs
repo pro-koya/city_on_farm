@@ -58,6 +58,14 @@
         <% } %>
       </div>
 
+      <% if (product.for_individual && product.for_corporate) { %>
+        <span class="badge--audience badge--all">個人・法人向け</span>
+      <% } else if (product.for_individual) { %>
+        <span class="badge--audience badge--individual">個人向け</span>
+      <% } else if (product.for_corporate) { %>
+        <span class="badge--audience badge--corporate">法人向け</span>
+      <% } %>
+
       <div class="rating">
         <span class="stars" aria-hidden="true">
           <% for(let _i=0;_i<5;_i++){ %>

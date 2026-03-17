@@ -26,7 +26,7 @@ function getSortSql(sort = 'new') {
 }
 
 /** 検索条件の WHERE と params を構築（/products & /products/list で共用） */
-function buildWhere({ q, category, flags, visible = 'public' }) {
+function buildWhere({ q, category, flags, visible = 'public', buyerPartnerId }) {
     const where = [];
     const params = [];
 
@@ -54,6 +54,15 @@ function buildWhere({ q, category, flags, visible = 'public' }) {
         `);
     }
 
+    // 対象ユーザーフィルタ（buyerPartnerId: undefined=フィルタなし, null=個人, 値あり=法人）
+    if (buyerPartnerId !== undefined) {
+        if (buyerPartnerId) {
+            where.push(`p.for_corporate = true`);
+        } else {
+            where.push(`p.for_individual = true`);
+        }
+    }
+
     // チェックボックス
     if (flags.organic)  where.push(`p.is_organic = true`);
     if (flags.seasonal) where.push(`p.is_seasonal = true`);
@@ -76,9 +85,9 @@ function buildWhere({ q, category, flags, visible = 'public' }) {
 async function fetchProductsWithCount(dbQuery, {
     q = '', category = 'all', sort = 'new',
     page = 1, pageSize = PAGE_SIZE_DEFAULT,
-    flags = {}, visible = 'public'
+    flags = {}, visible = 'public', buyerPartnerId
 }) {
-    const { where, params } = buildWhere({ q, category, flags, visible });
+    const { where, params } = buildWhere({ q, category, flags, visible, buyerPartnerId });
     const orderBy = getSortSql(sort);
 
     const pageNum = Number(page) || 1;
@@ -97,7 +106,8 @@ async function fetchProductsWithCount(dbQuery, {
     const dataSql = `
         SELECT
         p.id, p.slug, p.title, p.price, p.unit, p.stock, p.has_variants,
-        p.is_organic, p.is_seasonal, p.published_at, p.created_at,
+        p.is_organic, p.is_seasonal, p.for_individual, p.for_corporate,
+        p.published_at, p.created_at,
         c.name AS category_name,
         u.name AS seller_name,
         pa.name AS seller_partner_name,

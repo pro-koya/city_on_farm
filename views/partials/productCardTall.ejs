@@ -21,6 +21,13 @@
     <img src="<%= p.image_url %>" alt="<%= p.title %>">
     <div class="card__body">
       <h3 class="card__name"><%= p.title %></h3>
+      <% if (p.for_individual && p.for_corporate) { %>
+        <span class="badge--audience badge--all">個人・法人向け</span>
+      <% } else if (p.for_individual) { %>
+        <span class="badge--audience badge--individual">個人向け</span>
+      <% } else if (p.for_corporate) { %>
+        <span class="badge--audience badge--corporate">法人向け</span>
+      <% } %>
       <div class="card__meta">
         <span>¥<%= p.price %></span>
         <span><%= p.unit || '' %>　在庫数：<%= p.stock || '0' %></span>
