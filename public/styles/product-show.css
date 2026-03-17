@@ -498,29 +498,70 @@ body {
 /* 本文（読みやすさ強化） */
 .prose {
   line-height: 1.9;
-  font-size: 1.02rem
+  font-size: 1.02rem;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.prose p {
+  margin: 0 0 0.8rem;
+}
+.prose p:last-child {
+  margin-bottom: 0;
 }
 
 .prose h2 {
-  font-size: 1.2rem;
-  margin: 1.2rem 0 .5rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 1.4rem 0 .5rem;
   position: relative;
-  padding-left: .8rem
+  padding-left: .75rem;
+}
+
+.prose h2:first-child {
+  margin-top: 0;
 }
 
 .prose h2::before {
   content: '';
   position: absolute;
   left: 0;
-  top: .25rem;
+  top: .2rem;
   width: 4px;
   height: 1.1em;
   background: linear-gradient(180deg, var(--accent), var(--main));
-  border-radius: 4px
+  border-radius: 4px;
+}
+
+.prose h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 1.2rem 0 .4rem;
+}
+.prose h3:first-child {
+  margin-top: 0;
+}
+
+.prose ul,
+.prose ol {
+  margin: .4rem 0 .8rem 0;
+  padding-left: 1.4em;
 }
 
 .prose ul {
-  margin: .4rem 0 .8rem 1.2rem
+  list-style: disc;
+}
+
+.prose ol {
+  list-style: decimal;
+}
+
+.prose li {
+  margin-bottom: 0.25rem;
+  line-height: 1.75;
+}
+.prose li:last-child {
+  margin-bottom: 0;
 }
 
 .prose blockquote {
@@ -528,7 +569,24 @@ body {
   background: #f3faf5;
   padding: .6rem .9rem;
   border-radius: 8px;
-  color: #234
+  color: #234;
+  margin: .6rem 0;
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: .6rem 0;
+}
+
+.prose a {
+  color: var(--main);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose a:hover {
+  color: #3a5548;
 }
 
 /* 出品者 */
@@ -1057,9 +1115,27 @@ body {
     font-size: 0.9rem;
   }
 
+  .panes {
+    padding: 1rem 0.85rem;
+  }
+
+  .prose {
+    font-size: 0.95rem;
+  }
+
+  .prose ul,
+  .prose ol {
+    padding-left: 1.2em;
+  }
+
+  .prose h2 {
+    font-size: 1.05rem;
+  }
+
   .tabs {
     padding: 0 0.75rem;
     overflow-x: auto;
+    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     flex-wrap: nowrap;
     justify-content: flex-start;

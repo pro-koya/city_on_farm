@@ -1,0 +1,65 @@
+<%- include('../partials/header', { title: '市民農園メンバー管理', extraCSS2: '',
+  extraCSS: '/styles/garden-members.css' }) %>
+
+<main class="gm-list">
+  <div class="gm-list__head">
+    <h1>市民農園メンバー管理</h1>
+    <p class="muted">商品に関わっている市民農園メンバーを登録・管理できます。</p>
+    <a class="btn btn--primary" href="/seller/garden-members/new">メンバーを追加</a>
+  </div>
+
+  <% if (flash) { %>
+    <div class="alert alert--<%= flash.type === 'success' ? 'safe' : 'danger' %>">
+      <%= flash.message %>
+    </div>
+  <% } %>
+
+  <% if (!members || !members.length) { %>
+    <section class="gm-empty">
+      <div class="gm-empty__icon" aria-hidden="true">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      </div>
+      <h3>メンバーがまだ登録されていません</h3>
+      <p>「メンバーを追加」ボタンから市民農園メンバーを登録してください。</p>
+    </section>
+  <% } else { %>
+    <section class="gm-grid">
+      <% members.forEach(function(m) { %>
+        <div class="gm-card">
+          <div class="gm-card__icon-wrap">
+            <% if (m.icon_url) { %>
+              <img src="<%= m.icon_url %>" alt="<%= m.name %>" class="gm-card__icon">
+            <% } else { %>
+              <div class="gm-card__icon gm-card__icon--placeholder">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+              </div>
+            <% } %>
+          </div>
+          <div class="gm-card__body">
+            <h3 class="gm-card__name"><%= m.name %></h3>
+            <p class="gm-card__meta">農園歴 <%= m.farming_years %>年</p>
+          </div>
+          <div class="gm-card__actions">
+            <a class="btn btn--sm btn--outline" href="/seller/garden-members/<%= m.id %>/edit">編集</a>
+            <form method="POST" action="/seller/garden-members/<%= m.id %>/delete"
+                  onsubmit="return confirm('このメンバーを削除しますか？');" style="display:inline;">
+              <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <% } %>
+              <button type="submit" class="btn btn--sm btn--danger">削除</button>
+            </form>
+          </div>
+        </div>
+      <% }) %>
+    </section>
+  <% } %>
+</main>
+
+<%- include('../partials/footer') %>

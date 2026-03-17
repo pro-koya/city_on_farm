@@ -4288,6 +4288,10 @@ app.get('/products/:id', async (req, res, next) => {
       variants = await getVariantsForProduct(product.id);
     }
 
+    // ★ 市民農園メンバー取得
+    const { getMembersForProduct } = require('./services/gardenMemberService');
+    const gardenMembers = await getMembersForProduct(product.id);
+
     // 顧客別価格の取得（法人ユーザーのみ）
     let customerPrice = null;
     let variantCustomerPrices = {};
@@ -4309,7 +4313,8 @@ app.get('/products/:id', async (req, res, next) => {
       product, specs, tags, related, reviews, myReview,
       recentlyViewed, currentUser, sellerHighlight,
       shippingSummary, customerPrice, variants, variantCustomerPrices,
-      isFavorited, csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
+      isFavorited, gardenMembers,
+      csrfToken: (typeof req.csrfToken === 'function') ? req.csrfToken() : null
     });
   } catch (e) {
     console.log(e);
@@ -4443,9 +4448,11 @@ app.get(
   requireRole(['seller', 'admin']),
   async (req, res, next) => {
     try {
-      const [categories, tags] = await Promise.all([
+      const { getMembersForPartner } = require('./services/gardenMemberService');
+      const [categories, tags, gardenMembers] = await Promise.all([
         dbQuery(`SELECT id, name, slug FROM categories ORDER BY sort_order NULLS LAST, name ASC`),
-        dbQuery(`SELECT id, name, slug FROM tags ORDER BY name ASC`)
+        dbQuery(`SELECT id, name, slug FROM tags ORDER BY name ASC`),
+        getMembersForPartner(req.session.user.partner_id)
       ]);
       let values = {};
       if (req.session.editorDraftResult?.context === 'product' && req.session.editorDraftResult?.returnUrl === '/seller/listing-new') {
@@ -4454,7 +4461,7 @@ app.get(
       }
       res.render('seller/listing-new', {
         title: '新規出品',
-        categories, tags, values, fieldErrors: {}
+        categories, tags, values, fieldErrors: {}, gardenMembers
       });
     } catch (e) { next(e); }
   }
@@ -4501,9 +4508,11 @@ app.post(
       tags: req.body.tags || ''
     };
 
-    const [categories, tagsMaster] = await Promise.all([
+    const { getMembersForPartner: getGMForPartner } = require('./services/gardenMemberService');
+    const [categories, tagsMaster, gardenMembers] = await Promise.all([
       dbQuery(`SELECT id, name, slug FROM categories ORDER BY sort_order NULLS LAST, name ASC`),
-      dbQuery(`SELECT id, name, slug FROM tags ORDER BY name ASC`)
+      dbQuery(`SELECT id, name, slug FROM tags ORDER BY name ASC`),
+      getGMForPartner(req.session.user.partner_id)
     ]);
 
     if (!descHtmlRaw && !descRaw) {
@@ -4513,7 +4522,7 @@ app.post(
       return res.status(422).render('seller/listing-new', {
         title: '新規出品',
         values, categories, tags: tagsMaster,
-        fieldErrors
+        fieldErrors, gardenMembers
       });
     }
     if (!errors.isEmpty()) {
@@ -4522,7 +4531,7 @@ app.post(
       return res.status(422).render('seller/listing-new', {
         title: '新規出品',
         values, categories, tags: tagsMaster,
-        fieldErrors
+        fieldErrors, gardenMembers
       });
     }
 
@@ -4765,6 +4774,15 @@ app.post(
         }
       }
 
+      // ★ 市民農園メンバー紐付け
+      const rawGardenMemberIds = req.body.gardenMemberIds || [];
+      const gardenMemberIds = (Array.isArray(rawGardenMemberIds) ? rawGardenMemberIds : [rawGardenMemberIds])
+        .map(s => String(s).trim()).filter(Boolean);
+      if (gardenMemberIds.length) {
+        const { linkMembersToProduct } = require('./services/gardenMemberService');
+        await linkMembersToProduct(client, productId, gardenMemberIds, req.session.user.partner_id);
+      }
+
       await client.query('COMMIT');
       res.redirect(`/products/${productId}`);
     } catch (err) {
@@ -4773,7 +4791,7 @@ app.post(
       res.status(500).render('seller/listing-new', {
         title: '新規出品',
         values, categories, tags: tagsMaster,
-        fieldErrors: {},
+        fieldErrors: {}, gardenMembers,
         globalError: '保存中にエラーが発生しました。時間をおいて再度お試しください。'
         // csrfToken: req.csrfToken()
       });
@@ -4818,7 +4836,8 @@ app.get(
       if (!product) return res.status(404).render('errors/404', { title: '商品が見つかりません' });
 
       // マスタ・付随情報
-      const [categories, images, specs, tags, variants] = await Promise.all([
+      const { getMembersForPartner } = require('./services/gardenMemberService');
+      const [categories, images, specs, tags, variants, gardenMembers, linkedGardenRows] = await Promise.all([
         dbQuery(`SELECT id, name FROM categories ORDER BY sort_order NULLS LAST, name ASC`),
         dbQuery(`SELECT id, url, alt, position FROM product_images WHERE product_id = $1::uuid ORDER BY position ASC`, [id]),
         dbQuery(`SELECT id, label, value, position FROM product_specs WHERE product_id = $1::uuid ORDER BY position ASC`, [id]),
@@ -4831,7 +4850,10 @@ app.get(
           [id]
         ),
         dbQuery(`SELECT id, label, price, unit, stock, position FROM product_variants WHERE product_id = $1::uuid AND active = true ORDER BY position ASC`, [id]),
+        getMembersForPartner(req.session.user.partner_id),
+        dbQuery(`SELECT member_id FROM product_garden_members WHERE product_id = $1::uuid ORDER BY position ASC`, [id]),
       ]);
+      const linkedGardenMemberIds = linkedGardenRows.map(r => r.member_id);
 
       const { htmlToRaw } = require('./services/desc');
       const rawForForm = product.description_raw ? product.description_raw : htmlToRaw(product.description_html || '');
@@ -4843,7 +4865,7 @@ app.get(
       return res.render('seller/listing-edit', {
         title: '出品を編集',
         product: { ...product, description_raw: rawForForm, description_html: descriptionHtml },
-        categories, images, specs, tags, variants
+        categories, images, specs, tags, variants, gardenMembers, linkedGardenMemberIds
       });
     } catch (e) { next(e); }
   }
@@ -5257,6 +5279,15 @@ app.post(
           `UPDATE product_variants SET active = false, updated_at = now() WHERE product_id = $1`,
           [id]
         );
+      }
+
+      // ★ 市民農園メンバー紐付け
+      const rawGardenMemberIds = req.body.gardenMemberIds || [];
+      const editGardenMemberIds = (Array.isArray(rawGardenMemberIds) ? rawGardenMemberIds : [rawGardenMemberIds])
+        .map(s => String(s).trim()).filter(Boolean);
+      {
+        const { linkMembersToProduct } = require('./services/gardenMemberService');
+        await linkMembersToProduct(client, id, editGardenMemberIds, req.session.user.partner_id);
       }
 
       await client.query('COMMIT');
@@ -15246,6 +15277,12 @@ registerOrderTemplateRoutes(app, requireAuth, dbCartAdd);
 // ============================================================
 const { registerCustomerPriceRoutes } = require('./routes-customer-prices');
 registerCustomerPriceRoutes(app, requireAuth);
+
+// ============================================================
+// 市民農園メンバールート登録
+// ============================================================
+const { registerGardenMemberRoutes } = require('./routes-garden-members');
+registerGardenMemberRoutes(app, requireAuth, requireRole);
 
 // ============================================================
 // 組織メンバー管理ルート登録

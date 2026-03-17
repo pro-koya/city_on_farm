@@ -1,0 +1,251 @@
+<%- include('../partials/header', { title: title, extraCSS2: '',
+  extraCSS: '/styles/garden-members.css' }) %>
+
+<main class="gm-form-page">
+  <div class="gm-form-page__head">
+    <a href="/seller/garden-members" class="back-link">&larr; メンバー一覧に戻る</a>
+    <h1><%= member ? 'メンバー編集' : 'メンバー追加' %></h1>
+  </div>
+
+  <% if (flash) { %>
+    <div class="alert alert--<%= flash.type === 'success' ? 'safe' : 'danger' %>">
+      <%= flash.message %>
+    </div>
+  <% } %>
+
+  <form method="POST"
+        action="<%= member ? '/seller/garden-members/' + member.id : '/seller/garden-members' %>"
+        class="gm-form">
+    <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% } %>
+
+    <!-- R2アイコン情報（JSで更新される） -->
+    <input type="hidden" name="icon_url" id="iconUrlInput"
+           value="<%= (member && member.icon_url) ? member.icon_url : '' %>">
+    <input type="hidden" name="icon_r2_key" id="iconR2KeyInput"
+           value="<%= (member && member.icon_r2_key) ? member.icon_r2_key : '' %>">
+    <input type="hidden" name="icon_changed" id="iconChangedInput" value="0">
+
+    <section class="card">
+      <div class="card__body">
+        <!-- 名前 -->
+        <div class="field">
+          <label for="name" class="field__label">名前 <span class="required">*</span></label>
+          <input type="text" id="name" name="name" class="field__input"
+                 value="<%= member ? member.name : '' %>"
+                 required maxlength="80" placeholder="例：田中太郎">
+        </div>
+
+        <!-- 紹介文 -->
+        <div class="field">
+          <label for="intro" class="field__label">紹介文</label>
+          <textarea id="intro" name="intro" class="field__textarea" rows="4"
+                    placeholder="市民農園メンバーの紹介文を入力してください"><%= member ? member.intro : '' %></textarea>
+        </div>
+
+        <!-- アイコン画像 -->
+        <div class="field">
+          <label class="field__label">アイコン画像</label>
+
+          <div class="gm-icon-picker">
+            <!-- プレビュー -->
+            <div class="gm-icon-picker__preview" id="iconPreview">
+              <% if (member && member.icon_url) { %>
+                <img src="<%= member.icon_url %>" alt="<%= member.name %>" class="gm-form__icon-img" id="iconPreviewImg">
+              <% } else { %>
+                <div class="gm-form__icon-img gm-form__icon-img--placeholder" id="iconPreviewPlaceholder">
+                  <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/>
+                    <path d="M4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/>
+                  </svg>
+                </div>
+              <% } %>
+            </div>
+
+            <!-- アクションボタン -->
+            <div class="gm-icon-picker__actions">
+              <button type="button" class="btn btn--small" id="iconUploadBtn">画像をアップロード</button>
+              <button type="button" class="btn btn--small btn--ghost" id="iconLibraryBtn">ライブラリから選ぶ</button>
+              <% if (member && member.icon_url) { %>
+                <button type="button" class="btn btn--small btn--ghost btn--danger-text" id="iconRemoveBtn">削除</button>
+              <% } %>
+            </div>
+            <input type="file" id="iconFileInput" style="display:none"
+                   accept="image/jpeg,image/png,image/webp,image/avif,image/gif">
+            <p class="gm-icon-picker__msg muted" id="iconMsg"></p>
+          </div>
+        </div>
+
+        <!-- 農園歴 -->
+        <div class="field">
+          <label for="farming_years" class="field__label">農園歴（年）</label>
+          <input type="number" id="farming_years" name="farming_years" class="field__input field__input--short"
+                 value="<%= member ? member.farming_years : 0 %>"
+                 min="0" max="99" placeholder="0">
+        </div>
+      </div>
+
+      <div class="card__footer">
+        <button type="submit" class="btn btn--primary">
+          <%= member ? '更新する' : '追加する' %>
+        </button>
+        <a href="/seller/garden-members" class="btn btn--outline">キャンセル</a>
+      </div>
+    </section>
+  </form>
+</main>
+
+<script src="/js/uploader-r2.js"></script>
+<script>
+(function() {
+  var CSRF = document.querySelector('input[name="_csrf"]')?.value || '';
+  var iconUrlInput = document.getElementById('iconUrlInput');
+  var iconR2KeyInput = document.getElementById('iconR2KeyInput');
+  var iconChangedInput = document.getElementById('iconChangedInput');
+  var previewWrap = document.getElementById('iconPreview');
+  var uploadBtn = document.getElementById('iconUploadBtn');
+  var libraryBtn = document.getElementById('iconLibraryBtn');
+  var removeBtn = document.getElementById('iconRemoveBtn');
+  var fileInput = document.getElementById('iconFileInput');
+  var msgEl = document.getElementById('iconMsg');
+
+  var ALLOWED = ['image/jpeg','image/png','image/webp','image/avif','image/gif'];
+
+  function setMsg(t) { msgEl.textContent = t || ''; }
+
+  function setIcon(url, r2Key) {
+    iconUrlInput.value = url || '';
+    iconR2KeyInput.value = r2Key || '';
+    iconChangedInput.value = '1';
+    previewWrap.innerHTML = url
+      ? '<img src="' + url + '" alt="アイコン" class="gm-form__icon-img" id="iconPreviewImg">'
+      : '<div class="gm-form__icon-img gm-form__icon-img--placeholder" id="iconPreviewPlaceholder">'
+        + '<svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">'
+        + '<path d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/>'
+        + '<path d="M4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/>'
+        + '</svg></div>';
+    // 削除ボタン表示制御
+    if (!removeBtn && url) {
+      removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'btn btn--small btn--ghost btn--danger-text';
+      removeBtn.id = 'iconRemoveBtn';
+      removeBtn.textContent = '削除';
+      removeBtn.addEventListener('click', function() { setIcon('', ''); setMsg(''); });
+      document.querySelector('.gm-icon-picker__actions').appendChild(removeBtn);
+    }
+    if (removeBtn) removeBtn.style.display = url ? '' : 'none';
+  }
+
+  // SHA-256 ハッシュ
+  function toHex(buf) {
+    return Array.prototype.map.call(new Uint8Array(buf), function(x) { return x.toString(16).padStart(2,'0'); }).join('');
+  }
+  async function hashFile(file) {
+    if (!window.crypto?.subtle) return null;
+    try {
+      var buf = await file.arrayBuffer();
+      var dig = await crypto.subtle.digest('SHA-256', buf);
+      return toHex(dig);
+    } catch(e) { return null; }
+  }
+
+  // R2アップロードフロー: sign → PUT → confirm
+  async function uploadFile(file) {
+    if (ALLOWED.indexOf(file.type) === -1) {
+      setMsg('対応していない画像形式です。JPEG/PNG/WebP/AVIF/GIF をご利用ください。');
+      return;
+    }
+    setMsg('アップロード中…');
+    try {
+      var ext = (file.name.split('.').pop() || '').toLowerCase();
+      var sha256 = await hashFile(file);
+      // 1) sign
+      var signRes = await fetch('/uploads/sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF },
+        body: JSON.stringify({ mime: file.type, ext: ext, name: file.name, sha256: sha256 })
+      });
+      if (!signRes.ok) throw new Error('sign failed');
+      var signed = await signRes.json();
+      if (!signed?.ok) throw new Error('sign bad payload');
+
+      var url, r2Key;
+      if (signed.exists && signed.image?.url) {
+        // 重複あり
+        url = signed.image.url;
+        r2Key = signed.image.r2_key || '';
+      } else {
+        // 2) PUT to R2
+        if (!signed.key || !signed.putUrl) throw new Error('sign missing key/putUrl');
+        var putRes = await fetch(signed.putUrl, { method: 'PUT', body: file });
+        if (!putRes.ok) throw new Error('PUT failed');
+        // 3) confirm
+        var confRes = await fetch('/uploads/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF },
+          body: JSON.stringify({ key: signed.key, bytes: file.size, mime: file.type })
+        });
+        if (!confRes.ok) throw new Error('confirm failed');
+        var confData = await confRes.json();
+        var img = confData?.image || (confData?.url ? { url: confData.url, r2_key: signed.key } : null);
+        if (!confData?.ok || !img?.url) throw new Error('confirm bad');
+        url = img.url;
+        r2Key = img.r2_key || signed.key;
+      }
+      setIcon(url, r2Key);
+      setMsg('アップロードが完了しました。');
+    } catch(e) {
+      console.error('[garden-member icon upload]', e);
+      setMsg('アップロードに失敗しました。時間をおいて再度お試しください。');
+    }
+  }
+
+  // ボタンイベント
+  uploadBtn.addEventListener('click', function() { fileInput.click(); });
+  fileInput.addEventListener('change', function() {
+    if (fileInput.files && fileInput.files[0]) uploadFile(fileInput.files[0]);
+    fileInput.value = '';
+  });
+
+  if (removeBtn) {
+    removeBtn.addEventListener('click', function() { setIcon('', ''); setMsg(''); });
+  }
+
+  // ライブラリモーダル（uploader-r2.js の initR2Uploader を活用）
+  // 必須DOM要素を隠し要素として用意し、onSelectExisting でアイコンをセット
+  var dummyTA = document.createElement('textarea');
+  dummyTA.id = '__gm_icon_dummy_ta'; dummyTA.style.display = 'none'; document.body.appendChild(dummyTA);
+  var dummyList = document.createElement('ul');
+  dummyList.id = '__gm_icon_dummy_list'; dummyList.style.display = 'none'; document.body.appendChild(dummyList);
+  var dummyMsg = document.createElement('span');
+  dummyMsg.id = '__gm_icon_dummy_msg'; dummyMsg.style.display = 'none'; document.body.appendChild(dummyMsg);
+  var dummyOpenBtn = document.createElement('button');
+  dummyOpenBtn.id = '__gm_icon_dummy_open'; dummyOpenBtn.style.display = 'none'; document.body.appendChild(dummyOpenBtn);
+  var dummyFileInput = document.createElement('input');
+  dummyFileInput.type = 'file'; dummyFileInput.id = '__gm_icon_dummy_file'; dummyFileInput.style.display = 'none'; document.body.appendChild(dummyFileInput);
+
+  if (typeof window.initR2Uploader === 'function') {
+    window.initR2Uploader({
+      openBtnId: '__gm_icon_dummy_open',
+      fileInputId: '__gm_icon_dummy_file',
+      listId: '__gm_icon_dummy_list',
+      textareaId: '__gm_icon_dummy_ta',
+      msgId: '__gm_icon_dummy_msg',
+      max: 1,
+      libraryBtnId: 'iconLibraryBtn',
+      libraryTitle: '画像ライブラリ',
+      onSelectExisting: function(meta) {
+        setIcon(meta.url, meta.r2_key || '');
+        setMsg('ライブラリから選択しました。');
+      },
+      onUploaded: function(meta) {
+        setIcon(meta.url, meta.r2_key || '');
+      }
+    });
+  }
+})();
+</script>
+
+<%- include('../partials/footer') %>
