@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2026-03-17T19:02:24.601Z
+> Generated at: 2026-03-18T19:01:49.773Z
 
 ---
 
@@ -2736,12 +2736,14 @@ _No indexes_
 | 19 | `description_raw` | `text` | YES |  |  |
 | 20 | `favorite_count` | `integer` | NO | 0 |  |
 | 21 | `has_variants` | `boolean` | NO | false |  |
+| 22 | `for_individual` | `boolean` | NO | true |  |
+| 23 | `for_corporate` | `boolean` | NO | true |  |
 
 > **Enum `product_status` values**: `draft`, `private`, `public`
 
 **Constraints**
 
-- **CHECK**: `products_created_at_not_null`, `products_favorite_count_not_null`, `products_has_variants_not_null`, `products_id_not_null`, `products_is_organic_not_null`, `products_is_seasonal_not_null`, `products_price_check`, `products_price_not_null`, `products_seller_id_not_null`, `products_ship_days_check`, `products_ship_days_not_null`, `products_ship_method_check`, `products_ship_method_not_null`, `products_slug_not_null`, `products_status_not_null`, `products_stock_check`, `products_stock_not_null`, `products_title_not_null`, `products_unit_not_null`, `products_updated_at_not_null`
+- **CHECK**: `chk_target_audience`, `products_created_at_not_null`, `products_favorite_count_not_null`, `products_for_corporate_not_null`, `products_for_individual_not_null`, `products_has_variants_not_null`, `products_id_not_null`, `products_is_organic_not_null`, `products_is_seasonal_not_null`, `products_price_check`, `products_price_not_null`, `products_seller_id_not_null`, `products_ship_days_check`, `products_ship_days_not_null`, `products_ship_method_check`, `products_ship_method_not_null`, `products_slug_not_null`, `products_status_not_null`, `products_stock_check`, `products_stock_not_null`, `products_title_not_null`, `products_unit_not_null`, `products_updated_at_not_null`
 - **FOREIGN KEY**: `products_category_id_fkey`, `products_seller_id_fkey`
 - **PRIMARY KEY**: `products_pkey`
 - **UNIQUE**: `products_slug_key`

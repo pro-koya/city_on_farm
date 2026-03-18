@@ -494,9 +494,12 @@ public,product_variants,product_variants_product_id_not_null,CHECK
 public,product_variants,product_variants_stock_not_null,CHECK
 public,product_variants,product_variants_unit_not_null,CHECK
 public,product_variants,product_variants_updated_at_not_null,CHECK
+public,products,chk_target_audience,CHECK
 public,products,products_category_id_fkey,FOREIGN KEY
 public,products,products_created_at_not_null,CHECK
 public,products,products_favorite_count_not_null,CHECK
+public,products,products_for_corporate_not_null,CHECK
+public,products,products_for_individual_not_null,CHECK
 public,products,products_has_variants_not_null,CHECK
 public,products,products_id_not_null,CHECK
 public,products,products_is_organic_not_null,CHECK
