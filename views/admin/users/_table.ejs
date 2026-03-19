@@ -1,0 +1,70 @@
+<% if (!items || !items.length) { %>
+  <p class="muted">ユーザーが見つかりませんでした。</p>
+<% } else { %>
+  <div class="table-wrap">
+    <div class="table">
+        <table class="lv-table">
+          <thead>
+            <tr>
+              <th style="width:25%">名前</th>
+              <th>メール</th>
+              <th>ロール</th>
+              <th>状態</th>
+              <th>所属取引先</th>
+              <th>登録日</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% items.forEach((u) => { %>
+              <tr>
+                <td data-label="名前">
+                  <a class="lv__link" href="/admin/users/<%= u.id %>"><%= u.name %></a>
+                </td>
+                <td data-label="メール"><%= u.email %></td>
+                <td data-label="ロール">
+                  <% const roles = Array.isArray(u.roles) ? u.roles : []; %>
+                  <% roles.forEach(r => { %>
+                    <span class="badge <%= r==='admin'?'is-warn': (r==='seller'?'is-ok':'') %>"><%= r==='admin'?'管理者': (r==='seller'?'出品者':'購入者') %></span>
+                  <% }) %>
+                </td>
+                <td data-label="状態">
+                  <% if (u.account_locked_at) { %>
+                    <span class="badge is-off">ロック中</span>
+                  <% } else { %>
+                    <span class="badge is-ok">有効</span>
+                  <% } %>
+                </td>
+                <td data-label="所属取引先">
+                  <% if (u.partner_name) { %>
+                    <a class="lv__link" href="/admin/partners/<%= u.partner_id %>"><%= u.partner_name %></a>
+                  <% } else { %>
+                    <span class="muted">—</span>
+                  <% } %>
+                </td>
+                <td data-label="登録日" class="nowrap"><%= u.created_at ? (u.created_at.toISOString ? u.created_at.toISOString().slice(0,10) : u.created_at) : '' %></td>
+                <td class="ta-right">
+                  <a class="btn btn--sm" href="/admin/users/<%= u.id %>">詳細</a>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+    </div>
+  </div>
+
+  <!-- ページャ -->
+  <nav class="pager" aria-label="ページャ">
+    <div class="lv__pager-left">
+      <span class="muted small">全 <%= total %> 件</span>
+    </div>
+    <div class="lv__pager-right">
+      <% const base = searchAction + (queryNoPage || ''); %>
+      <% const mk = (n)=> base + (base.includes('?') ? '&' : '?') + 'page=' + n; %>
+
+      <a class="pager__btn <%= page<=1?'is-disabled':'' %>" href="<%= page<=1 ? '#' : mk(page-1) %>" aria-disabled="<%= page<=1?'true':'false' %>">前へ</a>
+      <span class="pager__info">Page <%= page %> / <%= totalPages %></span>
+      <a class="pager__btn <%= page>=totalPages?'is-disabled':'' %>" href="<%= page>=totalPages ? '#' : mk(page+1) %>" aria-disabled="<%= page>=totalPages?'true':'false' %>">次へ</a>
+    </div>
+  </nav>
+<% } %>

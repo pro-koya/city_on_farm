@@ -139,7 +139,7 @@
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
         gap: .5rem;
-        padding: .4rem 0 0;
+        padding: .4rem 0 8px;
         grid-column: 1 / -1;
     }
 

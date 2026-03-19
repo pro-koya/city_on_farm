@@ -242,6 +242,7 @@
             <% } %>
             <% if (currentUser.roles?.includes('admin')) { %>
             <li class="drawer-menu__divider" role="separator"><span>管理者</span></li>
+            <li role="none"><a role="menuitem" href="/admin/users">ユーザー管理</a></li>
             <li role="none"><a role="menuitem" href="/admin/invoices">請求書管理</a></li>
             <% } %>
           </ul>
