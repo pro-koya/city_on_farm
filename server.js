@@ -63,6 +63,8 @@ if (!process.env.PORT) {
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
+const { RedisStore } = require('connect-redis');
+const Redis = require('ioredis');
 const helmet  = require('helmet');
 const csrf    = require('csurf');
 const rateLimit = require('express-rate-limit');
@@ -727,6 +729,7 @@ app.use(helmet({
         "'self'",
         "https://accounts.google.com",  // Google OAuth
         "https://checkout.stripe.com",  // Stripe Checkout
+        "https://cdn.jsdelivr.net",  // CDNソースマップ（Lucide等）
         "https://19671250ed2c97b13f42b5fa1ad2937f.r2.cloudflarestorage.com",  // R2 Storage endpoint
         "https://pub-9040eb2ad9a74fd79cd99e09fb479b95.r2.dev",  // R2 Public URL
         "https://cityonfirm.19671250ed2c97b13f42b5fa1ad2937f.r2.cloudflarestorage.com"
@@ -745,7 +748,9 @@ app.use(helmet({
 }));
 
 /* ========== Session ========== */
-app.use(session({
+// Redis セッションストア（MemoryStore は本番でメモリリーク＆スケール不可のため使用しない）
+// REDIS_URL が明示的に設定されている場合のみ Redis を使用する
+const sessionConfig = {
   name: 'cof.sid',
   secret: process.env.SESSION_SECRET,
   resave: false,
@@ -756,7 +761,38 @@ app.use(session({
     secure: isProd,
     maxAge: 1000 * 60 * 60 * 24 * 7
   }
-}));
+};
+
+if (process.env.REDIS_URL) {
+  try {
+    const redisClient = new Redis(process.env.REDIS_URL, {
+      maxRetriesPerRequest: 3,
+      retryStrategy(times) {
+        if (times > 3) return null; // 3回失敗したらリトライ停止
+        return Math.min(times * 200, 2000);
+      },
+      lazyConnect: true,
+      enableReadyCheck: true
+    });
+    redisClient.on('error', (err) => logger.error('Redis session store error:', { error: err.message }));
+    redisClient.on('connect', () => logger.info('Redis session store connected'));
+    redisClient.connect().catch((err) => {
+      logger.warn('Redis connection failed', { error: err.message });
+    });
+    sessionConfig.store = new RedisStore({ client: redisClient, prefix: 'cof:sess:' });
+    logger.info('Session store: Redis');
+  } catch (err) {
+    logger.warn('Redis initialization failed, using MemoryStore', { error: err.message });
+  }
+} else {
+  if (isProd) {
+    logger.warn('REDIS_URL is not set — using MemoryStore. This is NOT recommended for production.');
+  } else {
+    logger.info('Session store: MemoryStore (development — set REDIS_URL for Redis)');
+  }
+}
+
+app.use(session(sessionConfig));
 
 /* ========== CSRF ========== */
 // デフォルトの ignoreMethods(['GET','HEAD','OPTIONS']) を使う
@@ -764,64 +800,33 @@ app.use(session({
 const csrfBrowseOnly = csrf();
 
 // Stripe webhookなど、外部からのPOSTリクエストを受け付けるパスを除外
+// セキュリティ: パスは厳密一致のみ（.includes() はバイパスに悪用される）
+// セキュリティ: stripe-signature ヘッダーの有無でCSRFスキップしない（任意ヘッダーで全ルートバイパス可能になるため）
+const CSRF_EXEMPT_PATHS = new Set(['/webhook', '/webhooks/stripe']);
+
 app.use((req, res, next) => {
-  // webhookエンドポイントはCSRF保護をスキップ
-  // パスのマッチングを複数の方法で確認（/webhook は stripe listen のデフォルト向け、Renderのリバースプロキシ対応）
-  const isWebhookPath = 
-    req.path === '/webhook' || req.url === '/webhook' || req.originalUrl === '/webhook' ||
-    req.path === '/webhooks/stripe' || 
-    req.url === '/webhooks/stripe' || 
-    req.originalUrl === '/webhooks/stripe' ||
-    (req.path && req.path.includes('webhooks/stripe')) ||
-    (req.url && req.url.includes('webhooks/stripe')) ||
-    (req.originalUrl && req.originalUrl.includes('webhooks/stripe'));
-  
-  // Stripeのwebhookリクエストを識別（stripe-signatureヘッダーの存在）
-  const hasStripeSignature = !!req.headers['stripe-signature'];
-  
-  if (isWebhookPath || hasStripeSignature) {
-    console.log('[DEBUG] CSRF middleware: Skipping CSRF for webhook', {
-      isWebhookPath,
-      hasStripeSignature,
-      path: req.path,
-      url: req.url,
-      originalUrl: req.originalUrl
-    });
+  // webhookエンドポイントはCSRF保護をスキップ（厳密なパス一致のみ）
+  const isWebhookPath = CSRF_EXEMPT_PATHS.has(req.path);
+
+  if (isWebhookPath) {
     logger.info('Skipping CSRF for webhook:', {
       path: req.path,
-      url: req.url,
-      originalUrl: req.originalUrl,
       method: req.method,
-      headers: {
-        'stripe-signature': req.headers['stripe-signature'] ? 'present' : 'missing',
-        'content-type': req.headers['content-type'],
-        'user-agent': req.headers['user-agent'],
-        'origin': req.headers['origin'],
-        'referer': req.headers['referer']
-      },
       timestamp: new Date().toISOString()
     });
     return next();
   }
-  
+
   // CSRF保護を適用する前に、CSRFエラーが発生した場合のログを追加
   const originalNext = next;
   next = (err) => {
     if (err && err.code === 'EBADCSRFTOKEN') {
-      console.log('[DEBUG] CSRF ERROR detected:', {
-        path: req.path,
-        url: req.url,
-        method: req.method,
-        errorCode: err.code
-      });
       logger.warn('CSRF token validation failed:', {
         path: req.path,
-        url: req.url,
         method: req.method,
         headers: {
           'origin': req.headers['origin'],
-          'referer': req.headers['referer'],
-          'user-agent': req.headers['user-agent']
+          'referer': req.headers['referer']
         },
         hasCsrfToken: !!req.body?._csrf,
         timestamp: new Date().toISOString()
@@ -829,7 +834,7 @@ app.use((req, res, next) => {
     }
     originalNext(err);
   };
-  
+
   csrfBrowseOnly(req, res, next);
 });
 
@@ -1647,6 +1652,18 @@ app.post(
         twoFactorUsed: user.two_factor_enabled
       });
 
+      // セッション固定攻撃対策: ログイン成功時にセッションIDを再生成
+      await new Promise((resolve, reject) => {
+        const cart = req.session.cart;            // カート情報を退避
+        const recentlyViewed = req.session.recentlyViewed;
+        req.session.regenerate((err) => {
+          if (err) return reject(err);
+          req.session.cart = cart;                // カート情報を復元
+          req.session.recentlyViewed = recentlyViewed;
+          resolve();
+        });
+      });
+
       // セッションにユーザー情報を保存
       req.session.user = {
         id: user.id,
@@ -1794,9 +1811,20 @@ app.post(
         });
       }
 
+      // セッション固定攻撃対策: 2FA検証成功時にセッションIDを再生成
+      await new Promise((resolve, reject) => {
+        const cart = req.session.cart;
+        const recentlyViewed = req.session.recentlyViewed;
+        req.session.regenerate((err) => {
+          if (err) return reject(err);
+          req.session.cart = cart;
+          req.session.recentlyViewed = recentlyViewed;
+          resolve();
+        });
+      });
+
       // セッションにユーザー情報を保存
       req.session.user = { id: userId, name, email, roles, partner_id: user.partner_id || null };
-      delete req.session.pending2FA;
 
       await mergeSessionCartToDb(req, userId);
       await mergeSessionRecentToDb(req);
@@ -1879,8 +1907,19 @@ app.post(
         twoFactorUsed: true
       });
 
+      // セッション固定攻撃対策: バックアップコード認証成功時にセッションIDを再生成
+      await new Promise((resolve, reject) => {
+        const cart = req.session.cart;
+        const recentlyViewed = req.session.recentlyViewed;
+        req.session.regenerate((err) => {
+          if (err) return reject(err);
+          req.session.cart = cart;
+          req.session.recentlyViewed = recentlyViewed;
+          resolve();
+        });
+      });
+
       req.session.user = { id: userId, name, email, roles, partner_id: user.partner_id || null };
-      delete req.session.pending2FA;
 
       await mergeSessionCartToDb(req, userId);
       await mergeSessionRecentToDb(req);
@@ -13043,6 +13082,77 @@ app.post(
   }
 );
 
+// ユーザー一覧（管理者のみ）
+// GET /admin/users
+app.get('/admin/users', requireAuth, requireRole(['admin']), async (req, res, next) => {
+  try {
+    const q      = (req.query.q || '').trim();
+    const role   = (req.query.role || '').trim();
+    const status = (req.query.status || '').trim();
+    const sort   = (req.query.sort || 'recent').trim();
+
+    const page    = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const perPage = 20;
+    const offset  = (page - 1) * perPage;
+
+    // WHERE
+    const conds = ['1=1'];
+    const params = [];
+    let p = 1;
+
+    if (q) {
+      conds.push(`(u.name ILIKE $${p} OR u.email ILIKE $${p})`);
+      params.push(`%${q}%`); p++;
+    }
+    if (role) {
+      conds.push(`$${p} = ANY(u.roles)`);
+      params.push(role); p++;
+    }
+    if (status === 'locked') {
+      conds.push(`u.account_locked_at IS NOT NULL`);
+    } else if (status === 'active') {
+      conds.push(`u.account_locked_at IS NULL`);
+    }
+
+    // ORDER
+    const order = ({
+      recent:    'u.created_at DESC',
+      updated:   'u.updated_at DESC',
+      name_asc:  'u.name ASC',
+      name_desc: 'u.name DESC',
+    })[sort] || 'u.created_at DESC';
+
+    // COUNT
+    const totalRows = await dbQuery(
+      `SELECT COUNT(*)::int AS n FROM users u WHERE ${conds.join(' AND ')}`,
+      params
+    );
+    const total = totalRows[0].n;
+
+    // DATA
+    const data = await dbQuery(
+      `SELECT u.id, u.name, u.email, u.roles, u.account_locked_at,
+              u.partner_id, u.created_at,
+              pr.name AS partner_name
+         FROM users u
+         LEFT JOIN partners pr ON pr.id = u.partner_id
+        WHERE ${conds.join(' AND ')}
+        ORDER BY ${order}
+        LIMIT ${perPage} OFFSET ${offset}`,
+      params
+    );
+
+    res.render('admin/users/index', {
+      title: 'ユーザー',
+      pageTitle: 'ユーザー一覧',
+      q, role, status, sort,
+      users: data,
+      page, perPage, total, totalPages: Math.max(1, Math.ceil(total / perPage)),
+      request: req,
+    });
+  } catch (e) { next(e); }
+});
+
 // GET: ユーザー詳細（本人 or 管理者）
 app.get('/admin/users/:id', requireAuth, async (req,res,next)=>{
   try{
@@ -14217,9 +14327,11 @@ app.post(
       })();
 
       // partner 単位でプロフィールを upsert（user.id から partner に変換される）
+      // XSS対策: HTMLをサニタイズしてから保存
+      const sanitizedIntroHtml = intro_html ? require('./routes-editor').sanitize(intro_html) : '';
       await upsertSellerProfile(user.id, {
         headline,
-        intro_html,
+        intro_html: sanitizedIntroHtml,
         hero_image_url,
         hashtags,
         hashtag_input, // 念のため渡してもOK
@@ -14399,7 +14511,7 @@ app.post(
       status: (req.body.status || 'draft').trim(),
       starts_at: req.body.starts_at || '',
       ends_at: req.body.ends_at || '',
-      body_html: req.body.body_html || '',
+      body_html: req.body.body_html ? require('./routes-editor').sanitize(req.body.body_html) : '',
       body_raw: req.body.body_raw || '',
     };
 
@@ -14606,7 +14718,7 @@ app.post(
       status: (req.body.status || 'draft').trim(),
       starts_at: req.body.starts_at || '',
       ends_at: req.body.ends_at || '',
-      body_html: req.body.body_html || '',
+      body_html: req.body.body_html ? require('./routes-editor').sanitize(req.body.body_html) : '',
       body_raw: req.body.body_raw || '',
       published_at: '' // 表示用
     };
