@@ -1,5 +1,13 @@
 // /public/js/product-show.js
 (() => {
+  // ===== フィルター状態の復元: 「商品一覧へ」リンクを直前の一覧URLに差し替え =====
+  const saved = sessionStorage.getItem('cof.lastListUrl');
+  if (saved) {
+    document.querySelectorAll('a[href="/products"]').forEach(a => {
+      a.href = saved;
+    });
+  }
+
   const form = document.getElementById('buyForm');
   if (!form) return;
 

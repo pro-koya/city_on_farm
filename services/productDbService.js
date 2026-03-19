@@ -26,7 +26,7 @@ function getSortSql(sort = 'new') {
 }
 
 /** 検索条件の WHERE と params を構築（/products & /products/list で共用） */
-function buildWhere({ q, category, flags, visible = 'public', buyerPartnerId }) {
+function buildWhere({ q, category, flags, visible = 'public', buyerPartnerId, prefecture, audience, priceMin, priceMax }) {
     const where = [];
     const params = [];
 
@@ -78,6 +78,65 @@ function buildWhere({ q, category, flags, visible = 'public', buyerPartnerId }) 
         `);
     }
 
+    // 配送可能地域（都道府県）フィルタ — 複数選択対応
+    // ※ seller_shipping_rules.seller_id は partners.id（法人ID）を参照
+    //   products.seller_id は users.id なので users テーブル経由で partner_id を取得する
+    // prefecture: カンマ区切り文字列 or 配列
+    const prefList = Array.isArray(prefecture)
+        ? prefecture.filter(Boolean)
+        : (prefecture ? String(prefecture).split(',').filter(Boolean) : []);
+    if (prefList.length > 0) {
+        params.push(prefList);
+        const n = params.length;
+        where.push(`
+        (
+            -- 出品者に partner_id が無い、またはルール未設定 → 配送制限なしとみなす
+            NOT EXISTS (
+                SELECT 1 FROM seller_shipping_rules ssr0
+                JOIN users u0 ON u0.partner_id = ssr0.seller_id
+                WHERE u0.id = p.seller_id
+            )
+            OR
+            -- ルール設定済み → 指定都道府県に配送可能か判定
+            EXISTS (
+                SELECT 1 FROM seller_shipping_rules ssr
+                JOIN users u_ship ON u_ship.partner_id = ssr.seller_id
+                WHERE u_ship.id = p.seller_id AND ssr.can_ship = true
+                  AND (
+                    -- 都道府県個別ルールで配送可
+                    (ssr.scope = 'prefecture' AND ssr.prefecture = ANY($${n}::text[]))
+                    OR
+                    -- 全国一律で配送可、かつ指定都道府県に配送不可の個別ルールがない
+                    (ssr.scope = 'all' AND NOT EXISTS (
+                      SELECT 1 FROM seller_shipping_rules ssr2
+                      JOIN users u_ship2 ON u_ship2.partner_id = ssr2.seller_id
+                      WHERE u_ship2.id = p.seller_id
+                        AND ssr2.scope = 'prefecture'
+                        AND ssr2.prefecture = ANY($${n}::text[])
+                        AND ssr2.can_ship = false
+                    ))
+                  )
+            )
+        )
+        `);
+    }
+
+    // 対象ユーザーフィルタ（未ログイン時のみ手動選択）
+    if (buyerPartnerId === undefined && audience) {
+        if (audience === 'individual') where.push(`p.for_individual = true`);
+        else if (audience === 'corporate') where.push(`p.for_corporate = true`);
+    }
+
+    // 価格帯フィルタ
+    if (priceMin) {
+        params.push(Number(priceMin));
+        where.push(`p.price >= $${params.length}`);
+    }
+    if (priceMax) {
+        params.push(Number(priceMax));
+        where.push(`p.price <= $${params.length}`);
+    }
+
     return { where, params };
 }
 
@@ -85,9 +144,10 @@ function buildWhere({ q, category, flags, visible = 'public', buyerPartnerId }) 
 async function fetchProductsWithCount(dbQuery, {
     q = '', category = 'all', sort = 'new',
     page = 1, pageSize = PAGE_SIZE_DEFAULT,
-    flags = {}, visible = 'public', buyerPartnerId
+    flags = {}, visible = 'public', buyerPartnerId,
+    prefecture, audience, priceMin, priceMax
 }) {
-    const { where, params } = buildWhere({ q, category, flags, visible, buyerPartnerId });
+    const { where, params } = buildWhere({ q, category, flags, visible, buyerPartnerId, prefecture, audience, priceMin, priceMax });
     const orderBy = getSortSql(sort);
 
     const pageNum = Number(page) || 1;

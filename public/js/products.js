@@ -1,4 +1,20 @@
 (function(){
+  // ===== フィルター状態の保持（一覧 ↔ 詳細の遷移） =====
+  const LIST_URL_KEY = 'cof.lastListUrl';
+  const path = location.pathname;
+  if (path === '/products' || path === '/products/list') {
+    // 一覧ページ: 現在のURL（クエリパラメータ含む）を保存
+    sessionStorage.setItem(LIST_URL_KEY, location.href);
+  } else if (/^\/products\/[^/]+$/.test(path)) {
+    // 詳細ページ: 「商品一覧へ」リンクを保存URLに差し替え
+    const saved = sessionStorage.getItem(LIST_URL_KEY);
+    if (saved) {
+      document.querySelectorAll('a[href="/products"]').forEach(a => {
+        a.href = saved;
+      });
+    }
+  }
+
   // ===== 既存のトースト/モーダルはそのまま =====
   const toast = document.getElementById('toast');
   const modal = document.getElementById('modal');
@@ -68,7 +84,9 @@
     });
 
     // 2) クイックフィルタ（checkbox）と並び替え（select）は変更で即送信
+    //    ※ .pref-cb（都道府県チェックボックス）は除外（専用パネルで制御）
     form.addEventListener('change', (e) => {
+      if (e.target.classList.contains('pref-cb')) return;
       if (e.target.matches('select, input[type="checkbox"]')) {
         submitWithReset();
       }
@@ -84,6 +102,92 @@
       });
       q.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); submitWithReset(); }
+      });
+    }
+
+    // 4) 価格帯フィルタ（デバウンス 0.5s）
+    ['priceMin', 'priceMax'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      let pt;
+      el.addEventListener('input', () => {
+        clearTimeout(pt);
+        pt = setTimeout(submitWithReset, 500);
+      });
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); submitWithReset(); }
+      });
+    });
+  }
+
+  // ===== 折りたたみトグル（PC・モバイル共通） =====
+  const toggle = document.getElementById('filtersToggle');
+  const collapsible = document.getElementById('filtersCollapsible');
+  const STORAGE_KEY = 'cof.filterCollapsed';
+  if (toggle && collapsible) {
+    // localStorage に保存された状態があればそちらを優先して復元
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved !== null) {
+      const shouldCollapse = saved === '1';
+      collapsible.classList.toggle('is-collapsed', shouldCollapse);
+      toggle.setAttribute('aria-expanded', String(!shouldCollapse));
+      toggle.querySelector('.filters__toggle-icon').textContent = shouldCollapse ? '\u25B6' : '\u25BC';
+    }
+
+    toggle.addEventListener('click', () => {
+      const collapsed = collapsible.classList.toggle('is-collapsed');
+      toggle.setAttribute('aria-expanded', String(!collapsed));
+      toggle.querySelector('.filters__toggle-icon').textContent = collapsed ? '\u25B6' : '\u25BC';
+      localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0');
+    });
+  }
+
+  // ===== 配送先 複数選択パネル =====
+  const prefPickerBtn = document.getElementById('prefPickerBtn');
+  const prefPanel = document.getElementById('prefPanel');
+  const prefHidden = document.getElementById('prefHidden');
+  if (prefPickerBtn && prefPanel && prefHidden) {
+    // パネル開閉
+    prefPickerBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const open = prefPanel.hidden;
+      prefPanel.hidden = !open;
+      prefPickerBtn.setAttribute('aria-expanded', String(open));
+    });
+
+    // パネル外クリックで閉じる
+    document.addEventListener('click', (e) => {
+      const picker = document.getElementById('prefPicker');
+      if (picker && !picker.contains(e.target)) {
+        prefPanel.hidden = true;
+        prefPickerBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // すべて選択 / すべて解除
+    const selectAll = document.getElementById('prefSelectAll');
+    const deselectAll = document.getElementById('prefDeselectAll');
+    const allCbs = prefPanel.querySelectorAll('.pref-cb');
+    if (selectAll) selectAll.addEventListener('click', () => allCbs.forEach(cb => cb.checked = true));
+    if (deselectAll) deselectAll.addEventListener('click', () => allCbs.forEach(cb => cb.checked = false));
+
+    // 適用ボタン → hidden更新 → フォーム送信
+    const prefApply = document.getElementById('prefApply');
+    if (prefApply) {
+      prefApply.addEventListener('click', () => {
+        const selected = Array.from(allCbs).filter(cb => cb.checked).map(cb => cb.value);
+        prefHidden.value = selected.join(',');
+        prefPanel.hidden = true;
+        prefPickerBtn.setAttribute('aria-expanded', 'false');
+        // form の submitWithReset を呼ぶ（formスコープ外なので直接submit）
+        const f = document.getElementById('filter-form');
+        const ph = document.getElementById('pageHidden');
+        if (ph) ph.value = 1;
+        if (f) {
+          const sub = f.querySelector('button[type="submit"].sr-only');
+          if (sub && typeof f.requestSubmit === 'function') f.requestSubmit(sub);
+          else f.submit();
+        }
       });
     }
   }

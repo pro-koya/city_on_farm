@@ -159,13 +159,7 @@ main.page {
   z-index: 900;
   background: var(--bg);
   border-bottom: 1px solid #e5e7eb;
-  padding: .6rem .8rem;
-}
-
-@media(max-width:720px) {
-  .toolbar {
-    padding: .6rem .3rem;
-  }
+  padding: .6rem .8rem
 }
 
 .filters {
@@ -173,19 +167,15 @@ main.page {
   margin: 0 auto
 }
 
-.filters__row {
-  display: flex;
-  gap: .5rem
-}
-
+/* 共通フォーム入力 */
 .filters input[type="search"],
 .filters select {
-  flex: 1;
   min-height: 44px;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   background: var(--white);
   padding: .55rem .8rem;
+  font-size: .95rem;
   outline: none
 }
 
@@ -195,16 +185,49 @@ main.page {
   box-shadow: 0 0 0 3px rgba(163, 201, 168, .25)
 }
 
-.filters .btn {
-  white-space: nowrap
+/* 検索バー（常に全幅） */
+.filters__search {
+  margin-bottom: .4rem
+}
+
+.filters__search input {
+  width: 100%;
+  display: block
+}
+
+/* ドロップダウン群 */
+.filters__selects {
+  display: flex;
+  gap: .4rem;
+  margin-bottom: .2rem
+}
+
+.filters__selects select {
+  flex: 1;
+  min-width: 0
+}
+
+/* セクション見出し */
+.filters__section {
+  padding: .3rem 0
+}
+
+.filters__section-label {
+  display: block;
+  font-size: .8rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: .25rem;
+  padding-left: .1rem
 }
 
 /* カテゴリチップ */
 .chips {
   display: flex;
-  gap: .5rem;
+  gap: .45rem;
   overflow-x: auto;
-  padding: .6rem .1rem .8rem
+  padding: .2rem .1rem .4rem;
+  -webkit-overflow-scrolling: touch
 }
 
 .chip {
@@ -214,8 +237,11 @@ main.page {
   background: var(--white);
   border: 1px solid #e5e7eb;
   border-radius: 999px;
-  padding: .35rem .7rem;
+  padding: .35rem .75rem;
+  font-size: .9rem;
   white-space: nowrap;
+  cursor: pointer;
+  transition: background .15s, border-color .15s
 }
 
 .chip.is-active {
@@ -224,19 +250,360 @@ main.page {
   border-color: var(--accent)
 }
 
-/* クイックフィルター */
+/* こだわり条件チェックボックス */
 .quick {
   display: flex;
   flex-wrap: wrap;
-  gap: .8rem;
-  padding: .4rem 0 .1rem;
+  gap: .5rem;
+  padding: .2rem 0;
   color: #374151
 }
 
-.quick label {
+.quick__item {
   display: flex;
   align-items: center;
-  gap: .35rem
+  gap: .35rem;
+  padding: .3rem .6rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: var(--white);
+  font-size: .9rem;
+  cursor: pointer;
+  transition: background .15s, border-color .15s
+}
+
+.quick__item:has(input:checked) {
+  background: var(--hi);
+  border-color: var(--accent)
+}
+
+/* 価格帯フィルター */
+.price-range {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .2rem 0
+}
+
+.price-range__field {
+  display: flex;
+  align-items: center;
+  gap: .25rem
+}
+
+.price-range input {
+  width: 100px;
+  min-height: 40px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: .4rem .5rem;
+  font-size: .95rem;
+  background: var(--white);
+  outline: none;
+  text-align: right
+}
+
+.price-range input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(163, 201, 168, .25)
+}
+
+.price-range__unit {
+  font-size: .85rem;
+  color: #374151;
+  white-space: nowrap
+}
+
+/* 結果件数 + フィルタークリア */
+.filter-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .35rem .1rem;
+  font-size: .85rem;
+  color: #6b7280
+}
+
+.filter-summary__count {
+  font-weight: 500
+}
+
+.filter-summary__clear {
+  color: var(--white);
+  background: #9ca3af;
+  text-decoration: none;
+  font-size: .8rem;
+  font-weight: 500;
+  padding: .25rem .7rem;
+  border-radius: 6px;
+  transition: background .15s
+}
+
+.filter-summary__clear:hover {
+  background: #6b7280
+}
+
+/* 折りたたみトグル（PC・モバイル共通） */
+.filters__toggle {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  width: 100%;
+  background: var(--white);
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: .45rem .7rem;
+  margin-top: .3rem;
+  font-size: .9rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: background .15s
+}
+
+.filters__toggle:hover {
+  background: #f9fafb
+}
+
+.filters__toggle-icon {
+  margin-left: auto;
+  font-size: .6rem;
+  color: #9ca3af
+}
+
+.filters__toggle-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3em;
+  height: 1.3em;
+  background: var(--accent);
+  color: var(--white);
+  font-size: .75rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0 .3rem
+}
+
+.filters__collapsible.is-collapsed {
+  display: none
+}
+
+/* ===== 配送先 複数選択パネル ===== */
+.pref-picker {
+  position: relative
+}
+
+.pref-picker__btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  background: var(--white);
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: .4rem .7rem;
+  font-size: .9rem;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .15s
+}
+
+.pref-picker__btn:hover,
+.pref-picker__btn[aria-expanded="true"] {
+  border-color: var(--accent)
+}
+
+.pref-picker__placeholder {
+  color: #9ca3af
+}
+
+.pref-picker__selected {
+  color: var(--text);
+  font-weight: 500
+}
+
+.pref-picker__arrow {
+  margin-left: auto;
+  font-size: .6rem;
+  color: #9ca3af
+}
+
+.pref-picker__panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 950;
+  background: var(--white);
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.1);
+  max-height: 360px;
+  overflow-y: auto;
+  padding: .5rem
+}
+
+.pref-picker__actions {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  padding: 0 .2rem .4rem;
+  border-bottom: 1px solid #f3f4f6;
+  margin-bottom: .3rem
+}
+
+.pref-picker__actions .pref-picker__apply {
+  margin-left: auto
+}
+
+.pref-picker__action {
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: .25rem .6rem;
+  font-size: .8rem;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background .15s
+}
+
+.pref-picker__action:hover {
+  background: #f3f4f6
+}
+
+.pref-picker__region {
+  padding: .3rem 0
+}
+
+.pref-picker__region-name {
+  display: block;
+  font-size: .75rem;
+  font-weight: 600;
+  color: #9ca3af;
+  padding: .1rem .2rem;
+  margin-bottom: .15rem
+}
+
+.pref-picker__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem
+}
+
+.pref-picker__item {
+  display: flex;
+  align-items: center;
+  gap: .2rem;
+  padding: .2rem .5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: .85rem;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  white-space: nowrap
+}
+
+.pref-picker__item:has(input:checked) {
+  background: var(--hi);
+  border-color: var(--accent)
+}
+
+.pref-picker__item input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0
+}
+
+.pref-picker__apply {
+  padding: .25rem .7rem;
+  background: var(--accent);
+  color: var(--white);
+  border: none;
+  border-radius: 6px;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity .15s
+}
+
+.pref-picker__apply:hover {
+  opacity: .85
+}
+
+/* ===== モバイル (720px以下) ===== */
+@media(max-width:720px) {
+  .toolbar {
+    padding: .5rem .4rem
+  }
+
+  /* ドロップダウンを2列グリッドに */
+  .filters__selects {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .35rem
+  }
+
+  .filters__selects select:last-child:nth-child(odd) {
+    grid-column: 1 / -1
+  }
+
+  .filters select {
+    font-size: .85rem;
+    padding: .45rem .5rem
+  }
+
+  /* チップを少し小さく */
+  .chip {
+    padding: .3rem .6rem;
+    font-size: .85rem
+  }
+
+  /* こだわり条件を2列に */
+  .quick {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .35rem
+  }
+
+  .quick__item {
+    font-size: .85rem;
+    padding: .35rem .5rem
+  }
+
+  /* 価格帯を縦積みに */
+  .price-range {
+    flex-direction: column;
+    align-items: stretch;
+    gap: .3rem
+  }
+
+  .price-range__field {
+    display: flex;
+    align-items: center;
+    gap: .3rem
+  }
+
+  .price-range input {
+    flex: 1;
+    width: auto;
+    min-height: 42px
+  }
+
+  .price-range__unit {
+    flex: 0 0 auto;
+    min-width: 3em
+  }
+
+  /* 配送先パネルを画面幅いっぱいに */
+  .pref-picker__panel {
+    position: fixed;
+    left: .5rem;
+    right: .5rem;
+    top: auto;
+    max-height: 50vh
+  }
 }
 
 /* ============ Rails (横スクロール) ============ */
