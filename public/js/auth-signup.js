@@ -248,14 +248,17 @@
   // ===== アカウント種別変更時の法人ブロック表示切替 =====
   function updateCorpVisibility() {
     if (!corpFields) return;
-    if (isCorporate()) {
-      corpFields.hidden = false;
-    } else {
-      corpFields.hidden = true;
-      // 個人に戻したときは法人エラーを消しておく
+    const corp = isCorporate();
+    corpFields.hidden = !corp;
+    if (!corp) {
       ['partnerName','partnerPhone','partnerPostal','partnerPrefecture','partnerCity','partnerAddress1','partnerAddress2']
         .forEach(clearError);
     }
+    // カード型セレクターの選択状態を更新
+    document.querySelectorAll('.type-card').forEach(card => {
+      const radio = card.querySelector('input[type="radio"]');
+      if (radio) card.classList.toggle('is-selected', radio.checked);
+    });
   }
 
   accTypeRadios.forEach(r => {
@@ -304,12 +307,15 @@
 
   // パスワード表示/非表示
   const togglePwBtn = document.getElementById('togglePw');
+  const eyeOpenSVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const eyeClosedSVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
   togglePwBtn?.addEventListener('click', () => {
     if (!pwEl) return;
     const type = pwEl.type === 'password' ? 'text' : 'password';
     pwEl.type = type;
     if (pwcEl) pwcEl.type = type;
-    togglePwBtn.textContent = (type === 'password') ? '表示' : '非表示';
+    togglePwBtn.innerHTML = (type === 'password') ? eyeOpenSVG : eyeClosedSVG;
+    togglePwBtn.setAttribute('aria-label', type === 'password' ? 'パスワードを表示' : 'パスワードを非表示');
   });
 
   // ===== 送信時の総合チェック =====

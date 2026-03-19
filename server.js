@@ -433,45 +433,23 @@ app.post(
 
           const order = orders[0];
 
-          // payment_status を failed に更新 + awaiting_payment なら cancelled に
-          const wasPending = order.payment_status !== 'paid';
-          await dbQuery(
-            `UPDATE orders
-             SET payment_status = 'failed',
-                 status = CASE WHEN status = 'awaiting_payment' THEN 'cancelled' ELSE status END,
-                 updated_at = now()
-             WHERE id = $1`,
-            [order.id]
-          );
-
-          // awaiting_payment だった注文は在庫を復元（バリエーション対応）
-          if (wasPending) {
+          // awaiting_payment の注文は在庫復元・カート復元・注文完全削除
+          if (order.payment_status !== 'paid') {
             try {
-              const oi = await dbQuery(
-                `SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = $1`, [order.id]
-              );
-              for (const item of oi) {
-                if (item.variant_id) {
-                  await dbQuery(
-                    `UPDATE product_variants SET stock = stock + $1, updated_at = now() WHERE id = $2`,
-                    [item.quantity, item.variant_id]
-                  );
-                  const { syncProductDisplayValues } = require('./services/variantService');
-                  await syncProductDisplayValues(null, item.product_id);
-                } else {
-                  await dbQuery(
-                    `UPDATE products SET stock = stock + $1, updated_at = now() WHERE id = $2`,
-                    [item.quantity, item.product_id]
-                  );
-                }
-              }
-              logger.info('Stock restored for failed payment order', { orderId: order.id, itemCount: oi.length });
-            } catch (stockErr) {
-              logger.error('Failed to restore stock', { orderId: order.id, error: stockErr.message });
+              await cleanupFailedCardOrder(order.id);
+              logger.info('Order fully cleaned up due to payment failure', {
+                orderId: order.id,
+                orderNumber: order.order_number
+              });
+            } catch (cleanupErr) {
+              logger.error('Failed to cleanup order after payment failure', {
+                orderId: order.id,
+                error: cleanupErr.message
+              });
             }
           }
 
-          logger.info('Order payment marked as failed', {
+          logger.info('Payment intent failed processed', {
             orderId: order.id,
             orderNumber: order.order_number
           });
@@ -502,39 +480,14 @@ app.post(
 
           if (orders.length) {
             const order = orders[0];
-            // awaiting_payment のままならキャンセル + 在庫復元
+            // awaiting_payment のままなら在庫復元・カート復元・注文完全削除
             if (order.status === 'awaiting_payment') {
-              await dbQuery(
-                `UPDATE orders SET status = 'cancelled', payment_status = 'expired', updated_at = now() WHERE id = $1`,
-                [order.id]
-              );
-
-              // 在庫復元（バリエーション対応）
               try {
-                const oi = await dbQuery(
-                  `SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = $1`, [order.id]
-                );
-                for (const item of oi) {
-                  if (item.variant_id) {
-                    await dbQuery(
-                      `UPDATE product_variants SET stock = stock + $1, updated_at = now() WHERE id = $2`,
-                      [item.quantity, item.variant_id]
-                    );
-                    const { syncProductDisplayValues } = require('./services/variantService');
-                    await syncProductDisplayValues(null, item.product_id);
-                  } else {
-                    await dbQuery(
-                      `UPDATE products SET stock = stock + $1, updated_at = now() WHERE id = $2`,
-                      [item.quantity, item.product_id]
-                    );
-                  }
-                }
-                logger.info('Stock restored for expired session', { orderId: order.id, itemCount: oi.length });
-              } catch (stockErr) {
-                logger.error('Failed to restore stock for expired session', { orderId: order.id, error: stockErr.message });
+                await cleanupFailedCardOrder(order.id);
+                logger.info('Order fully cleaned up due to expired checkout session', { orderId: order.id, orderNumber: order.order_number });
+              } catch (cleanupErr) {
+                logger.error('Failed to cleanup expired order', { orderId: order.id, error: cleanupErr.message });
               }
-
-              logger.info('Order cancelled due to expired checkout session', { orderId: order.id, orderNumber: order.order_number });
             }
           }
           break;
@@ -1176,6 +1129,82 @@ async function dbCartRemove(userId, productId, variantId = null){
     `DELETE FROM cart_items WHERE cart_id = $1 AND product_id = $2 AND variant_id IS NOT DISTINCT FROM $3`,
     [cart.id, productId, variantId]
   );
+}
+
+/**
+ * カード決済失敗時のクリーンアップ（在庫復元・カート復元・注文完全削除）
+ * @param {string} orderId - 注文ID
+ * @param {string|null} buyerId - 購入者のユーザーID（カート復元用、null時はordersから取得）
+ */
+async function cleanupFailedCardOrder(orderId, buyerId = null) {
+  // 注文情報を取得
+  const orderRows = await dbQuery(
+    `SELECT id, buyer_id, status FROM orders WHERE id = $1::uuid LIMIT 1`,
+    [orderId]
+  );
+  if (!orderRows.length) return;
+  const order = orderRows[0];
+
+  // awaiting_payment 以外は対象外（既に決済済みの注文を誤って削除しない）
+  if (order.status !== 'awaiting_payment') return;
+
+  const uid = buyerId || order.buyer_id;
+
+  // 注文明細を取得（在庫復元・カート復元に使用）
+  const orderItems = await dbQuery(
+    `SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = $1::uuid`,
+    [orderId]
+  );
+
+  // 1. 在庫復元（バリエーション対応）
+  for (const oi of orderItems) {
+    if (oi.variant_id) {
+      await dbQuery(
+        `UPDATE product_variants SET stock = stock + $1, updated_at = now() WHERE id = $2::uuid`,
+        [oi.quantity, oi.variant_id]
+      );
+      const { syncProductDisplayValues } = require('./services/variantService');
+      await syncProductDisplayValues(null, oi.product_id);
+    } else {
+      await dbQuery(
+        `UPDATE products SET stock = stock + $1, updated_at = now() WHERE id = $2::uuid`,
+        [oi.quantity, oi.product_id]
+      );
+    }
+  }
+
+  // 2. カート復元（DBのcart_itemsに戻す）
+  if (uid) {
+    const cart = await getOrCreateUserCart(uid);
+    for (const oi of orderItems) {
+      // 既にカートにある場合は数量を加算、なければ新規追加
+      const existing = await dbQuery(
+        `SELECT id, quantity FROM cart_items
+         WHERE cart_id = $1::uuid AND product_id = $2::uuid AND variant_id IS NOT DISTINCT FROM $3`,
+        [cart.id, oi.product_id, oi.variant_id || null]
+      );
+      if (existing.length) {
+        await dbQuery(
+          `UPDATE cart_items SET quantity = quantity + $1, updated_at = now() WHERE id = $2::uuid`,
+          [oi.quantity, existing[0].id]
+        );
+      } else {
+        await dbQuery(
+          `INSERT INTO cart_items (cart_id, product_id, variant_id, quantity)
+           VALUES ($1::uuid, $2::uuid, $3, $4)`,
+          [cart.id, oi.product_id, oi.variant_id || null, oi.quantity]
+        );
+      }
+    }
+  }
+
+  // 3. 注文を完全削除（関連レコード → 注文本体の順）
+  await dbQuery(`DELETE FROM order_approvals WHERE order_id = $1::uuid`, [orderId]);
+  await dbQuery(`DELETE FROM order_addresses WHERE order_id = $1::uuid`, [orderId]);
+  await dbQuery(`DELETE FROM order_items WHERE order_id = $1::uuid`, [orderId]);
+  await dbQuery(`DELETE FROM orders WHERE id = $1::uuid`, [orderId]);
+
+  logger.info('Failed card order fully cleaned up', { orderId, buyerId: uid, itemCount: orderItems.length });
 }
 
 // DBカート：クーポン保存/解除
@@ -3904,7 +3933,8 @@ const {
 // /products（発見ハブ：public/private両方）
 app.get('/products', async (req, res, next) => {
   try {
-    const { q = '', category = 'all', sort = 'new', page = 1 } = req.query;
+    const { q = '', category = 'all', sort = 'new', page = 1,
+            prefecture = '', audience = '', price_min = '', price_max = '' } = req.query;
     const flags = parseFlags(req.query);
 
     const categories = await fetchCategories(dbQuery);
@@ -3912,10 +3942,14 @@ app.get('/products', async (req, res, next) => {
 
     const buyerPartnerId = req.session?.user ? (req.session.user.partner_id || null) : undefined;
     const { items, total, pageNum } = await fetchProductsWithCount(dbQuery, {
-      q, category, sort, page, flags, visible: 'public', pageSize: 20, buyerPartnerId
+      q, category, sort, page, flags, visible: 'public', pageSize: 20, buyerPartnerId,
+      prefecture: prefecture || undefined,
+      audience: buyerPartnerId === undefined ? (audience || undefined) : undefined,
+      priceMin: price_min || undefined,
+      priceMax: price_max || undefined
     });
 
-    const buildQuery = buildQueryPath('/products', { q, category, sort });
+    const buildQuery = buildQueryPath('/products', { q, category, sort, prefecture, audience, price_min, price_max });
 
     // 人気商品ランキング（週間・月間）とみんなのお気に入りを取得
     const [popularWeekly, popularMonthly, topFavorites] = await Promise.all([
@@ -3954,7 +3988,7 @@ app.get('/products', async (req, res, next) => {
 
     res.render('products/index', {
       title: '商品一覧',
-      q, sort, category,
+      q, sort, category, prefecture, audience, price_min, price_max,
       organic: !!flags.organic, seasonal: !!flags.seasonal,
       instock: !!flags.instock, bundle: !!flags.bundle,
       products: items,
@@ -3982,7 +4016,8 @@ app.get('/products', async (req, res, next) => {
 // /products/list（公開のみ・ページネーション強化）
 app.get('/products/list', async (req, res, next) => {
   try {
-    const { q = '', category = 'all', sort = 'new', page = 1 } = req.query;
+    const { q = '', category = 'all', sort = 'new', page = 1,
+            prefecture = '', audience = '', price_min = '', price_max = '' } = req.query;
     const flags = parseFlags(req.query);
 
     const categories = await fetchCategories(dbQuery);
@@ -3990,7 +4025,11 @@ app.get('/products/list', async (req, res, next) => {
 
     const buyerPartnerId = req.session?.user ? (req.session.user.partner_id || null) : undefined;
     const { items, total, pageNum, pageSize } = await fetchProductsWithCount(dbQuery, {
-      q, category, sort, page, flags, visible: 'public', pageSize: 20, buyerPartnerId
+      q, category, sort, page, flags, visible: 'public', pageSize: 20, buyerPartnerId,
+      prefecture: prefecture || undefined,
+      audience: buyerPartnerId === undefined ? (audience || undefined) : undefined,
+      priceMin: price_min || undefined,
+      priceMax: price_max || undefined
     });
 
     // お気に入り状態の取得（ログインユーザーのみ）
@@ -4009,11 +4048,11 @@ app.get('/products/list', async (req, res, next) => {
     });
 
     const pagination = { page: pageNum, pageCount: Math.max(1, Math.ceil(total / pageSize)) };
-    const buildQuery = buildQueryPath('/products/list', { q, category, sort });
+    const buildQuery = buildQueryPath('/products/list', { q, category, sort, prefecture, audience, price_min, price_max });
 
     res.render('products/list', {
       title: '商品一覧',
-      q, sort, category,
+      q, sort, category, prefecture, audience, price_min, price_max,
       organic: !!flags.organic, seasonal: !!flags.seasonal,
       instock: !!flags.instock, bundle: !!flags.bundle,
       categories,
@@ -9767,12 +9806,23 @@ app.post('/checkout/confirm', async (req, res, next) => {
           orderNumber: orderNo
         });
 
-        // Stripe決済失敗時は従来通りの完了ページへ
+        // Stripe Session作成失敗時: 注文を完全にロールバック（在庫復元・カート復元・注文削除）
+        try {
+          await cleanupFailedCardOrder(orderId, uid);
+          // セッション側のカートキャッシュもクリア（次回DBから再読み込み）
+          if (req.session?.cart?.items) {
+            delete req.session.cart.items;
+          }
+          logger.info('Order rolled back after Stripe session creation failure', { orderId, orderNumber: orderNo });
+        } catch (rollbackErr) {
+          logger.error('Failed to rollback order after Stripe session failure', { orderId, error: rollbackErr.message });
+        }
+
         req.session.flash = {
-          type: 'warning',
-          message: '決済画面の準備に失敗しました。注文は作成されていますが、お手数ですが別の支払い方法をご利用ください。'
+          type: 'error',
+          message: '決済が正しく行われませんでした。カートに商品を戻しました。'
         };
-        return res.redirect(`/checkout/complete?no=${encodeURIComponent(orderNo)}`);
+        return res.redirect('/cart');
       }
     }
 
@@ -9815,36 +9865,17 @@ app.get('/checkout/cancel', async (req, res, next) => {
     }
 
     if (order.status === 'awaiting_payment') {
-      // 在庫復元（バリエーション対応）
-      const orderItems = await dbQuery(
-        `SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = $1::uuid`,
-        [order.id]
-      );
-      for (const oi of orderItems) {
-        if (oi.variant_id) {
-          await dbQuery(
-            `UPDATE product_variants SET stock = stock + $1, updated_at = now() WHERE id = $2::uuid`,
-            [oi.quantity, oi.variant_id]
-          );
-          const { syncProductDisplayValues } = require('./services/variantService');
-          await syncProductDisplayValues(null, oi.product_id);
-        } else {
-          await dbQuery(
-            `UPDATE products SET stock = stock + $1 WHERE id = $2::uuid`,
-            [oi.quantity, oi.product_id]
-          );
-        }
+      // 在庫復元・カート復元・注文完全削除
+      await cleanupFailedCardOrder(order.id, uid);
+
+      // セッション側のカートも復元（DB復元はヘルパーで実施済み）
+      // 次回のloadCartItems()でDBから読み込まれるため、セッションキャッシュをクリア
+      if (req.session?.cart?.items) {
+        delete req.session.cart.items;
       }
 
-      // 注文をキャンセル
-      await dbQuery(
-        `UPDATE orders SET status = 'cancelled', payment_status = 'cancelled', updated_at = now()
-         WHERE id = $1::uuid`,
-        [order.id]
-      );
-
-      logger.info('Order cancelled via Stripe cancel page', { orderId: order.id, orderNumber: key });
-      req.session.flash = { type: 'info', message: '決済がキャンセルされました。カートの内容はそのままです。' };
+      logger.info('Order fully cleaned up via Stripe cancel page', { orderId: order.id, orderNumber: key });
+      req.session.flash = { type: 'error', message: '決済が正しく行われませんでした。カートに商品を戻しました。' };
     }
 
     return res.redirect('/cart');

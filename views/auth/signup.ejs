@@ -5,7 +5,7 @@
   <section class="card auth-card">
     <div class="auth-card__header">
       <h1>アカウント作成</h1>
-      <p class="lead">1分で登録完了。すぐにお買い物を始められます。</p>
+      <p class="lead">新・今日の食卓へようこそ。必要事項をご入力ください。</p>
     </div>
 
     <form id="signup-form" class="auth-form h-adr" method="POST" action="/signup" novalidate>
@@ -13,87 +13,96 @@
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <% } %>
 
-      <!-- アカウント種別 -->
-      <div class="field">
-        <label>アカウント種別 *</label>
-        <div class="radio-row">
-          <label class="radio">
+      <!-- ステップ1: アカウント種別 -->
+      <fieldset class="step-section">
+        <legend class="step-label">1. ご利用形態</legend>
+        <div class="type-cards">
+          <label class="type-card <%= (values?.account_type || 'corporate') === 'corporate' ? 'is-selected' : '' %>">
             <input type="radio" name="account_type" value="corporate"
                    <%= (values?.account_type || 'corporate') === 'corporate' ? 'checked' : '' %>>
-            <span>法人（飲食店・事業者）</span>
+            <span class="type-card__icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/></svg>
+            </span>
+            <span class="type-card__title">法人・事業者</span>
+            <span class="type-card__desc">飲食店・小売店・卸売業者など</span>
           </label>
-          <label class="radio">
+          <label class="type-card <%= values?.account_type === 'individual' ? 'is-selected' : '' %>">
             <input type="radio" name="account_type" value="individual"
                    <%= values?.account_type === 'individual' ? 'checked' : '' %>>
-            <span>個人</span>
+            <span class="type-card__icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </span>
+            <span class="type-card__title">個人のお客様</span>
+            <span class="type-card__desc">ご家庭でのご利用</span>
           </label>
         </div>
-        <p class="hint">法人を選択した場合、店舗・会社の情報入力が必要です。</p>
         <p class="error" data-for="account_type"><%= fieldErrors?.account_type || '' %></p>
-      </div>
+      </fieldset>
 
-      <!-- 名前 -->
-      <div class="grid2">
-        <div>
-          <label for="lastname">姓 *</label>
-          <input id="lastname" name="lastname" type="text" maxlength="60"
-                 placeholder="例）山田" required
-                 value="<%= (values && values.lastname) ? values.lastname : '' %>">
-          <p class="error" data-for="lastname"><%= (fieldErrors && fieldErrors.lastname) ? fieldErrors.lastname : '' %></p>
-        </div>
-        <div>
-          <label for="firstname">名 *</label>
-          <input id="firstname" name="firstname" type="text" maxlength="60"
-                 placeholder="例）太郎" required
-                 value="<%= (values && values.firstname) ? values.firstname : '' %>">
-          <p class="error" data-for="firstname"><%= (fieldErrors && fieldErrors.firstname) ? fieldErrors.firstname : '' %></p>
-        </div>
-      </div>
+      <!-- ステップ2: お客様情報 -->
+      <fieldset class="step-section">
+        <legend class="step-label">2. お客様情報</legend>
 
-      <!-- メール -->
-      <div class="field">
-        <label for="email">メールアドレス *</label>
-        <input id="email" name="email" type="email"
-               placeholder="you@example.com" autocomplete="email" required
-               value="<%= (values && values.email) ? values.email : '' %>">
-        <p class="error" data-for="email"><%= (fieldErrors && fieldErrors.email) ? fieldErrors.email : '' %></p>
-      </div>
-
-      <!-- パスワード -->
-      <div class="field">
-        <div class="label-row">
-          <label for="password">パスワード *</label>
-          <button type="button" class="link tiny" id="togglePw">表示</button>
-        </div>
-        <input id="password" name="password" type="password"
-               placeholder="8文字以上・英数字混在を推奨" autocomplete="new-password" required>
-        <div class="pw-meter" id="pwMeter" aria-live="polite" aria-hidden="true">
-          <div class="pw-meter__track" role="progressbar"
-              aria-valuemin="0" aria-valuemax="4" aria-valuenow="0" aria-label="パスワード強度">
-            <div class="pw-meter__bar" id="pwBar"></div>
+        <div class="grid2">
+          <div class="field">
+            <label for="lastname">姓 <span class="req">*</span></label>
+            <input id="lastname" name="lastname" type="text" maxlength="60"
+                   placeholder="例）山田" required
+                   value="<%= (values && values.lastname) ? values.lastname : '' %>">
+            <p class="error" data-for="lastname"><%= (fieldErrors && fieldErrors.lastname) ? fieldErrors.lastname : '' %></p>
           </div>
-          <span class="pw-meter__label" id="pwLabel">強度: -</span>
+          <div class="field">
+            <label for="firstname">名 <span class="req">*</span></label>
+            <input id="firstname" name="firstname" type="text" maxlength="60"
+                   placeholder="例）太郎" required
+                   value="<%= (values && values.firstname) ? values.firstname : '' %>">
+            <p class="error" data-for="firstname"><%= (fieldErrors && fieldErrors.firstname) ? fieldErrors.firstname : '' %></p>
+          </div>
         </div>
-        <p class="hint">安全のため、8文字以上で英大文字・小文字・数字・記号の組み合わせを推奨しています。</p>
-        <p class="error" data-for="password"><%= (fieldErrors && fieldErrors.password) ? fieldErrors.password : '' %></p>
-      </div>
-
-      <!-- 確認 -->
-      <div class="field">
-        <label for="passwordConfirm">パスワード（確認） *</label>
-        <input id="passwordConfirm" name="passwordConfirm" type="password"
-               placeholder="もう一度入力" autocomplete="new-password" required>
-        <p class="error" data-for="passwordConfirm"><%= (fieldErrors && fieldErrors.passwordConfirm) ? fieldErrors.passwordConfirm : '' %></p>
-      </div>
-
-      <!-- 法人用：取引先情報（個人のときは非表示） -->
-      <section id="corpFields"
-               class="corpFields"
-               <%= (values?.account_type === 'corporate') ? '' : 'hidden' %>>
-        <h2>取引先情報（法人のみ）</h2>
 
         <div class="field">
-          <label for="partnerName">取引先名（店舗名・法人名） *</label>
+          <label for="email">メールアドレス <span class="req">*</span></label>
+          <input id="email" name="email" type="email"
+                 placeholder="you@example.com" autocomplete="email" required
+                 value="<%= (values && values.email) ? values.email : '' %>">
+          <p class="error" data-for="email"><%= (fieldErrors && fieldErrors.email) ? fieldErrors.email : '' %></p>
+        </div>
+
+        <div class="field">
+          <label for="password">パスワード <span class="req">*</span></label>
+          <div class="pwd-wrap">
+            <input id="password" name="password" type="password"
+                   placeholder="8文字以上" autocomplete="new-password" required>
+            <button type="button" class="pwd-toggle" id="togglePw" aria-label="パスワードを表示">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <div class="pw-meter" id="pwMeter" aria-live="polite" aria-hidden="true">
+            <div class="pw-meter__track" role="progressbar"
+                aria-valuemin="0" aria-valuemax="4" aria-valuenow="0" aria-label="パスワード強度">
+              <div class="pw-meter__bar" id="pwBar"></div>
+            </div>
+            <span class="pw-meter__label" id="pwLabel">強度: -</span>
+          </div>
+          <p class="hint">英大文字・小文字・数字・記号をすべて含む8文字以上</p>
+          <p class="error" data-for="password"><%= (fieldErrors && fieldErrors.password) ? fieldErrors.password : '' %></p>
+        </div>
+
+        <div class="field">
+          <label for="passwordConfirm">パスワード（確認） <span class="req">*</span></label>
+          <input id="passwordConfirm" name="passwordConfirm" type="password"
+                 placeholder="もう一度入力してください" autocomplete="new-password" required>
+          <p class="error" data-for="passwordConfirm"><%= (fieldErrors && fieldErrors.passwordConfirm) ? fieldErrors.passwordConfirm : '' %></p>
+        </div>
+      </fieldset>
+
+      <!-- ステップ3: 法人情報（法人のみ） -->
+      <fieldset id="corpFields" class="step-section step-section--corp"
+               <%= (values?.account_type || 'corporate') === 'corporate' ? '' : 'hidden' %>>
+        <legend class="step-label">3. 事業者情報（法人・事業者のみ）</legend>
+
+        <div class="field">
+          <label for="partnerName">店舗名・法人名 <span class="req">*</span></label>
           <input id="partnerName" name="partnerName" type="text" maxlength="120"
                  placeholder="例）やまなか食堂"
                  value="<%= values?.partnerName || '' %>">
@@ -101,54 +110,53 @@
         </div>
 
         <div class="grid2">
-          <div>
-            <label for="partnerType">種別（任意）</label>
+          <div class="field">
+            <label for="partnerType">業種（任意）</label>
             <select class="pulldown" id="partnerType" name="partnerType">
-              <option value="">-- 任意 --</option>
+              <option value="">-- 選択してください --</option>
               <option value="restaurant" <%= (values?.partnerType==='restaurant')?'selected':'' %>>飲食店</option>
-              <option value="retailer"   <%= (values?.partnerType==='retailer')?'selected':'' %>>小売</option>
-              <option value="wholesale"  <%= (values?.partnerType==='wholesale')?'selected':'' %>>卸</option>
+              <option value="retailer"   <%= (values?.partnerType==='retailer')?'selected':'' %>>小売店</option>
+              <option value="wholesale"  <%= (values?.partnerType==='wholesale')?'selected':'' %>>卸売業</option>
               <option value="other"      <%= (values?.partnerType==='other')?'selected':'' %>>その他</option>
             </select>
             <p class="error" data-for="partnerType"><%= fieldErrors?.partnerType || '' %></p>
           </div>
-          <div>
-            <label for="partnerPhone">電話番号 *</label>
+          <div class="field">
+            <label for="partnerPhone">電話番号 <span class="req">*</span></label>
             <input id="partnerPhone" name="partnerPhone" type="tel" maxlength="30"
-                   placeholder="03-xxxx-xxxx" value="<%= values?.partnerPhone || '' %>">
+                   placeholder="例）03-1234-5678" value="<%= values?.partnerPhone || '' %>">
             <p class="error" data-for="partnerPhone"><%= fieldErrors?.partnerPhone || '' %></p>
           </div>
         </div>
 
-        <!-- 住所（法人用） -->
+        <!-- 住所 -->
         <span class="p-country-name" style="display: none;">Japan</span>
         <div class="grid2">
-          <div>
-            <label for="partnerPostal">郵便番号 *</label>
-            <div class="inline">
-              <input id="partnerPostal" name="partnerPostal" type="text" inputmode="numeric" class="p-postal-code"
-                    placeholder="例）1000001 または 100-0001"
-                    maxlength="8"
-                    value="<%= values?.partnerPostal || '' %>">
-            </div>
+          <div class="field">
+            <label for="partnerPostal">郵便番号 <span class="req">*</span></label>
+            <input id="partnerPostal" name="partnerPostal" type="text" inputmode="numeric" class="p-postal-code"
+                  placeholder="例）100-0001"
+                  maxlength="8"
+                  value="<%= values?.partnerPostal || '' %>">
+            <p class="hint">入力すると住所が自動で入ります</p>
             <p class="error" data-for="partnerPostal"><%= fieldErrors?.partnerPostal || '' %></p>
           </div>
-          <div>
-            <label for="partnerPrefecture">都道府県 *</label>
-            <input id="partnerPrefecture" class="p-region" name="partnerPrefecture" type="text" value="<%= values?.partnerPrefecture || '' %>" readonly>
+          <div class="field">
+            <label for="partnerPrefecture">都道府県 <span class="req">*</span></label>
+            <input id="partnerPrefecture" class="p-region" name="partnerPrefecture" type="text" value="<%= values?.partnerPrefecture || '' %>" readonly placeholder="自動入力">
             <p class="error" data-for="partnerPrefecture"><%= fieldErrors?.partnerPrefecture || '' %></p>
           </div>
         </div>
 
         <div class="field">
-          <label for="partnerCity">市区町村 *</label>
+          <label for="partnerCity">市区町村 <span class="req">*</span></label>
           <input id="partnerCity" class="p-locality" name="partnerCity" type="text" maxlength="120"
-                 placeholder="例）千代田区丸の内" value="<%= values?.partnerCity || '' %>" readonly>
+                 placeholder="自動入力" value="<%= values?.partnerCity || '' %>" readonly>
           <p class="error" data-for="partnerCity"><%= fieldErrors?.partnerCity || '' %></p>
         </div>
 
         <div class="field">
-          <label for="partnerAddress1">番地 *</label>
+          <label for="partnerAddress1">番地 <span class="req">*</span></label>
           <input id="partnerAddress1" class="p-street-address" name="partnerAddress1" type="text" maxlength="160"
                  placeholder="例）1-1-1" value="<%= values?.partnerAddress1 || '' %>">
           <p class="error" data-for="partnerAddress1"><%= fieldErrors?.partnerAddress1 || '' %></p>
@@ -160,22 +168,21 @@
                  placeholder="例）〇〇ビル 3F" value="<%= values?.partnerAddress2 || '' %>">
           <p class="error" data-for="partnerAddress2"><%= fieldErrors?.partnerAddress2 || '' %></p>
         </div>
-      </section>
+      </fieldset>
 
-      <!-- 規約 -->
-      <div class="field">
+      <!-- 規約同意 -->
+      <div class="agree-row">
         <label class="check">
           <input type="checkbox" id="agree" name="agree" value="1"
                  <%= (values && values.agree) ? 'checked' : '' %> required>
-          <a href="/terms" target="_blank" class="link" rel="noopener">利用規約</a>・
-          <a href="/privacy" target="_blank" class="link" rel="noopener">プライバシーポリシー</a>に同意します *
+          <span><a href="/terms" target="_blank" class="link" rel="noopener">利用規約</a>・<a href="/privacy" target="_blank" class="link" rel="noopener">プライバシーポリシー</a>に同意します</span>
         </label>
         <p class="error" data-for="agree"><%= (fieldErrors && fieldErrors.agree) ? fieldErrors.agree : '' %></p>
       </div>
 
       <!-- 送信 -->
       <div class="actions">
-        <button class="btn" type="submit" id="signupBtn" disabled>登録</button>
+        <button class="btn btn--submit" type="submit" id="signupBtn" disabled>アカウントを作成する</button>
       </div>
 
       <!-- 全体エラー -->
@@ -185,7 +192,7 @@
     </form>
 
     <div class="auth-card__footer">
-      <p>すでにアカウントをお持ちですか？ <a href="/login" class="link">ログイン</a></p>
+      <p>すでにアカウントをお持ちですか？ <a href="/login" class="link">ログインはこちら</a></p>
     </div>
   </section>
 </main>

@@ -1,46 +1,181 @@
-<!-- ✅ 固定フィルターバー -->
+<%
+  const _prefs = [
+    '北海道','青森県','岩手県','宮城県','秋田県','山形県','福島県',
+    '茨城県','栃木県','群馬県','埼玉県','千葉県','東京都','神奈川県',
+    '新潟県','富山県','石川県','福井県','山梨県','長野県',
+    '岐阜県','静岡県','愛知県','三重県',
+    '滋賀県','京都府','大阪府','兵庫県','奈良県','和歌山県',
+    '鳥取県','島根県','岡山県','広島県','山口県',
+    '徳島県','香川県','愛媛県','高知県',
+    '福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県'
+  ];
+  const _prefRegions = [
+    { name: '北海道・東北', items: ['北海道','青森県','岩手県','宮城県','秋田県','山形県','福島県'] },
+    { name: '関東',        items: ['茨城県','栃木県','群馬県','埼玉県','千葉県','東京都','神奈川県'] },
+    { name: '中部',        items: ['新潟県','富山県','石川県','福井県','山梨県','長野県','岐阜県','静岡県','愛知県','三重県'] },
+    { name: '近畿',        items: ['滋賀県','京都府','大阪府','兵庫県','奈良県','和歌山県'] },
+    { name: '中国・四国',   items: ['鳥取県','島根県','岡山県','広島県','山口県','徳島県','香川県','愛媛県','高知県'] },
+    { name: '九州・沖縄',   items: ['福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県'] },
+  ];
+  const _rawPref = typeof prefecture !== 'undefined' ? prefecture : '';
+  const _selectedPrefs = _rawPref ? String(_rawPref).split(',').filter(Boolean) : [];
+  const _audience = typeof audience !== 'undefined' ? audience : '';
+  const _priceMin = typeof price_min !== 'undefined' ? price_min : '';
+  const _priceMax = typeof price_max !== 'undefined' ? price_max : '';
+  const _total = typeof total !== 'undefined' ? total : null;
+  const _hasFilters = (q) || (category && category !== 'all') || organic || seasonal || instock || _selectedPrefs.length || _audience || _priceMin || _priceMax;
+  const _defaultCollapsed = typeof defaultCollapsed !== 'undefined' ? defaultCollapsed : false;
+
+  let _filterCount = 0;
+  if (category && category !== 'all') _filterCount++;
+  if (organic) _filterCount++;
+  if (seasonal) _filterCount++;
+  if (instock) _filterCount++;
+  if (_selectedPrefs.length) _filterCount++;
+  if (_audience) _filterCount++;
+  if (_priceMin || _priceMax) _filterCount++;
+%>
+<!-- 固定フィルターバー -->
 <section class="toolbar" id="toolbar">
   <form id="filter-form" class="filters" method="GET" action="/products/list">
-    <!-- 現在のカテゴリとページをフォームで保持 -->
+    <!-- 隠しフィールド -->
     <input type="hidden" name="category" id="catHidden" value="<%= category || 'all' %>">
     <input type="hidden" name="page" id="pageHidden" value="<%= page || 1 %>">
+    <input type="hidden" name="prefecture" id="prefHidden" value="<%= _selectedPrefs.join(',') %>">
 
-    <div class="filters__row">
+    <!-- 検索バー（常に全幅表示） -->
+    <div class="filters__search">
       <input type="search" name="q" id="q"
-             placeholder="商品・生産者・カテゴリを検索"
+             placeholder="商品名・生産者名・カテゴリで検索"
              value="<%= q || '' %>" aria-label="検索" autocomplete="off">
+    </div>
 
+    <!-- ドロップダウン群（並び替え・対象） -->
+    <div class="filters__selects">
       <select name="sort" id="sort" class="pulldown" aria-label="並び替え">
-        <option value="new"        <%= sort === 'new'        ? 'selected' : '' %>>新着順</option>
-        <option value="popular"    <%= sort === 'popular'    ? 'selected' : '' %>>人気順</option>
-        <option value="price_asc"  <%= sort === 'price_asc'  ? 'selected' : '' %>>価格の安い順</option>
-        <option value="price_desc" <%= sort === 'price_desc' ? 'selected' : '' %>>価格の高い順</option>
-        <option value="stock"      <%= sort === 'stock'      ? 'selected' : '' %>>在庫が多い順</option>
+        <option value="new"        <%= sort === 'new'        ? 'selected' : '' %>>並び替え：新着順</option>
+        <option value="popular"    <%= sort === 'popular'    ? 'selected' : '' %>>並び替え：人気順</option>
+        <option value="price_asc"  <%= sort === 'price_asc'  ? 'selected' : '' %>>並び替え：安い順</option>
+        <option value="price_desc" <%= sort === 'price_desc' ? 'selected' : '' %>>並び替え：高い順</option>
+        <option value="stock"      <%= sort === 'stock'      ? 'selected' : '' %>>並び替え：在庫順</option>
       </select>
-      <!-- ※ 適用ボタンは撤廃（自動適用で統一） -->
+
+      <% if (!currentUser) { %>
+        <select name="audience" id="audience" class="pulldown" aria-label="対象">
+          <option value=""           <%= !_audience           ? 'selected' : '' %>>対象：すべて</option>
+          <option value="individual" <%= _audience==='individual' ? 'selected' : '' %>>対象：個人のお客様向け</option>
+          <option value="corporate"  <%= _audience==='corporate'  ? 'selected' : '' %>>対象：法人のお客様向け</option>
+        </select>
+      <% } %>
     </div>
 
-    <!-- カテゴリチップ（ボタン化してフォーム値に反映） -->
-    <div class="chips" role="listbox" aria-label="カテゴリで絞り込み">
-      <button type="button"
-              class="chip <%= !category || category==='all' ? 'is-active' : '' %>"
-              data-cat="all" aria-pressed="<%= !category || category==='all' ? 'true' : 'false' %>">すべて</button>
+    <!-- 詳細フィルター トグルボタン（PC・モバイル共通） -->
+    <button type="button" class="filters__toggle" id="filtersToggle"
+            aria-expanded="<%= _defaultCollapsed ? 'false' : 'true' %>" aria-controls="filtersCollapsible">
+      <span>条件で絞り込む</span>
+      <% if (_filterCount > 0) { %>
+        <span class="filters__toggle-badge"><%= _filterCount %></span>
+      <% } %>
+      <span class="filters__toggle-icon"><%= _defaultCollapsed ? '\u25B6' : '\u25BC' %></span>
+    </button>
 
-      <% (categories || []).forEach(function(cat){ %>
-        <button type="button"
-                class="chip <%= category===cat ? 'is-active' : '' %>"
-                data-cat="<%= cat %>"
-                aria-pressed="<%= category===cat ? 'true' : 'false' %>"><%= cat %></button>
-      <% }) %>
+    <!-- 折りたたみ可能エリア -->
+    <div id="filtersCollapsible" class="filters__collapsible<%= _defaultCollapsed ? ' is-collapsed' : '' %>">
+
+      <!-- カテゴリ -->
+      <div class="filters__section">
+        <span class="filters__section-label">カテゴリ</span>
+        <div class="chips" role="listbox" aria-label="カテゴリで絞り込み">
+          <button type="button"
+                  class="chip <%= !category || category==='all' ? 'is-active' : '' %>"
+                  data-cat="all" aria-pressed="<%= !category || category==='all' ? 'true' : 'false' %>">すべて</button>
+          <% (categories || []).forEach(function(cat){ %>
+            <button type="button"
+                    class="chip <%= category===cat ? 'is-active' : '' %>"
+                    data-cat="<%= cat %>"
+                    aria-pressed="<%= category===cat ? 'true' : 'false' %>"><%= cat %></button>
+          <% }) %>
+        </div>
+      </div>
+
+      <!-- 配送先（複数選択） -->
+      <div class="filters__section">
+        <span class="filters__section-label">配送先で絞り込み</span>
+        <div class="pref-picker" id="prefPicker">
+          <button type="button" class="pref-picker__btn" id="prefPickerBtn" aria-expanded="false">
+            <% if (_selectedPrefs.length === 0) { %>
+              <span class="pref-picker__placeholder">配送先：指定なし（すべて表示）</span>
+            <% } else if (_selectedPrefs.length <= 3) { %>
+              <span class="pref-picker__selected"><%= _selectedPrefs.join('、') %></span>
+            <% } else { %>
+              <span class="pref-picker__selected"><%= _selectedPrefs.slice(0,2).join('、') %> 他<%= _selectedPrefs.length - 2 %>件</span>
+            <% } %>
+            <span class="pref-picker__arrow">&#9660;</span>
+          </button>
+          <div class="pref-picker__panel" id="prefPanel" hidden>
+            <div class="pref-picker__actions">
+              <button type="button" class="pref-picker__action" id="prefSelectAll">すべて選択</button>
+              <button type="button" class="pref-picker__action" id="prefDeselectAll">すべて解除</button>
+              <button type="button" class="pref-picker__apply" id="prefApply">この条件で絞り込む</button>
+            </div>
+            <% _prefRegions.forEach(function(region){ %>
+              <div class="pref-picker__region">
+                <span class="pref-picker__region-name"><%= region.name %></span>
+                <div class="pref-picker__items">
+                  <% region.items.forEach(function(p){ %>
+                    <label class="pref-picker__item">
+                      <input type="checkbox" value="<%= p %>" class="pref-cb"
+                             <%= _selectedPrefs.includes(p) ? 'checked' : '' %>>
+                      <span><%= p %></span>
+                    </label>
+                  <% }) %>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+
+      <!-- こだわり条件 -->
+      <div class="filters__section">
+        <span class="filters__section-label">こだわり条件</span>
+        <div class="quick">
+          <label class="quick__item"><input type="checkbox" name="organic" value="1" <%= organic ? 'checked' : '' %>> 有機/JAS認証</label>
+          <label class="quick__item"><input type="checkbox" name="seasonal" value="1" <%= seasonal ? 'checked' : '' %>> 旬の食材</label>
+          <label class="quick__item"><input type="checkbox" name="instock" value="1" <%= instock ? 'checked' : '' %>> 在庫あり</label>
+        </div>
+      </div>
+
+      <!-- 価格帯 -->
+      <div class="filters__section">
+        <span class="filters__section-label">価格帯</span>
+        <div class="price-range">
+          <div class="price-range__field">
+            <input type="number" name="price_min" id="priceMin" inputmode="numeric"
+                   placeholder="指定なし" value="<%= _priceMin %>"
+                   min="0" step="100" aria-label="最低価格">
+            <span class="price-range__unit">円から</span>
+          </div>
+          <div class="price-range__field">
+            <input type="number" name="price_max" id="priceMax" inputmode="numeric"
+                   placeholder="指定なし" value="<%= _priceMax %>"
+                   min="0" step="100" aria-label="最高価格">
+            <span class="price-range__unit">円まで</span>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- クイックフィルター（チェックで即時適用） -->
-    <div class="quick">
-      <label><input type="checkbox" name="organic" value="1" <%= organic ? 'checked' : '' %>> 有機/JAS</label>
-      <label><input type="checkbox" name="seasonal" value="1" <%= seasonal ? 'checked' : '' %>> 旬</label>
-      <label><input type="checkbox" name="instock" value="1" <%= instock ? 'checked' : '' %>> 在庫あり</label>
-      <!-- <label><input type="checkbox" name="bundle"  value="1" <%= bundle  ? 'checked' : '' %>> まとめ買い</label> -->
+    <!-- 結果件数 + フィルタークリア -->
+    <div class="filter-summary">
+      <% if (_total !== null) { %>
+        <span class="filter-summary__count"><%= _total %>件の商品が見つかりました</span>
+      <% } %>
+      <% if (_hasFilters) { %>
+        <a href="/products/list" class="filter-summary__clear">条件をリセット</a>
+      <% } %>
     </div>
+
     <button type="submit" class="sr-only">apply</button>
   </form>
 </section>
