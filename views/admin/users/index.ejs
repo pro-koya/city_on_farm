@@ -1,0 +1,45 @@
+<%
+  // ---- 安全な既定値 ----
+  const _pageTitle = (typeof pageTitle !== 'undefined') ? pageTitle : 'ユーザー一覧';
+  const _title     = (typeof title     !== 'undefined') ? title     : 'ユーザー';
+  const _q         = (typeof q         !== 'undefined') ? q         : (request?.query?.q || '');
+  const _searchAction = '/admin/users';
+
+  const roleVal   = (typeof role   !== 'undefined') ? role   : (request?.query?.role   || '');
+  const statusVal = (typeof status !== 'undefined') ? status : (request?.query?.status || '');
+  const sortVal   = (typeof sort   !== 'undefined') ? sort   : (request?.query?.sort   || 'recent');
+
+  const items       = Array.isArray(users) ? users : [];
+  const page        = Number(typeof locals?.page    !== 'undefined' ? locals.page    : (request?.query?.page || 1));
+  const perPage     = Number(typeof locals?.perPage !== 'undefined' ? locals.perPage : 20);
+  const total       = Number(typeof locals?.total   !== 'undefined' ? locals.total   : items.length);
+  const totalPages  = Math.max(1, Number(typeof locals?.totalPages !== 'undefined' ? locals.totalPages : Math.ceil(total / Math.max(1, perPage))));
+
+  const queryNoPage = (() => {
+    const u = new URL(_searchAction, 'http://dummy');
+    Object.entries(request?.query || {}).forEach(([k,v]) => { if (k !== 'page') u.searchParams.set(k, v); });
+    return u.search ? u.search : '';
+  })();
+%>
+
+<%- include('../../layouts/list', {
+  title: _title,
+  pageTitle: _pageTitle,
+  searchAction: _searchAction,
+  q: _q,
+
+  breadcrumbItems: [
+    { label: 'ホーム', url: '/' },
+    { label: '管理', url: '/dashboard/admin' },
+    { label: 'ユーザー一覧' }
+  ],
+
+  filtersHTML: include('./_filters', { roleVal, statusVal, sortVal }),
+
+  extraActionsHTML: '',
+
+  body: include('./_table', {
+    items,
+    page, perPage, total, totalPages, searchAction: _searchAction, queryNoPage
+  })
+}) %>
