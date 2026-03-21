@@ -1,6 +1,6 @@
 # Database Schema (generated)
 
-> Generated at: 2026-03-20T18:51:20.643Z
+> Generated at: 2026-03-21T18:37:03.916Z
 
 ---
 
